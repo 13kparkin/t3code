@@ -27,14 +27,21 @@ vi.mock("../lib/runtime", async () => {
   };
 });
 
-vi.mock("../connection/catalog", () => ({
-  environmentCatalog: {
-    removeRelayEnvironments: {
-      label: "remove relay environments",
-      run: () => Promise.reject(new Error("Persistence removal failed.")),
+vi.mock("../connection/catalog", async () => {
+  const Effect = await import("effect/Effect");
+  const Schema = await import("effect/Schema");
+  class RemovalError extends Schema.TaggedError<RemovalError>()("RemovalError", {
+    message: Schema.String,
+  }) {}
+  return {
+    environmentCatalog: {
+      removeRelayEnvironments: {
+        label: "remove relay environments",
+        run: () => Effect.fail(new RemovalError({ message: "Persistence removal failed." })),
+      },
     },
-  },
-}));
+  };
+});
 
 afterEach(() => {
   deactivateManagedRelayAuthentication();
