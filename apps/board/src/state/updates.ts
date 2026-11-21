@@ -3,7 +3,7 @@ import type { OrchestrationV2ThreadShell, ServerProvider } from "@t3tools/contra
 import type { AppUpdateState } from "../connection/engineState";
 
 export const ENGINE_KEY = "engine";
-export const APP_KEY = "app";
+const APP_KEY = "app";
 
 /** A release the app could install, and whether it can do that itself or only name the command. */
 export interface UpdateOffer {

@@ -16,7 +16,7 @@ publish:
   repo: t3code
   releaseType: release
 win:
-  # Unsigned, so a newer electron-updater would otherwise reject every update.
+  # The build is unsigned, so the updater must not require a signature.
   verifyUpdateCodeSignature: false
   target:
     - target: nsis
