@@ -208,7 +208,7 @@ export function TicketFrame({
                   data-testid="plan-missing"
                   className={`${chip} border-amber-400/50 text-amber-300`}
                 >
-                  No playbook
+                  No plan
                 </span>
               </Tooltip>
             )}

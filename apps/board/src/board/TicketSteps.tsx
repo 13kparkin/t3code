@@ -3,17 +3,11 @@ import { Check, Circle, type LucideIcon, SkipForward } from "lucide-react";
 import { stepProgress, type TicketStep } from "../domain/ticket";
 import type { TicketView } from "../state/boardModel";
 
-interface StepIcon {
-  readonly Icon: LucideIcon;
-  readonly tone: string;
-  readonly label: string;
-}
-
 const STEP_ICON = {
   done: { Icon: Check, tone: "text-emerald-400", label: "Done" },
   pending: { Icon: Circle, tone: "text-faint", label: "Pending" },
   skipped: { Icon: SkipForward, tone: "text-amber-400", label: "Skipped" },
-} as const satisfies Record<TicketStep["state"], StepIcon>;
+} as const satisfies Record<TicketStep["state"], { Icon: LucideIcon; tone: string; label: string }>;
 
 /** A ticket's playbook and its steps in the Ticket tab, with how many are done. */
 export function TicketSteps({ view }: { view: TicketView }) {

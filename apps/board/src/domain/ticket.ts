@@ -89,7 +89,7 @@ export type Ticket = typeof Ticket.Type;
 
 const UNPLANNED_STAGES: ReadonlySet<TicketStage> = new Set(["todo", "off_path"]);
 
-/** A ticket past `todo` should carry its playbook and the steps copied from it. */
+/** Whether a ticket past `todo`, and not off path, lacks its playbook or its steps. */
 export const missingPlan = (ticket: Ticket): boolean =>
   !UNPLANNED_STAGES.has(ticket.stage) &&
   (ticket.playbook == null || (ticket.steps ?? []).length === 0);
