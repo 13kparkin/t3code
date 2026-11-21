@@ -91,7 +91,7 @@ describe("launching an orchestrator", () => {
       title: "Orchestrator: Claude connector",
     });
     expect(launched[0]?.firstMessage).toContain("/work/project/.agentboard/claude-connector");
-    expect(launched[0]?.firstMessage).toContain("at most 2 building agents");
+    expect(launched[0]?.firstMessage).toContain("at most 2 implementation agents at once");
     expect(launched[0]?.firstMessage).toContain("`Connector`, at `/work/project`");
     expect(launched[0]?.firstMessage).not.toContain("delegate_task");
   });
