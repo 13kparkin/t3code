@@ -6,6 +6,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 
 import { BOARD_KEY, useArtifacts } from "../artifacts/ArtifactsContext";
+import { boardDocs } from "../chat/attachments";
 import { isRunLive } from "../chat/timeline";
 import { STAGE_LABEL, TICKET_STAGES } from "../domain/ticket";
 import { AddFromIssue } from "../issues/AddFromIssue";
@@ -39,6 +40,7 @@ export function OrchestratorCard({
   );
   const { groups, expanded } = useArtifacts();
   const [adding, setAdding] = useState(false);
+  const docs = boardDocs(projection);
   const status =
     board.orchestratorThreadId === null
       ? "Not started"
@@ -82,6 +84,23 @@ export function OrchestratorCard({
           </div>
         ))}
       </dl>
+      {docs.length > 0 && (
+        <div data-testid="board-docs" className="mt-2">
+          <p className="text-[10px] text-faint">
+            Docs{" "}
+            <span data-testid="docs-count" className="text-fg">
+              {docs.length}
+            </span>
+          </p>
+          <ul className="max-h-12 overflow-y-auto" onWheel={(event) => event.stopPropagation()}>
+            {docs.map((doc) => (
+              <li key={doc.id} className="truncate text-[11px] text-muted">
+                {doc.name}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="mt-3 flex items-center justify-between border-t border-line pt-2">
         <span className="text-muted">
           For you{" "}
