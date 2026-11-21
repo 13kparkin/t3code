@@ -54,8 +54,9 @@ if (out("git", ["branch", "-r", "--contains", sha], root) === "") {
 }
 
 addUpstreamRemote(root);
-run(...UPSTREAM_FETCH, root);
-for (const gate of GATES) run(gate.command, gate.args, NodePath.join(root, gate.cwd ?? ""));
+for (const gate of [UPSTREAM_FETCH, ...GATES]) {
+  run(gate.command, gate.args, NodePath.join(root, gate.cwd ?? ""));
+}
 
 run("vp", ["run", "--filter", "@agent-board/app", "build"], root);
 NodeFS.rmSync(releaseDir, { recursive: true, force: true });

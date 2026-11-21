@@ -51,12 +51,12 @@ export interface CiExit {
   readonly code: number;
 }
 
-/** A ticket's `ci-local.txt`: the run it records, or why the board cannot judge it. */
+/** A ticket's `ci-local.txt`, as the run it records or the reason the board cannot judge it. */
 export type CiLocal =
   | { readonly kind: "run"; readonly headSha: string; readonly exits: ReadonlyArray<CiExit> }
   | { readonly kind: "unreadable"; readonly reason: string };
 
-/** Reads a local CI run: the head SHA on line 1, then each step's output ending in `<step>-exit=<code>`. */
+/** Reads a local CI run, which has the head SHA on line 1 and then each step's output ending in `<step>-exit=<code>`. */
 export function parseCiLocal(text: string): CiLocal {
   const headSha = text.split(/\r?\n/, 1)[0]?.trim() ?? "";
   if (!/^[0-9a-f]{7,40}$/.test(headSha)) {

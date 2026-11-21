@@ -2,7 +2,6 @@
 // `cwd` is relative to the repo root.
 import * as NodeChildProcess from "node:child_process";
 
-/** Adds the upstream remote when the checkout lacks it. */
 export function addUpstreamRemote(root) {
   try {
     NodeChildProcess.execFileSync("git", ["remote", "get-url", "upstream"], {
@@ -19,10 +18,11 @@ export function addUpstreamRemote(root) {
 }
 
 /** The engine gate diffs against upstream/main, so it runs after this fetch. */
-export const UPSTREAM_FETCH = [
-  "git",
-  ["fetch", "--no-tags", "--filter=blob:none", "upstream", "main"],
-];
+export const UPSTREAM_FETCH = {
+  name: "upstream",
+  command: "git",
+  args: ["fetch", "--no-tags", "--filter=blob:none", "upstream", "main"],
+};
 
 /** The same gates as the agent-board job. */
 export const GATES = [

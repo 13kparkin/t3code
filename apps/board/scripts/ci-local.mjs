@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Runs local CI on HEAD for a fork with no CI on pull requests, and writes the ticket's ci-local.txt,
-// which the board reads for the ci_green condition: the head SHA on line 1, then each step's output
-// ending in `<step>-exit=<code>`. It runs every step, even after one fails.
+// which the board reads for the ci_green condition. Line 1 is the head SHA, and each step's output
+// ends in `<step>-exit=<code>`. It runs every step, even after one fails.
 // Usage: node apps/board/scripts/ci-local.mjs <ticket key>
 import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
@@ -21,7 +21,7 @@ const sha = git(["rev-parse", "HEAD"]);
 addUpstreamRemote(root);
 
 const steps = [
-  { name: "upstream", command: UPSTREAM_FETCH[0], args: UPSTREAM_FETCH[1] },
+  UPSTREAM_FETCH,
   { name: "check-changed", command: "vp", args: ["run", "check:changed"] },
   ...GATES,
 ];
