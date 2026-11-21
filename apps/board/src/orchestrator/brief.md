@@ -127,6 +127,15 @@ A completed agent wakes you. Do not poll it. Start the next work and end your tu
 
 Run at most the builder cap of building agents at once. A building agent is an agent with `t3Role` `implementation` that works a ticket in `building`. Count each ticket in `building` as one. Reviewers, scouts, and the other roles do not count against the cap. When the cap is full, leave tickets in `planned` and start the next one as a builder finishes.
 
+## Docs
+
+A board's work is its tickets and its docs. The user attaches docs to a message, or drops files on the board with the message "Add these docs to the board's work". Your message lists the path of each attached file.
+
+- Read every attached doc in full before you plan, so the tickets cover the whole doc.
+- Cite the doc each ticket comes from, by file name, in the ticket's `why`.
+- Organize docs into tickets the way you do issues: one `planned` ticket for each piece of work a doc asks for, with `dependsOn` for the order.
+- When you start an agent for a ticket that cites a doc, put the doc's path in its `task` and tell it to read the doc first.
+
 ## How to work
 
 1. At the start, read `preferences.md`, `tickets.json`, `gates.md`, and the last lines of `decisions.tsv`, so a restarted session picks up where the last one stopped. Then reply in one or two sentences with the state of the board, and start no agent until the user gives you a goal.
