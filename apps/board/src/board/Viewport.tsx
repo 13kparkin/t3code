@@ -23,6 +23,7 @@ const GRID_SPACING = 22;
 const BUTTON_ZOOM_STEP = 1.2;
 const WHEEL_ZOOM_RATE = 0.01;
 const REVEAL_MARGIN = 24;
+const PAN_THRESHOLD_PX = 3;
 
 const ViewScaleContext = createContext(1);
 const RevealContext = createContext<(card: HTMLElement | null) => void>(() => undefined);
@@ -104,13 +105,19 @@ export function Viewport({
     if (event.button !== 0) return;
     drag.current = { startX: event.clientX, startY: event.clientY, origin: view };
     event.currentTarget.setPointerCapture(event.pointerId);
-    setPanning(true);
   };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
     const active = drag.current;
     if (!active) return;
-    setView(panBy(active.origin, event.clientX - active.startX, event.clientY - active.startY));
+    const dx = event.clientX - active.startX;
+    const dy = event.clientY - active.startY;
+    if (!panning) {
+      if (Math.hypot(dx, dy) < PAN_THRESHOLD_PX) return;
+      setPanning(true);
+      window.getSelection()?.removeAllRanges();
+    }
+    setView(panBy(active.origin, dx, dy));
   };
 
   const endPan = () => {
@@ -124,7 +131,7 @@ export function Viewport({
       <div
         ref={attachSurface}
         data-testid="board-canvas"
-        className={`absolute inset-0 touch-none ${panning ? "cursor-grabbing" : "cursor-grab"}`}
+        className={`absolute inset-0 touch-none ${panning ? "cursor-grabbing select-none" : "cursor-grab"}`}
         style={{
           backgroundImage: "radial-gradient(circle, var(--color-dot) 1.3px, transparent 1.5px)",
           backgroundSize: `${spacing}px ${spacing}px`,
