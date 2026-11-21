@@ -116,7 +116,7 @@ export function OrchestratorCard({
         </span>
       </header>
       <p className="mt-0.5 text-[11px] text-faint">Orchestrator</p>
-      <dl className="mt-2.5 grid grid-cols-4 gap-x-2 gap-y-2">
+      <dl className="mt-2.5 grid grid-cols-5 gap-x-2 gap-y-2">
         {TICKET_STAGES.map((stage) => (
           <div key={stage} className="min-w-0">
             <dt className="text-[10px] leading-tight text-faint">{STAGE_LABEL[stage]}</dt>

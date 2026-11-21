@@ -173,6 +173,16 @@ export function TicketFrame({
         )}
         {hasChips(ticket) && (
           <div className="mt-1.5 flex h-[44px] flex-wrap content-start gap-1 overflow-hidden">
+            {missingPlan(ticket) && (
+              <Tooltip text={`In ${STAGE_LABEL[ticket.stage]} without a playbook and steps`}>
+                <span
+                  data-testid="plan-missing"
+                  className={`${chip} border-amber-400/50 text-amber-300`}
+                >
+                  No plan
+                </span>
+              </Tooltip>
+            )}
             {ticket.issue != null && (
               <IssueChip ticket={ticket} onOpenThread={(threadId) => onOpen(threadId)} />
             )}
@@ -201,16 +211,6 @@ export function TicketFrame({
                 {progress.done}/{progress.total} steps
                 {progress.skipped > 0 && ` · ${progress.skipped} skipped`}
               </span>
-            )}
-            {missingPlan(ticket) && (
-              <Tooltip text={`In ${STAGE_LABEL[ticket.stage]} without a playbook and steps`}>
-                <span
-                  data-testid="plan-missing"
-                  className={`${chip} border-amber-400/50 text-amber-300`}
-                >
-                  No plan
-                </span>
-              </Tooltip>
             )}
             {(ticket.flags ?? []).map((flag) => (
               <span key={flag} className={`${chip} border-amber-400/50 text-amber-300`}>

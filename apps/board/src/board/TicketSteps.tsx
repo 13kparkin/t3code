@@ -9,7 +9,6 @@ const STEP_ICON = {
   skipped: { Icon: SkipForward, tone: "text-amber-400", label: "Skipped" },
 } as const satisfies Record<TicketStep["state"], { Icon: LucideIcon; tone: string; label: string }>;
 
-/** A ticket's playbook and its steps in the Ticket tab, with how many are done. */
 export function TicketSteps({ view }: { view: TicketView }) {
   const { ticket } = view;
   const steps = ticket.steps ?? [];
@@ -25,7 +24,7 @@ export function TicketSteps({ view }: { view: TicketView }) {
         {steps.map((step, index) => {
           const { Icon, tone, label } = STEP_ICON[step.state];
           return (
-            // oxlint-disable-next-line react/no-array-index-key -- step text can repeat and the list is never reordered
+            // oxlint-disable-next-line react/no-array-index-key -- the row holds no state and step text can repeat
             <li key={index} data-state={step.state} className="flex gap-1.5">
               <Icon className={`mt-0.5 size-3.5 shrink-0 ${tone}`} aria-label={label} />
               <div className="min-w-0 flex-1">

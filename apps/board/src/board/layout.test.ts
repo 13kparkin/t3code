@@ -102,6 +102,17 @@ describe("laying out the lanes", () => {
     expect(frame(open, "T-2")?.y).toBe((frame(layout, "T-2")?.y ?? 0) + grown);
   });
 
+  it("Given bare tickets, when their heads are measured, then steps or a missing plan add the chip row", () => {
+    const bare = headHeight({ key: "T-9", title: "a", stage: "todo" });
+    const unplanned = headHeight({ key: "T-9", title: "a", stage: "planned" });
+    const stepped = { key: "T-9", title: "a", playbook: "feature.md" } as const;
+    expect(unplanned).toBeGreaterThan(bare);
+    expect(
+      headHeight({ ...stepped, stage: "todo", steps: [{ text: "x", state: "pending" }] }),
+    ).toBe(unplanned);
+    expect(headHeight({ ...stepped, stage: "off_path" })).toBe(bare);
+  });
+
   it("Given a dependency on a ticket that exists and one that does not, when laid out, then only the first has an edge", () => {
     expect(layout.edges).toEqual([
       { from: "T-1", to: "T-3" },

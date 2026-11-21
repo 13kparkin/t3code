@@ -80,7 +80,7 @@ describe("the review template and usage rules", () => {
 
 describe("orchestrator stats", () => {
   const tickets = JSON.stringify([
-    { key: "T-1", title: "a", stage: "planned" },
+    { key: "T-1", title: "a", stage: "todo" },
     { key: "T-2", title: "b", stage: "building" },
     { key: "T-3", title: "c", stage: "building" },
     { key: "T-4", title: "d", stage: "reviewing" },
@@ -101,8 +101,8 @@ describe("orchestrator stats", () => {
     const stats = orchestratorStats({ tickets, forYou, decisions }, 2);
     expect(stats).toEqual({
       stages: {
-        todo: 0,
-        planned: 1,
+        todo: 1,
+        planned: 0,
         building: 2,
         reviewing: 1,
         verifying: 0,

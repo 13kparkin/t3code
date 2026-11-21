@@ -56,7 +56,6 @@ export type TicketIssue = typeof TicketIssue.Type;
 const TicketStep = Schema.Struct({
   text: Schema.String,
   state: Schema.Literals(["done", "pending", "skipped"]),
-  /** Why a step was skipped. */
   note: optional(Schema.String),
 });
 export type TicketStep = typeof TicketStep.Type;
