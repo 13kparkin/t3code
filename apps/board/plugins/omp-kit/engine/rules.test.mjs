@@ -104,11 +104,15 @@ NodeTest.describe("omp-kit hook engine", () => {
   for (const [name, prompt, blocks] of [
     [
       "a reviewer role line",
-      "Read /b/roles/reviewer.md and act as that role.\n\nReview it.",
+      "Act as the review sub-agent for this task.\n\nRead /b/roles/reviewer.md and act as that role.\n\nReview it.",
       false,
     ],
-    ["a task role line", "Read /b/roles/task.md and act as that role.\n\nBuild it.", true],
-    ["no role line", "Fix the bug.", true],
+    [
+      "a task role line",
+      "Act as the review sub-agent for this task.\n\nRead /b/roles/task.md and act as that role.\n\nBuild it.",
+      true,
+    ],
+    ["no role line", "Act as the review sub-agent for this task.\n\nFix the bug.", true],
   ]) {
     NodeTest.test(
       `Given a session whose first prompt has ${name}, when it runs rm -rf and stops, then ${blocks ? "the rules fire" : "every rule stays silent"}`,

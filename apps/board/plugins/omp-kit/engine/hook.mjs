@@ -16,7 +16,7 @@ const NEXT = "next";
 const VITE_PLUS_ENV =
   'if [ -f "$HOME/.config/vite-plus/env" ]; then . "$HOME/.config/vite-plus/env"; fi';
 
-const ROLE_LINE = /^Read \S*\/roles\/([\w-]+)\.md and act as that role\./;
+const ROLE_LINE = /^Read \S*\/roles\/([\w-]+)\.md and act as that role\./m;
 // Mirrors the readOnly roles in src/orchestrator/roles.ts; role files carry no read-only flag to read instead.
 const READ_ONLY_ROLES = new Set([
   "scout",
