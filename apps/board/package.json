@@ -18,6 +18,7 @@
     "test": "vp test run && node --test scripts/*.test.mjs",
     "package": "electron-builder --config electron-builder.yml --win --publish never",
     "check:boundary": "node scripts/check-engine-untouched.mjs",
+    "ci:local": "node scripts/ci-local.mjs",
     "standards": "node ../../standards/check-added-diagnostics.mjs",
     "standards:deps": "cd ../.. && depcruise --config standards/.dependency-cruiser.cjs --ignore-known standards/dependency-baseline.json apps packages"
   },

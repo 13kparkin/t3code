@@ -45,6 +45,32 @@ export interface PrLive {
   readonly url: string | null;
 }
 
+/** One `<step>-exit=<code>` line of a local CI run, with the line's label, such as `engine-exit`. */
+export interface CiExit {
+  readonly label: string;
+  readonly code: number;
+}
+
+/** A ticket's `ci-local.txt`, as the run it records or the reason the board cannot judge it. */
+export type CiLocal =
+  | { readonly kind: "run"; readonly headSha: string; readonly exits: ReadonlyArray<CiExit> }
+  | { readonly kind: "unreadable"; readonly reason: string };
+
+/** Reads a local CI run, which has the head SHA on line 1 and then each step's output ending in `<step>-exit=<code>`. */
+export function parseCiLocal(text: string): CiLocal {
+  const headSha = text.split(/\r?\n/, 1)[0]?.trim() ?? "";
+  if (!/^[0-9a-f]{7,40}$/.test(headSha)) {
+    return { kind: "unreadable", reason: "ci-local.txt has no head SHA on line 1" };
+  }
+  const exits = [...text.matchAll(/^((?:\S+-)?exit)=(-?\d+)\s*$/gm)].map((match) => ({
+    label: match[1] ?? "",
+    code: Number(match[2]),
+  }));
+  return exits.length === 0
+    ? { kind: "unreadable", reason: "ci-local.txt has no exit codes" }
+    : { kind: "run", headSha, exits };
+}
+
 export interface ConditionState {
   readonly key: ConditionKey;
   readonly label: string;
@@ -61,6 +87,8 @@ export interface ReadinessInput {
   readonly evidence: ReadonlyArray<string>;
   /** Null when the ticket has no pull request, or the host has not answered. */
   readonly live: PrLive | null;
+  /** The ticket's `ci-local.txt`, which stands in for checks when the host reports none. Null when there is none. */
+  readonly ciLocal: CiLocal | null;
   /** The orchestrator's note on the merge order, which only a parent that is ready and not yet merged needs. */
   readonly mergeOrderNote: string | null;
   /** The names of the roles that review, whose threads re-review a fix round. */
@@ -90,6 +118,20 @@ const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ?
 const sameCommit = (left: string, right: string) =>
   left.startsWith(right) || right.startsWith(left);
 
+/** What keeps a local CI run from meeting `ci_green` on `head`, or null when it meets it. */
+export function localCiState(ciLocal: CiLocal | null, head: string | null): string | null {
+  if (ciLocal === null) return "No checks reported and no ci-local.txt";
+  if (ciLocal.kind === "unreadable") return ciLocal.reason;
+  if (head === null) return "The pull request's head is unknown";
+  if (!sameCommit(ciLocal.headSha, head)) {
+    return `ci-local.txt ran on ${ciLocal.headSha.slice(0, 7)}, not ${head.slice(0, 7)}`;
+  }
+  const failed = ciLocal.exits.filter((exit) => exit.code !== 0);
+  return failed.length === 0
+    ? null
+    : `ci-local.txt has ${failed.map((exit) => `${exit.label}=${exit.code}`).join(", ")}`;
+}
+
 function ciState(input: ReadinessInput): string | null {
   const { ticket, live, now } = input;
   if (ticket.pr == null) return "No pull request yet";
@@ -104,7 +146,9 @@ function ciState(input: ReadinessInput): string | null {
   if (waiting.length > 0) return `${plural(waiting.length, "check")} still running`;
   if (live.checks.length > real.length) return "Some checks could not be listed";
   if (real.length === 0) {
-    return live.checksState === null ? "No checks reported" : "Checks are loading";
+    return live.checksState === null
+      ? localCiState(input.ciLocal, live.headSha ?? ticket.headSha ?? null)
+      : "Checks are loading";
   }
   if (
     ticket.headSha != null &&

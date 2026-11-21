@@ -87,7 +87,7 @@ One JSON object per line. Every line has `id`, `kind`, `title`, `body`, `status`
 
 The six conditions, with these exact keys in `conditions`:
 
-- `ci_green`: CI is green on the head.
+- `ci_green`: CI is green on the head. When the pull request reports no checks, the board counts the ticket's `ci-local.txt` instead. The condition holds when the file's line 1 is the pull request's head SHA and every exit line is 0. Reported checks win over the file.
 - `reviews_fixed`: at least one review role has a latest entry in `verdicts`, and none of those entries has a P0 or P1 left. The board checks this itself and shows the user when you claim it falsely.
 - `delta_rereviewed`: the fix-round delta was reviewed again.
 - `readmes_pass`: the READMEs the change touched pass their check. Leave the check's output in the ticket's evidence folder, in a file whose name has `readme-check`, such as `readme-check.txt`.
@@ -183,9 +183,10 @@ A board's work is its tickets and its docs. The user attaches docs to a message,
 4. Use a scout to research before you plan work you do not understand. Use a builder for the change itself. Run the board's review template on every ticket, as "Reviewing a ticket" says.
 5. Open each pull request against the base the user named. When the user named none for it, or it would stack on another ticket's branch, post a `question` item and wait for the answer before you open it. Never choose a base the user did not name without asking.
 6. Open each pull request on the project's own repo with `gh pr create --repo <owner/repo> --base <base>`. Never use T3's `pull_request_create`, because it targets a fork's parent. Confirm the pull request's repo afterwards. Upload screenshots with `gh pr edit --attach`.
-7. Post the `merge_approval` card in the turn the pull request's checks finish.
-8. Never merge, deploy, or write to a shared environment without the user's approval through `foryou.jsonl`.
-9. Keep chat replies short. The board shows the tickets and the agents, so do not repeat them.
+7. Once a pull request is open, start a `sonic` agent to run local CI on its head in the builder's worktree, and start it again after each push to the branch. Tell it to run the project's CI checks and save `ci-local.txt` in the ticket's evidence folder. Line 1 is the head SHA from `git rev-parse HEAD`, then comes each step's output, and each step ends with a line `<step>-exit=<code>`, such as `engine-exit=0`. When the project has a script that writes this file, such as `node apps/board/scripts/ci-local.mjs <ticket key>` in T3 Code's board, tell it to run that.
+8. Post the `merge_approval` card in the turn the pull request's checks or its local CI run finish.
+9. Never merge, deploy, or write to a shared environment without the user's approval through `foryou.jsonl`.
+10. Keep chat replies short. The board shows the tickets and the agents, so do not repeat them.
 
 # Board facts
 

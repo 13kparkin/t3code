@@ -8,6 +8,8 @@ import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 import * as NodeUtil from "node:util";
 
+import { addUpstreamRemote, GATES, UPSTREAM_FETCH } from "./gates.mjs";
+
 const { positionals, values } = NodeUtil.parseArgs({
   allowPositionals: true,
   options: { prerelease: { type: "boolean", default: false } },
@@ -51,29 +53,10 @@ if (out("git", ["branch", "-r", "--contains", sha], root) === "") {
   fail(`${sha} is not pushed, and the release is created on GitHub's copy of it.`);
 }
 
-try {
-  out("git", ["remote", "get-url", "upstream"], root);
-} catch {
-  run("git", ["remote", "add", "upstream", "https://github.com/pingdotgg/t3code.git"], root);
+addUpstreamRemote(root);
+for (const gate of [UPSTREAM_FETCH, ...GATES]) {
+  run(gate.command, gate.args, NodePath.join(root, gate.cwd ?? ""));
 }
-run("git", ["fetch", "--no-tags", "--filter=blob:none", "upstream", "main"], root);
-
-// The same gates as the agent-board job.
-run("node", ["apps/board/scripts/check-engine-untouched.mjs"], root);
-run("node", ["standards/check-added-diagnostics.mjs"], root);
-run("vp", ["run", "--filter", "@agent-board/app", "standards:deps"], root);
-run(
-  "node",
-  [
-    "--test",
-    "apps/board/scripts/*.test.mjs",
-    "apps/board/plugins/**/*.test.mjs",
-    "standards/**/*.test.mjs",
-  ],
-  root,
-);
-run("vp", ["run", "--filter", "@agent-board/app", "typecheck"], root);
-run("vp", ["test", "run"], boardDir);
 
 run("vp", ["run", "--filter", "@agent-board/app", "build"], root);
 NodeFS.rmSync(releaseDir, { recursive: true, force: true });

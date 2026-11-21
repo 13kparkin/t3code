@@ -52,6 +52,14 @@ With `ANTHROPIC_API_KEY` set, the notes open with a Claude summary of the pull r
 
 When Actions is available on the repo, `gh workflow run agent-board.yml -f version=0.1.0` runs the same script in a `release` job, using the `ANTHROPIC_API_KEY` repo secret. Add `-f prerelease=true` for a pre-release.
 
+The fork runs no CI on pull requests, so local CI stands in. `scripts/gates.mjs` lists the release gates, and `release.mjs` and `ci-local.mjs` both run that list.
+
+```sh
+node apps/board/scripts/ci-local.mjs T-13
+```
+
+It needs a clean checkout. It fetches upstream, runs `vp run check:changed` and every release gate, and writes `.omp/artifacts/<ticket key>/ci-local.txt`. Line 1 is the head SHA, and each step ends with a line such as `engine-exit=0`. The file keeps the last 32,000 characters of each step's output.
+
 ## omp rules for Claude Code
 
 The `omp-kit` plugin in `plugins/` gives every Claude Code session the rules in `~/.omp/agent/rules`, the sticky `~/.omp/agent/RULES.md`, a TypeScript language server for the `LSP` tool, and `vp` on the Bash path. Rules are read at hook time, so editing a rule file takes effect in the next session. `OMP_KIT_RULES_DIR` points the engine at another rules folder, and `RULES.md` is read from that folder's parent.
@@ -175,14 +183,14 @@ The host reports no start time for a check, so the board records when it first s
 
 The Ticket tab lists each check with its result and the six merge-ready conditions the XEO workflow sets, computed live by `domain/readiness.ts`:
 
-| Condition                                      | Holds when                                                                                                                                                                 |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CI green on the head                           | the ticket has a pull request, it is not closed, every check passed or was skipped, none is stuck, and the checks ran on the ticket's `headSha` when the engine reports it |
-| Independent reviews, introduced findings fixed | at least one role gave a verdict, and each role's latest verdict has no P0 or P1                                                                                           |
-| Fix-round delta re-reviewed                    | the ticket has no fix rounds, or a review role's thread has a `round` at or past `fixRounds`                                                                               |
-| Touched READMEs pass                           | the ticket's evidence folder holds a file whose name has `readme-check`, `readme-pass`, or `readme-lint`                                                                   |
-| Parent merged or ready                         | every `dependsOn` ticket is `merged`, or is `awaiting_approval` and the orchestrator's merge approval carries a note on the merge order                                    |
-| Smoke evidence named                           | the ticket's evidence folder holds a file whose name has `smoke`                                                                                                           |
+| Condition                                      | Holds when                                                                                                                                                                                                                                                                                        |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CI green on the head                           | the ticket has a pull request, it is not closed, every check passed or was skipped, none is stuck, and the checks ran on the ticket's `headSha` when the engine reports it. With no checks reported, the ticket's `ci-local.txt` names the pull request's head on line 1 and every exit line is 0 |
+| Independent reviews, introduced findings fixed | at least one role gave a verdict, and each role's latest verdict has no P0 or P1                                                                                                                                                                                                                  |
+| Fix-round delta re-reviewed                    | the ticket has no fix rounds, or a review role's thread has a `round` at or past `fixRounds`                                                                                                                                                                                                      |
+| Touched READMEs pass                           | the ticket's evidence folder holds a file whose name has `readme-check`, `readme-pass`, or `readme-lint`                                                                                                                                                                                          |
+| Parent merged or ready                         | every `dependsOn` ticket is `merged`, or is `awaiting_approval` and the orchestrator's merge approval carries a note on the merge order                                                                                                                                                           |
+| Smoke evidence named                           | the ticket's evidence folder holds a file whose name has `smoke`                                                                                                                                                                                                                                  |
 
 A merge approval card shows the same six, each with the orchestrator's claim from `foryou.jsonl` beside the live result. When they differ, the row says so. The card finds its ticket by the `ticket` key of the item, or by a ticket key that stands alone in its title or id.
 
