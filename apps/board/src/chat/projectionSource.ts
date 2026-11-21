@@ -136,7 +136,7 @@ function toolStep(item: TurnItem): ToolStep | null {
 }
 
 /** How a user message the engine has not read yet stands, by why it was sent. */
-export const PENDING_DELIVERY = {
+const PENDING_DELIVERY = {
   turn_start: "delivered",
   queued_turn: "queued",
   steer: "steering",

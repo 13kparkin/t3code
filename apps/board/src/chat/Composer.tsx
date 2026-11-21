@@ -102,6 +102,8 @@ export function Composer({
   const [error, setError] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const picker = useRef<HTMLInputElement | null>(null);
+  // Sends go out one at a time, so a quick follow-up cannot overtake one still uploading files.
+  const outbox = useRef<Promise<void>>(Promise.resolve());
 
   const providers = useAtomValue(engineProvidersAtom);
   const providersForCwd = useMemo(() => resolveProvidersForCwd(providers, cwd), [providers, cwd]);
@@ -258,6 +260,12 @@ export function Composer({
       setError(await recordDocs(registry, project, listed, attachments));
   };
 
+  const enqueue = (pending: PendingSend) => {
+    const run = outbox.current.then(() => deliver(pending));
+    outbox.current = run.catch(() => undefined);
+    void run;
+  };
+
   const send = (event?: FormEvent) => {
     event?.preventDefault();
     const text = draft.trim();
@@ -283,12 +291,12 @@ export function Composer({
     setFiles([]);
     setFresh(false);
     setError(null);
-    void deliver(pending);
+    enqueue(pending);
   };
 
   const retry = (pending: PendingSend) => {
     settle(pending.messageId, { kind: "sending" });
-    void deliver(pending);
+    enqueue(pending);
   };
 
   const editFailed = (pending: PendingSend) => {

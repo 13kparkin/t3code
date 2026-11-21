@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { MessageId } from "@t3tools/contracts";
 
-import { PENDING_DELIVERY, userDelivery } from "./projectionSource";
+import { userDelivery } from "./projectionSource";
 import {
   type ChatItem,
   isRunLive,
@@ -232,7 +232,6 @@ describe("how a user message stands", () => {
     ["promoted_queued_to_steer", "steering"],
     ["turn_start", "delivered"],
   ] as const)("Given a pending %s message, when it is read, then it is %s", (intent, delivery) => {
-    expect(PENDING_DELIVERY[intent]).toBe(delivery);
     expect(userDelivery({ status: "pending", inputIntent: intent })).toBe(delivery);
   });
 
