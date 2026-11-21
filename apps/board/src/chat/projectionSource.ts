@@ -5,6 +5,7 @@ import {
 } from "@t3tools/client-runtime/work-log/item-detail";
 import {
   type OrchestrationV2ThreadProjection,
+  type OrchestrationV2UserMessageInputIntent,
   orchestrationV2RunWorkStartedAt,
 } from "@t3tools/contracts";
 import { fileBasename } from "@t3tools/shared/path";
@@ -16,7 +17,7 @@ import {
 } from "@t3tools/shared/toolActivity";
 import * as DateTime from "effect/DateTime";
 
-import type { ChatItem, StepKind, TimelineSource, ToolStep } from "./timeline";
+import type { ChatItem, Delivery, StepKind, TimelineSource, ToolStep } from "./timeline";
 
 type Projection = Pick<OrchestrationV2ThreadProjection, "runs" | "messages" | "visibleTurnItems">;
 type TurnItem = Projection["visibleTurnItems"][number]["item"];
@@ -134,6 +135,19 @@ function toolStep(item: TurnItem): ToolStep | null {
   }
 }
 
+const PENDING_DELIVERY = {
+  turn_start: "delivered",
+  queued_turn: "queued",
+  steer: "steering",
+  promoted_queued_to_steer: "steering",
+} as const satisfies Record<OrchestrationV2UserMessageInputIntent, Delivery>;
+
+/** How far a user message has got: still held by the engine as queued or steering, or delivered. */
+export const userDelivery = (item: {
+  readonly status: string;
+  readonly inputIntent: OrchestrationV2UserMessageInputIntent;
+}): Delivery => (item.status === "pending" ? PENDING_DELIVERY[item.inputIntent] : "delivered");
+
 function chatItem(item: TurnItem): ChatItem | null {
   const step = toolStep(item);
   if (step !== null) return { kind: "tool", ...step };
@@ -145,6 +159,7 @@ function chatItem(item: TurnItem): ChatItem | null {
         messageId: item.messageId,
         text: item.text,
         textOmitted: item.textOmitted === true,
+        delivery: userDelivery(item),
       };
     case "assistant_message":
       return {

@@ -18,8 +18,10 @@ import {
 import { Paperclip, SendHorizontal, Square, X } from "lucide-react";
 import { flushSync } from "react-dom";
 import {
+  type Dispatch,
   type FormEvent,
   type KeyboardEvent,
+  type SetStateAction,
   useContext,
   useId,
   useMemo,
@@ -54,6 +56,7 @@ import {
   slashQuery,
 } from "./slash";
 import { MARK_SLASH, SlashMenu, slashOptionId } from "./SlashMenu";
+import type { PendingSend } from "./timeline";
 import { useWorkspaceSnapshot } from "./workspaceSnapshot";
 
 const SWITCH_BLOCKED =
@@ -73,12 +76,16 @@ export function Composer({
   threadId,
   projection,
   live,
+  failed,
+  setSends,
 }: {
   project: EnvironmentProject;
   listed: ValidBoard;
   threadId: ThreadId;
   projection: OrchestrationV2ThreadProjection | null;
   live: boolean;
+  failed: ReadonlyArray<PendingSend>;
+  setSends: Dispatch<SetStateAction<ReadonlyArray<PendingSend>>>;
 }) {
   const registry = useContext(RegistryContext);
   const { environmentId, workspaceRoot: cwd } = project;
@@ -95,6 +102,8 @@ export function Composer({
   const [error, setError] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const picker = useRef<HTMLInputElement | null>(null);
+  // Sends go out one at a time, so a quick follow-up cannot overtake one still uploading files.
+  const outbox = useRef<Promise<void>>(Promise.resolve());
 
   const providers = useAtomValue(engineProvidersAtom);
   const providersForCwd = useMemo(() => resolveProvidersForCwd(providers, cwd), [providers, cwd]);
@@ -183,42 +192,53 @@ export function Composer({
     setCursor(text.length);
   };
 
-  const send = async (event?: FormEvent) => {
-    event?.preventDefault();
-    const text = draft.trim();
-    if (text === "" || projection === null) return;
-    setError(null);
+  const settle = (messageId: PendingSend["messageId"], state: PendingSend["state"]) =>
+    setSends((all) =>
+      all.map((send) => (send.messageId === messageId ? { ...send, state } : send)),
+    );
+
+  const fail = (messageId: PendingSend["messageId"], error: string) =>
+    settle(messageId, { kind: "failed", error });
+
+  const deliver = async (pending: PendingSend) => {
+    if (projection === null) {
+      fail(pending.messageId, "The thread is not loaded yet.");
+      return;
+    }
     // Every turn goes out on the orchestrator instance, which also moves a board that started before it existed.
     let selection: ModelSelection | null = null;
-    const picked = selectionOf(instances, shown);
-    const base = modelSelectionOf(instances, shown);
+    const picked = selectionOf(instances, pending.shown);
+    const base = modelSelectionOf(instances, pending.shown);
     if (picked !== null && base !== null) {
       try {
         const instanceId = await ensureOrchestratorInstance(registry, environmentId, picked);
-        if (override !== null || instanceId !== projection.thread.modelSelection.instanceId) {
+        if (pending.overridden || instanceId !== projection.thread.modelSelection.instanceId) {
           selection = { ...base, instanceId: ProviderInstanceId.make(instanceId) };
         }
       } catch (failure) {
-        setError(failure instanceof Error ? failure.message : String(failure));
+        fail(pending.messageId, failure instanceof Error ? failure.message : String(failure));
         return;
       }
     }
     let attachments: ChatAttachment[] = [];
-    if (files.length > 0) {
-      const checked = attachmentInputs(files);
+    if (pending.files.length > 0) {
+      const checked = attachmentInputs(pending.files);
       if ("error" in checked) {
-        setError(checked.error);
+        fail(pending.messageId, checked.error);
         return;
       }
       try {
-        attachments = await uploadAttachments(registry, environmentId, files, checked.inputs);
+        attachments = await uploadAttachments(
+          registry,
+          environmentId,
+          pending.files,
+          checked.inputs,
+        );
       } catch (failure) {
-        setError(failure instanceof Error ? failure.message : String(failure));
+        fail(pending.messageId, failure instanceof Error ? failure.message : String(failure));
         return;
       }
     }
-    setDraft("");
-    setCursor(0);
     const result = await runAtomCommand(
       registry,
       startTurn,
@@ -226,25 +246,60 @@ export function Composer({
         environmentId,
         input: {
           threadId,
-          message: { messageId: MessageId.make(newId()), role: "user", text, attachments },
+          message: { messageId: pending.messageId, role: "user", text: pending.text, attachments },
           runtimeMode: projection.thread.runtimeMode,
           interactionMode: projection.thread.interactionMode,
           ...(selection === null ? {} : { modelSelection: selection }),
-          ...(fresh ? { freshContext: true } : {}),
+          ...(pending.fresh ? { freshContext: true } : {}),
         },
       },
       { reportFailure: false },
     );
-    if (result._tag === "Success") {
-      setFresh(false);
-      setFiles([]);
-      if (attachments.length > 0)
-        setError(await recordDocs(registry, project, listed, attachments));
-    } else {
-      setDraft(text);
-      setCursor(text.length);
-      setError(failureText(result));
-    }
+    if (result._tag !== "Success") fail(pending.messageId, failureText(result));
+    else if (attachments.length > 0)
+      setError(await recordDocs(registry, project, listed, attachments));
+  };
+
+  const enqueue = (pending: PendingSend) => {
+    const run = outbox.current.then(() => deliver(pending));
+    outbox.current = run.catch(() => undefined);
+  };
+
+  const send = (event?: FormEvent) => {
+    event?.preventDefault();
+    const text = draft.trim();
+    if (text === "" || projection === null) return;
+    const pending: PendingSend = {
+      threadId,
+      messageId: MessageId.make(newId()),
+      text,
+      files,
+      fresh,
+      shown,
+      overridden: override !== null,
+      state: { kind: "sending" },
+    };
+    setSends((all) => [...all, pending]);
+    setDraft("");
+    setCursor(0);
+    setFiles([]);
+    setFresh(false);
+    setError(null);
+    enqueue(pending);
+  };
+
+  const retry = (pending: PendingSend) => {
+    settle(pending.messageId, { kind: "sending" });
+    enqueue(pending);
+  };
+
+  const editFailed = (pending: PendingSend) => {
+    setSends((all) => all.filter((send) => send.messageId !== pending.messageId));
+    const next = draft.trim() === "" ? pending.text : `${pending.text}\n\n${draft}`;
+    setDraft(next);
+    setCursor(next.length);
+    setFiles([...pending.files, ...files]);
+    if (pending.fresh) setFresh(true);
   };
 
   const stop = async () => {
@@ -281,7 +336,7 @@ export function Composer({
       return;
     }
     if (event.key === "Enter" && !event.shiftKey) {
-      void send();
+      send();
       event.preventDefault();
     }
   };
@@ -290,7 +345,7 @@ export function Composer({
 
   return (
     <form
-      onSubmit={(event) => void send(event)}
+      onSubmit={send}
       onDragOver={(event) => {
         if (event.dataTransfer.types.includes("Files")) event.preventDefault();
       }}
@@ -312,6 +367,25 @@ export function Composer({
           onHover={setActive}
         />
       )}
+      {failed.map((pending) => (
+        <p
+          key={pending.messageId}
+          role="alert"
+          className="mb-1.5 flex items-center gap-2 break-words text-red-400"
+        >
+          <span className="min-w-0 flex-1">
+            Not sent: {pending.state.kind === "failed" ? pending.state.error : ""}
+          </span>
+          {!pending.fresh && (
+            <button type="button" onClick={() => retry(pending)} className="hover:text-fg">
+              Retry
+            </button>
+          )}
+          <button type="button" onClick={() => editFailed(pending)} className="hover:text-fg">
+            Edit
+          </button>
+        </p>
+      ))}
       {error !== null && (
         <p role="alert" className="mb-1.5 break-words text-red-400">
           {error}

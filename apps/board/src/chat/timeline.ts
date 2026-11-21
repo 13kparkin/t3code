@@ -1,4 +1,9 @@
-import type { ThreadId, TurnItemId } from "@t3tools/contracts";
+import type { MessageId, ThreadId, TurnItemId } from "@t3tools/contracts";
+
+import type { PickerValue } from "../providers/providers";
+
+/** Where a user message stands on its way to the orchestrator, which the bubble shows until it is delivered. */
+export type Delivery = "sending" | "queued" | "steering" | "delivered" | "failed";
 
 export type StepKind = "command" | "read" | "edit" | "search" | "agent" | "tool";
 
@@ -37,6 +42,7 @@ export type TimelineRow =
       readonly text: string;
       /** When the thread recorded the message, in epoch milliseconds. */
       readonly at: number | null;
+      readonly delivery: Delivery;
     }
   | {
       readonly kind: "assistant";
@@ -64,6 +70,7 @@ export type ChatItem =
       readonly text: string;
       /** The engine left the text out because the thread's message holds it. */
       readonly textOmitted: boolean;
+      readonly delivery: Delivery;
     }
   | {
       readonly kind: "assistant";
@@ -130,7 +137,13 @@ export function timelineRows(projection: TimelineSource): ReadonlyArray<Timeline
         break;
       }
       case "user":
-        rows.push({ kind: "user", id: item.id, text: textOf(item), at: createdAt(item) });
+        rows.push({
+          kind: "user",
+          id: item.id,
+          text: textOf(item),
+          at: createdAt(item),
+          delivery: item.delivery,
+        });
         break;
       case "assistant": {
         const text = textOf(item);
@@ -156,3 +169,39 @@ export function timelineRows(projection: TimelineSource): ReadonlyArray<Timeline
   }
   return rows;
 }
+
+/** A message the user sent that the engine has not echoed yet. */
+export interface PendingSend {
+  readonly threadId: string;
+  readonly messageId: MessageId;
+  readonly text: string;
+  readonly files: ReadonlyArray<File>;
+  readonly fresh: boolean;
+  readonly shown: PickerValue;
+  readonly overridden: boolean;
+  readonly state:
+    | { readonly kind: "sending" }
+    | { readonly kind: "failed"; readonly error: string };
+}
+
+/** The sends whose message the thread does not hold yet; the same array when every one is still pending. */
+export function pendingSends(
+  source: TimelineSource,
+  sends: ReadonlyArray<PendingSend>,
+): ReadonlyArray<PendingSend> {
+  if (sends.length === 0) return sends;
+  const echoed = new Set(
+    source.items.flatMap((item) => (item.kind === "user" ? [item.messageId] : [])),
+  );
+  const kept = sends.filter((send) => !echoed.has(send.messageId));
+  return kept.length === sends.length ? sends : kept;
+}
+
+/** A send drawn as the user row it becomes once the engine echoes it. */
+export const pendingRow = (send: PendingSend): TimelineRow => ({
+  kind: "user",
+  id: send.messageId,
+  text: send.text,
+  at: null,
+  delivery: send.state.kind,
+});
