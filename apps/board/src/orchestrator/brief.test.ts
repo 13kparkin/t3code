@@ -65,6 +65,40 @@ describe("the orchestrator's standing rules and board facts", () => {
     );
     expect(rules).toContain("Start `poteto-agent` for a ticket that crosses several modules");
   });
+
+  it("Given the rules, when they render, then they state each pipeline gate", () => {
+    const rules = renderRules();
+    expect(rules).toContain(
+      "author-check table that lists each author check, ran or skipped, with a proof path",
+    );
+    expect(rules).toContain("`pre-pr-reviewer` may run inline for a diff of 3 files or fewer");
+    expect(rules).toContain(
+      "move the ticket to `reviewing` only if its author-check table is complete",
+    );
+    expect(rules).toContain("update the ticket's `headSha`, `fixRounds`, and stage");
+    expect(rules).toContain("Leave `verifying` only with a `verify` verdict in `verdicts`");
+    expect(rules).toContain("Record a partial verification as partial.");
+    expect(rules).toContain(
+      "Post the `merge_approval` card in the turn the pull request's checks finish.",
+    );
+    expect(rules).toContain("Give each stage move its own decision line");
+    expect(rules).toContain("`gh pr create --repo <owner/repo> --base <base>`");
+    expect(rules).toContain("Never use T3's `pull_request_create`");
+    expect(rules).toContain("Confirm the pull request's repo afterwards.");
+    expect(rules).toContain("`gh pr edit --attach`");
+    expect(rules).toContain("run `how` and `architect` before it writes code, and `interrogate`");
+    expect(rules).toContain("records the skip and its reason in the ticket's steps");
+    expect(rules).toContain("T3's built-in browser through its `preview_*` tools");
+    expect(rules).toContain("Headless Chromium is allowed only to write a screenshot file");
+    expect(rules).toContain("delete its scratch folders and any token files before it reports");
+    expect(rules).toContain(
+      "names a concrete input sequence gets a verify check before you decline it",
+    );
+    expect(rules).toContain("a decline needs evidence that the sequence cannot happen");
+    expect(rules).toContain("fixture injected into the page during a check as a P2");
+    expect(rules).toContain("branch from `origin/main`, or from the ticket's `base`");
+    expect(rules).toContain("matched to a playbook, with `playbook` and `steps` filled");
+  });
 });
 
 describe("the review template and usage rules", () => {

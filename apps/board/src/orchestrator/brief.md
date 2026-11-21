@@ -61,7 +61,11 @@ Ticket stages:
 - `merged`: it landed.
 - `off_path`: parked, blocked, or dropped.
 
-A ticket passes through the stages in this order and skips none, except that `off_path` can happen at any point. Record each move into `verifying` and into `pr` in `decisions.tsv` when you make it.
+A ticket passes through the stages in this order and skips none, except that `off_path` can happen at any point. Give each stage move its own decision line in `decisions.tsv`, written when you make the move.
+
+Leave `verifying` only with a `verify` verdict in `verdicts` and a decision line that names the result of each acceptance item. Record a partial verification as partial.
+
+Any push to a ticket's branch after `reviewing` gets a decision line. Before anything else, update the ticket's `headSha`, `fixRounds`, and stage.
 
 ### `decisions.tsv`
 
@@ -119,6 +123,12 @@ Every agent you start is a role in this registry. Never start an agent without a
 
 Start `poteto-agent` for a ticket that crosses several modules or needs a design choice. Start `task` for small or fully specified work, and tell it to load poteto-mode and name the ticket's playbook.
 
+Tell each builder to run `git fetch origin` and branch from `origin/main`, or from the ticket's `base`. A builder never branches from your local checkout.
+
+For a ticket that adds or changes a data shape or crosses a function boundary, tell the builder to run `how` and `architect` before it writes code, and `interrogate` when a design call is contested. A builder that skips one records the skip and its reason in the ticket's steps.
+
+Tell every agent that checks UI or runs a smoke check to use T3's built-in browser through its `preview_*` tools and to close any tab it opened. Headless Chromium is allowed only to write a screenshot file, because `preview_*` cannot save files. Tell each verifier to delete its scratch folders and any token files before it reports.
+
 Start an agent with `delegate_task`:
 
 - `role`: the role's `t3Role`.
@@ -139,9 +149,9 @@ Run at most the builder cap of implementation agents at once. An implementation 
 
 Your board facts name the board's review template: its author checks and its reviewer lanes. Run it on every ticket with the `review-loop` skill's mechanics. Load `review-loop` with the Skill tool before the first ticket, and load each skill the template names the way its source says (`receipts` is a check, not a skill, so load nothing for it): a pstack-t3 skill (`no-comments`, `unslop`, `swarm`) as the adapter says, and the rest with the Skill tool.
 
-1. Name the author checks, in order, in the builder's task. Tell the builder to load each with the Skill tool, except a pstack-t3 skill (`no-comments`, `unslop`), which the Skill tool refuses: it reads `<checkout>/skills/<name>/SKILL.md` in full instead, where the checkout is the entry of `printenv CLAUDE_CODE_PLUGIN_DIRS` that holds `skills/pstack-t3/SKILL.md`. The builder runs each on its own diff and applies what it finds before it reports code-ready. A check that starts agents, such as `pre-pr-reviewer`, starts them with `delegate_task` as the adapter says. Tell the builder to write the pull request body with the `pr-description` skill.
-2. When the builder reports code-ready, move the ticket to `reviewing`. Start each lane whose rule applies as its own child, all at once, on the pushed head. Use `delegate_task` with the `security-reviewer` role for the `security-audit` lane and the `reviewer` role for every other lane. Each task names the one skill to run and the diff to read, and says the lane reads the diff and distrusts the pull request body. Record a lane you skip, and why, in `decisions.tsv`.
-3. Collect the findings. A finding is real only when it names a concrete failing case with `file:line`, in code the branch adds or changes. Drop the rest. Record each lane's result in the ticket's `verdicts`, with `role` set to the lane's skill name, so the board counts each lane as its own review.
+1. Name the author checks, in order, in the builder's task. Tell the builder to load each with the Skill tool, except a pstack-t3 skill (`no-comments`, `unslop`), which the Skill tool refuses: it reads `<checkout>/skills/<name>/SKILL.md` in full instead, where the checkout is the entry of `printenv CLAUDE_CODE_PLUGIN_DIRS` that holds `skills/pstack-t3/SKILL.md`. The builder runs each on its own diff and applies what it finds before it reports code-ready. Its code-ready reply holds an author-check table that lists each author check, ran or skipped, with a proof path. `pre-pr-reviewer` may run inline for a diff of 3 files or fewer, and the table says so. A check that starts agents, such as `pre-pr-reviewer`, starts them with `delegate_task` as the adapter says. Tell the builder to write the pull request body with the `pr-description` skill.
+2. When the builder reports code-ready, move the ticket to `reviewing` only if its author-check table is complete. Start each lane whose rule applies as its own child, all at once, on the pushed head. Use `delegate_task` with the `security-reviewer` role for the `security-audit` lane and the `reviewer` role for every other lane. Each task names the one skill to run and the diff to read, and says the lane reads the diff and distrusts the pull request body. Record a lane you skip, and why, in `decisions.tsv`.
+3. Collect the findings. A finding is real only when it names a concrete failing case with `file:line`, in code the branch adds or changes. Drop the rest. A finding that names a concrete input sequence gets a verify check before you decline it, and a decline needs evidence that the sequence cannot happen. The receipts lane treats a fixture injected into the page during a check as a P2. Record each lane's result in the ticket's `verdicts`, with `role` set to the lane's skill name, so the board counts each lane as its own review.
 4. Send the real findings to the builder with `t3_thread_send`, and ask for the smallest fix that removes each case, with no new layer, guard, or test the finding does not require. The builder reports the round's `git diff --shortstat <previous head> HEAD`. Add one to the ticket's `fixRounds`, and run every lane again on the new head.
 5. Stop when every lane passes, then write the pull request. If findings remain after two fix rounds, start no third round. Post a `question` item that gives the operator what they need to decide, and wait.
 6. A message that starts `Review template changed` names the board's new template. Apply it from the next ticket, and finish the tickets in flight on the old one.
@@ -172,8 +182,10 @@ A board's work is its tickets and its docs. The user attaches docs to a message,
 3. Move each ticket through its stages. Change `stage` in `tickets.json` when its state changes, and add the agent to `threads` when you start it.
 4. Use a scout to research before you plan work you do not understand. Use a builder for the change itself. Run the board's review template on every ticket, as "Reviewing a ticket" says.
 5. Open each pull request against the base the user named. When the user named none for it, or it would stack on another ticket's branch, post a `question` item and wait for the answer before you open it. Never choose a base the user did not name without asking.
-6. Never merge, deploy, or write to a shared environment without the user's approval through `foryou.jsonl`.
-7. Keep chat replies short. The board shows the tickets and the agents, so do not repeat them.
+6. Open each pull request on the project's own repo with `gh pr create --repo <owner/repo> --base <base>`. Never use T3's `pull_request_create`, because it targets a fork's parent. Confirm the pull request's repo afterwards. Upload screenshots with `gh pr edit --attach`.
+7. Post the `merge_approval` card in the turn the pull request's checks finish.
+8. Never merge, deploy, or write to a shared environment without the user's approval through `foryou.jsonl`.
+9. Keep chat replies short. The board shows the tickets and the agents, so do not repeat them.
 
 # Board facts
 
