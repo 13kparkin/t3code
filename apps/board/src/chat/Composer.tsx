@@ -76,7 +76,7 @@ export function Composer({
   threadId,
   projection,
   live,
-  sends,
+  failed,
   setSends,
 }: {
   project: EnvironmentProject;
@@ -84,7 +84,7 @@ export function Composer({
   threadId: ThreadId;
   projection: OrchestrationV2ThreadProjection | null;
   live: boolean;
-  sends: ReadonlyArray<PendingSend>;
+  failed: ReadonlyArray<PendingSend>;
   setSends: Dispatch<SetStateAction<ReadonlyArray<PendingSend>>>;
 }) {
   const registry = useContext(RegistryContext);
@@ -263,7 +263,6 @@ export function Composer({
   const enqueue = (pending: PendingSend) => {
     const run = outbox.current.then(() => deliver(pending));
     outbox.current = run.catch(() => undefined);
-    void run;
   };
 
   const send = (event?: FormEvent) => {
@@ -307,8 +306,6 @@ export function Composer({
     setFiles([...pending.files, ...files]);
     if (pending.fresh) setFresh(true);
   };
-
-  const failed = sends.filter((send) => send.threadId === threadId && send.state.kind === "failed");
 
   const stop = async () => {
     setError(null);

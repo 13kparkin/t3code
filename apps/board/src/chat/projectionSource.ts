@@ -135,7 +135,6 @@ function toolStep(item: TurnItem): ToolStep | null {
   }
 }
 
-/** How a user message the engine has not read yet stands, by why it was sent. */
 const PENDING_DELIVERY = {
   turn_start: "delivered",
   queued_turn: "queued",
@@ -143,6 +142,7 @@ const PENDING_DELIVERY = {
   promoted_queued_to_steer: "steering",
 } as const satisfies Record<OrchestrationV2UserMessageInputIntent, Delivery>;
 
+/** How far a user message has got: still held by the engine as queued or steering, or delivered. */
 export const userDelivery = (item: {
   readonly status: string;
   readonly inputIntent: OrchestrationV2UserMessageInputIntent;

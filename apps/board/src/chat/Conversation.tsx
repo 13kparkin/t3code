@@ -63,15 +63,12 @@ export function Conversation({
     () => (projection === null ? null : timelineSource(projection)),
     [projection],
   );
+  const echoed = useMemo(() => (source === null ? [] : timelineRows(source)), [source]);
   const [sends, setSends] = useState<ReadonlyArray<PendingSend>>([]);
-  // A send leaves once the engine echoes its message, which then draws it in its place.
   const kept = pendingSends(source ?? EMPTY, sends);
   if (kept !== sends) setSends(kept);
-  const rows = useMemo(() => {
-    const echoed = source === null ? [] : timelineRows(source);
-    const pending = kept.filter((send) => send.threadId === threadId);
-    return pending.length === 0 ? echoed : [...echoed, ...pending.map(pendingRow)];
-  }, [source, kept, threadId]);
+  const pending = kept.filter((send) => send.threadId === threadId);
+  const rows = pending.length === 0 ? echoed : [...echoed, ...pending.map(pendingRow)];
   const failure = Option.getOrNull(state.error);
   const { all: artifacts, open: openArtifact } = useArtifacts();
   const lookup = useMemo(() => new ArtifactLookup(), []);
@@ -126,7 +123,9 @@ export function Conversation({
               environmentId={environmentId}
             />
           ))}
-          {live && rows.at(-1)?.kind === "user" && <p className="text-faint">Thinking</p>}
+          {live && rows.at(-1)?.kind === "user" && pending.at(-1)?.state.kind !== "failed" && (
+            <p className="text-faint">Thinking</p>
+          )}
         </div>
         <Composer
           project={project}
@@ -134,7 +133,7 @@ export function Conversation({
           threadId={threadId}
           projection={projection}
           live={live}
-          sends={sends}
+          failed={pending.filter((send) => send.state.kind === "failed")}
           setSends={setSends}
         />
       </ArtifactLookupContext>

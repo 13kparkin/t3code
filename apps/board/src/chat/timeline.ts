@@ -185,6 +185,7 @@ export function pendingSends(
   source: TimelineSource,
   sends: ReadonlyArray<PendingSend>,
 ): ReadonlyArray<PendingSend> {
+  if (sends.length === 0) return sends;
   const echoed = new Set(
     source.items.flatMap((item) => (item.kind === "user" ? [item.messageId] : [])),
   );
@@ -192,6 +193,7 @@ export function pendingSends(
   return kept.length === sends.length ? sends : kept;
 }
 
+/** A send drawn as the user row it becomes once the engine echoes it. */
 export const pendingRow = (send: PendingSend): TimelineRow => ({
   kind: "user",
   id: send.messageId,
