@@ -207,12 +207,12 @@ export function Composer({
     }
     // Every turn goes out on the orchestrator instance, which also moves a board that started before it existed.
     let selection: ModelSelection | null = null;
-    const picked = selectionOf(instances, shown);
-    const base = modelSelectionOf(instances, shown);
+    const picked = selectionOf(instances, pending.shown);
+    const base = modelSelectionOf(instances, pending.shown);
     if (picked !== null && base !== null) {
       try {
         const instanceId = await ensureOrchestratorInstance(registry, environmentId, picked);
-        if (override !== null || instanceId !== projection.thread.modelSelection.instanceId) {
+        if (pending.overridden || instanceId !== projection.thread.modelSelection.instanceId) {
           selection = { ...base, instanceId: ProviderInstanceId.make(instanceId) };
         }
       } catch (failure) {
@@ -269,19 +269,14 @@ export function Composer({
     event?.preventDefault();
     const text = draft.trim();
     if (text === "" || projection === null) return;
-    if (files.length > 0) {
-      const checked = attachmentInputs(files);
-      if ("error" in checked) {
-        setError(checked.error);
-        return;
-      }
-    }
     const pending: PendingSend = {
       threadId,
       messageId: MessageId.make(newId()),
       text,
       files,
       fresh,
+      shown,
+      overridden: override !== null,
       state: { kind: "sending" },
     };
     setSends((all) => [...all, pending]);
@@ -381,9 +376,11 @@ export function Composer({
           <span className="min-w-0 flex-1">
             Not sent: {pending.state.kind === "failed" ? pending.state.error : ""}
           </span>
-          <button type="button" onClick={() => retry(pending)} className="hover:text-fg">
-            Retry
-          </button>
+          {!pending.fresh && (
+            <button type="button" onClick={() => retry(pending)} className="hover:text-fg">
+              Retry
+            </button>
+          )}
           <button type="button" onClick={() => editFailed(pending)} className="hover:text-fg">
             Edit
           </button>

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { MessageId } from "@t3tools/contracts";
 
+import { NO_PICK } from "../providers/providers";
 import { userDelivery } from "./projectionSource";
 import {
   type ChatItem,
@@ -186,6 +187,8 @@ const pendingSend = (messageId: string, state: PendingSend["state"]): PendingSen
   text: "Ship it",
   files: [],
   fresh: false,
+  shown: NO_PICK,
+  overridden: false,
   state,
 });
 
@@ -214,28 +217,34 @@ describe("the sends the engine has not echoed", () => {
     expect(pendingSends(source([]), sends)).toBe(sends);
   });
 
-  it("Given a send that failed, when it is drawn, then it is a failed user row", () => {
-    expect(pendingRow(pendingSend("m1", { kind: "failed", error: "Offline" }))).toEqual({
-      kind: "user",
-      id: "m1",
-      text: "Ship it",
-      at: null,
-      delivery: "failed",
-    });
-  });
+  it.each([
+    [{ kind: "sending" }, "sending"],
+    [{ kind: "failed", error: "Offline" }, "failed"],
+  ] as const)(
+    "Given a send in state %o, when it is drawn, then it is a %s user row",
+    (state, delivery) => {
+      expect(pendingRow(pendingSend("m1", state))).toEqual({
+        kind: "user",
+        id: "m1",
+        text: "Ship it",
+        at: null,
+        delivery,
+      });
+    },
+  );
 });
 
 describe("how a user message stands", () => {
   it.each([
-    ["queued_turn", "queued"],
-    ["steer", "steering"],
-    ["promoted_queued_to_steer", "steering"],
-    ["turn_start", "delivered"],
-  ] as const)("Given a pending %s message, when it is read, then it is %s", (intent, delivery) => {
-    expect(userDelivery({ status: "pending", inputIntent: intent })).toBe(delivery);
-  });
-
-  it("Given a queued message the engine has read, when it is read, then it is delivered", () => {
-    expect(userDelivery({ status: "completed", inputIntent: "queued_turn" })).toBe("delivered");
-  });
+    ["pending", "queued_turn", "queued"],
+    ["pending", "steer", "steering"],
+    ["pending", "promoted_queued_to_steer", "steering"],
+    ["pending", "turn_start", "delivered"],
+    ["completed", "queued_turn", "delivered"],
+  ] as const)(
+    "Given a %s %s message, when it is read, then it is %s",
+    (status, intent, delivery) => {
+      expect(userDelivery({ status, inputIntent: intent })).toBe(delivery);
+    },
+  );
 });

@@ -1,5 +1,7 @@
 import type { MessageId, ThreadId, TurnItemId } from "@t3tools/contracts";
 
+import type { PickerValue } from "../providers/providers";
+
 /** Where a user message stands on its way to the orchestrator, which the bubble shows until it is delivered. */
 export type Delivery = "sending" | "queued" | "steering" | "delivered" | "failed";
 
@@ -175,6 +177,8 @@ export interface PendingSend {
   readonly text: string;
   readonly files: ReadonlyArray<File>;
   readonly fresh: boolean;
+  readonly shown: PickerValue;
+  readonly overridden: boolean;
   readonly state:
     | { readonly kind: "sending" }
     | { readonly kind: "failed"; readonly error: string };
