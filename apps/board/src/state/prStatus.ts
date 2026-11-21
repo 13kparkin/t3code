@@ -197,7 +197,11 @@ export function useTicketReadiness(view: TicketView | null): ReadonlyArray<Condi
   const { groups, files } = useArtifacts();
   const { live, now } = useTicketPr(view);
   const evidence = view === null ? undefined : groups.byTicket.get(view.ticket.key);
-  const ciFile = evidence?.find((artifact) => artifact.name === "ci-local.txt");
+  // Only a pull request with no checks reads the file, so no other card polls it.
+  const ciFile =
+    live?.checks.length === 0
+      ? evidence?.find((artifact) => artifact.name === "ci-local.txt")
+      : undefined;
   const located = ciFile === undefined ? null : locate(files.roots, ciFile.absolutePath);
   const ciLocal = useAtomValue(
     located === null

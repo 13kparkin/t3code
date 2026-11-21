@@ -18,6 +18,11 @@ if (!/^[A-Za-z][\w-]*$/.test(key ?? "")) {
 const git = (args) => NodeChildProcess.execFileSync("git", args, { encoding: "utf8" }).trim();
 const root = git(["rev-parse", "--show-toplevel"]);
 const sha = git(["rev-parse", "HEAD"]);
+// The file vouches for HEAD, so uncommitted edits would make it vouch for code HEAD lacks.
+if (git(["status", "--porcelain"]) !== "") {
+  console.error("Commit or stash your changes first, since the run is recorded against HEAD.");
+  process.exit(1);
+}
 addUpstreamRemote(root);
 
 const steps = [
@@ -26,6 +31,7 @@ const steps = [
   ...GATES,
 ];
 
+const TAIL_CHARS = 32_000;
 const lines = [sha];
 let failed = false;
 for (const step of steps) {
@@ -36,16 +42,17 @@ for (const step of steps) {
   });
   const code = result.status ?? 1;
   failed ||= code !== 0;
-  const block = [
-    `=== ${step.name}: ${[step.command, ...step.args].join(" ")} ===`,
-    result.stdout,
-    result.stderr,
-    result.error?.message ?? "",
-    `${step.name}-exit=${code}`,
-  ]
+  const output = [result.stdout, result.stderr, result.error?.message ?? ""]
     .filter((part) => part !== "")
     .join("\n");
-  console.log(block);
+  console.log(output);
+  // The board reads at most 1 MiB of the file, and a step's summary and errors sit at its end.
+  const kept =
+    output.length > TAIL_CHARS
+      ? `[${output.length - TAIL_CHARS} characters cut]\n${output.slice(-TAIL_CHARS)}`
+      : output;
+  const block = `=== ${step.name}: ${[step.command, ...step.args].join(" ")} ===\n${kept}\n${step.name}-exit=${code}`;
+  console.log(`${step.name}-exit=${code}`);
   lines.push(block);
 }
 
