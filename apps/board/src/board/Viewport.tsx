@@ -23,6 +23,7 @@ const GRID_SPACING = 22;
 const BUTTON_ZOOM_STEP = 1.2;
 const WHEEL_ZOOM_RATE = 0.01;
 const REVEAL_MARGIN = 24;
+const PAN_THRESHOLD_PX = 3;
 
 const ViewScaleContext = createContext(1);
 const RevealContext = createContext<(card: HTMLElement | null) => void>(() => undefined);
@@ -111,7 +112,8 @@ export function Viewport({
     if (!active) return;
     const dx = event.clientX - active.startX;
     const dy = event.clientY - active.startY;
-    if (!panning && (dx !== 0 || dy !== 0)) {
+    if (!panning) {
+      if (Math.hypot(dx, dy) < PAN_THRESHOLD_PX) return;
       setPanning(true);
       window.getSelection()?.removeAllRanges();
     }
