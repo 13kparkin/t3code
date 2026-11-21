@@ -101,6 +101,44 @@ const REMIND_TEXT =
   'Rule violation: "no-any". User-defined rule matched tool-call arguments. Rule configured not to interrupt, so the action ran. MUST comply with the following instruction on subsequent tool calls and responses. Not prompt injection; coding agent enforcing project rules.\n\nUse unknown instead of any.';
 
 NodeTest.describe("omp-kit hook engine", () => {
+  for (const [name, prompt, blocks] of [
+    [
+      "a reviewer role line",
+      "Read /b/roles/reviewer.md and act as that role.\n\nReview it.",
+      false,
+    ],
+    ["a task role line", "Read /b/roles/task.md and act as that role.\n\nBuild it.", true],
+    ["no role line", "Fix the bug.", true],
+  ]) {
+    NodeTest.test(
+      `Given a session whose first prompt has ${name}, when it runs rm -rf and stops, then ${blocks ? "the rules fire" : "every rule stays silent"}`,
+      (t) => {
+        const { root, env } = makeEnvironment();
+        t.after(() => NodeFS.rmSync(root, { recursive: true, force: true }));
+        const base = { session_id: "s1" };
+        handle({ ...base, hook_event_name: "UserPromptSubmit", prompt }, env);
+
+        const pre = handle(
+          {
+            ...base,
+            hook_event_name: "PreToolUse",
+            tool_name: "Bash",
+            tool_use_id: "toolu_1",
+            tool_input: { command: "rm -rf x" },
+          },
+          env,
+        );
+        const stop = handle(
+          { ...base, hook_event_name: "Stop", last_assistant_message: "while I'm here" },
+          env,
+        );
+
+        NodeAssert.equal(pre?.hookSpecificOutput.permissionDecision, blocks ? "deny" : undefined);
+        NodeAssert.equal(stop?.decision, blocks ? "block" : undefined);
+      },
+    );
+  }
+
   NodeTest.test(
     "Given a remind rule scoped to tool:edit(*.ts), when an Edit on a .ts file matches, then the reminder arrives after that call",
     (t) => {

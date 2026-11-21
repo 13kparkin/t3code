@@ -16,6 +16,22 @@ const NEXT = "next";
 const VITE_PLUS_ENV =
   'if [ -f "$HOME/.config/vite-plus/env" ]; then . "$HOME/.config/vite-plus/env"; fi';
 
+const ROLE_LINE = /^Read \S*\/roles\/([\w-]+)\.md and act as that role\./;
+// Mirrors the readOnly roles in src/orchestrator/roles.ts; role files carry no read-only flag to read instead.
+const READ_ONLY_ROLES = new Set([
+  "scout",
+  "reviewer",
+  "security-reviewer",
+  "comment-sicko",
+  "egm-codebase-details",
+  "egm-comprehension",
+  "egm-design",
+  "egm-implementation-readiness",
+  "egm-structural",
+  "egm-style",
+  "egm-zoom-out",
+]);
+
 const safeName = (value) => String(value).replace(/[^\w.-]/g, "_");
 
 function stateRoot(input, env) {
@@ -34,6 +50,22 @@ function claim(root, name) {
     if (error.code === "EEXIST") return false;
     throw error;
   }
+}
+
+function readStoredRole(root) {
+  try {
+    return NodeFS.readFileSync(NodePath.join(root, "role"), "utf8");
+  } catch {
+    return null;
+  }
+}
+
+// Only the first role line counts, so a later prompt quoting one cannot change the session's role.
+function storeRole(root, prompt) {
+  const role = ROLE_LINE.exec(prompt ?? "")?.[1];
+  if (!role || readStoredRole(root) !== null) return;
+  NodeFS.mkdirSync(root, { recursive: true });
+  NodeFS.writeFileSync(NodePath.join(root, "role"), role);
 }
 
 function enqueue(root, key, rule, source) {
@@ -154,8 +186,11 @@ export function handle(input, env) {
   const rulesDir = defaultRulesDir(env);
   if (input.hook_event_name === "SessionStart") return sessionStart(rulesDir, env);
 
-  const rules = loadRules(rulesDir);
   const root = stateRoot(input, env);
+  if (input.hook_event_name === "UserPromptSubmit") storeRole(root, input.prompt);
+  if (READ_ONLY_ROLES.has(readStoredRole(root))) return null;
+
+  const rules = loadRules(rulesDir);
   switch (input.hook_event_name) {
     case "PreToolUse":
       return preToolUse(input, root, rules);

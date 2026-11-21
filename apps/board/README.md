@@ -56,7 +56,7 @@ It needs a clean checkout. It fetches upstream, runs `vp run check:changed` and 
 
 ## omp rules for Claude Code
 
-The `omp-kit` plugin in `plugins/` gives every Claude Code session the rules in `~/.omp/agent/rules`, the sticky `~/.omp/agent/RULES.md`, a TypeScript language server for the `LSP` tool, and `vp` on the Bash path. Rules are read at hook time, so editing a rule file takes effect in the next session. `OMP_KIT_RULES_DIR` points the engine at another rules folder, and `RULES.md` is read from that folder's parent.
+The `omp-kit` plugin in `plugins/` gives every Claude Code session the rules in `~/.omp/agent/rules`, the sticky `~/.omp/agent/RULES.md`, a TypeScript language server for the `LSP` tool, and `vp` on the Bash path. Rules are read at hook time, so editing a rule file takes effect in the next session. `OMP_KIT_RULES_DIR` points the engine at another rules folder, and `RULES.md` is read from that folder's parent. A session whose first prompt starts `Read <board>/roles/<role>.md and act as that role.` for a read-only role skips every rule, so a Stop hook cannot replace the agent's report.
 
 ```sh
 node apps/board/scripts/install-omp-kit.mjs                      # user scope, ~/.claude
