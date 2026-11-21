@@ -1,6 +1,11 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
 
-import type { BoardBridge, BrowserTabState, EngineState } from "../src/connection/engineState";
+import type {
+  AppUpdateState,
+  BoardBridge,
+  BrowserTabState,
+  EngineState,
+} from "../src/connection/engineState";
 
 const bridge: BoardBridge = {
   reportFirstPaint: (epochMs) => ipcRenderer.send("board:first-paint", epochMs),
@@ -31,6 +36,17 @@ const bridge: BoardBridge = {
       ipcRenderer.on("board:browser-tab", handler);
       return () => void ipcRenderer.off("board:browser-tab", handler);
     },
+  },
+  appUpdate: {
+    state: () => ipcRenderer.invoke("board:app-update-state"),
+    onState: (listener) => {
+      const handler = (_event: IpcRendererEvent, state: AppUpdateState) => listener(state);
+      ipcRenderer.on("board:app-update-state", handler);
+      return () => void ipcRenderer.off("board:app-update-state", handler);
+    },
+    download: () => ipcRenderer.send("board:app-update-download"),
+    restart: (activeRuns) => ipcRenderer.send("board:app-update-restart", activeRuns),
+    setPrereleases: (enabled) => ipcRenderer.send("board:app-update-prereleases", enabled),
   },
 };
 

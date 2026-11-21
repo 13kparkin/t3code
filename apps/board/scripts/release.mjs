@@ -123,7 +123,10 @@ run(
     "--notes-file",
     notes,
     ...(values.prerelease ? ["--prerelease"] : []),
-    ...[...assets, "SHA256SUMS"].map((name) => NodePath.join(releaseDir, name)),
+    // latest.yml and the blockmap are what the installed app's updater downloads.
+    ...[...assets, "SHA256SUMS", "latest.yml", `${assets[0]}.blockmap`].map((name) =>
+      NodePath.join(releaseDir, name),
+    ),
   ],
   root,
 );

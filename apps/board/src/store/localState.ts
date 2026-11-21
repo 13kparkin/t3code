@@ -17,6 +17,8 @@ const LocalState = Schema.Struct({
   autoUpdate: Schema.Struct({ engine: Schema.Boolean, providers: Schema.Boolean }).pipe(
     Schema.withDecodingDefaultKey(Effect.succeed({ engine: false, providers: false })),
   ),
+  /** Whether the app offers its own test releases. Starts off. */
+  appPrereleases: Schema.Boolean.pipe(Schema.withDecodingDefaultKey(Effect.succeed(false))),
   /** The release each item announced last, so a later launch does not announce it again. */
   announcedUpdates: Schema.Record(Schema.String, Schema.String).pipe(
     Schema.withDecodingDefaultKey(Effect.succeed({})),
@@ -41,6 +43,7 @@ export const EMPTY_LOCAL_STATE: LocalState = {
   lastOpenedBoard: null,
   frameOrder: {},
   autoUpdate: { engine: false, providers: false },
+  appPrereleases: false,
   announcedUpdates: {},
   automaticUpdates: {},
   lastEditor: null,

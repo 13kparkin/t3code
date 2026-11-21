@@ -9,7 +9,15 @@ files:
   - package.json
   - "!node_modules/**/*"
 asar: false
+# Writes app-update.yml, latest.yml, and the blockmap the in-app updater reads.
+publish:
+  provider: github
+  owner: 13kparkin
+  repo: t3code
+  releaseType: release
 win:
+  # Unsigned, so a newer electron-updater would otherwise reject every update.
+  verifyUpdateCodeSignature: false
   target:
     - target: nsis
       arch: x64

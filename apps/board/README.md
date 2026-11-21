@@ -31,8 +31,14 @@ On a Windows machine, run the same commands from WSL with `dev:windows` and `sta
 
 Releases are on the fork's Releases page as `board-v<version>`.
 Download `Agent-Board-Setup-<version>.exe` and run it for a per-user install with Start menu and desktop shortcuts.
-It is not code signed, so Windows SmartScreen warns on first run, and it does not update itself.
+It is not code signed, so Windows SmartScreen warns on first run.
 `SHA256SUMS` lists the hash of the installer.
+
+The app checks this page for a newer `board-v` release every 4 hours and lists it in Settings → Updates.
+Download fetches it, and Restart installs it, but only while no thread has an active run.
+Pre-releases are offered only with "Offer test releases" on.
+Versions up to 0.2.0 cannot update themselves, so install the first later version by hand.
+A release must keep `latest.yml` and the installer's `.blockmap`, which `release.mjs` uploads.
 
 To cut a release, check out a clean `origin/main` and run this.
 

@@ -1,6 +1,7 @@
 import { runAtomCommand } from "@t3tools/client-runtime/state/runtime";
 import { Atom, type AtomRegistry, AsyncResult } from "effect/reactivity";
 
+import type { AppUpdateState } from "../connection/engineState";
 import { failureText } from "../settings/failureText";
 import { pickableInstances } from "../providers/providers";
 import { localState } from "./boards";
@@ -15,6 +16,8 @@ import { engineEnvironmentIdAtom, environmentSnapshotAtom } from "./projects";
 import { engineProvidersAtom, serverEnvironment } from "./server";
 import {
   type ActiveRuns,
+  appItem,
+  appUpdateStep,
   countActiveRuns,
   decideUpdate,
   ENGINE_KEY,
@@ -27,8 +30,11 @@ import {
   type UpdateToastText,
 } from "./updates";
 
+const appUpdateHost = window.board?.appUpdate;
+
 export interface UpdatePrefs {
   readonly autoUpdate: { readonly engine: boolean; readonly providers: boolean };
+  readonly appPrereleases: boolean;
   /** The release each item announced last, by item key. */
   readonly announced: Readonly<Record<string, string>>;
   /** The latest automatic update of each item, by item key. */
@@ -38,17 +44,37 @@ export interface UpdatePrefs {
 /** Null until the saved choices load, so nothing starts or announces on the defaults. */
 export const updatePrefsAtom = Atom.writable(
   (get): UpdatePrefs | null => {
-    void localState.read().then((state) =>
+    void localState.read().then((state) => {
+      appUpdateHost?.setPrereleases(state.appPrereleases);
       get.setSelf({
         autoUpdate: state.autoUpdate,
+        appPrereleases: state.appPrereleases,
         announced: state.announcedUpdates,
         automatic: state.automaticUpdates,
-      }),
-    );
+      });
+    });
     return null;
   },
   (context, next: UpdatePrefs | null) => context.setSelf(next),
 ).pipe(Atom.keepAlive, Atom.withLabel("update-prefs"));
+
+/** Null in a browser, which has no app to update. */
+export const appUpdateStateAtom = Atom.make((get): AppUpdateState | null => {
+  if (appUpdateHost === undefined) return null;
+  get.addFinalizer(appUpdateHost.onState((state) => get.setSelf(state)));
+  void appUpdateHost.state().then((state) => get.setSelf(state));
+  return null;
+}).pipe(Atom.keepAlive, Atom.withLabel("app-update-state"));
+
+/** Downloads the app's update, or restarts into it once downloaded and no run is active. */
+export function installAppUpdate(registry: AtomRegistry.AtomRegistry) {
+  const state = registry.get(appUpdateStateAtom);
+  if (state === null || appUpdateHost === undefined) return;
+  const activeRuns = registry.get(activeRunsAtom).total;
+  const step = appUpdateStep(state, activeRuns);
+  if (step === "download") appUpdateHost.download();
+  if (step === "restart") appUpdateHost.restart(activeRuns);
+}
 
 export function changeUpdatePrefs(
   registry: AtomRegistry.AtomRegistry,
@@ -58,10 +84,12 @@ export function changeUpdatePrefs(
   if (current === null) return Promise.resolve();
   const next = change(current);
   registry.set(updatePrefsAtom, next);
+  appUpdateHost?.setPrereleases(next.appPrereleases);
   return localState
     .update((state) => ({
       ...state,
       autoUpdate: next.autoUpdate,
+      appPrereleases: next.appPrereleases,
       announcedUpdates: next.announced,
       automaticUpdates: next.automatic,
     }))
@@ -115,6 +143,8 @@ export const updateItemsAtom = Atom.make((get): ReadonlyArray<UpdateItem> => {
   const version = get(engineVersionAtom);
   const offer = get(engineUpdateOfferAtom);
   const update = get(engineUpdateStateAtom);
+  const appState = get(appUpdateStateAtom);
+  const app = appState === null ? null : appItem(appState, runs.total);
   const engine: UpdateItem = {
     key: ENGINE_KEY,
     kind: "engine",
@@ -136,7 +166,7 @@ export const updateItemsAtom = Atom.make((get): ReadonlyArray<UpdateItem> => {
       ? []
       : [providerItem(provider, instance.name, runs.byInstance[provider.instanceId] ?? 0)];
   });
-  return version === null ? providerItems : [engine, ...providerItems];
+  return [...(version === null ? [] : [engine]), ...providerItems, ...(app === null ? [] : [app])];
 }).pipe(Atom.withLabel("update-items"));
 
 /** Each item with what to do about it, given the switches, the active runs, and what already started. */
@@ -150,8 +180,11 @@ export const updateRowsAtom = Atom.make((get): ReadonlyArray<UpdateRow> => {
         ? "none"
         : decideUpdate({
             offer: item.offer,
-            automatic:
-              item.kind === "engine" ? prefs.autoUpdate.engine : prefs.autoUpdate.providers,
+            automatic: {
+              engine: prefs.autoUpdate.engine,
+              provider: prefs.autoUpdate.providers,
+              app: false,
+            }[item.kind],
             busy: item.running || attempts.includes(attemptKey(item)),
             activeRuns: item.activeRuns,
           }),

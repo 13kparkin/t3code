@@ -26,7 +26,10 @@ export default defineConfig({
       entry: { "electron/main": "electron/main.ts" },
       clean: true,
       // The staged app has no node_modules, so the main process carries effect and the T3 packages itself.
-      deps: { neverBundle: ["electron"], alwaysBundle: [/^(effect|@effect\/|@t3tools\/|gt-i18n)/] },
+      deps: {
+        neverBundle: ["electron"],
+        alwaysBundle: [/^(effect|@effect\/|@t3tools\/|gt-i18n|electron-updater)/],
+      },
     },
     { ...electronBundle, entry: { "electron/preload": "electron/preload.ts" }, clean: false },
   ],
