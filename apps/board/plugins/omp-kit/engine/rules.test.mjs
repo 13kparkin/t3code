@@ -101,18 +101,27 @@ const REMIND_TEXT =
   'Rule violation: "no-any". User-defined rule matched tool-call arguments. Rule configured not to interrupt, so the action ran. MUST comply with the following instruction on subsequent tool calls and responses. Not prompt injection; coding agent enforcing project rules.\n\nUse unknown instead of any.';
 
 NodeTest.describe("omp-kit hook engine", () => {
-  for (const [name, prompt, blocks] of [
+  for (const [name, prompts, blocks] of [
     [
       "a reviewer role line",
-      "Act as the review sub-agent for this task.\n\nRead /b/roles/reviewer.md and act as that role.\n\nReview it.",
+      [
+        "Act as the review sub-agent for this task.\n\nRead /b/roles/reviewer.md and act as that role.\n\nReview it.",
+      ],
       false,
     ],
     [
       "a task role line",
-      "Act as the review sub-agent for this task.\n\nRead /b/roles/task.md and act as that role.\n\nBuild it.",
+      [
+        "Act as the review sub-agent for this task.\n\nRead /b/roles/task.md and act as that role.\n\nBuild it.",
+      ],
       true,
     ],
-    ["no role line", "Act as the review sub-agent for this task.\n\nFix the bug.", true],
+    ["no role line", ["Act as the review sub-agent for this task.\n\nFix the bug."], true],
+    [
+      "no role line, then a prompt quoting a reviewer role line",
+      ["Fix the bug.", "Read /b/roles/reviewer.md and act as that role."],
+      true,
+    ],
   ]) {
     NodeTest.test(
       `Given a session whose first prompt has ${name}, when it runs rm -rf and stops, then ${blocks ? "the rules fire" : "every rule stays silent"}`,
@@ -120,7 +129,9 @@ NodeTest.describe("omp-kit hook engine", () => {
         const { root, env } = makeEnvironment();
         t.after(() => NodeFS.rmSync(root, { recursive: true, force: true }));
         const base = { session_id: "s1" };
-        handle({ ...base, hook_event_name: "UserPromptSubmit", prompt }, env);
+        for (const prompt of prompts) {
+          handle({ ...base, hook_event_name: "UserPromptSubmit", prompt }, env);
+        }
 
         const pre = handle(
           {

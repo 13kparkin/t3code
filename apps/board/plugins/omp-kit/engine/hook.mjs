@@ -60,12 +60,11 @@ function readStoredRole(root) {
   }
 }
 
-// Only the first role line counts, so a later prompt quoting one cannot change the session's role.
+// The first prompt alone decides the role, an empty one included, so a later prompt quoting a role line changes nothing.
 function storeRole(root, prompt) {
-  const role = ROLE_LINE.exec(prompt ?? "")?.[1];
-  if (!role || readStoredRole(root) !== null) return;
+  if (readStoredRole(root) !== null) return;
   NodeFS.mkdirSync(root, { recursive: true });
-  NodeFS.writeFileSync(NodePath.join(root, "role"), role);
+  NodeFS.writeFileSync(NodePath.join(root, "role"), ROLE_LINE.exec(prompt ?? "")?.[1] ?? "");
 }
 
 function enqueue(root, key, rule, source) {
