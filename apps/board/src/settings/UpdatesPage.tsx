@@ -165,7 +165,7 @@ export function UpdatesPage({
       {app !== undefined && (
         <SettingsSection
           title="App"
-          note="The app restarts to install an update, only when you say so and no thread has an active run."
+          note="Restart installs a downloaded update. It stays off while a thread has an active run."
         >
           <UpdateItemRow
             row={app}

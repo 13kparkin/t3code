@@ -44,7 +44,7 @@ export type AppUpdateState = { readonly current: string } & (
   | { readonly status: "disabled" | "unchecked" | "current" }
   | { readonly status: "available" | "downloaded"; readonly version: string }
   | { readonly status: "downloading"; readonly version: string; readonly percent: number }
-  /** The version is the release the failed download was for, so it can be retried. */
+  /** Null when the check failed, otherwise the release whose download failed, so it can be retried. */
   | { readonly status: "error"; readonly message: string; readonly version: string | null }
 );
 
