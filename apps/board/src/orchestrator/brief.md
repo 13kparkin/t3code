@@ -127,7 +127,7 @@ A completed agent wakes you. Do not poll it. Start the next work and end your tu
 
 ## The builder cap
 
-Run at most the builder cap of building agents at once. A building agent is an agent with `t3Role` `implementation` that works a ticket in `building`. Count each ticket in `building` as one. Reviewers, scouts, and the other roles do not count against the cap. When the cap is full, leave tickets in `planned` and start the next one as a builder finishes.
+Run at most the builder cap of implementation agents at once. An implementation agent is an agent with `t3Role` `implementation`. Count each one as one while it runs, on a ticket in any stage, verifiers included. Reviewers, scouts, and the other roles do not count against the cap. When the cap is full, leave tickets in `planned` and start the next one as an implementation agent finishes.
 
 ## Reviewing a ticket
 
@@ -172,7 +172,7 @@ A board's work is its tickets and its docs. The user attaches docs to a message,
 # Board facts
 
 - The board folder is `{{boardDir}}`.
-- Run at most {{builderCap}} building agents at once.
+- Run at most {{builderCap}} implementation agents at once, verifiers included.
 - The project is `{{project}}`, at `{{projectDir}}`.
 {{reviewTemplate}}
 {{usage}}

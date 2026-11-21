@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import type { Ticket } from "../domain/ticket";
-import { agentTree, type FamilyRow, joinBoard } from "./boardModel";
+import { agentTree, countImplementationAgents, type FamilyRow, joinBoard } from "./boardModel";
 
 const ORCHESTRATOR = "th-orch";
 
@@ -98,6 +98,26 @@ describe("joining tickets with the thread family", () => {
       registered: true,
     });
     expect(model.lanes.building[1]?.agents[0]?.pendingRequest).toBe(true);
+  });
+});
+
+describe("counting implementation agents", () => {
+  it("Given live task agents on building and verifying tickets, a live scout, and an idle task agent, when counted, then only the live task agents count", () => {
+    const model = joinBoard({
+      tickets: [
+        { key: "T-1", title: "a", stage: "building" },
+        { key: "T-2", title: "b", stage: "verifying" },
+      ],
+      family: [
+        row("th-a", "[T-1] task", { status: "running" }),
+        row("th-b", "[T-2] task", { status: "running" }),
+        row("th-c", "[T-2] scout", { status: "running" }),
+        row("th-d", "[T-1] task"),
+      ],
+      orchestratorThreadId: ORCHESTRATOR,
+      driverOf,
+    });
+    expect(countImplementationAgents(model)).toBe(2);
   });
 });
 

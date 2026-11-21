@@ -22,6 +22,7 @@ import { useThreadFamily } from "../state/family";
 import { PrProvider } from "../state/prStatus";
 import { focusedCardAtom, useBoardForYou } from "../state/forYou";
 import { addDocs } from "../state/attachmentUploads";
+import { countImplementationAgents } from "../state/boardModel";
 import { useBoardView } from "../state/boardView";
 import type { ValidBoard } from "../store/boardFiles";
 import { ForYouLane } from "./ForYouLane";
@@ -53,6 +54,7 @@ export function BoardScreen({
     [model, order, forYou.views, artifacts.cards],
   );
   const family = useThreadFamily(project.environmentId, board.orchestratorThreadId);
+  const builders = useMemo(() => countImplementationAgents(model), [model]);
   const tickets = useMemo(() => Object.values(model.lanes).flat(), [model]);
   const prContext = useMemo(() => {
     const keys = tickets.map((view) => view.ticket.key);
@@ -96,12 +98,14 @@ export function BoardScreen({
                 project={project}
                 listed={listed}
                 stats={{ ...stats, forYouOpen: forYou.open }}
+                builders={builders}
               />
               <Lanes
                 layout={layout}
                 model={model}
                 boardId={board.id}
                 forYouOpen={forYou.open}
+                queued={builders >= stats.builderCap}
                 forYouLane={
                   <ForYouLane
                     project={project}
