@@ -3,6 +3,7 @@ import * as Schema from "effect/Schema";
 import * as SchemaIssue from "effect/SchemaIssue";
 
 export const TICKET_STAGES = [
+  "todo",
   "planned",
   "building",
   "reviewing",
@@ -15,6 +16,7 @@ export const TICKET_STAGES = [
 export type TicketStage = (typeof TICKET_STAGES)[number];
 
 export const STAGE_LABEL = {
+  todo: "To do",
   planned: "Planned",
   building: "Building",
   reviewing: "Reviewing",
@@ -51,6 +53,14 @@ const TicketIssue = Schema.Struct({
 });
 export type TicketIssue = typeof TicketIssue.Type;
 
+const TicketStep = Schema.Struct({
+  text: Schema.String,
+  state: Schema.Literals(["done", "pending", "skipped"]),
+  /** Why a step was skipped. */
+  note: optional(Schema.String),
+});
+export type TicketStep = typeof TicketStep.Type;
+
 export const Ticket = Schema.Struct({
   key: Schema.String.check(Schema.isNonEmpty()),
   title: Schema.String,
@@ -71,8 +81,25 @@ export const Ticket = Schema.Struct({
   fixRounds: optional(Count),
   /** The tracker issue this ticket works, which its frame shows. */
   issue: optional(TicketIssue),
+  /** The poteto-mode playbook's file name, such as `feature.md`. */
+  playbook: optional(Schema.String),
+  steps: optional(Schema.Array(TicketStep)),
 });
 export type Ticket = typeof Ticket.Type;
+
+const UNPLANNED_STAGES: ReadonlySet<TicketStage> = new Set(["todo", "off_path"]);
+
+/** A ticket past `todo` should carry its playbook and the steps copied from it. */
+export const missingPlan = (ticket: Ticket): boolean =>
+  !UNPLANNED_STAGES.has(ticket.stage) &&
+  (ticket.playbook == null || (ticket.steps ?? []).length === 0);
+
+export function stepProgress(ticket: Ticket) {
+  const steps = ticket.steps ?? [];
+  if (steps.length === 0) return null;
+  const count = (state: TicketStep["state"]) => steps.filter((step) => step.state === state).length;
+  return { done: count("done"), skipped: count("skipped"), total: steps.length };
+}
 
 export interface TicketsIssue {
   /** The ticket fields the decoder rejected, in file order. */

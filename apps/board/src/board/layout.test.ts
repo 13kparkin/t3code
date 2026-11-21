@@ -40,6 +40,7 @@ const view = (ticket: Ticket, agents = 0): TicketView => ({
   agents: Array.from({ length: agents }, (_, index) => agent(`${ticket.key}-${index}`)),
 });
 const empty: BoardModel["lanes"] = {
+  todo: [],
   planned: [],
   building: [],
   reviewing: [],
@@ -69,6 +70,7 @@ describe("laying out the lanes", () => {
   it("Given tickets in two stages, when laid out, then each frame sits in its stage's column and frames stack in file order", () => {
     expect(layout.lanes.map((entry) => entry.id)).toEqual([
       "for_you",
+      "todo",
       "planned",
       "building",
       "reviewing",
@@ -79,7 +81,7 @@ describe("laying out the lanes", () => {
       "off_path",
     ]);
     const building = lane("building");
-    expect(building?.x).toBe(40 + 2 * (LANE_WIDTH + LANE_GAP));
+    expect(building?.x).toBe(40 + 3 * (LANE_WIDTH + LANE_GAP));
     expect(building?.frames.map((frame) => [frame.key, frame.x, frame.y])).toEqual([
       ["T-1", building!.x + LANE_PAD, LANES_TOP + LANE_HEAD],
       [

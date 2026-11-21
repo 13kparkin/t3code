@@ -30,6 +30,7 @@ const LABEL = {
 
 const LANE_TONE = {
   for_you: "bg-amber-500 text-black",
+  todo: "bg-zinc-700 text-white",
   planned: "bg-zinc-600 text-white",
   building: "bg-blue-600 text-white",
   reviewing: "bg-violet-600 text-white",

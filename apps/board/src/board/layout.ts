@@ -1,5 +1,11 @@
 import type { CardView } from "../domain/forYou";
-import { TICKET_STAGES, type Ticket, type TicketStage } from "../domain/ticket";
+import {
+  missingPlan,
+  stepProgress,
+  TICKET_STAGES,
+  type Ticket,
+  type TicketStage,
+} from "../domain/ticket";
 import type { BoardModel } from "../state/boardModel";
 import type { FrameOrder } from "../state/boardUi";
 import type { Rect } from "./viewport";
@@ -72,7 +78,9 @@ export const hasChips = (ticket: Ticket): boolean =>
   (ticket.fixRounds ?? 0) > 0 ||
   (ticket.dependsOn ?? []).length > 0 ||
   (ticket.verdicts ?? []).length > 0 ||
-  (ticket.flags ?? []).length > 0;
+  (ticket.flags ?? []).length > 0 ||
+  stepProgress(ticket) !== null ||
+  missingPlan(ticket);
 
 const PR_STAGES: ReadonlySet<TicketStage> = new Set(["pr", "awaiting_approval", "merged"]);
 
