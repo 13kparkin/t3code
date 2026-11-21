@@ -16,6 +16,7 @@ import * as Schema from "effect/Schema";
 import { Atom, type AtomRegistry } from "effect/reactivity";
 
 import { connectionAtomRuntime } from "../connection/runtime";
+import { type CiLocal, localCiState, parseCiLocal } from "../domain/readiness";
 import { type Artifact, type ArtifactContents, listArtifacts } from "../store/artifacts";
 import { failureText } from "../settings/failureText";
 import { boardEngine } from "./boards";
@@ -32,12 +33,19 @@ const isReadFileError = Schema.is(ProjectReadFileError);
 const decodeContentsKey = Schema.decodeUnknownSync(
   Schema.fromJsonString(Schema.Tuple([Schema.String, Schema.String, Schema.String])),
 );
+const decodeCiLocalKey = Schema.decodeUnknownSync(
+  Schema.fromJsonString(
+    Schema.Tuple([Schema.String, Schema.String, Schema.String, Schema.NullOr(Schema.String)]),
+  ),
+);
 const decodeBoardKey = Schema.decodeUnknownSync(
   Schema.fromJsonString(Schema.Tuple([Schema.String, Schema.String, Schema.Array(Schema.String)])),
 );
 
 /** The pause between one listing finishing and the next starting, which bounds how late a new file shows. */
 const ARTIFACT_POLL_MS = 1_000;
+/** How often a ticket's `ci-local.txt` is read again, since a new run rewrites it in place. */
+const CI_LOCAL_POLL_MS = 5_000;
 
 export const NO_ARTIFACTS: ReadonlyArray<Artifact> = [];
 
@@ -190,3 +198,51 @@ export const artifactContentsKey = (
   cwd: string,
   absolutePath: string,
 ) => JSON.stringify([environmentId, cwd, absolutePath]);
+
+function ciLocalOf(contents: ArtifactContents): CiLocal | null {
+  if (contents.kind === "missing") return null;
+  if (contents.kind === "binary") return { kind: "unreadable", reason: "ci-local.txt is not text" };
+  // A cut file can lose the exit line of a failing step, so it never counts as a run.
+  return contents.truncated
+    ? { kind: "unreadable", reason: "ci-local.txt is past the engine's read limit" }
+    : parseCiLocal(contents.contents);
+}
+
+/**
+ * A ticket's `ci-local.txt` judged against a pull request head, keyed by `ciLocalKey`. It reads
+ * the file again on a timer until the run meets that head, and a new head is a new key. It is null
+ * until the first read answers or when the file is gone.
+ */
+export const ciLocalAtom = Atom.family((key: string) =>
+  Atom.make<CiLocal | null>((get) => {
+    const [environmentId, cwd, path, head] = decodeCiLocalKey(key);
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const read = async () => {
+      const next = await readArtifact(get.registry, EnvironmentId.make(environmentId), cwd, path)
+        .then(ciLocalOf)
+        .catch((error): CiLocal => ({
+          kind: "unreadable",
+          reason: `ci-local.txt could not be read: ${error instanceof Error ? error.message : String(error)}`,
+        }));
+      const before = Option.getOrNull(get.self<CiLocal | null>()) ?? null;
+      if (!stopped && JSON.stringify(next) !== JSON.stringify(before)) get.setSelf(next);
+      if (!stopped && localCiState(next, head) !== null) {
+        timer = setTimeout(() => void read(), CI_LOCAL_POLL_MS);
+      }
+    };
+    void read();
+    get.addFinalizer(() => {
+      stopped = true;
+      clearTimeout(timer);
+    });
+    return Option.getOrElse(get.self<CiLocal | null>(), () => null);
+  }).pipe(Atom.withLabel(`board-ci-local:${key}`)),
+);
+
+export const ciLocalKey = (
+  environmentId: EnvironmentId,
+  cwd: string,
+  path: string,
+  head: string | null,
+) => JSON.stringify([environmentId, cwd, path, head]);
