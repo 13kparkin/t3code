@@ -86,9 +86,9 @@ export const Ticket = Schema.Struct({
 });
 export type Ticket = typeof Ticket.Type;
 
-const UNPLANNED_STAGES: ReadonlySet<TicketStage> = new Set(["todo", "off_path"]);
+const UNPLANNED_STAGES: ReadonlySet<TicketStage> = new Set(["todo", "merged", "off_path"]);
 
-/** Whether a ticket past `todo`, and not off path, lacks its playbook or its steps. */
+/** Whether a ticket under way, past `todo` and not merged or off path, lacks its playbook or its steps. */
 export const missingPlan = (ticket: Ticket): boolean =>
   !UNPLANNED_STAGES.has(ticket.stage) &&
   (ticket.playbook == null || (ticket.steps ?? []).length === 0);

@@ -99,6 +99,7 @@ describe("plans and steps", () => {
     ["planned with a playbook and no steps", { playbook: "feature.md", steps: [] }, true],
     ["building with both", { stage: "building", playbook: "feature.md", steps }, false],
     ["off_path without a plan", { stage: "off_path" }, false],
+    ["merged without a plan", { stage: "merged" }, false],
   ] as const)("Given %s, when checked, then missingPlan is %s", (_, fields, expected) => {
     expect(missingPlan(ticket(fields))).toBe(expected);
   });

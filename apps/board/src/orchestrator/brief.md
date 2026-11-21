@@ -45,7 +45,7 @@ A JSON array. Write the whole file each time, and keep it valid JSON, because th
 - `threads`: the agents on this ticket, each `{ "threadId": "...", "role": "<role name>", "round": 1 }`.
 - `verdicts`: one entry per review, `{ "role": "reviewer", "p0": 0, "p1": 1, "p2": 0, "p3": 2 }`, with the P0 to P3 finding counts.
 - `playbook`: the matched poteto-mode playbook's file name, such as `feature.md`.
-- `steps`: that playbook's steps copied in order, each `{ "text": "...", "state": "pending" }`. The state is `done`, `pending`, or `skipped`, and a skipped step carries `note` with the reason. The board flags a ticket in `planned` or later that lacks either `playbook` or `steps`.
+- `steps`: that playbook's steps copied in order, each `{ "text": "...", "state": "pending" }`. The state is `done`, `pending`, or `skipped`, and a skipped step carries `note` with the reason. The board flags a ticket from `planned` through `awaiting_approval` that lacks either `playbook` or `steps`.
 - `fixRounds`: how many fix rounds the ticket has had, a whole number.
 - `issue`: the tracker issue this ticket works, `{ "tracker": "linear", "key": "XEO-3331" }` or `{ "tracker": "github", "key": "owner/repo#12" }`. Set it whenever a ticket maps to an issue. The board shows the issue's key, state, and assignee on the ticket's frame.
 
