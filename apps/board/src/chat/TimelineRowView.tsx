@@ -16,7 +16,7 @@ export function TimelineRowView({
 }) {
   switch (row.kind) {
     case "user":
-      return <UserRow text={row.text} brief={brief} at={row.at} />;
+      return <UserRow text={row.text} brief={brief} at={row.at} delivery={row.delivery} />;
     case "assistant":
       return (
         <AssistantRow

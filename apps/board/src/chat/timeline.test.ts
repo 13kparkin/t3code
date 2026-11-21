@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { type ChatItem, isRunLive, timelineRows, type ToolStep } from "./timeline";
+import { MessageId } from "@t3tools/contracts";
+
+import { PENDING_DELIVERY, userDelivery } from "./projectionSource";
+import {
+  type ChatItem,
+  isRunLive,
+  type PendingSend,
+  pendingRow,
+  pendingSends,
+  timelineRows,
+  type ToolStep,
+} from "./timeline";
 
 const source = (
   items: ReadonlyArray<ChatItem>,
@@ -34,13 +45,28 @@ describe("the chat rows of a thread", () => {
   it("Given a brief the engine left out, when the rows are built, then its text comes from the thread's messages", () => {
     const rows = timelineRows(
       source(
-        [{ kind: "user", id: "i1", messageId: "m1", text: "", textOmitted: true }],
+        [
+          {
+            kind: "user",
+            id: "i1",
+            messageId: "m1",
+            text: "",
+            textOmitted: true,
+            delivery: "delivered",
+          },
+        ],
         [],
         [{ id: "m1", text: "You are this board's orchestrator" }],
       ),
     );
     expect(rows).toEqual([
-      { kind: "user", id: "i1", text: "You are this board's orchestrator", at: 0 },
+      {
+        kind: "user",
+        id: "i1",
+        text: "You are this board's orchestrator",
+        at: 0,
+        delivery: "delivered",
+      },
     ]);
   });
 
@@ -151,5 +177,66 @@ describe("whether a run is live", () => {
 
   it("Given no run, when it is read, then it is not live", () => {
     expect(isRunLive({ runs: [] })).toBe(false);
+  });
+});
+
+const pendingSend = (messageId: string, state: PendingSend["state"]): PendingSend => ({
+  threadId: "t1",
+  messageId: MessageId.make(messageId),
+  text: "Ship it",
+  files: [],
+  fresh: false,
+  state,
+});
+
+describe("the sends the engine has not echoed", () => {
+  it("Given one send echoed and one not, when the pending sends are read, then only the unechoed one stays", () => {
+    const echoed = pendingSend("m1", { kind: "sending" });
+    const waiting = pendingSend("m2", { kind: "sending" });
+    const kept = pendingSends(
+      source([
+        {
+          kind: "user",
+          id: "i1",
+          messageId: "m1",
+          text: "Ship it",
+          textOmitted: false,
+          delivery: "delivered",
+        },
+      ]),
+      [echoed, waiting],
+    );
+    expect(kept).toEqual([waiting]);
+  });
+
+  it("Given no send echoed, when the pending sends are read, then the same list comes back", () => {
+    const sends = [pendingSend("m1", { kind: "sending" })];
+    expect(pendingSends(source([]), sends)).toBe(sends);
+  });
+
+  it("Given a send that failed, when it is drawn, then it is a failed user row", () => {
+    expect(pendingRow(pendingSend("m1", { kind: "failed", error: "Offline" }))).toEqual({
+      kind: "user",
+      id: "m1",
+      text: "Ship it",
+      at: null,
+      delivery: "failed",
+    });
+  });
+});
+
+describe("how a user message stands", () => {
+  it.each([
+    ["queued_turn", "queued"],
+    ["steer", "steering"],
+    ["promoted_queued_to_steer", "steering"],
+    ["turn_start", "delivered"],
+  ] as const)("Given a pending %s message, when it is read, then it is %s", (intent, delivery) => {
+    expect(PENDING_DELIVERY[intent]).toBe(delivery);
+    expect(userDelivery({ status: "pending", inputIntent: intent })).toBe(delivery);
+  });
+
+  it("Given a queued message the engine has read, when it is read, then it is delivered", () => {
+    expect(userDelivery({ status: "completed", inputIntent: "queued_turn" })).toBe("delivered");
   });
 });

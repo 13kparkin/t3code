@@ -8,6 +8,7 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
+  useState,
   useSyncExternalStore,
 } from "react";
 
@@ -18,12 +19,20 @@ import { ArtifactLookup, ArtifactLookupContext } from "./artifactLookup";
 import { Composer } from "./Composer";
 import { PanelHeader } from "./PanelHeader";
 import { timelineSource } from "./projectionSource";
-import { isRunLive, timelineRows } from "./timeline";
+import {
+  isRunLive,
+  type PendingSend,
+  pendingRow,
+  pendingSends,
+  type TimelineSource,
+  timelineRows,
+} from "./timeline";
 import { TimelineRowView } from "./TimelineRowView";
 import { SkillsContext, useThreadSkills } from "./skills";
 import { MARK_TOKENS, watchTokens } from "./tokenMarks";
 
 const NO_UNSUBSCRIBE = () => undefined;
+const EMPTY: TimelineSource = { runs: [], messages: [], items: [] };
 
 function statusOf(
   runs: ReadonlyArray<{ readonly id: string; readonly status: string }> | undefined,
@@ -50,10 +59,19 @@ export function Conversation({
   const state = useEnvironmentThread(environmentId, threadId);
   const projection = Option.getOrNull(state.data);
   const live = projection !== null && isRunLive(projection);
-  const rows = useMemo(
-    () => (projection === null ? [] : timelineRows(timelineSource(projection))),
+  const source = useMemo(
+    () => (projection === null ? null : timelineSource(projection)),
     [projection],
   );
+  const [sends, setSends] = useState<ReadonlyArray<PendingSend>>([]);
+  // A send leaves once the engine echoes its message, which then draws it in its place.
+  const kept = pendingSends(source ?? EMPTY, sends);
+  if (kept !== sends) setSends(kept);
+  const rows = useMemo(() => {
+    const echoed = source === null ? [] : timelineRows(source);
+    const pending = kept.filter((send) => send.threadId === threadId);
+    return pending.length === 0 ? echoed : [...echoed, ...pending.map(pendingRow)];
+  }, [source, kept, threadId]);
   const failure = Option.getOrNull(state.error);
   const { all: artifacts, open: openArtifact } = useArtifacts();
   const lookup = useMemo(() => new ArtifactLookup(), []);
@@ -116,6 +134,8 @@ export function Conversation({
           threadId={threadId}
           projection={projection}
           live={live}
+          sends={sends}
+          setSends={setSends}
         />
       </ArtifactLookupContext>
     </SkillsContext>
