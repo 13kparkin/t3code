@@ -35,6 +35,13 @@ export type ValidBoard = Extract<ListedBoard, { readonly ok: true }>;
 
 const IGNORE_FILE = `${BOARDS_DIR}/.gitignore`;
 const boardPath = (folder: string) => `${BOARDS_DIR}/${folder}/${BOARD_FILE}`;
+const STORE_FILES = {
+  "tickets.json": "[]",
+  "foryou.jsonl": "",
+  "decisions.tsv": "",
+  "preferences.md": "",
+  "gates.md": "",
+};
 const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
 
 async function listFolders(files: ProjectFiles, cwd: string) {
@@ -45,6 +52,13 @@ async function listFolders(files: ProjectFiles, cwd: string) {
       .map((entry) => baseName(entry.path)),
     hasIgnoreFile: entries.some((entry) => entry.path === IGNORE_FILE),
   };
+}
+
+async function seedStoreFiles(files: ProjectFiles, cwd: string, folder: string) {
+  for (const [name, contents] of Object.entries(STORE_FILES)) {
+    const path = `${BOARDS_DIR}/${folder}/${name}`;
+    if ((await files.read(cwd, path)) === null) await files.write(cwd, path, contents);
+  }
 }
 
 /** Boards read at once, which keeps a project with many boards from flooding the socket. */
@@ -60,9 +74,9 @@ export async function listBoards(
     const text = await files.read(cwd, boardPath(folder));
     if (text === null) return null;
     const parsed = parseBoard(text);
-    return Result.isSuccess(parsed)
-      ? { ok: true, folder, board: parsed.success }
-      : { ok: false, folder, issue: parsed.failure };
+    if (Result.isFailure(parsed)) return { ok: false, folder, issue: parsed.failure };
+    await seedStoreFiles(files, cwd, folder).catch(() => undefined);
+    return { ok: true, folder, board: parsed.success };
   };
   const listed: Array<ListedBoard | null> = [];
   for (let start = 0; start < folders.length; start += READ_BATCH) {
@@ -80,7 +94,7 @@ export interface NewBoard {
   readonly createdAt: string;
 }
 
-/** Writes `.agentboard/<slug>/board.json`, and the `.gitignore` that keeps git out of the whole folder. */
+/** Writes `.agentboard/<slug>/board.json` and the store files, and the `.gitignore` that keeps git out of the whole folder. */
 export async function createBoard(
   files: ProjectFiles,
   cwd: string,
@@ -97,6 +111,7 @@ export async function createBoard(
   };
   if (!hasIgnoreFile) await files.write(cwd, IGNORE_FILE, "*\n");
   await files.write(cwd, boardPath(slug), serializeBoard(board));
+  await seedStoreFiles(files, cwd, slug);
   return { ok: true, folder: slug, board };
 }
 

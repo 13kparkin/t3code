@@ -46,6 +46,22 @@ describe("boards in a project", () => {
     expect(Result.isSuccess(parsed) && parsed.success.archived).toBe(false);
   });
 
+  it("Given a new board, when it is created, then the five store files exist, and listing an older board fills in only the missing ones", async () => {
+    const { files, store } = fakeFiles();
+    const created = await createBoard(files, CWD, input("Claude connector"));
+    const dir = `.agentboard/${created.folder}`;
+    expect(store.get(`${dir}/tickets.json`)).toBe("[]");
+    for (const name of ["foryou.jsonl", "decisions.tsv", "preferences.md", "gates.md"]) {
+      expect(store.get(`${dir}/${name}`)).toBe("");
+    }
+    store.delete(`${dir}/gates.md`);
+    store.set(`${dir}/tickets.json`, '[{"key":"T-1"}]');
+    await listBoards(files, CWD);
+    await listBoards(files, CWD);
+    expect(store.get(`${dir}/gates.md`)).toBe("");
+    expect(store.get(`${dir}/tickets.json`)).toBe('[{"key":"T-1"}]');
+  });
+
   it("Given a board with the same name, when a second is created, then its folder is claude-connector-2", async () => {
     const { files, store } = fakeFiles();
     await createBoard(files, CWD, input("Claude connector"));
