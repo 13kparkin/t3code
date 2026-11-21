@@ -66,6 +66,16 @@ describe("the orchestrator's standing rules and board facts", () => {
     expect(rules).toContain("Start `poteto-agent` for a ticket that crosses several modules");
   });
 
+  it("Given the rules, when they render, then they start a sonic local CI run and state its file format", () => {
+    const rules = renderRules();
+    expect(rules).toContain(
+      "start a `sonic` agent to run local CI on its head in the builder's worktree",
+    );
+    expect(rules).toContain("Line 1 is the head SHA from `git rev-parse HEAD`");
+    expect(rules).toContain("each step ends with a line `<step>-exit=<code>`");
+    expect(rules).toContain("Reported checks win over the file.");
+  });
+
   it("Given the rules, when they render, then they state each pipeline gate", () => {
     const rules = renderRules();
     expect(rules).toContain(
@@ -79,7 +89,7 @@ describe("the orchestrator's standing rules and board facts", () => {
     expect(rules).toContain("Leave `verifying` only with a `verify` verdict in `verdicts`");
     expect(rules).toContain("Record a partial verification as partial.");
     expect(rules).toContain(
-      "Post the `merge_approval` card in the turn the pull request's checks finish.",
+      "Post the `merge_approval` card in the turn the pull request's checks or its local CI run finish.",
     );
     expect(rules).toContain("Give each stage move its own decision line");
     expect(rules).toContain("`gh pr create --repo <owner/repo> --base <base>`");

@@ -7,6 +7,7 @@ import {
   isStuck,
   missingKeys,
   mergeTicketKey,
+  parseCiLocal,
   type PrLive,
   type ReadinessInput,
   rollupChecks,
@@ -58,6 +59,7 @@ const missingOf = (
       tickets: [fields.ticket],
       evidence,
       live: green,
+      ciLocal: null,
       mergeOrderNote: null,
       reviewRoles: REVIEW_ROLES,
       now: NOW,
@@ -89,6 +91,7 @@ describe("merge readiness", () => {
       tickets: [ticket],
       evidence,
       live: green,
+      ciLocal: null,
       mergeOrderNote: null,
       reviewRoles: REVIEW_ROLES,
       now: NOW,
@@ -168,11 +171,80 @@ describe("stuck checks", () => {
       tickets: [ticket],
       evidence,
       live: live([check("test", "pending", minutesAgo(21))]),
+      ciLocal: null,
       mergeOrderNote: null,
       reviewRoles: REVIEW_ROLES,
       now: NOW,
     });
     expect(conditions[0]?.missing).toBe("test stuck");
+  });
+});
+
+describe("local CI evidence", () => {
+  const ticket = ticketOf({ key: "T-1", pr: 12, verdicts: clean });
+  const ciMissing = (fields: Partial<ReadinessInput>) =>
+    evaluateReadiness({
+      ticket,
+      tickets: [ticket],
+      evidence,
+      live: live([], "abc1234def"),
+      ciLocal: null,
+      mergeOrderNote: null,
+      reviewRoles: REVIEW_ROLES,
+      now: NOW,
+      ...fields,
+    })[0]?.missing;
+  const passing = "abc1234def\n$ vp run check:changed\nexit=0\nengine untouched\nengine-exit=0\n";
+
+  it("Given a ci-local.txt, when it is parsed, then it holds the head SHA and every exit line", () => {
+    expect(parseCiLocal(passing)).toEqual({
+      kind: "run",
+      headSha: "abc1234def",
+      exits: [
+        { label: "exit", code: 0 },
+        { label: "engine-exit", code: 0 },
+      ],
+    });
+  });
+
+  it("Given a ci-local.txt without a SHA or without exit lines, when it is parsed, then it says why it is unreadable", () => {
+    expect(parseCiLocal("=== vp test run ===\nexit=0\n")).toEqual({
+      kind: "unreadable",
+      reason: "ci-local.txt has no head SHA on line 1",
+    });
+    expect(parseCiLocal("abc1234def\nstill running\n")).toEqual({
+      kind: "unreadable",
+      reason: "ci-local.txt has no exit codes",
+    });
+  });
+
+  it("Given no reported checks and a passing ci-local.txt on the head, when readiness is computed, then CI is met", () => {
+    expect(ciMissing({ ciLocal: parseCiLocal(passing) })).toBeNull();
+  });
+
+  it("Given no reported checks and a ci-local.txt on another commit, when readiness is computed, then CI names the stale SHA", () => {
+    expect(ciMissing({ ciLocal: parseCiLocal(passing.replace("abc1234def", "0ff1ce0")) })).toBe(
+      "ci-local.txt ran on 0ff1ce0, not abc1234",
+    );
+  });
+
+  it("Given no reported checks and a ci-local.txt with a failing step, when readiness is computed, then CI names the step", () => {
+    expect(
+      ciMissing({ ciLocal: parseCiLocal(passing.replace("engine-exit=0", "engine-exit=1")) }),
+    ).toBe("ci-local.txt has engine-exit=1");
+  });
+
+  it("Given no reported checks and no ci-local.txt, when readiness is computed, then CI says both are missing", () => {
+    expect(ciMissing({})).toBe("No checks reported and no ci-local.txt");
+  });
+
+  it("Given a failing reported check and a passing ci-local.txt, when readiness is computed, then the check wins", () => {
+    expect(
+      ciMissing({
+        live: live([check("test", "failure")], "abc1234def"),
+        ciLocal: parseCiLocal(passing),
+      }),
+    ).toBe("test failing");
   });
 });
 

@@ -11,10 +11,17 @@ import { AsyncResult, Atom } from "effect/reactivity";
 import { createContext, useContext, useMemo } from "react";
 
 import { useArtifacts } from "../artifacts/ArtifactsContext";
-import { type ConditionState, evaluateReadiness, type PrLive } from "../domain/readiness";
+import {
+  type CiLocal,
+  type ConditionState,
+  evaluateReadiness,
+  type PrLive,
+} from "../domain/readiness";
 import { connectionAtomRuntime } from "../connection/runtime";
+import { locate } from "../files/target";
 import { ROLES } from "../orchestrator/roles";
 import type { FamilyRow, TicketView } from "./boardModel";
+import { artifactContentsKey, ciLocalAtom } from "./artifacts";
 import { threadFamilies } from "./family";
 import { buildLive, sameRef, ticketPrRef, trackRunning } from "./prLive";
 
@@ -132,6 +139,7 @@ export const prLiveAtom = Atom.family((key: string) => {
 });
 
 const NO_PR = Atom.make<PrLive | null>(null).pipe(Atom.withLabel("board-pr:none"));
+const NO_CI_LOCAL = Atom.make<CiLocal | null>(null).pipe(Atom.withLabel("board-ci-local:none"));
 
 export interface PrContextValue {
   readonly project: EnvironmentProject;
@@ -186,8 +194,16 @@ const REVIEW_ROLES: ReadonlySet<string> = new Set(
  */
 export function useTicketReadiness(view: TicketView | null): ReadonlyArray<ConditionState> | null {
   const { tickets, mergeOrderNotes } = usePrContext();
-  const { groups } = useArtifacts();
+  const { groups, files } = useArtifacts();
   const { live, now } = useTicketPr(view);
+  const evidence = view === null ? undefined : groups.byTicket.get(view.ticket.key);
+  const ciFile = evidence?.find((artifact) => artifact.name === "ci-local.txt");
+  const located = ciFile === undefined ? null : locate(files.roots, ciFile.absolutePath);
+  const ciLocal = useAtomValue(
+    located === null
+      ? NO_CI_LOCAL
+      : ciLocalAtom(artifactContentsKey(files.environmentId, located.root.cwd, located.path)),
+  );
   return useMemo(
     () =>
       view === null
@@ -195,12 +211,13 @@ export function useTicketReadiness(view: TicketView | null): ReadonlyArray<Condi
         : evaluateReadiness({
             ticket: view.ticket,
             tickets: tickets.map((entry) => entry.ticket),
-            evidence: (groups.byTicket.get(view.ticket.key) ?? []).map((artifact) => artifact.path),
+            evidence: (evidence ?? []).map((artifact) => artifact.path),
             live,
+            ciLocal,
             mergeOrderNote: mergeOrderNotes.get(view.ticket.key) ?? null,
             reviewRoles: REVIEW_ROLES,
             now,
           }),
-    [view, tickets, groups, live, mergeOrderNotes, now],
+    [view, tickets, evidence, live, ciLocal, mergeOrderNotes, now],
   );
 }

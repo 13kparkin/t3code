@@ -1,0 +1,44 @@
+// The checks a board change must pass, shared by release.mjs and ci-local.mjs so the two cannot drift.
+// `cwd` is relative to the repo root.
+import * as NodeChildProcess from "node:child_process";
+
+/** Adds the upstream remote when the checkout lacks it. */
+export function addUpstreamRemote(root) {
+  try {
+    NodeChildProcess.execFileSync("git", ["remote", "get-url", "upstream"], {
+      cwd: root,
+      stdio: "ignore",
+    });
+  } catch {
+    NodeChildProcess.execFileSync(
+      "git",
+      ["remote", "add", "upstream", "https://github.com/pingdotgg/t3code.git"],
+      { cwd: root },
+    );
+  }
+}
+
+/** The engine gate diffs against upstream/main, so it runs after this fetch. */
+export const UPSTREAM_FETCH = [
+  "git",
+  ["fetch", "--no-tags", "--filter=blob:none", "upstream", "main"],
+];
+
+/** The same gates as the agent-board job. */
+export const GATES = [
+  { name: "engine", command: "node", args: ["apps/board/scripts/check-engine-untouched.mjs"] },
+  { name: "diagnostics", command: "node", args: ["standards/check-added-diagnostics.mjs"] },
+  { name: "deps", command: "vp", args: ["run", "--filter", "@agent-board/app", "standards:deps"] },
+  {
+    name: "node-tests",
+    command: "node",
+    args: [
+      "--test",
+      "apps/board/scripts/*.test.mjs",
+      "apps/board/plugins/**/*.test.mjs",
+      "standards/**/*.test.mjs",
+    ],
+  },
+  { name: "typecheck", command: "vp", args: ["run", "--filter", "@agent-board/app", "typecheck"] },
+  { name: "board-suite", command: "vp", args: ["test", "run"], cwd: "apps/board" },
+];
