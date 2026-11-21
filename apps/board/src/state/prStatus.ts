@@ -21,7 +21,7 @@ import { connectionAtomRuntime } from "../connection/runtime";
 import { locate } from "../files/target";
 import { ROLES } from "../orchestrator/roles";
 import type { FamilyRow, TicketView } from "./boardModel";
-import { artifactContentsKey, ciLocalAtom } from "./artifacts";
+import { ciLocalAtom, ciLocalKey } from "./artifacts";
 import { threadFamilies } from "./family";
 import { buildLive, sameRef, ticketPrRef, trackRunning } from "./prLive";
 
@@ -197,16 +197,17 @@ export function useTicketReadiness(view: TicketView | null): ReadonlyArray<Condi
   const { groups, files } = useArtifacts();
   const { live, now } = useTicketPr(view);
   const evidence = view === null ? undefined : groups.byTicket.get(view.ticket.key);
-  // Only a pull request with no checks reads the file, so no other card polls it.
+  // Only a pull request whose host reports no checks reads the file, so no other card polls it.
   const ciFile =
-    live?.checks.length === 0
+    live?.checksState === null && live.checks.length === 0
       ? evidence?.find((artifact) => artifact.name === "ci-local.txt")
       : undefined;
+  const head = live?.headSha ?? view?.ticket.headSha ?? null;
   const located = ciFile === undefined ? null : locate(files.roots, ciFile.absolutePath);
   const ciLocal = useAtomValue(
     located === null
       ? NO_CI_LOCAL
-      : ciLocalAtom(artifactContentsKey(files.environmentId, located.root.cwd, located.path)),
+      : ciLocalAtom(ciLocalKey(files.environmentId, located.root.cwd, located.path, head)),
   );
   return useMemo(
     () =>

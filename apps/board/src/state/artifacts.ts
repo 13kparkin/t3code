@@ -16,7 +16,7 @@ import * as Schema from "effect/Schema";
 import { Atom, type AtomRegistry } from "effect/reactivity";
 
 import { connectionAtomRuntime } from "../connection/runtime";
-import { type CiLocal, parseCiLocal } from "../domain/readiness";
+import { type CiLocal, localCiState, parseCiLocal } from "../domain/readiness";
 import { type Artifact, type ArtifactContents, listArtifacts } from "../store/artifacts";
 import { failureText } from "../settings/failureText";
 import { boardEngine } from "./boards";
@@ -32,6 +32,11 @@ const assetEnvironment = createAssetEnvironmentAtoms(connectionAtomRuntime);
 const isReadFileError = Schema.is(ProjectReadFileError);
 const decodeContentsKey = Schema.decodeUnknownSync(
   Schema.fromJsonString(Schema.Tuple([Schema.String, Schema.String, Schema.String])),
+);
+const decodeCiLocalKey = Schema.decodeUnknownSync(
+  Schema.fromJsonString(
+    Schema.Tuple([Schema.String, Schema.String, Schema.String, Schema.NullOr(Schema.String)]),
+  ),
 );
 const decodeBoardKey = Schema.decodeUnknownSync(
   Schema.fromJsonString(Schema.Tuple([Schema.String, Schema.String, Schema.Array(Schema.String)])),
@@ -204,12 +209,13 @@ function ciLocalOf(contents: ArtifactContents): CiLocal | null {
 }
 
 /**
- * A ticket's `ci-local.txt`, keyed like `artifactContentsAtom`. It reads the file again on a
- * timer while a card shows it, and is null until the first read answers or when the file is gone.
+ * A ticket's `ci-local.txt` judged against a pull request head, keyed by `ciLocalKey`. It reads
+ * the file again on a timer until the run meets that head, and a new head is a new key. It is null
+ * until the first read answers or when the file is gone.
  */
 export const ciLocalAtom = Atom.family((key: string) =>
   Atom.make<CiLocal | null>((get) => {
-    const [environmentId, cwd, path] = decodeContentsKey(key);
+    const [environmentId, cwd, path, head] = decodeCiLocalKey(key);
     let stopped = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const read = async () => {
@@ -221,7 +227,9 @@ export const ciLocalAtom = Atom.family((key: string) =>
         }));
       const before = Option.getOrNull(get.self<CiLocal | null>()) ?? null;
       if (!stopped && JSON.stringify(next) !== JSON.stringify(before)) get.setSelf(next);
-      if (!stopped) timer = setTimeout(() => void read(), CI_LOCAL_POLL_MS);
+      if (!stopped && localCiState(next, head) !== null) {
+        timer = setTimeout(() => void read(), CI_LOCAL_POLL_MS);
+      }
     };
     void read();
     get.addFinalizer(() => {
@@ -231,3 +239,10 @@ export const ciLocalAtom = Atom.family((key: string) =>
     return Option.getOrElse(get.self<CiLocal | null>(), () => null);
   }).pipe(Atom.withLabel(`board-ci-local:${key}`)),
 );
+
+export const ciLocalKey = (
+  environmentId: EnvironmentId,
+  cwd: string,
+  path: string,
+  head: string | null,
+) => JSON.stringify([environmentId, cwd, path, head]);

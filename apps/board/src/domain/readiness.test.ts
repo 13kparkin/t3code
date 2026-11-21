@@ -232,6 +232,9 @@ describe("local CI evidence", () => {
     expect(
       ciMissing({ ciLocal: parseCiLocal(passing.replace("engine-exit=0", "engine-exit=1")) }),
     ).toBe("ci-local.txt has engine-exit=1");
+    expect(
+      ciMissing({ ciLocal: parseCiLocal(passing.replace("engine-exit=0", "engine-exit=-1")) }),
+    ).toBe("ci-local.txt has engine-exit=-1");
   });
 
   it("Given no reported checks and no ci-local.txt, when readiness is computed, then CI says both are missing", () => {

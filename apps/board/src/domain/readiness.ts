@@ -62,7 +62,7 @@ export function parseCiLocal(text: string): CiLocal {
   if (!/^[0-9a-f]{7,40}$/.test(headSha)) {
     return { kind: "unreadable", reason: "ci-local.txt has no head SHA on line 1" };
   }
-  const exits = [...text.matchAll(/^((?:\S+-)?exit)=(\d+)\s*$/gm)].map((match) => ({
+  const exits = [...text.matchAll(/^((?:\S+-)?exit)=(-?\d+)\s*$/gm)].map((match) => ({
     label: match[1] ?? "",
     code: Number(match[2]),
   }));
@@ -118,7 +118,8 @@ const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ?
 const sameCommit = (left: string, right: string) =>
   left.startsWith(right) || right.startsWith(left);
 
-function localCiState(ciLocal: CiLocal | null, head: string | null): string | null {
+/** What keeps a local CI run from meeting `ci_green` on `head`, or null when it meets it. */
+export function localCiState(ciLocal: CiLocal | null, head: string | null): string | null {
   if (ciLocal === null) return "No checks reported and no ci-local.txt";
   if (ciLocal.kind === "unreadable") return ciLocal.reason;
   if (head === null) return "The pull request's head is unknown";
