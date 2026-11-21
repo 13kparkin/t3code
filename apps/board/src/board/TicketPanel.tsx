@@ -7,6 +7,7 @@ import type { BoardModel } from "../state/boardModel";
 import { AgentLog } from "./AgentLog";
 import { PrChecks } from "./PrChecks";
 import { TicketReadiness } from "./TicketReadiness";
+import { TicketSteps } from "./TicketSteps";
 
 const STATE_LABEL = {
   working: "Working",
@@ -83,6 +84,7 @@ export function TicketPanel({
       )}
       {view !== undefined && (
         <div className="max-h-[50%] shrink-0 overflow-y-auto">
+          <TicketSteps view={view} />
           <PrChecks view={view} />
           <TicketReadiness view={view} />
         </div>

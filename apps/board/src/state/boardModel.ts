@@ -153,6 +153,7 @@ export function joinBoard(input: {
       .map((ticket) => ({ ticket, agents: byTicket.get(ticket.key) ?? [] }));
   return {
     lanes: {
+      todo: lane("todo"),
       planned: lane("planned"),
       building: lane("building"),
       reviewing: lane("reviewing"),

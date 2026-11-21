@@ -1,7 +1,7 @@
 import * as Result from "effect/Result";
 import { describe, expect, it } from "vite-plus/test";
 
-import { parseTickets } from "./ticket";
+import { missingPlan, parseTickets, stepProgress, type Ticket } from "./ticket";
 
 const issueOf = (text: string) => {
   const parsed = parseTickets(text);
@@ -29,6 +29,12 @@ describe("tickets.json", () => {
       verdicts: [{ role: "reviewer", p0: 0, p1: 1, p2: 0, p3: 2 }],
       fixRounds: 1,
       issue: { tracker: "linear", key: "XEO-3331" },
+      playbook: "feature.md",
+      steps: [
+        { text: "Write the plan", state: "done" },
+        { text: "Run the demo", state: "skipped", note: "No UI change" },
+        { text: "Open the PR", state: "pending" },
+      ],
     };
     const parsed = parseTickets(JSON.stringify([ticket]));
     expect(Result.isSuccess(parsed) ? parsed.success : null).toEqual([ticket]);
@@ -37,6 +43,13 @@ describe("tickets.json", () => {
   it("Given a ticket with only key, title, and stage, when it is parsed, then it is accepted", () => {
     const parsed = parseTickets('[{"key":"T-1","title":"a","stage":"planned"}]');
     expect(Result.isSuccess(parsed)).toBe(true);
+  });
+
+  it("Given a step with an unknown state, when it is parsed, then it is rejected and names steps", () => {
+    const issue = issueOf(
+      '[{"key":"T-1","title":"a","stage":"todo","steps":[{"text":"x","state":"half"}]}]',
+    );
+    expect(issue.fields).toEqual(["steps"]);
   });
 
   it("Given the stage done, when it is parsed, then it is rejected and names stage", () => {
@@ -64,5 +77,35 @@ describe("tickets.json", () => {
   it("Given text that is not a list, when it is parsed, then it is rejected as a file problem", () => {
     expect(issueOf("not json").fields).toEqual([]);
     expect(issueOf('{"key":"T-1"}').fields).toEqual([]);
+  });
+});
+
+describe("plans and steps", () => {
+  const ticket = (fields: Partial<Ticket>): Ticket => ({
+    key: "T-1",
+    title: "a",
+    stage: "planned",
+    ...fields,
+  });
+  const steps = [
+    { text: "a", state: "done" },
+    { text: "b", state: "skipped", note: "n/a" },
+    { text: "c", state: "pending" },
+  ] as const;
+
+  it.each([
+    ["todo without a plan", { stage: "todo" }, false],
+    ["planned without a plan", {}, true],
+    ["planned with a playbook and no steps", { playbook: "feature.md", steps: [] }, true],
+    ["building with both", { stage: "building", playbook: "feature.md", steps }, false],
+    ["off_path without a plan", { stage: "off_path" }, false],
+    ["merged without a plan", { stage: "merged" }, false],
+  ] as const)("Given %s, when checked, then missingPlan is %s", (_, fields, expected) => {
+    expect(missingPlan(ticket(fields))).toBe(expected);
+  });
+
+  it("Given steps, when counted, then done and skipped are totalled, and no steps gives null", () => {
+    expect(stepProgress(ticket({ steps }))).toEqual({ done: 1, skipped: 1, total: 3 });
+    expect(stepProgress(ticket({}))).toBeNull();
   });
 });

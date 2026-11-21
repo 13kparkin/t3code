@@ -3,7 +3,7 @@ import { ArrowRight, GitBranch, RotateCcw } from "lucide-react";
 import { useContext, useRef } from "react";
 
 import { useArtifacts } from "../artifacts/ArtifactsContext";
-import type { Ticket } from "../domain/ticket";
+import { missingPlan, STAGE_LABEL, stepProgress, type Ticket } from "../domain/ticket";
 import { NO_ARTIFACTS } from "../state/artifacts";
 import { openTicketChanges } from "../state/changesView";
 import type { TicketView } from "../state/boardModel";
@@ -12,6 +12,7 @@ import { ArtifactCards } from "./ArtifactCards";
 import { ArtifactCount } from "./ArtifactCount";
 import { artifactsHeight, CARD_GAP, FRAME_PAD, type FrameBox, hasChips, hasPrRow } from "./layout";
 import { IssueChip } from "../issues/IssueChip";
+import { Tooltip } from "../ui/Tooltip";
 import { PrChip } from "./PrChip";
 import { RemoveWorktree } from "./RemoveWorktree";
 import { ReviewChanges } from "./ReviewChanges";
@@ -73,6 +74,7 @@ export function TicketFrame({
         : `${ticket.branch} → ${ticket.base}`;
   const press = useRef<{ startY: number; dragging: boolean } | null>(null);
   const seen = new Map<string, number>();
+  const progress = stepProgress(ticket);
   const verdicts = (ticket.verdicts ?? []).map((verdict) => {
     const chipText = verdictText(verdict);
     const earlier = seen.get(chipText.text) ?? 0;
@@ -171,6 +173,16 @@ export function TicketFrame({
         )}
         {hasChips(ticket) && (
           <div className="mt-1.5 flex h-[44px] flex-wrap content-start gap-1 overflow-hidden">
+            {missingPlan(ticket) && (
+              <Tooltip text={`In ${STAGE_LABEL[ticket.stage]} without a playbook and steps`}>
+                <span
+                  data-testid="plan-missing"
+                  className={`${chip} border-amber-400/50 text-amber-300`}
+                >
+                  No plan
+                </span>
+              </Tooltip>
+            )}
             {ticket.issue != null && (
               <IssueChip ticket={ticket} onOpenThread={(threadId) => onOpen(threadId)} />
             )}
@@ -194,6 +206,12 @@ export function TicketFrame({
                 <span className="truncate">{text}</span>
               </span>
             ))}
+            {progress !== null && (
+              <span data-testid="step-progress" className={chip}>
+                {progress.done}/{progress.total} steps
+                {progress.skipped > 0 && ` · ${progress.skipped} skipped`}
+              </span>
+            )}
             {(ticket.flags ?? []).map((flag) => (
               <span key={flag} className={`${chip} border-amber-400/50 text-amber-300`}>
                 {flag}

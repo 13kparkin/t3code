@@ -59,6 +59,11 @@ describe("the orchestrator's standing rules and board facts", () => {
     expect(rules).toContain("<its worktree>/.omp/artifacts/<ticket key>/");
     expect(rules).toContain("<board folder>/artifacts/<ticket key>/");
     expect(rules).toContain("`met`, `evidence`, and `note` are all required");
+    expect(rules).toContain("- `todo`: captured, no plan yet.");
+    expect(rules).toContain(
+      "Before you move a ticket to `planned`, set its `playbook` and `steps`",
+    );
+    expect(rules).toContain("Start `poteto-agent` for a ticket that crosses several modules");
   });
 });
 
@@ -75,7 +80,7 @@ describe("the review template and usage rules", () => {
 
 describe("orchestrator stats", () => {
   const tickets = JSON.stringify([
-    { key: "T-1", title: "a", stage: "planned" },
+    { key: "T-1", title: "a", stage: "todo" },
     { key: "T-2", title: "b", stage: "building" },
     { key: "T-3", title: "c", stage: "building" },
     { key: "T-4", title: "d", stage: "reviewing" },
@@ -96,7 +101,8 @@ describe("orchestrator stats", () => {
     const stats = orchestratorStats({ tickets, forYou, decisions }, 2);
     expect(stats).toEqual({
       stages: {
-        planned: 1,
+        todo: 1,
+        planned: 0,
         building: 2,
         reviewing: 1,
         verifying: 0,

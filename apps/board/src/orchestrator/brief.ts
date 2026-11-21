@@ -89,6 +89,7 @@ export interface OrchestratorStats {
 export function orchestratorStats(files: StoreFiles, builderCap: number): OrchestratorStats {
   const problems: string[] = [];
   const stages = {
+    todo: 0,
     planned: 0,
     building: 0,
     reviewing: 0,

@@ -40,6 +40,7 @@ const view = (ticket: Ticket, agents = 0): TicketView => ({
   agents: Array.from({ length: agents }, (_, index) => agent(`${ticket.key}-${index}`)),
 });
 const empty: BoardModel["lanes"] = {
+  todo: [],
   planned: [],
   building: [],
   reviewing: [],
@@ -69,6 +70,7 @@ describe("laying out the lanes", () => {
   it("Given tickets in two stages, when laid out, then each frame sits in its stage's column and frames stack in file order", () => {
     expect(layout.lanes.map((entry) => entry.id)).toEqual([
       "for_you",
+      "todo",
       "planned",
       "building",
       "reviewing",
@@ -79,7 +81,7 @@ describe("laying out the lanes", () => {
       "off_path",
     ]);
     const building = lane("building");
-    expect(building?.x).toBe(40 + 2 * (LANE_WIDTH + LANE_GAP));
+    expect(building?.x).toBe(40 + 3 * (LANE_WIDTH + LANE_GAP));
     expect(building?.frames.map((frame) => [frame.key, frame.x, frame.y])).toEqual([
       ["T-1", building!.x + LANE_PAD, LANES_TOP + LANE_HEAD],
       [
@@ -98,6 +100,17 @@ describe("laying out the lanes", () => {
     const grown = artifactsHeight(3);
     expect(frame(open, "T-1")?.height).toBe((frame(layout, "T-1")?.height ?? 0) + grown);
     expect(frame(open, "T-2")?.y).toBe((frame(layout, "T-2")?.y ?? 0) + grown);
+  });
+
+  it("Given bare tickets, when their heads are measured, then steps or a missing plan add the chip row", () => {
+    const bare = headHeight({ key: "T-9", title: "a", stage: "todo" });
+    const unplanned = headHeight({ key: "T-9", title: "a", stage: "planned" });
+    const stepped = { key: "T-9", title: "a", playbook: "feature.md" } as const;
+    expect(unplanned).toBeGreaterThan(bare);
+    expect(
+      headHeight({ ...stepped, stage: "todo", steps: [{ text: "x", state: "pending" }] }),
+    ).toBe(unplanned);
+    expect(headHeight({ ...stepped, stage: "off_path" })).toBe(bare);
   });
 
   it("Given a dependency on a ticket that exists and one that does not, when laid out, then only the first has an edge", () => {
