@@ -54,7 +54,6 @@ async function listFolders(files: ProjectFiles, cwd: string) {
   };
 }
 
-/** Creates the orchestrator's store files that are missing, so its first read of them finds each. */
 async function seedStoreFiles(files: ProjectFiles, cwd: string, folder: string) {
   for (const [name, contents] of Object.entries(STORE_FILES)) {
     const path = `${BOARDS_DIR}/${folder}/${name}`;
