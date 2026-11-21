@@ -62,6 +62,7 @@ NodeTest.test(
     write("standards/oxlint.config.ts", "export default {};\n");
     write(".vite-hooks/pre-push", "node standards/check-added-diagnostics.mjs\n");
     write(".claude/settings.json", "{}\n");
+    write(".gitignore", ".omp/\n");
     commit();
     NodeAssert.equal(check().status, 0);
   },
