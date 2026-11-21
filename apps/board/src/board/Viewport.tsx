@@ -104,13 +104,18 @@ export function Viewport({
     if (event.button !== 0) return;
     drag.current = { startX: event.clientX, startY: event.clientY, origin: view };
     event.currentTarget.setPointerCapture(event.pointerId);
-    setPanning(true);
   };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
     const active = drag.current;
     if (!active) return;
-    setView(panBy(active.origin, event.clientX - active.startX, event.clientY - active.startY));
+    const dx = event.clientX - active.startX;
+    const dy = event.clientY - active.startY;
+    if (!panning && (dx !== 0 || dy !== 0)) {
+      setPanning(true);
+      window.getSelection()?.removeAllRanges();
+    }
+    setView(panBy(active.origin, dx, dy));
   };
 
   const endPan = () => {
