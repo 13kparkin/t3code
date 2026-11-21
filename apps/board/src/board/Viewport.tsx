@@ -124,7 +124,7 @@ export function Viewport({
       <div
         ref={attachSurface}
         data-testid="board-canvas"
-        className={`absolute inset-0 touch-none ${panning ? "cursor-grabbing" : "cursor-grab"}`}
+        className={`absolute inset-0 touch-none ${panning ? "cursor-grabbing select-none" : "cursor-grab"}`}
         style={{
           backgroundImage: "radial-gradient(circle, var(--color-dot) 1.3px, transparent 1.5px)",
           backgroundSize: `${spacing}px ${spacing}px`,
