@@ -5,7 +5,7 @@ import * as SchemaIssue from "effect/SchemaIssue";
 export const BOARDS_DIR = ".agentboard";
 export const BOARD_FILE = "board.json";
 
-/** Orchestrators spawn at most this many building agents until a board says otherwise. */
+/** Orchestrators spawn at most this many implementation agents until a board says otherwise. */
 export const DEFAULT_BUILDER_CAP = 2;
 
 const Text = Schema.String.check(Schema.isNonEmpty());
