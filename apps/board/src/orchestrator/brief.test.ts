@@ -17,7 +17,7 @@ describe("the orchestrator's standing rules and board facts", () => {
   it("Given a board, when the facts render, then they name the folder, the cap, and the project and nothing else", () => {
     const facts = renderFacts(FACTS);
     expect(facts).toContain("`/p/.agentboard/x`");
-    expect(facts).toContain("at most 2 building agents");
+    expect(facts).toContain("at most 2 implementation agents");
     expect(facts).toContain("`slugkit`, at `/p`");
     expect(facts).not.toContain("{{");
     expect(facts).not.toContain("delegate_task");
@@ -107,7 +107,6 @@ describe("orchestrator stats", () => {
       },
       ticketTotal: 5,
       forYouOpen: 1,
-      buildersInUse: 2,
       builderCap: 2,
       latestDecision: { time: "2026-11-21", decision: "Research T-1 first" },
       problems: [],

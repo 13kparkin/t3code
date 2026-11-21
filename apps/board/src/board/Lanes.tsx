@@ -47,6 +47,7 @@ export function Lanes({
   model,
   boardId,
   forYouOpen,
+  queued,
   forYouLane,
   choice,
   onChoose,
@@ -55,6 +56,7 @@ export function Lanes({
   model: BoardModel;
   boardId: string;
   forYouOpen: number;
+  queued: boolean;
   forYouLane: ReactNode;
   choice: TicketChoice | null;
   onChoose: (choice: TicketChoice) => void;
@@ -136,6 +138,7 @@ export function Lanes({
               className={`rounded-md px-2 text-[11px] leading-5 font-semibold ${LANE_TONE[lane.id]}`}
             >
               {LABEL[lane.id]}
+              {lane.id === "planned" && queued ? " · queued" : ""}
             </span>
             <span className="text-[11px] text-faint">{laneCount(lane, model, forYouOpen)}</span>
           </header>

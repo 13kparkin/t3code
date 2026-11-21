@@ -75,7 +75,6 @@ export interface OrchestratorStats {
   readonly stages: Readonly<Record<TicketStage, number>>;
   readonly ticketTotal: number;
   readonly forYouOpen: number;
-  readonly buildersInUse: number;
   readonly builderCap: number;
   /** The newest line of `decisions.tsv`: its time and its decision. */
   readonly latestDecision: { readonly time: string; readonly decision: string } | null;
@@ -118,7 +117,6 @@ export function orchestratorStats(files: StoreFiles, builderCap: number): Orches
     stages,
     ticketTotal: Object.values(stages).reduce((sum, count) => sum + count, 0),
     forYouOpen: openCards(forYou.cards).length,
-    buildersInUse: stages.building,
     builderCap,
     latestDecision: time === undefined || decision === undefined ? null : { time, decision },
     problems,

@@ -166,6 +166,24 @@ export function joinBoard(input: {
   };
 }
 
+const IMPLEMENTATION_ROLES: ReadonlySet<string> = new Set(
+  ROLES.filter((role) => role.t3Role === "implementation").map((role) => role.name),
+);
+
+/** Live implementation agents on any ticket stage or unassigned: each runs its own worktree, install, and dev server. */
+export function countImplementationAgents(model: BoardModel): number {
+  return [
+    ...Object.values(model.lanes)
+      .flat()
+      .flatMap((view) => view.agents),
+    ...model.unassigned,
+  ].filter(
+    (agent) =>
+      IMPLEMENTATION_ROLES.has(agent.role) &&
+      (agent.runState === "working" || agent.runState === "waiting"),
+  ).length;
+}
+
 /** The family as a tree by `lineage.parentThreadId`. A thread whose parent is missing from the family hangs off the root. */
 export function agentTree(input: {
   readonly family: ReadonlyArray<FamilyRow>;

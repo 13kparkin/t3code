@@ -35,10 +35,12 @@ export function OrchestratorCard({
   project,
   listed,
   stats,
+  builders,
 }: {
   project: EnvironmentProject;
   listed: ValidBoard;
   stats: OrchestratorStats;
+  builders: number;
 }) {
   const { board } = listed;
   // The panel holds the same thread open, so this adds no second subscription.
@@ -154,7 +156,7 @@ export function OrchestratorCard({
         <span className="text-muted">
           Builders{" "}
           <span data-testid="builders" className="text-fg">
-            {stats.buildersInUse} of {stats.builderCap}
+            {builders} of {stats.builderCap}
           </span>
         </span>
       </div>
