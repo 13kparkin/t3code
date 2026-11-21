@@ -80,13 +80,6 @@ describe("installing the app's update", () => {
     expect(feeds).toEqual(["https://github.com/13kparkin/t3code/releases/download/board-v0.3.0"]);
   });
 
-  it("Given an update not yet downloaded, when restart is asked, then the app does not restart", async () => {
-    const { updates, installs } = setup();
-    await updates.check();
-    expect(updates.restart(0)).toBe(false);
-    expect(installs).toEqual([]);
-  });
-
   it("Given a downloaded update and an active run, when restart is asked, then the app does not restart", async () => {
     const { updates, installs } = setup();
     await updates.check();

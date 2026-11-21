@@ -70,10 +70,9 @@ export const appUpdateStateAtom = Atom.make((get): AppUpdateState | null => {
 export function installAppUpdate(registry: AtomRegistry.AtomRegistry) {
   const state = registry.get(appUpdateStateAtom);
   if (state === null || appUpdateHost === undefined) return;
-  const activeRuns = registry.get(activeRunsAtom).total;
-  const step = appUpdateStep(state, activeRuns);
+  const step = appUpdateStep(state, registry.get(appRestartRunsAtom));
   if (step === "download") appUpdateHost.download();
-  if (step === "restart") appUpdateHost.restart(activeRuns);
+  if (step === "restart") appUpdateHost.restart(0);
 }
 
 export function changeUpdatePrefs(
@@ -107,6 +106,13 @@ export const activeRunsAtom = Atom.make((get): ActiveRuns => {
       : (get(environmentSnapshotAtom(environmentId))?.threads ?? NO_THREADS);
   return countActiveRuns(threads);
 }).pipe(Atom.withLabel("active-runs"));
+
+/** Null until the engine's threads load, since a restart then could cut a run the app cannot see. */
+export const appRestartRunsAtom = Atom.make((get): number | null => {
+  const environmentId = get(engineEnvironmentIdAtom);
+  const snapshot = environmentId === null ? null : get(environmentSnapshotAtom(environmentId));
+  return (snapshot ?? null) === null ? null : get(activeRunsAtom).total;
+}).pipe(Atom.withLabel("app-restart-runs"));
 
 /** The newest engine release, read only where the Updates page shows it. */
 export const engineReleaseAtom = Atom.make((get): string | null => {
@@ -144,7 +150,7 @@ export const updateItemsAtom = Atom.make((get): ReadonlyArray<UpdateItem> => {
   const offer = get(engineUpdateOfferAtom);
   const update = get(engineUpdateStateAtom);
   const appState = get(appUpdateStateAtom);
-  const app = appState === null ? null : appItem(appState, runs.total);
+  const app = appState === null ? null : appItem(appState, get(appRestartRunsAtom));
   const engine: UpdateItem = {
     key: ENGINE_KEY,
     kind: "engine",

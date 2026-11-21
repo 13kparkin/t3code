@@ -4,6 +4,7 @@ import { useContext, useState } from "react";
 
 import { offeredRelease } from "../state/engineUpdate";
 import {
+  appRestartRunsAtom,
   appUpdateStateAtom,
   changeUpdatePrefs,
   engineReleaseAtom,
@@ -40,6 +41,7 @@ export function UpdatesPage({
   const prefs = useAtomValue(updatePrefsAtom);
   const release = useAtomValue(engineReleaseAtom);
   const appState = useAtomValue(appUpdateStateAtom);
+  const appRuns = useAtomValue(appRestartRunsAtom);
   const [pending, setPending] = useState<ReadonlySet<string>>(new Set());
 
   const run = async (targets: ReadonlyArray<UpdateRow>) => {
@@ -66,8 +68,7 @@ export function UpdatesPage({
         };
   const providers = rows.filter((row) => row.kind === "provider");
   const app = rows.find((row) => row.kind === "app");
-  const appStep =
-    appState === null || app === undefined ? null : appUpdateStep(appState, app.activeRuns);
+  const appStep = appState === null || app === undefined ? null : appUpdateStep(appState, appRuns);
   const queue = updateEverythingQueue(rows);
   const setAutomatic = (key: keyof UpdatePrefs["autoUpdate"], enabled: boolean) =>
     void changeUpdatePrefs(registry, (current) => ({

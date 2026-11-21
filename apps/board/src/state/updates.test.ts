@@ -368,6 +368,12 @@ describe("the app's own update", () => {
       0,
     ],
     [
+      "a download and runs not yet known",
+      "wait",
+      { current, status: "downloaded", version: "0.3.0" },
+      null,
+    ],
+    [
       "a download and an active run",
       "wait",
       { current, status: "downloaded", version: "0.3.0" },

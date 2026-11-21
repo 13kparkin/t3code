@@ -96,7 +96,9 @@ export function createAppUpdater(deps: {
           : { current, status: "current" },
       );
     } catch (error) {
-      set({ current, status: "error", message: String(error), version: null });
+      if (state.status !== "available") {
+        set({ current, status: "error", message: String(error), version: null });
+      }
     } finally {
       checking = false;
     }
@@ -128,6 +130,10 @@ export function createAppUpdater(deps: {
     setPrereleases: (enabled: boolean) => {
       if (enabled === prereleases) return;
       prereleases = enabled;
+      // Turning test releases off must not leave a pre-release offered or ready to install.
+      if (!enabled && (state.status === "available" || state.status === "downloaded")) {
+        set({ current, status: "unchecked" });
+      }
       void check();
     },
   };

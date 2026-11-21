@@ -52,7 +52,7 @@ export interface AppUpdateHost {
   readonly state: () => Promise<AppUpdateState>;
   readonly onState: (listener: (state: AppUpdateState) => void) => () => void;
   readonly download: () => void;
-  /** The main process refuses unless the update is downloaded and `activeRuns` is 0. */
+  /** `activeRuns` is the renderer's count. The main process refuses unless it is 0 and the update is downloaded. */
   readonly restart: (activeRuns: number) => void;
   readonly setPrereleases: (enabled: boolean) => void;
 }

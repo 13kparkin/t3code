@@ -177,7 +177,7 @@ function statusOf(status: "unknown" | "current" | "behind_latest"): VersionStatu
 /** What the app's update button does: restart only once downloaded and no run is active. */
 export function appUpdateStep(
   state: AppUpdateState,
-  activeRuns: number,
+  activeRuns: number | null,
 ): "download" | "restart" | "wait" | null {
   switch (state.status) {
     case "available":
@@ -193,7 +193,7 @@ export function appUpdateStep(
 
 const turns = (count: number) => `${count} running ${count === 1 ? "turn" : "turns"}`;
 
-function appNote(state: AppUpdateState, activeRuns: number): UpdateNote | null {
+function appNote(state: AppUpdateState, activeRuns: number | null): UpdateNote | null {
   switch (state.status) {
     case "downloading":
       return { text: `Downloading ${state.percent}%`, tone: "progress" };
@@ -202,7 +202,9 @@ function appNote(state: AppUpdateState, activeRuns: number): UpdateNote | null {
         text:
           activeRuns === 0
             ? "Downloaded. Restart the app to install it."
-            : `Downloaded. Restart waits for ${turns(activeRuns)} to finish.`,
+            : activeRuns === null
+              ? "Downloaded. Restart waits until the engine lists its threads."
+              : `Downloaded. Restart waits for ${turns(activeRuns)} to finish.`,
         tone: "progress",
       };
     case "error":
@@ -212,8 +214,8 @@ function appNote(state: AppUpdateState, activeRuns: number): UpdateNote | null {
   }
 }
 
-/** The app as an update item, or null in a build that cannot update itself. */
-export function appItem(state: AppUpdateState, activeRuns: number): UpdateItem | null {
+/** The app as an update item, or null in a build that cannot update itself. Null runs are unknown. */
+export function appItem(state: AppUpdateState, activeRuns: number | null): UpdateItem | null {
   if (state.status === "disabled") return null;
   const version = "version" in state ? state.version : null;
   return {
@@ -229,7 +231,7 @@ export function appItem(state: AppUpdateState, activeRuns: number): UpdateItem |
     command: null,
     running: state.status === "downloading",
     note: appNote(state, activeRuns),
-    activeRuns,
+    activeRuns: activeRuns ?? 0,
   };
 }
 
