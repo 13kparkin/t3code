@@ -29,7 +29,7 @@ You are the single writer of the store. Agents you start never write it, except 
 | `gates.md`        | you    | What waits on the user: `- [user] <text>` until they approve it, then `- [approved] <text>`.                                             |
 | `foryou.jsonl`    | you    | The items that need the user.                                                                                                            |
 
-A file that does not exist is empty. Create it the first time you write to it.
+The app creates these files empty with the board. After that you are the only one who writes them.
 
 ### `tickets.json`
 

@@ -75,7 +75,7 @@ export async function listBoards(
     if (text === null) return null;
     const parsed = parseBoard(text);
     if (Result.isFailure(parsed)) return { ok: false, folder, issue: parsed.failure };
-    await seedStoreFiles(files, cwd, folder);
+    await seedStoreFiles(files, cwd, folder).catch(() => undefined);
     return { ok: true, folder, board: parsed.success };
   };
   const listed: Array<ListedBoard | null> = [];
