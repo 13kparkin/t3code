@@ -50,14 +50,19 @@ async function inBatches<T, R>(
 }
 
 /** Every file under a directory, which `projects.listEntries` lists one level at a time. Paths are relative to `cwd`. */
-async function walk(files: ProjectFiles, cwd: string, directory: string): Promise<string[]> {
+export async function walk(
+  files: ProjectFiles,
+  cwd: string,
+  directory: string,
+  { hidden = false } = {},
+): Promise<string[]> {
   const found: string[] = [];
   let level = [directory];
   while (level.length > 0) {
     const next: string[] = [];
     const listings = await inBatches(level, (path) => files.list(cwd, path));
     for (const entry of listings.flatMap((listing) => listing ?? [])) {
-      if (baseName(entry.path).startsWith(".")) continue;
+      if (!hidden && baseName(entry.path).startsWith(".")) continue;
       (entry.kind === "directory" ? next : found).push(entry.path);
     }
     level = next;

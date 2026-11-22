@@ -7,6 +7,7 @@ import { missingPlan, STAGE_LABEL, stepProgress, type Ticket } from "../domain/t
 import { NO_ARTIFACTS } from "../state/artifacts";
 import { openTicketChanges } from "../state/changesView";
 import type { TicketView } from "../state/boardModel";
+import { usePrContext } from "../state/prStatus";
 import { AgentCard } from "./AgentCard";
 import { ArtifactCards } from "./ArtifactCards";
 import { ArtifactCount } from "./ArtifactCount";
@@ -66,6 +67,7 @@ export function TicketFrame({
   const scale = useViewScale();
   const { groups, expanded } = useArtifacts();
   const artifacts = groups.byTicket.get(ticket.key) ?? NO_ARTIFACTS;
+  const kept = usePrContext().keptWorktrees.get(ticket.key);
   const branchText =
     ticket.branch == null
       ? "No branch yet"
@@ -168,6 +170,16 @@ export function TicketFrame({
             />
             {ticket.stage === "merged" && ticket.worktreePath != null && (
               <RemoveWorktree view={view} />
+            )}
+            {kept !== undefined && (
+              <Tooltip text={`Worktree kept: ${kept}`}>
+                <span
+                  data-testid="worktree-kept"
+                  className="min-w-0 truncate text-[10px] text-amber-300"
+                >
+                  Kept: {kept}
+                </span>
+              </Tooltip>
             )}
           </div>
         )}

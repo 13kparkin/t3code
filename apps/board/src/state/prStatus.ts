@@ -148,6 +148,8 @@ export interface PrContextValue {
   readonly tickets: ReadonlyArray<TicketView>;
   /** The orchestrator's merge-order note for each ticket it asked to merge, by ticket key. */
   readonly mergeOrderNotes: ReadonlyMap<string, string>;
+  /** Why a merged ticket's worktree was kept, by ticket key. */
+  readonly keptWorktrees: ReadonlyMap<string, string>;
 }
 
 const PrContext = createContext<PrContextValue | null>(null);

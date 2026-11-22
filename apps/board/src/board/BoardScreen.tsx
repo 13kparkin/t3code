@@ -24,6 +24,7 @@ import { focusedCardAtom, useBoardForYou } from "../state/forYou";
 import { addDocs } from "../state/attachmentUploads";
 import { countImplementationAgents } from "../state/boardModel";
 import { useBoardView } from "../state/boardView";
+import { keptWorktreesAtom } from "../state/mergeCleanup";
 import type { ValidBoard } from "../store/boardFiles";
 import { ForYouLane } from "./ForYouLane";
 import { Lanes } from "./Lanes";
@@ -56,6 +57,7 @@ export function BoardScreen({
   const family = useThreadFamily(project.environmentId, board.orchestratorThreadId);
   const builders = useMemo(() => countImplementationAgents(model), [model]);
   const tickets = useMemo(() => Object.values(model.lanes).flat(), [model]);
+  const keptWorktrees = useAtomValue(keptWorktreesAtom(`${project.id}/${listed.folder}`));
   const prContext = useMemo(() => {
     const keys = tickets.map((view) => view.ticket.key);
     const mergeOrderNotes = new Map<string, string>();
@@ -72,8 +74,9 @@ export function BoardScreen({
       family,
       tickets,
       mergeOrderNotes,
+      keptWorktrees,
     };
-  }, [project, board.orchestratorThreadId, family, tickets, forYou.views]);
+  }, [project, board.orchestratorThreadId, family, tickets, forYou.views, keptWorktrees]);
   const chatSlot = useAtomValue(chatSlotAtom);
   const checksSlot = useAtomValue(checksSlotAtom);
   const ticketSlot = useAtomValue(ticketSlotAtom);

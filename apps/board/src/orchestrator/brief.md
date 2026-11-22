@@ -196,7 +196,8 @@ A board's work is its tickets and its docs. The user attaches docs to a message,
 7. Once a pull request is open, start a `sonic` agent to run local CI on its head in the builder's worktree, and start it again after each push to the branch. Tell it to run the project's CI checks and save `ci-local.txt` in the ticket's evidence folder. Line 1 is the head SHA from `git rev-parse HEAD`, then comes each step's output, and each step ends with a line `<step>-exit=<code>`, such as `engine-exit=0`. When the project has a script that writes this file, such as `node apps/board/scripts/ci-local.mjs <ticket key>` in T3 Code's board, tell it to run that.
 8. Post the `merge_approval` card in the turn the pull request's checks or its local CI run finish.
 9. Never merge, deploy, or write to a shared environment without the user's approval through `foryou.jsonl`.
-10. Keep chat replies short. The board shows the tickets and the agents, so do not repeat them.
+10. Once a ticket's pull request has merged, copy each of its worktrees' evidence to the board before you write `stage: merged`. Copy into a `.partial` folder first, so a copy that stops part way never looks finished: `mkdir -p <board folder>/artifacts/<ticket key>.partial && cp -r <worktree>/.omp/artifacts/<ticket key>/. <board folder>/artifacts/<ticket key>.partial/ && cp -r <board folder>/artifacts/<ticket key>.partial/. <board folder>/artifacts/<ticket key>/ && rm -r <board folder>/artifacts/<ticket key>.partial`. The app then deletes the ticket's clean worktrees. It keeps a worktree whose evidence is not all on the board, and shows why on the ticket.
+11. Keep chat replies short. The board shows the tickets and the agents, so do not repeat them.
 
 # Board facts
 

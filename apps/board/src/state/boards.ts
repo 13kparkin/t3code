@@ -92,7 +92,7 @@ type Shell = Pick<
 
 // An orchestrator's own run ends while its delegated tasks keep going, so the status alone says
 // nothing about them. The engine refuses an archive until the shell shows none of these.
-const familyThread = (shell: Shell): FamilyThread => ({
+export const familyThread = (shell: Shell): FamilyThread => ({
   id: shell.id,
   working:
     LIVE_STATUSES.has(shell.status) ||
