@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import { projectEnvironment } from "../state/projects";
 import { pullRequestEnvironment } from "../state/prStatus";
-import type { SlashTrigger } from "./slash";
+import type { PullRequestLine, SlashTrigger } from "./slash";
 
 const DEBOUNCE_MS = 120;
 const FILE_LIMIT = 80;
@@ -27,8 +27,9 @@ function useDebounced<A>(value: A) {
 
 /**
  * What the engine finds for an `@` or `#` word, the way T3's composer asks: a file search in the
- * project folder, and the project's pull requests, which the menu filters by number. Both stay
- * idle until the word has stopped changing, and for any other kind of trigger.
+ * project folder, and the project's most recent pull requests plus, for a number outside them, a
+ * read of that one pull request. Reads stay idle until the word has stopped changing, and for any
+ * other kind of trigger. `status` is pending until the reads for the word have answered.
  */
 export function useTriggerLookup(project: EnvironmentProject, trigger: SlashTrigger | null) {
   const query = trigger?.query ?? "";
@@ -44,7 +45,7 @@ export function useTriggerLookup(project: EnvironmentProject, trigger: SlashTrig
         })
       : idle,
   );
-  const pullRequests = useAtomValue(
+  const list = useAtomValue(
     trigger?.kind === "pull-request" && ready
       ? pullRequestEnvironment.list({
           environmentId,
@@ -57,8 +58,46 @@ export function useTriggerLookup(project: EnvironmentProject, trigger: SlashTrig
         })
       : idle,
   );
+  const listed = AsyncResult.getOrElse(list, () => null);
+  const recent = listed?.entries ?? NONE;
+  const repository = recent[0]?.repository;
+  const number = /^\d+$/.test(settled) ? Number(settled) : null;
+  const needsDetail =
+    number !== null &&
+    Number.isSafeInteger(number) &&
+    number > 0 &&
+    repository !== undefined &&
+    !recent.some((entry) => entry.number === number);
+  const detail = useAtomValue(
+    needsDetail
+      ? pullRequestEnvironment.detail({
+          environmentId,
+          input: { projectId: project.id, repository, number },
+        })
+      : idle,
+  );
+  const exact = AsyncResult.getOrElse(detail, () => null);
+
+  const status = ((): "ready" | "pending" | "failed" => {
+    if (trigger?.kind === "file") {
+      if (AsyncResult.isInitial(files)) return "pending";
+      return AsyncResult.isFailure(files) ? "failed" : "ready";
+    }
+    if (trigger?.kind === "pull-request") {
+      if (AsyncResult.isInitial(list) || (needsDetail && AsyncResult.isInitial(detail))) {
+        return "pending";
+      }
+      const failed =
+        AsyncResult.isFailure(list) || listed?.errors.some((e) => e.projectId === project.id);
+      return failed ? "failed" : "ready";
+    }
+    return "ready";
+  })();
+
+  const pullRequests: ReadonlyArray<PullRequestLine> = exact === null ? recent : [...recent, exact];
   return {
     files: AsyncResult.getOrElse(files, () => null)?.entries ?? NONE,
-    pullRequests: AsyncResult.getOrElse(pullRequests, () => null)?.entries ?? NONE,
+    pullRequests,
+    status,
   };
 }

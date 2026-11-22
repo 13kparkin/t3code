@@ -173,11 +173,14 @@ export function detectSlashTrigger(text: string, cursor: number): SlashTrigger |
 
 const MAX_PULL_REQUESTS = 50;
 
+/** The part of a pull request the menu needs, which a list entry and a single read both carry. */
+export type PullRequestLine = Pick<PullRequestListEntry, "number" | "title" | "url" | "updatedAt">;
+
 /** Pull requests whose number contains a numeric query, the exact number first, then the most recently updated. */
-function pullRequestItems(entries: ReadonlyArray<PullRequestListEntry>, query: string) {
+function pullRequestItems(entries: ReadonlyArray<PullRequestLine>, query: string) {
   const isNumber = /^\d+$/.test(query);
-  const updated = (entry: PullRequestListEntry) => Date.parse(entry.updatedAt) || 0;
-  const exact = (entry: PullRequestListEntry) => Number(String(entry.number) === query);
+  const updated = (entry: PullRequestLine) => Date.parse(entry.updatedAt) || 0;
+  const exact = (entry: PullRequestLine) => Number(String(entry.number) === query);
   return entries
     .filter((entry) => !isNumber || String(entry.number).includes(query))
     .toSorted((a, b) => exact(b) - exact(a) || updated(b) - updated(a))
@@ -222,7 +225,7 @@ export function itemsForTrigger(input: {
   readonly skills: ReadonlyArray<ServerProviderSkill>;
   readonly canClear: boolean;
   readonly files: ReadonlyArray<ProjectEntry>;
-  readonly pullRequests: ReadonlyArray<PullRequestListEntry>;
+  readonly pullRequests: ReadonlyArray<PullRequestLine>;
 }) {
   const { trigger } = input;
   const atStart = trigger.rangeStart === 0;

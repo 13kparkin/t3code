@@ -64,6 +64,19 @@ import { useWorkspaceSnapshot } from "./workspaceSnapshot";
 const SWITCH_BLOCKED =
   "This thread does not support switching providers after it has started. Start a new thread to use this model.";
 
+const emptyText = (
+  status: "ready" | "pending" | "failed",
+  kind: SlashTrigger["kind"] | undefined,
+) => {
+  if (status === "pending") return "Searching...";
+  if (status === "failed") {
+    return kind === "pull-request"
+      ? "Pull requests could not be read for this project."
+      : "Files could not be searched for this project.";
+  }
+  return "No matches.";
+};
+
 const markShown = (chip: HTMLElement | null) => {
   if (chip !== null) performance.mark("board:attach-shown");
 };
@@ -164,9 +177,9 @@ export function Composer({
   };
 
   const edit = (value: string, at: number) => {
-    const opens = trigger === null && detectSlashTrigger(value, at) !== null;
-    if (MARK_SLASH && opens) performance.mark("board:slash-open");
-    if (opens) refresh();
+    const next = trigger === null ? detectSlashTrigger(value, at) : null;
+    if (MARK_SLASH && next !== null) performance.mark("board:slash-open");
+    if (next?.kind === "command" || next?.kind === "skill") refresh();
     setActive(0);
     setClosedFor(null);
     setDraft(value);
@@ -318,6 +331,10 @@ export function Composer({
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.nativeEvent.isComposing) return;
+    if (open && found.status === "pending" && event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      return;
+    }
     if (open && ranked.length > 0) {
       const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
       if (step !== 0) {
@@ -365,6 +382,7 @@ export function Composer({
         <SlashMenu
           id={menuId}
           items={ranked}
+          empty={emptyText(found.status, trigger?.kind)}
           active={highlighted}
           onPick={pick}
           onHover={setActive}

@@ -1,8 +1,4 @@
-import {
-  PullRequestListEntry,
-  ServerProviderSkill,
-  ServerProviderSlashCommand,
-} from "@t3tools/contracts";
+import { ServerProviderSkill, ServerProviderSlashCommand } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -17,7 +13,6 @@ import {
 
 const command = Schema.decodeUnknownSync(ServerProviderSlashCommand);
 const skill = Schema.decodeUnknownSync(ServerProviderSkill);
-const decodePullRequest = Schema.decodeSync(PullRequestListEntry);
 
 const commands = [
   command({ name: "compact", input: { hint: "optional summary instructions" } }),
@@ -222,29 +217,12 @@ describe("the trigger at the cursor", () => {
 
 describe("the items a trigger lists", () => {
   const entry = (path: string) => ({ path, kind: "file" as const });
-  const pullRequest = (number: number, updatedAt: string) =>
-    decodePullRequest({
-      provider: "github",
-      host: "github.com",
-      projectId: "p",
-      projectTitle: "p",
-      repository: "o/r",
-      number,
-      title: `PR ${number}`,
-      url: `https://github.com/o/r/pull/${number}`,
-      author: null,
-      headBranch: "h",
-      baseBranch: "main",
-      state: "open",
-      isDraft: false,
-      mergeability: "unknown",
-      additions: 0,
-      deletions: 0,
-      createdAt: updatedAt,
-      updatedAt,
-      viewerReviewRequested: false,
-      labels: [],
-    });
+  const pullRequest = (number: number, updatedAt: string) => ({
+    number,
+    title: `PR ${number}`,
+    url: `https://github.com/o/r/pull/${number}`,
+    updatedAt,
+  });
   const forTrigger = (text: string, cursor: number) => {
     const trigger = detectSlashTrigger(text, cursor);
     if (trigger === null) throw new Error("no trigger");
@@ -282,17 +260,20 @@ describe("the items a trigger lists", () => {
   });
 
   it("Given a picked file or pull request, then it types a file link or the pull request URL", () => {
-    const [file] = itemsForTrigger({
-      trigger: { kind: "file", query: "", rangeStart: 0, rangeEnd: 1 },
-      restIsBlank: true,
-      commands: [],
-      skills: [],
-      canClear: false,
-      files: [entry("src/chat/slash.ts")],
-      pullRequests: [],
-    });
-    expect(file?.insert).toBe("[slash.ts](src/chat/slash.ts)");
-    expect(slashMessage(file!, "")).toBe("[slash.ts](src/chat/slash.ts)");
+    const lists = (kind: "file" | "pull-request") =>
+      itemsForTrigger({
+        trigger: { kind, query: "", rangeStart: 0, rangeEnd: 1 },
+        restIsBlank: true,
+        commands: [],
+        skills: [],
+        canClear: false,
+        files: [entry("src/chat/slash.ts")],
+        pullRequests: [pullRequest(7, "2026-02-01T00:00:00Z")],
+      });
+    expect(lists("file").map((item) => item.insert)).toEqual(["[slash.ts](src/chat/slash.ts)"]);
+    expect(lists("pull-request").map((item) => item.insert)).toEqual([
+      "https://github.com/o/r/pull/7",
+    ]);
   });
 });
 
