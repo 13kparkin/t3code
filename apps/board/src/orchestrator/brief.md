@@ -127,9 +127,9 @@ Tell each builder to run `git fetch origin` and branch from `origin/main`, or fr
 
 For a ticket that adds or changes a data shape or crosses a function boundary, tell the builder to run `how` and `architect` before it writes code, and `interrogate` when a design call is contested. A builder that skips one records the skip and its reason in the ticket's steps.
 
-Smoke checks follow the project's own method, kept in `<board folder>/smoke.md`. Read it before you start the first verifier. Point every verifier at it, and never write a run recipe into a brief. If `<board folder>/roles/verifier.md` is missing, post a `question` item asking the user to refresh the board's roles. When a verifier returns a `smoke-method.md` draft or reports a trap, copy it into `smoke.md` yourself, because you are the only writer of the board folder.
+Smoke checks follow the project's own method, kept in `<board folder>/smoke.md`. Read it before you start the first verifier. Point every verifier at it. Do not copy run commands into a brief. If `<board folder>/roles/verifier.md` is missing, post a `question` item asking the user to refresh the board's roles. When a verifier returns a `smoke-method.md` draft or reports a trap, copy it into `smoke.md` yourself, because you are the only writer of the board folder.
 
-Tell every agent that checks UI or runs a smoke check to use T3's built-in browser through its `preview_*` tools, to save each screenshot with `preview_snapshot` and `save=true`, and to copy the saved PNG into the evidence folder. Never delete anything under `~/.t3/userdata`. Headless Chromium, Playwright, and the Orca browser are never used. Tell each verifier to close any tab it opened and to delete its scratch folders and any token files before it reports.
+Tell every agent that checks UI or runs a smoke check to use T3's built-in browser through its `preview_*` tools, to save each screenshot with `preview_snapshot` and `save=true`, and to copy the saved PNG into the evidence folder. Never delete anything under `~/.t3/userdata`. Never use headless Chromium, Playwright, or the Orca browser. Tell each verifier to close any tab it opened and to delete its scratch folders and any token files before it reports.
 
 Start a `verifier` for every smoke check. The verifier is never the ticket's builder and never a review lane. Tell builders to name their test output `tests.txt`.
 
@@ -178,14 +178,14 @@ When the user asks for an audit, or a ticket merges, score its smoke test `real`
 2. Method found: the verifier read `smoke.md`, or loaded the project's skill with the Skill tool.
 3. T3 browser for UI: the verifier's thread has `preview_*` calls, and no `playwright`, `chromium`, `orca`, or `browser.relay`.
 4. Real data and provider: seeded or real data, a real provider, and no injected DOM or stub unless each one is listed as PROXY.
-5. Every acceptance item has a result, and PARTIAL and PROXY show in the `verify` verdict and on the merge card.
+5. Every acceptance item has a result, and the `verify` verdict and the merge card both name each PARTIAL and PROXY item.
 6. Independent verifier: not the builder, and not a review lane.
 7. Evidence kept: `smoke.txt`, plus a PNG for UI, in the ticket's evidence folder. It holds only pasted output.
 8. Clean: no token in the transcript, no leftover scratch or token file, tabs closed, PIDs captured, and no `rm` or write under `~/.t3/userdata`.
 9. Builder files honest: no `smoke.*` file that holds only unit-test output.
 10. Method updated: a trap the verifier hit appears in `smoke.md` afterwards.
 
-The bar is every UI ticket real or partial with its reason, zero writes under `~/.t3/userdata`, and zero leaked tokens.
+The bar is that every UI ticket scores `real` or `partial` with a reason, with zero writes under `~/.t3/userdata` and zero leaked tokens.
 
 ## Spending usage
 

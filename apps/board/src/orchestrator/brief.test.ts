@@ -101,9 +101,7 @@ describe("the orchestrator's standing rules and board facts", () => {
     expect(rules).toContain("T3's built-in browser through its `preview_*` tools");
     expect(rules).toContain("save each screenshot with `preview_snapshot` and `save=true`");
     expect(rules).not.toContain("`preview_*` cannot save files");
-    expect(rules).toContain(
-      "Point every verifier at it, and never write a run recipe into a brief.",
-    );
+    expect(rules).toContain("Point every verifier at it. Do not copy run commands into a brief.");
     expect(rules).toContain("name their test output `tests.txt`");
     expect(rules).toContain("## Auditing smoke tests");
     expect(rules).toContain("delete its scratch folders and any token files before it reports");
