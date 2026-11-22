@@ -10,6 +10,8 @@ import {
   pickOf,
   resolvePick,
   selectionOf,
+  selectionWarning,
+  textInstances,
 } from "./providers";
 
 const decodeProvider = Schema.decodeUnknownSync(ServerProvider);
@@ -261,5 +263,46 @@ describe("the orchestrator's pick", () => {
         options: [{ id: "effort", value: "low" }],
       }),
     ).toEqual({ instanceId: "claudeAgent", model: "claude-sonnet-5-5", effort: "low" });
+  });
+});
+
+describe("the text model settings", () => {
+  const haiku = { instanceId: ProviderInstanceId.make("claudeAgent"), model: "claude-haiku-5-5" };
+  const claude = provider({ instanceId: "claudeAgent", driver: "claudeAgent" });
+
+  it.each([
+    ["runs", [claude], haiku, null],
+    [
+      "is missing",
+      [],
+      { ...haiku, instanceId: ProviderInstanceId.make("omp") },
+      "omp is not an instance this engine runs.",
+    ],
+    ["is off", [{ ...claude, enabled: false }], haiku, "claudeAgent is turned off."],
+    [
+      "is not installed",
+      [{ ...claude, installed: false }],
+      haiku,
+      "claudeAgent is not installed on the machine that runs T3.",
+    ],
+    [
+      "is signed out",
+      [provider({ instanceId: "claudeAgent", driver: "claudeAgent", status: "unauthenticated" })],
+      haiku,
+      "claudeAgent is signed out.",
+    ],
+  ] as const)(
+    "Given a saved instance that %s, when it is checked, then the warning is %j",
+    (_, providers, selection, warning) => {
+      expect(selectionWarning(providers, selection)).toBe(warning);
+    },
+  );
+
+  it("Given Cursor and a provider that cannot write text, when text instances are listed, then Cursor is kept and the other is left out", () => {
+    const listed = textInstances([
+      provider({ instanceId: "cursor", driver: "cursor" }),
+      { ...claude, supportsTextGeneration: false },
+    ]);
+    expect(listed.map((entry) => entry.instanceId)).toEqual(["cursor"]);
   });
 });
