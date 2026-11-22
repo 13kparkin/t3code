@@ -72,6 +72,24 @@ describe("boards in a project", () => {
     expect(writes).toEqual([]);
   });
 
+  it("Given a board with no record of written roles, when the boards are listed, then copies matching the app are recorded without a rewrite and a differing copy is kept", async () => {
+    const { files, store } = fakeFiles();
+    const created = await createBoard(files, CWD, input("Claude connector"));
+    const roles = `.agentboard/${created.folder}/roles`;
+    for (const [name, text] of roleFiles) store.set(`${roles}/${name}`, text);
+    store.set(`${roles}/task.md`, "older task role");
+    const writes: string[] = [];
+    await listBoards(
+      { ...files, write: async (_c, p, t) => (writes.push(p), files.write(_c, p, t)) },
+      CWD,
+    );
+    expect(writes).toEqual([`${roles}/.app-written.json`]);
+    const recorded = JSON.parse(store.get(`${roles}/.app-written.json`) ?? "{}");
+    expect(recorded["reviewer.md"]).toBe(await sha256(roleFiles.get("reviewer.md") ?? ""));
+    expect(recorded["task.md"]).toBeUndefined();
+    expect(store.get(`${roles}/task.md`)).toBe("older task role");
+  });
+
   it("Given a new board, when it is created, then the five store files exist, and listing an older board fills in only the missing ones", async () => {
     const { files, store } = fakeFiles();
     const created = await createBoard(files, CWD, input("Claude connector"));
