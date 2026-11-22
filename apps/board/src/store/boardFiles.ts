@@ -166,6 +166,24 @@ export function writeBoard(files: ProjectFiles, cwd: string, folder: string, boa
   return files.write(cwd, boardPath(folder), serializeBoard(board));
 }
 
+async function readBoard(files: ProjectFiles, cwd: string, folder: string) {
+  const text = await files.read(cwd, boardPath(folder));
+  if (text === null) throw new Error(`${boardPath(folder)} is missing.`);
+  const parsed = parseBoard(text);
+  if (Result.isFailure(parsed)) throw new Error(parsed.failure.message);
+  return parsed.success;
+}
+
+/** Sets the board's builder cap in its own file, read fresh so a change made since the last listing is kept. */
+export async function setBuilderCap(
+  files: ProjectFiles,
+  cwd: string,
+  folder: string,
+  builderCap: number,
+): Promise<void> {
+  await writeBoard(files, cwd, folder, { ...(await readBoard(files, cwd, folder)), builderCap });
+}
+
 /** Adds the names to the board's docs in the board's own file, read fresh so two sends in a row both count. */
 export async function appendDocs(
   files: ProjectFiles,
@@ -174,14 +192,11 @@ export async function appendDocs(
   names: ReadonlyArray<string>,
   sentAt: string,
 ): Promise<void> {
-  const text = await files.read(cwd, boardPath(folder));
-  if (text === null) throw new Error(`${boardPath(folder)} is missing.`);
-  const parsed = parseBoard(text);
-  if (Result.isFailure(parsed)) throw new Error(parsed.failure.message);
-  const docs = parsed.success.docs ?? [];
+  const board = await readBoard(files, cwd, folder);
+  const docs = board.docs ?? [];
   const added = names
     .filter((name, at) => !docs.some((doc) => doc.name === name) && names.indexOf(name) === at)
     .map((name) => ({ name, sentAt }));
   if (added.length === 0) return;
-  await writeBoard(files, cwd, folder, { ...parsed.success, docs: [...docs, ...added] });
+  await writeBoard(files, cwd, folder, { ...board, docs: [...docs, ...added] });
 }
