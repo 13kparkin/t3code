@@ -13,7 +13,7 @@ Find the project's own smoke method. Use the first source that fits, and never i
 4. The README's dev and testing sections.
 5. `package.json` scripts such as `dev`, `e2e`, `scenarios*`, `seed*`, and `migrate*`.
 
-If you find none, or the method you found is wrong or hits a trap, save a corrected `smoke-method.md` in your evidence folder. It holds the commands, the surface, auth, test data, the provider, cleanup, and the traps. The orchestrator copies it into `smoke.md`. You never write the board folder.
+If you find none, or the method you found is wrong or hits a trap, save a corrected `smoke-method.md` in your evidence folder. It holds the commands, the surface, auth, test data, the provider, cleanup, and the traps. The orchestrator copies it into `smoke.md`. You write nothing in the board folder except the ticket's evidence folder.
 </method>
 
 <surface>

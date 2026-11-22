@@ -52,7 +52,7 @@ const clean = [
   { role: "reviewer", p0: 0, p1: 0, p2: 1, p3: 0 },
   { role: "security-reviewer", p0: 0, p1: 0, p2: 0, p3: 0 },
 ];
-const evidence = ["artifacts/T-1/readme-check.txt", "artifacts/T-1/smoke.txt"];
+const evidence = ["artifacts/T-1/readme-check.txt"];
 const smoked: Smoke = { kind: "read", surface: "T3 browser", flagged: [] };
 
 const missingOf = (
@@ -122,7 +122,7 @@ describe("merge readiness", () => {
       missingOf({
         ticket,
         tickets: [parent, ticket],
-        evidence: ["artifacts/T-1/smoke.txt"],
+        evidence: [],
         live: live([check("lint", "success"), check("test", "failure")]),
       }),
     ).toEqual(["ci_green", "readmes_pass", "parent_ready"]);
@@ -298,8 +298,8 @@ describe("smoke evidence", () => {
       "smoke.txt has no Surface: line",
     ],
     [
-      "an empty Surface line",
-      parseSmoke("Surface:  \nPASS: item one"),
+      "a Surface line of spaces only",
+      parseSmoke(`Surface:${" ".repeat(100_000)}\nPASS: item one`),
       "smoke.txt has no Surface: line",
     ],
     ["Surface: none", parseSmoke("Surface: None\nPASS: item one"), "smoke.txt says Surface: none"],

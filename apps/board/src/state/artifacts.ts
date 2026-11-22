@@ -53,6 +53,8 @@ const decodeBoardKey = Schema.decodeUnknownSync(
 const ARTIFACT_POLL_MS = 1_000;
 /** How often a ticket's `ci-local.txt` is read again, since a new run rewrites it in place. */
 const CI_LOCAL_POLL_MS = 5_000;
+/** How often a met `smoke.txt` is read again, since a re-verify rewrites it in place. */
+const SMOKE_MET_POLL_MS = 30_000;
 
 export const NO_ARTIFACTS: ReadonlyArray<Artifact> = [];
 
@@ -265,7 +267,7 @@ function smokeOf(contents: ArtifactContents): Smoke | null {
 
 /**
  * A ticket's `smoke.txt`, keyed by `artifactContentsKey`. It reads the file again on a timer until
- * the file names a surface, since a verifier writes it in place. It is null until the first read
+ * the card is closed, since a verifier writes it in place. It slows once the file names a surface. It is null until the first read
  * answers or when the file is gone.
  */
 export const smokeAtom = Atom.family((key: string) =>
@@ -282,8 +284,11 @@ export const smokeAtom = Atom.family((key: string) =>
         }));
       const before = Option.getOrNull(get.self<Smoke | null>()) ?? null;
       if (!stopped && JSON.stringify(next) !== JSON.stringify(before)) get.setSelf(next);
-      if (!stopped && smokeState(next) !== null) {
-        timer = setTimeout(() => void read(), CI_LOCAL_POLL_MS);
+      if (!stopped) {
+        timer = setTimeout(
+          () => void read(),
+          smokeState(next) === null ? SMOKE_MET_POLL_MS : CI_LOCAL_POLL_MS,
+        );
       }
     };
     void read();

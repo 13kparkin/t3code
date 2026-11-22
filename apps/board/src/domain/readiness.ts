@@ -84,11 +84,11 @@ export type Smoke =
 
 /** Reads a verifier's `smoke.txt`, which has a `Surface:` line and then one `PASS`, `PARTIAL`, `PROXY`, `FAIL`, or `NOT RUN` line per acceptance item. */
 export function parseSmoke(text: string): Smoke {
-  const surface = /^Surface:[ \t]*(.*?)[ \t]*$/im.exec(text)?.[1] ?? null;
+  const surface = /^Surface:(.*)$/im.exec(text)?.[1]?.trim() || null;
   const flagged = [...text.matchAll(/^(?:PROXY|NOT RUN):.*\S.*$/gm)].map((match) =>
     match[0].trim(),
   );
-  return { kind: "read", surface: surface === "" ? null : surface, flagged };
+  return { kind: "read", surface, flagged };
 }
 
 /** What keeps `smoke.txt` from meeting `smoke_named`, or null when it meets it. */

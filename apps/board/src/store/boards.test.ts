@@ -46,9 +46,6 @@ describe("boards in a project", () => {
     const parsed = parseBoard(store.get(".agentboard/claude-connector/board.json") ?? "");
     expect(Result.isSuccess(parsed) && parsed.success.archived).toBe(false);
     expect(store.get(".agentboard/claude-connector/smoke.md")).toBe("");
-    expect(store.get(".agentboard/claude-connector/roles/verifier.md")).toBe(
-      roleFiles.get("verifier.md"),
-    );
   });
 
   it("Given role copies in each state, when the boards are listed, then a stale unchanged copy is refreshed, an edited copy is kept, a missing copy is written, and a second listing writes nothing", async () => {
