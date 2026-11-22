@@ -20,7 +20,7 @@ export const keptWorktreesAtom = Atom.family((storeKey: string) =>
   Atom.make(NONE).pipe(Atom.keepAlive, Atom.withLabel(`kept-worktrees:${storeKey}`)),
 );
 
-const running = new Set<string>();
+const inFlight = new Set<string>();
 
 function cleanupPorts(registry: AtomRegistry.AtomRegistry, project: CleanupProject): CleanupPorts {
   const { environmentId, workspaceRoot } = project;
@@ -73,8 +73,8 @@ export function runMergeCleanup(
   if (parsed === null || Result.isFailure(parsed)) return;
   const merged = parsed.success.filter((ticket) => ticket.stage === "merged");
   const storeKey = `${project.id}/${folder}`;
-  if (merged.length === 0 || running.has(storeKey)) return;
-  running.add(storeKey);
+  if (merged.length === 0 || inFlight.has(storeKey)) return;
+  inFlight.add(storeKey);
   void cleanupMerged(
     cleanupPorts(registry, project),
     { workspaceRoot: project.workspaceRoot, folder },
@@ -84,5 +84,5 @@ export function runMergeCleanup(
       (kept) => registry.set(keptWorktreesAtom(storeKey), kept),
       () => undefined,
     )
-    .finally(() => running.delete(storeKey));
+    .finally(() => inFlight.delete(storeKey));
 }

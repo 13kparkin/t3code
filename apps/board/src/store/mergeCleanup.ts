@@ -6,7 +6,7 @@ import { trimSlashes } from "../files/target";
 import { walk, WORKTREE_ARTIFACTS } from "./artifacts";
 import type { ProjectFiles } from "./boardFiles";
 
-export type KeepReason =
+type KeepReason =
   | "store-unreadable"
   | "not-merged"
   | "main-checkout"
@@ -20,7 +20,7 @@ export type KeepReason =
   | "no-evidence"
   | "evidence-missing";
 
-export type Plan =
+type Plan =
   | { readonly kind: "remove" }
   | { readonly kind: "gone" }
   | { readonly kind: "keep"; readonly reason: KeepReason };
@@ -43,7 +43,7 @@ export type WorktreeStatus = Pick<
 >;
 
 /** File names relative to each evidence folder. `worktree` is null when the worktree has no folder. */
-export interface Evidence {
+interface Evidence {
   readonly worktree: ReadonlyArray<string> | null;
   readonly board: ReadonlyArray<string>;
   /** `artifacts/<key>.partial/` exists, so the orchestrator's copy has not finished. */
@@ -113,7 +113,7 @@ export function planCleanup(facts: WorktreeFacts): Plan {
 }
 
 /** Every worktree the ticket's builder or its own live threads use. */
-export function ticketWorktrees(ticket: Ticket, threads: ReadonlyArray<LiveThread>): string[] {
+function ticketWorktrees(ticket: Ticket, threads: ReadonlyArray<LiveThread>): string[] {
   const own = ownThreadIds(ticket);
   const paths = [
     ticket.worktreePath,
