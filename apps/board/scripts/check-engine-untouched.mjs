@@ -10,6 +10,7 @@ const ALLOWED = [
   ".github/workflows/agent-board.yml",
   "pnpm-lock.yaml",
   ".gitignore",
+  "AGENTS.md",
 ];
 const UPSTREAM_URL = "https://github.com/pingdotgg/t3code.git";
 
