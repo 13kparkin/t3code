@@ -55,8 +55,7 @@ export interface WorktreeFacts {
   readonly ticket: Ticket;
   readonly path: string;
   readonly workspaceRoot: string;
-  /** The tickets of every board in the project. */
-  readonly tickets: ReadonlyArray<Ticket> | null;
+  readonly projectTickets: ReadonlyArray<Ticket> | null;
   readonly threads: ReadonlyArray<LiveThread> | null;
   readonly status: WorktreeStatus | null;
   readonly evidence: Evidence | null;
@@ -79,20 +78,20 @@ const evidenceCopied = ({ worktree, board, partial }: Evidence) => {
 };
 
 /**
- * Whether a merged ticket's worktree can go. Every check fails closed: the first one that fails,
+ * Whether a merged ticket's worktree can go. Every check fails closed. The first one that fails,
  * or whose input did not read, keeps the worktree with its reason.
  */
 export function planCleanup(facts: WorktreeFacts): Plan {
   const { ticket, path, threads, status, evidence } = facts;
   const keep = (reason: KeepReason): Plan => ({ kind: "keep", reason });
   const own = ownThreadIds(ticket);
-  if (facts.tickets === null) return keep("store-unreadable");
+  if (facts.projectTickets === null) return keep("store-unreadable");
   if (ticket.stage !== "merged") return keep("not-merged");
   if (samePath(facts.workspaceRoot, path)) return keep("main-checkout");
   if (status === null) return keep("status-unknown");
   if (!status.isRepo) return { kind: "gone" };
   if (threads === null) return keep("threads-unknown");
-  const otherTicket = facts.tickets.some(
+  const otherTicket = facts.projectTickets.some(
     (other) =>
       other.key !== ticket.key &&
       !CLOSED_STAGES.has(other.stage) &&
@@ -112,7 +111,6 @@ export function planCleanup(facts: WorktreeFacts): Plan {
   return { kind: "remove" };
 }
 
-/** Every worktree the ticket's builder or its own live threads use. */
 function ticketWorktrees(ticket: Ticket, threads: ReadonlyArray<LiveThread>): string[] {
   const own = ownThreadIds(ticket);
   const paths = [
@@ -174,13 +172,13 @@ export async function cleanupMerged(
   merged: ReadonlyArray<Ticket>,
 ): Promise<ReadonlyMap<string, string>> {
   const kept = new Map<string, string>();
-  const tickets = await ports.tickets().catch(() => null);
+  const projectTickets = await ports.tickets().catch(() => null);
   for (const ticket of merged) {
     const facts = async (path: string): Promise<WorktreeFacts> => ({
       ticket,
       path,
       workspaceRoot: target.workspaceRoot,
-      tickets,
+      projectTickets,
       threads: ports.threads(),
       status: await ports.status(path).catch(() => null),
       evidence: await readEvidence(ports.files, target, ticket.key, path),

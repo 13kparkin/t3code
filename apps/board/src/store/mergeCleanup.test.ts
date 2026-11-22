@@ -36,7 +36,7 @@ const facts = (patch: Partial<WorktreeFacts> = {}): WorktreeFacts => ({
   ticket: ticket(),
   path: WT,
   workspaceRoot: ROOT,
-  tickets: [ticket()],
+  projectTickets: [ticket()],
   threads: [{ id: "builder", worktreePath: WT, working: false, isRoot: false }],
   status: clean,
   evidence: {
@@ -48,7 +48,6 @@ const facts = (patch: Partial<WorktreeFacts> = {}): WorktreeFacts => ({
 });
 
 describe("planCleanup", () => {
-  // Rows follow the T-63 inventory (artifacts/T-63/inventory.md) and judge.md's checks.
   it.each<[string, Partial<WorktreeFacts>, ReturnType<typeof planCleanup>]>([
     ["SAFE: T-26 merged, clean, pushed, evidence on the board", {}, { kind: "remove" }],
     [
@@ -78,12 +77,12 @@ describe("planCleanup", () => {
     ],
     [
       "KEEP T-39: another open ticket builds in the same worktree",
-      { tickets: [ticket(), ticket({ key: "T-39", stage: "building" })] },
+      { projectTickets: [ticket(), ticket({ key: "T-39", stage: "building" })] },
       { kind: "keep", reason: "shared" },
     ],
     [
       "an off-path ticket on the same worktree does not hold it",
-      { tickets: [ticket(), ticket({ key: "T-59", stage: "off_path" })] },
+      { projectTickets: [ticket(), ticket({ key: "T-59", stage: "off_path" })] },
       { kind: "remove" },
     ],
     [
@@ -139,7 +138,7 @@ describe("planCleanup", () => {
     ],
     [
       "a board's tickets.json did not read",
-      { tickets: null },
+      { projectTickets: null },
       { kind: "keep", reason: "store-unreadable" },
     ],
     [
