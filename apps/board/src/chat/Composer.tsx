@@ -59,23 +59,11 @@ import {
 import { MARK_SLASH, SlashMenu, slashOptionId } from "./SlashMenu";
 import type { PendingSend } from "./timeline";
 import { useTriggerLookup } from "./triggerLookup";
+import { emptyText } from "./triggerLookup.logic";
 import { useWorkspaceSnapshot } from "./workspaceSnapshot";
 
 const SWITCH_BLOCKED =
   "This thread does not support switching providers after it has started. Start a new thread to use this model.";
-
-const emptyText = (
-  status: "ready" | "pending" | "failed",
-  kind: SlashTrigger["kind"] | undefined,
-) => {
-  if (status === "pending") return "Searching...";
-  if (status === "failed") {
-    return kind === "pull-request"
-      ? "Pull requests could not be read for this project."
-      : "Files could not be searched for this project.";
-  }
-  return "No matches.";
-};
 
 const markShown = (chip: HTMLElement | null) => {
   if (chip !== null) performance.mark("board:attach-shown");
