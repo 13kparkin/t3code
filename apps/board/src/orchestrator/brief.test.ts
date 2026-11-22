@@ -68,7 +68,7 @@ describe("the orchestrator's standing rules and board facts", () => {
     );
     expect(rules).toContain("Start `poteto-agent` for a ticket that crosses several modules");
     expect(rules).toContain("start every bug-fix round whose finding can fail when run");
-    expect(rules).toContain("`repro-before-2.txt` for fix round 2");
+    expect(rules).toContain("`repro-before-N.txt` for fix round N");
     expect(rules).toContain("Put this in each fix-round send too");
   });
 
