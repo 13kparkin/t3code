@@ -16,5 +16,4 @@ const PROGRAM = [
   "if(install){console.log(install[1]);process.exitCode=cp.spawnSync(install[1],{cwd:wt,shell:true,stdio:`inherit`}).status??1}",
 ].join("");
 
-/** What the board sets as a project's setup script when the project has none. */
 export const DEFAULT_SETUP_SCRIPT = `node -e '${PROGRAM}'`;

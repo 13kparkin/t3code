@@ -39,7 +39,7 @@ function runSetup(root: string, worktree: string, env: Record<string, string> = 
   });
 }
 
-// POSIX only: the engine under test runs in WSL or Linux, and the stub package manager is a sh script.
+// POSIX only, because the engine runs in WSL or Linux and the stub package manager is a sh script.
 describe("the default setup script", () => {
   it("links the main checkout's ignored .env files, keeps the worktree's own, and installs from the lockfile", () => {
     const { dir, root, worktree } = repo({

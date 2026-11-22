@@ -175,10 +175,7 @@ export function saveSetupScript(
     : overridePatch(settings, project.id, { defaultProjectScripts: next });
 }
 
-/**
- * Gives a project with no setup script the board's default. A project that holds its own script
- * list is left alone, so a user who cleared the field keeps it empty.
- */
+// A project holding its own script list is left alone, so a user who cleared the field keeps it empty.
 export function defaultSetupPatch(
   settings: ServerSettings,
   project: ProjectRef,
