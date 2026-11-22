@@ -2,6 +2,7 @@ import {
   getProviderSkillsForSlashMenu,
   getProviderSlashCommandsForSlashMenu,
 } from "@t3tools/client-runtime/providerSkills";
+import { isCurrencyAmountQuery, isPathWord } from "@t3tools/shared/composerTrigger";
 import type { ServerProviderSkill, ServerProviderSlashCommand } from "@t3tools/contracts";
 
 export type SlashGroup = "command" | "skill" | "action";
@@ -115,10 +116,44 @@ export function rankSlashItems(
   return [0, 1].flatMap((rank) => byGroup.filter((item) => ranks.get(item) === rank));
 }
 
-/** The query after a leading `/` when the cursor sits in the message's first word, or null when the menu stays shut. */
-export function slashQuery(draft: string, cursor: number): string | null {
-  const head = draft.slice(0, cursor);
-  return /^\/\S*$/.test(head) ? head.slice(1) : null;
+export interface SlashTrigger {
+  readonly kind: "command" | "skill";
+  readonly query: string;
+  readonly rangeStart: number;
+  readonly rangeEnd: number;
+}
+
+const isBlank = (char: string) => char === " " || char === "\n" || char === "\t" || char === "\r";
+
+/**
+ * The trigger at the cursor, as in T3's `detectComposerTrigger`: a `/` word is a command unless it
+ * is a path, and a currency symbol starts a skill unless an amount follows. `@` and `#` words open
+ * nothing, since the board has no file or pull request list to offer.
+ */
+export function detectSlashTrigger(text: string, cursor: number): SlashTrigger | null {
+  const rangeEnd = cursor;
+  let rangeStart = rangeEnd;
+  while (rangeStart > 0 && !isBlank(text[rangeStart - 1] ?? "")) rangeStart -= 1;
+  const token = text.slice(rangeStart, rangeEnd);
+  if (token.startsWith("/")) {
+    return isPathWord(text, rangeStart, rangeEnd, isBlank)
+      ? null
+      : { kind: "command", query: token.slice(1), rangeStart, rangeEnd };
+  }
+  const symbol = /^\p{Sc}/u.exec(token)?.[0];
+  if (symbol === undefined) return null;
+  const query = token.slice(symbol.length);
+  return isCurrencyAmountQuery(query) ? null : { kind: "skill", query, rangeStart, rangeEnd };
+}
+
+/** The text after a pick replaces the trigger's word, and where the cursor lands. A space already after the word serves as the one that follows the pick. */
+export function replaceTrigger(text: string, trigger: SlashTrigger, replacement: string) {
+  const after = text.slice(trigger.rangeEnd);
+  const rest = replacement.endsWith(" ") && after.startsWith(" ") ? after.slice(1) : after;
+  return {
+    text: text.slice(0, trigger.rangeStart) + replacement + rest,
+    cursor: trigger.rangeStart + replacement.length,
+  };
 }
 
 /** The message a picked item sends, with its argument after it. A T3 action sends no message. */

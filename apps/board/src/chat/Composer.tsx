@@ -52,8 +52,10 @@ import {
   rankSlashItems,
   type SlashAction,
   type SlashItem,
+  type SlashTrigger,
+  detectSlashTrigger,
+  replaceTrigger,
   slashMessage,
-  slashQuery,
 } from "./slash";
 import { MARK_SLASH, SlashMenu, slashOptionId } from "./SlashMenu";
 import type { PendingSend } from "./timeline";
@@ -68,7 +70,7 @@ const markShown = (chip: HTMLElement | null) => {
 
 /**
  * The box that sends a message to the orchestrator or stops its turn, with the model picker for the
- * next turn and the slash menu that opens when the message starts with `/`.
+ * next turn and the slash menu that opens on a `/` or `$` word anywhere in the message.
  */
 export function Composer({
   project,
@@ -131,22 +133,34 @@ export function Composer({
       ? { reason: SWITCH_BLOCKED, stayOn: baseInstanceId(thread.modelSelection.instanceId) }
       : null;
 
-  const query = slashQuery(draft, cursor);
-  const onlyTheCommand = draft.slice(cursor).trim() === "";
-  const open = query !== null && closedFor !== draft;
+  const trigger = detectSlashTrigger(draft, cursor);
+  const open = trigger !== null && closedFor !== draft;
+  const kind = trigger?.kind;
+  const atStart = trigger?.rangeStart === 0;
+  const onlyTheCommand = atStart && draft.slice(cursor).trim() === "";
+  // Provider commands and /clear run only as the start of a message. `$` lists skills alone.
   const items = useMemo(
     () =>
       open && provider !== undefined
         ? buildSlashItems({
-            commands: resolveProviderSlashCommandsForCwd(provider, cwd),
+            commands:
+              kind === "command" && atStart
+                ? resolveProviderSlashCommandsForCwd(provider, cwd)
+                : [],
             skills: resolveProviderSkillsForCwd(provider, cwd),
-            actions: ["model", ...(canFresh ? (["clear"] as const) : [])],
+            actions:
+              kind === "command"
+                ? ["model", ...(canFresh && atStart ? (["clear"] as const) : [])]
+                : [],
             messageIsOnlyTheCommand: onlyTheCommand,
           })
         : [],
-    [open, provider, cwd, canFresh, onlyTheCommand],
+    [open, provider, cwd, canFresh, kind, atStart, onlyTheCommand],
   );
-  const ranked = useMemo(() => rankSlashItems(items, query ?? ""), [items, query]);
+  const ranked = useMemo(
+    () => rankSlashItems(items, trigger?.query ?? ""),
+    [items, trigger?.query],
+  );
   const highlighted = Math.min(active, Math.max(ranked.length - 1, 0));
 
   const addFiles = (added: File[]) => {
@@ -159,37 +173,35 @@ export function Composer({
   };
 
   const edit = (value: string, at: number) => {
-    if (MARK_SLASH && slashQuery(draft, cursor) === null && slashQuery(value, at) !== null) {
-      performance.mark("board:slash-open");
-    }
-    if (slashQuery(draft, cursor) === null && slashQuery(value, at) !== null) refresh();
+    const opens = trigger === null && detectSlashTrigger(value, at) !== null;
+    if (MARK_SLASH && opens) performance.mark("board:slash-open");
+    if (opens) refresh();
     setActive(0);
     setClosedFor(null);
     setDraft(value);
     setCursor(at);
   };
 
-  const runAction = (action: SlashAction) => {
-    setDraft(draft.slice(cursor));
-    setCursor(0);
+  const runAction = (action: SlashAction, at: SlashTrigger) => {
+    const next = replaceTrigger(draft, at, "");
+    setDraft(next.text);
+    setCursor(next.cursor);
     if (action === "model") setModelOpen(true);
     else setFresh(true);
   };
 
   const pick = (item: SlashItem) => {
+    if (trigger === null) return;
     if (item.action !== null) {
-      runAction(item.action);
+      runAction(item.action, trigger);
       return;
     }
-    const text = `${slashMessage(item, "")} `;
-    const rest = draft.slice(cursor);
-    // A space already after the cursor serves as the one that follows the pick.
-    const next = text + (rest.startsWith(" ") ? rest.slice(1) : rest);
+    const next = replaceTrigger(draft, trigger, `${slashMessage(item, "")} `);
     setActive(0);
     // The textarea must hold the text before the cursor can move past it.
-    flushSync(() => setDraft(next));
-    input.current?.setSelectionRange(text.length, text.length);
-    setCursor(text.length);
+    flushSync(() => setDraft(next.text));
+    input.current?.setSelectionRange(next.cursor, next.cursor);
+    setCursor(next.cursor);
   };
 
   const settle = (messageId: PendingSend["messageId"], state: PendingSend["state"]) =>
