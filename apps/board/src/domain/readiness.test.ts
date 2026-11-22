@@ -298,9 +298,14 @@ describe("smoke evidence", () => {
       "smoke.txt has no Surface: line",
     ],
     [
-      "a Surface line of spaces only",
-      parseSmoke(`Surface:${" ".repeat(100_000)}\nPASS: item one`),
+      "an empty Surface line",
+      parseSmoke("Surface:  \nPASS: item one"),
       "smoke.txt has no Surface: line",
+    ],
+    [
+      "a long run of spaces inside the Surface line",
+      parseSmoke(`Surface:x${" ".repeat(100_000)}y\nPASS: item one`),
+      null,
     ],
     ["Surface: none", parseSmoke("Surface: None\nPASS: item one"), "smoke.txt says Surface: none"],
     ["a named surface", parseSmoke(SMOKE), null],
