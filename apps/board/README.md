@@ -119,7 +119,7 @@ Creating a board opens a dialog with the name and the **Orchestrator** picker. T
 
 On create, the app does this in order:
 
-1. Writes the 16 role files from `roles/` into `<board folder>/roles/`, and again whenever the project's boards are listed, replacing a copy only when it still matches the hash the app recorded in `roles/.app-written.json`. A copy the user edited, or one with no record that differs from the app's file, is kept.
+1. Writes the 16 role files from `roles/` into `<board folder>/roles/`, and again whenever the project's boards are listed in the installed app, replacing a copy only when it still matches the hash the app recorded in `roles/.app-written.json`. A copy the user edited, or one with no record that differs from the app's file, is kept. A dev build (`vp dev`) never seeds or refreshes when it lists, because its seeded projects point at the developer's live checkout, so it writes only into a board it creates.
 2. Starts the orchestrator with `orchestration.launchThread` in the project root, with the rendered `src/orchestrator/brief.md` as its first message. The brief names the board folder by absolute path, the store files and who writes each, the ticket stages, the role registry, the builder cap, and the rule that the user is reached only through `foryou.jsonl` or `request_secret`.
 3. Saves the thread id in `board.json`, then waits for the first sign of life. The dialog closes when the orchestrator has produced text. A model the instance does not offer makes the first run fail, which the engine reports only on the run, so the dialog shows that failure, the board goes back to having no orchestrator, and the failed thread is archived. **Try again** retries without a second board folder.
 

@@ -106,11 +106,7 @@ export async function refreshRoles(files: ProjectFiles, cwd: string, folder: str
 /** Boards read at once, which keeps a project with many boards from flooding the socket. */
 const READ_BATCH = 8;
 
-/**
- * Every `.agentboard/<slug>/board.json` in the project. A broken one is listed with its issue.
- * `refresh` seeds store files and role copies. A dev build passes false, because its seeded
- * projects point at the developer's live checkout.
- */
+/** Every `.agentboard/<slug>/board.json` in the project. A broken one is listed with its issue. */
 export async function listBoards(
   files: ProjectFiles,
   cwd: string,
