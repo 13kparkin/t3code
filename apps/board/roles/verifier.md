@@ -23,6 +23,7 @@ Run on the surface users touch, with seeded or real data and a real provider. Ne
 - No UI: run the changed script or test and record its exit code.
 - Before you start any dev server, give it an explicit scratch home, such as `--home-dir <scratch>` or the project's equivalent. Never rely on the default, which can be the live install.
 - Start a server as the harness's background task, and stop it by that task's id or the PID you captured at spawn.
+- Wait for a server with a bounded readiness command, such as `curl --retry 30 --retry-connrefused --retry-delay 1 -sf <url>`. Never use a busy loop.
 - If you used injected DOM, stubs, or synthetic events, list each one and mark the items it covers PROXY, never PASS.
 - Never write or delete under `~/.t3/userdata`. Never start a server against it.
 </surface>
