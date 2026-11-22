@@ -78,7 +78,6 @@ describe("laying out the lanes", () => {
       "pr",
       "awaiting_approval",
       "merged",
-      "off_path",
     ]);
     const building = lane("building");
     expect(building?.x).toBe(40 + 3 * (LANE_WIDTH + LANE_GAP));

@@ -38,7 +38,6 @@ const LANE_TONE = {
   pr: "bg-indigo-600 text-white",
   awaiting_approval: "bg-orange-600 text-white",
   merged: "bg-emerald-600 text-white",
-  off_path: "bg-zinc-500 text-white",
   unassigned: "bg-red-600 text-white",
 } as const satisfies Record<LaneId, string>;
 
