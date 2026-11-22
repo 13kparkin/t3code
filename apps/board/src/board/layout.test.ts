@@ -113,6 +113,22 @@ describe("laying out the lanes", () => {
     expect(headHeight({ ...stepped, stage: "off_path" })).toBe(bare);
   });
 
+  it("Given a ticket with only a store finding, when it is flagged, then its head gets the chip row", () => {
+    const ticket: Ticket = { key: "T-9", title: "a", stage: "merged", pr: 9 };
+    expect(headHeight(ticket, true)).toBeGreaterThan(headHeight(ticket));
+    const flagged = layoutBoard(
+      { ...model, lanes: { ...empty, merged: [view(ticket)] } },
+      {},
+      0,
+      {},
+      new Set(["T-9"]),
+    );
+    const plain = layoutBoard({ ...model, lanes: { ...empty, merged: [view(ticket)] } }, {});
+    const head = (layout: typeof flagged) =>
+      layout.lanes.find((lane) => lane.id === "merged")!.frames[0]!.head;
+    expect(head(flagged)).toBeGreaterThan(head(plain));
+  });
+
   it("Given a dependency on a ticket that exists and one that does not, when laid out, then only the first has an edge", () => {
     expect(layout.edges).toEqual([
       { from: "T-1", to: "T-3" },

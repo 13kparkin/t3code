@@ -66,7 +66,8 @@ export interface Layout {
 }
 
 /** Whether a ticket has anything to show in the row of chips under its branch. */
-export const hasChips = (ticket: Ticket): boolean =>
+export const hasChips = (ticket: Ticket, flagged = false): boolean =>
+  flagged ||
   ticket.issue != null ||
   ticket.headSha != null ||
   (ticket.fixRounds ?? 0) > 0 ||
@@ -85,8 +86,8 @@ const PR_STAGES: ReadonlySet<TicketStage> = new Set(["pr", "awaiting_approval", 
 export const hasPrRow = (ticket: Ticket): boolean =>
   ticket.pr != null || PR_STAGES.has(ticket.stage);
 
-export const headHeight = (ticket: Ticket): number =>
-  FRAME_HEAD + (hasPrRow(ticket) ? PR_ROW : 0) + (hasChips(ticket) ? CHIPS_HEIGHT : 0);
+export const headHeight = (ticket: Ticket, flagged = false): number =>
+  FRAME_HEAD + (hasPrRow(ticket) ? PR_ROW : 0) + (hasChips(ticket, flagged) ? CHIPS_HEIGHT : 0);
 
 /** The height of a frame's expanded artifact cards: a rule above, and the cards in the frame's padding. */
 export const artifactsHeight = (cards: number): number =>
@@ -123,13 +124,14 @@ export function forYouHeight(views: ReadonlyArray<CardView>): number {
 
 /**
  * Stacks each lane's frames in its column, and adds one edge for each `dependsOn` between two
- * tickets. `expanded` holds the card count of each ticket whose artifacts are open.
+ * tickets. `expanded` holds the card count of each ticket whose artifacts are open, and `flagged` the keys of tickets with a finding to show.
  */
 export function layoutBoard(
   model: BoardModel,
   order: FrameOrder,
   forYouRows = 0,
   expanded: Readonly<Record<string, number>> = {},
+  flagged: ReadonlySet<string> = new Set(),
 ): Layout {
   const lanes: LaneBox[] = [];
   const edges: Edge[] = [];
@@ -154,7 +156,7 @@ export function layoutBoard(
       )) {
         const view = views.find((entry) => entry.ticket.key === key);
         if (view === undefined) continue;
-        const head = headHeight(view.ticket);
+        const head = headHeight(view.ticket, flagged.has(key));
         items.push({
           key,
           head,

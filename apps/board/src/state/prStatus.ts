@@ -18,6 +18,7 @@ import {
   type PrLive,
   type Smoke,
 } from "../domain/readiness";
+import type { MergeApproval } from "../domain/findings";
 import { connectionAtomRuntime } from "../connection/runtime";
 import { locate } from "../files/target";
 import { ROLES } from "../orchestrator/roles";
@@ -150,6 +151,8 @@ export interface PrContextValue {
   readonly tickets: ReadonlyArray<TicketView>;
   /** The orchestrator's merge-order note for each ticket it asked to merge, by ticket key. */
   readonly mergeOrderNotes: ReadonlyMap<string, string>;
+  /** Each ticket's file-origin merge approvals, oldest first, by ticket key. */
+  readonly mergeCardsByTicket: ReadonlyMap<string, ReadonlyArray<MergeApproval>>;
   /** Why a merged ticket's worktree was kept, by ticket key. */
   readonly keptWorktrees: ReadonlyMap<string, string>;
 }

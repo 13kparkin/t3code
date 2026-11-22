@@ -7,7 +7,8 @@ import { missingPlan, STAGE_LABEL, stepProgress, type Ticket } from "../domain/t
 import { NO_ARTIFACTS } from "../state/artifacts";
 import { openTicketChanges } from "../state/changesView";
 import type { TicketView } from "../state/boardModel";
-import { usePrContext } from "../state/prStatus";
+import { findingsFor, hasStoreFinding, type MergeApproval } from "../domain/findings";
+import { usePrContext, useTicketPr } from "../state/prStatus";
 import { AgentCard } from "./AgentCard";
 import { ArtifactCards } from "./ArtifactCards";
 import { ArtifactCount } from "./ArtifactCount";
@@ -20,6 +21,7 @@ import { ReviewChanges } from "./ReviewChanges";
 import { useViewScale } from "./Viewport";
 
 const DRAG_THRESHOLD_PX = 4;
+const NO_CARDS: ReadonlyArray<MergeApproval> = [];
 
 const chip =
   "inline-flex max-w-full items-center gap-1 rounded border border-line px-1.5 text-[10px] leading-4 text-muted";
@@ -67,7 +69,12 @@ export function TicketFrame({
   const scale = useViewScale();
   const { groups, expanded } = useArtifacts();
   const artifacts = groups.byTicket.get(ticket.key) ?? NO_ARTIFACTS;
-  const kept = usePrContext().keptWorktrees.get(ticket.key);
+  const { keptWorktrees, mergeCardsByTicket } = usePrContext();
+  const kept = keptWorktrees.get(ticket.key);
+  const cards = mergeCardsByTicket.get(ticket.key) ?? NO_CARDS;
+  const { live } = useTicketPr(view);
+  const findings = findingsFor(ticket, { cards, live });
+  const flagged = hasStoreFinding(ticket, cards);
   const branchText =
     ticket.branch == null
       ? "No branch yet"
@@ -181,7 +188,7 @@ export function TicketFrame({
             )}
           </div>
         )}
-        {hasChips(ticket) && (
+        {hasChips(ticket, flagged) && (
           <div className="mt-1.5 flex h-[44px] flex-wrap content-start gap-1 overflow-hidden">
             {missingPlan(ticket) && (
               <Tooltip text={`In ${STAGE_LABEL[ticket.stage]} without a playbook and steps`}>
@@ -225,6 +232,15 @@ export function TicketFrame({
             {(ticket.flags ?? []).map((flag) => (
               <span key={flag} className={`${chip} border-amber-400/50 text-amber-300`}>
                 {flag}
+              </span>
+            ))}
+            {findings.map(({ id, text }) => (
+              <span
+                key={id}
+                data-testid="finding"
+                className={`${chip} border-amber-400/50 text-amber-300`}
+              >
+                <span className="truncate">{text}</span>
               </span>
             ))}
           </div>

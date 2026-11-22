@@ -16,6 +16,7 @@ import {
 import { OrchestratorPanel } from "../chat/OrchestratorPanel";
 import { ChecksPanel } from "../checks/ChecksPanel";
 import { MainTabs } from "../files/MainTabs";
+import { hasStoreFinding, type MergeApproval } from "../domain/findings";
 import { mergeTicketKey } from "../domain/readiness";
 import { frameOrderAtom } from "../state/boardUi";
 import { useThreadFamily } from "../state/family";
@@ -50,13 +51,29 @@ export function BoardScreen({
   const order = useAtomValue(frameOrderAtom)[board.id] ?? NO_ORDER;
   const forYou = useBoardForYou(project, listed);
   const artifacts = useBoardArtifacts(project, listed, model);
+  const tickets = useMemo(() => Object.values(model.lanes).flat(), [model]);
+  const { mergeCardsByTicket, flagged } = useMemo(() => {
+    const keys = tickets.map((view) => view.ticket.key);
+    const mergeCardsByTicket = new Map<string, MergeApproval[]>();
+    for (const { card } of forYou.views) {
+      if (card.origin !== "file" || card.item.kind !== "merge_approval") continue;
+      const key = mergeTicketKey(card.item, keys);
+      if (key !== null)
+        mergeCardsByTicket.set(key, [...(mergeCardsByTicket.get(key) ?? []), card.item]);
+    }
+    const flagged = new Set(
+      tickets
+        .filter(({ ticket }) => hasStoreFinding(ticket, mergeCardsByTicket.get(ticket.key) ?? []))
+        .map(({ ticket }) => ticket.key),
+    );
+    return { mergeCardsByTicket, flagged };
+  }, [tickets, forYou.views]);
   const layout = useMemo(
-    () => layoutBoard(model, order, forYouHeight(forYou.views), artifacts.cards),
-    [model, order, forYou.views, artifacts.cards],
+    () => layoutBoard(model, order, forYouHeight(forYou.views), artifacts.cards, flagged),
+    [model, order, forYou.views, artifacts.cards, flagged],
   );
   const family = useThreadFamily(project.environmentId, board.orchestratorThreadId);
   const builders = useMemo(() => countImplementationAgents(model), [model]);
-  const tickets = useMemo(() => Object.values(model.lanes).flat(), [model]);
   const keptWorktrees = useAtomValue(keptWorktreesAtom(`${project.id}/${listed.folder}`));
   const prContext = useMemo(() => {
     const keys = tickets.map((view) => view.ticket.key);
@@ -74,9 +91,18 @@ export function BoardScreen({
       family,
       tickets,
       mergeOrderNotes,
+      mergeCardsByTicket,
       keptWorktrees,
     };
-  }, [project, board.orchestratorThreadId, family, tickets, forYou.views, keptWorktrees]);
+  }, [
+    project,
+    board.orchestratorThreadId,
+    family,
+    tickets,
+    forYou.views,
+    mergeCardsByTicket,
+    keptWorktrees,
+  ]);
   const chatSlot = useAtomValue(chatSlotAtom);
   const checksSlot = useAtomValue(checksSlotAtom);
   const ticketSlot = useAtomValue(ticketSlotAtom);

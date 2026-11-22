@@ -147,7 +147,7 @@ export function rollupChecks(checks: ReadonlyArray<CheckRun>): ChecksState | nul
 }
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
-const sameCommit = (left: string, right: string) =>
+export const sameCommit = (left: string, right: string) =>
   left.startsWith(right) || right.startsWith(left);
 
 /** What keeps a local CI run from meeting `ci_green` on `head`, or null when it meets it. */
