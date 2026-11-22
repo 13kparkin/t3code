@@ -2,10 +2,20 @@ import {
   getProviderSkillsForSlashMenu,
   getProviderSlashCommandsForSlashMenu,
 } from "@t3tools/client-runtime/providerSkills";
-import { isCurrencyAmountQuery, isPathWord } from "@t3tools/shared/composerTrigger";
-import type { ServerProviderSkill, ServerProviderSlashCommand } from "@t3tools/contracts";
+import {
+  detectComposerPullRequestTrigger,
+  isCurrencyAmountQuery,
+  isPathWord,
+  serializeComposerFileLink,
+} from "@t3tools/shared/composerTrigger";
+import type {
+  ProjectEntry,
+  PullRequestListEntry,
+  ServerProviderSkill,
+  ServerProviderSlashCommand,
+} from "@t3tools/contracts";
 
-export type SlashGroup = "command" | "skill" | "action";
+export type SlashGroup = "command" | "skill" | "action" | "file" | "pull-request";
 
 /** The composer actions T3's own chat offers, which the board runs itself. */
 export type SlashAction = "model" | "clear";
@@ -14,20 +24,30 @@ export interface SlashItem {
   readonly id: string;
   readonly group: SlashGroup;
   readonly name: string;
-  /** What the menu shows and what picking it types into the message. */
+  /** What the menu shows. */
   readonly label: string;
+  /** What picking it types into the message. */
+  readonly insert: string;
   readonly description: string;
   /** The argument the command takes, as the engine describes it. */
   readonly hint: string | null;
   readonly action: SlashAction | null;
 }
 
-export const GROUP_ORDER: ReadonlyArray<SlashGroup> = ["command", "skill", "action"];
+export const GROUP_ORDER: ReadonlyArray<SlashGroup> = [
+  "command",
+  "skill",
+  "action",
+  "file",
+  "pull-request",
+];
 
 export const GROUP_TITLE = {
   command: "Commands",
   skill: "Skills",
   action: "T3 actions",
+  file: "Files",
+  "pull-request": "Pull requests",
 } satisfies Record<SlashGroup, string>;
 
 const ACTIONS = {
@@ -58,6 +78,7 @@ export function buildSlashItems(input: {
       group: "command",
       name: command.name,
       label: `/${command.name}`,
+      insert: `/${command.name}`,
       description: command.description ?? command.input?.hint ?? "Run provider command",
       hint: command.input?.hint ?? null,
       action: null,
@@ -67,6 +88,7 @@ export function buildSlashItems(input: {
       group: "skill",
       name: skill.name,
       label: `$${skill.name}`,
+      insert: `$${skill.name}`,
       description:
         skill.shortDescription ??
         skill.description ??
@@ -79,6 +101,7 @@ export function buildSlashItems(input: {
       group: "action",
       name: action,
       label: `/${action}`,
+      insert: `/${action}`,
       description: ACTIONS[action].description,
       hint: null,
       action,
@@ -117,7 +140,7 @@ export function rankSlashItems(
 }
 
 export interface SlashTrigger {
-  readonly kind: "command" | "skill";
+  readonly kind: "command" | "skill" | "file" | "pull-request";
   readonly query: string;
   readonly rangeStart: number;
   readonly rangeEnd: number;
@@ -125,7 +148,7 @@ export interface SlashTrigger {
 
 const isBlank = (char: string) => char === " " || char === "\n" || char === "\t" || char === "\r";
 
-/** Mirrors T3's `detectComposerTrigger`. `@` and `#` words open nothing, since the board has no file or pull request list. */
+/** Mirrors T3's `detectComposerTrigger`. */
 export function detectSlashTrigger(text: string, cursor: number): SlashTrigger | null {
   const rangeEnd = cursor;
   let rangeStart = rangeEnd;
@@ -136,18 +159,109 @@ export function detectSlashTrigger(text: string, cursor: number): SlashTrigger |
       ? null
       : { kind: "command", query: token.slice(1), rangeStart, rangeEnd };
   }
+  const pullRequest = detectComposerPullRequestTrigger(token, rangeEnd);
+  if (pullRequest) return pullRequest;
   const symbol = /^\p{Sc}/u.exec(token)?.[0];
-  if (symbol === undefined) return null;
-  const query = token.slice(symbol.length);
-  return isCurrencyAmountQuery(query) ? null : { kind: "skill", query, rangeStart, rangeEnd };
+  if (symbol !== undefined) {
+    const query = token.slice(symbol.length);
+    return isCurrencyAmountQuery(query) ? null : { kind: "skill", query, rangeStart, rangeEnd };
+  }
+  return token.startsWith("@")
+    ? { kind: "file", query: token.slice(1), rangeStart, rangeEnd }
+    : null;
 }
 
-/** A space already after the word serves as the one that follows a replacement ending in a space. */
+const MAX_PULL_REQUESTS = 50;
+
+/** Pull requests whose number contains a numeric query, the exact number first, then the most recently updated. */
+function pullRequestItems(entries: ReadonlyArray<PullRequestListEntry>, query: string) {
+  const isNumber = /^\d+$/.test(query);
+  const updated = (entry: PullRequestListEntry) => Date.parse(entry.updatedAt) || 0;
+  const exact = (entry: PullRequestListEntry) => Number(String(entry.number) === query);
+  return entries
+    .filter((entry) => !isNumber || String(entry.number).includes(query))
+    .toSorted((a, b) => exact(b) - exact(a) || updated(b) - updated(a))
+    .slice(0, MAX_PULL_REQUESTS)
+    .map((entry): SlashItem => ({
+      id: `pull-request:${entry.url}`,
+      group: "pull-request",
+      name: String(entry.number),
+      label: `#${entry.number}`,
+      insert: entry.url,
+      description: entry.title,
+      hint: null,
+      action: null,
+    }));
+}
+
+function fileItems(entries: ReadonlyArray<ProjectEntry>) {
+  return entries.map((entry): SlashItem => {
+    const name = entry.path.slice(entry.path.lastIndexOf("/") + 1);
+    return {
+      id: `file:${entry.path}`,
+      group: "file",
+      name,
+      label: name,
+      insert: serializeComposerFileLink(entry.path),
+      description: entry.path,
+      hint: null,
+      action: null,
+    };
+  });
+}
+
+/**
+ * What the menu lists for a trigger. `$` lists skills only. Provider commands and `/clear` run only
+ * when the `/` word starts the message, and `/compact` only when it is the whole message, as in T3.
+ * `@` and `#` list what the engine found, which it has already ranked.
+ */
+export function itemsForTrigger(input: {
+  readonly trigger: SlashTrigger;
+  readonly restIsBlank: boolean;
+  readonly commands: ReadonlyArray<ServerProviderSlashCommand>;
+  readonly skills: ReadonlyArray<ServerProviderSkill>;
+  readonly canClear: boolean;
+  readonly files: ReadonlyArray<ProjectEntry>;
+  readonly pullRequests: ReadonlyArray<PullRequestListEntry>;
+}) {
+  const { trigger } = input;
+  const atStart = trigger.rangeStart === 0;
+  switch (trigger.kind) {
+    case "file":
+      return fileItems(input.files);
+    case "pull-request":
+      return pullRequestItems(input.pullRequests, trigger.query);
+    case "skill":
+      return rankSlashItems(
+        buildSlashItems({
+          commands: [],
+          skills: input.skills,
+          actions: [],
+          messageIsOnlyTheCommand: false,
+        }),
+        trigger.query,
+      );
+    case "command":
+      return rankSlashItems(
+        buildSlashItems({
+          commands: atStart ? input.commands : [],
+          skills: input.skills,
+          actions: ["model", ...(input.canClear && atStart ? (["clear"] as const) : [])],
+          messageIsOnlyTheCommand: atStart && input.restIsBlank,
+        }),
+        trigger.query,
+      );
+  }
+}
+
+/** A space after the word is swallowed when the replacement ends in a space, or is empty and leaves a space or the message start before it. */
 export function replaceTrigger(text: string, trigger: SlashTrigger, replacement: string) {
+  const before = text.slice(0, trigger.rangeStart);
   const after = text.slice(trigger.rangeEnd);
-  const rest = replacement.endsWith(" ") && after.startsWith(" ") ? after.slice(1) : after;
+  const joinsSpace =
+    replacement === "" ? before === "" || before.endsWith(" ") : replacement.endsWith(" ");
   return {
-    text: text.slice(0, trigger.rangeStart) + replacement + rest,
+    text: before + replacement + (joinsSpace && after.startsWith(" ") ? after.slice(1) : after),
     cursor: trigger.rangeStart + replacement.length,
   };
 }
@@ -156,5 +270,5 @@ export function replaceTrigger(text: string, trigger: SlashTrigger, replacement:
 export function slashMessage(item: SlashItem, argument: string): string {
   if (item.action !== null) return "";
   const text = argument.trim();
-  return text === "" ? item.label : `${item.label} ${text}`;
+  return text === "" ? item.insert : `${item.insert} ${text}`;
 }

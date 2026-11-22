@@ -48,17 +48,17 @@ import type { ValidBoard } from "../store/boardFiles";
 import { attachmentInputs } from "./attachments";
 import { ModelPicker } from "./ModelPicker";
 import {
-  buildSlashItems,
-  rankSlashItems,
+  detectSlashTrigger,
+  itemsForTrigger,
+  replaceTrigger,
   type SlashAction,
   type SlashItem,
   type SlashTrigger,
-  detectSlashTrigger,
-  replaceTrigger,
   slashMessage,
 } from "./slash";
 import { MARK_SLASH, SlashMenu, slashOptionId } from "./SlashMenu";
 import type { PendingSend } from "./timeline";
+import { useTriggerLookup } from "./triggerLookup";
 import { useWorkspaceSnapshot } from "./workspaceSnapshot";
 
 const SWITCH_BLOCKED =
@@ -70,7 +70,7 @@ const markShown = (chip: HTMLElement | null) => {
 
 /**
  * The box that sends a message to the orchestrator or stops its turn, with the model picker for the
- * next turn and the slash menu that opens on a `/` or `$` word anywhere in the message.
+ * next turn and the menu that opens on a `/`, `$`, `@`, or `#` word anywhere in the message.
  */
 export function Composer({
   project,
@@ -133,33 +133,24 @@ export function Composer({
       ? { reason: SWITCH_BLOCKED, stayOn: baseInstanceId(thread.modelSelection.instanceId) }
       : null;
 
-  const trigger = detectSlashTrigger(draft, cursor);
+  const trigger = useMemo(() => detectSlashTrigger(draft, cursor), [draft, cursor]);
   const open = trigger !== null && closedFor !== draft;
-  const kind = trigger?.kind;
-  const atStart = trigger?.rangeStart === 0;
-  const onlyTheCommand = atStart && draft.slice(cursor).trim() === "";
-  // Provider commands and /clear run only at the start of a message. `$` lists skills only.
-  const items = useMemo(
+  const restIsBlank = draft.slice(cursor).trim() === "";
+  const found = useTriggerLookup(project, open ? trigger : null);
+  const ranked = useMemo(
     () =>
       open && provider !== undefined
-        ? buildSlashItems({
-            commands:
-              kind === "command" && atStart
-                ? resolveProviderSlashCommandsForCwd(provider, cwd)
-                : [],
+        ? itemsForTrigger({
+            trigger,
+            restIsBlank,
+            commands: resolveProviderSlashCommandsForCwd(provider, cwd),
             skills: resolveProviderSkillsForCwd(provider, cwd),
-            actions:
-              kind === "command"
-                ? ["model", ...(canFresh && atStart ? (["clear"] as const) : [])]
-                : [],
-            messageIsOnlyTheCommand: onlyTheCommand,
+            canClear: canFresh,
+            files: found.files,
+            pullRequests: found.pullRequests,
           })
         : [],
-    [open, provider, cwd, canFresh, kind, atStart, onlyTheCommand],
-  );
-  const ranked = useMemo(
-    () => rankSlashItems(items, trigger?.query ?? ""),
-    [items, trigger?.query],
+    [open, trigger, restIsBlank, provider, cwd, canFresh, found.files, found.pullRequests],
   );
   const highlighted = Math.min(active, Math.max(ranked.length - 1, 0));
 

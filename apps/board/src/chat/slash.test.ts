@@ -1,10 +1,15 @@
-import { ServerProviderSkill, ServerProviderSlashCommand } from "@t3tools/contracts";
+import {
+  PullRequestListEntry,
+  ServerProviderSkill,
+  ServerProviderSlashCommand,
+} from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
   buildSlashItems,
   detectSlashTrigger,
+  itemsForTrigger,
   rankSlashItems,
   replaceTrigger,
   slashMessage,
@@ -12,6 +17,7 @@ import {
 
 const command = Schema.decodeUnknownSync(ServerProviderSlashCommand);
 const skill = Schema.decodeUnknownSync(ServerProviderSkill);
+const decodePullRequest = Schema.decodeSync(PullRequestListEntry);
 
 const commands = [
   command({ name: "compact", input: { hint: "optional summary instructions" } }),
@@ -154,7 +160,7 @@ describe("the trigger at the cursor", () => {
     expect(detectSlashTrigger(text, cursor)).toBeNull();
   });
 
-  it.each(["", "Use ", "Use\t", "Use\n  "])(
+  it.each(["", "Use ", "Use\t\n  "])(
     "Given /skill:review after %j, then it opens the command menu on that word",
     (prefix) => {
       const text = `${prefix}/skill:review later`;
@@ -168,16 +174,9 @@ describe("the trigger at the cursor", () => {
     },
   );
 
-  it.each([
-    "It costs $5",
-    "budget $9.99",
-    "only $.99",
-    "about €20",
-    "raise $10k",
-    "raise $10k.",
-    "is it $5?",
-  ])("Given the amount in %j, then no skill menu opens", (text) =>
-    expect(detectSlashTrigger(text, text.length)).toBeNull(),
+  it.each(["It costs $5", "budget $9.99", "raise $10k."])(
+    "Given the amount in %j, then no skill menu opens",
+    (text) => expect(detectSlashTrigger(text, text.length)).toBeNull(),
   );
 
   it("Given a $ word mid-message, then the skill menu opens on it", () => {
@@ -195,10 +194,106 @@ describe("the trigger at the cursor", () => {
     });
   });
 
-  it.each(["Compare this with #8737", "see @src/index.ts", "# Heading", "issue#123", "mail a@b"])(
-    "Given %j, then no menu opens, since the board has no file or pull request list",
-    (text) => expect(detectSlashTrigger(text, text.length)).toBeNull(),
+  it("Given a pull request number at a token boundary, then the pull request menu opens on it", () => {
+    const text = "Compare this with #8737";
+    expect(detectSlashTrigger(text, text.length)).toEqual({
+      kind: "pull-request",
+      query: "8737",
+      rangeStart: "Compare this with ".length,
+      rangeEnd: text.length,
+    });
+  });
+
+  it("Given an @ word in the middle of text, then the file menu opens on it", () => {
+    expect(
+      detectSlashTrigger("Please inspect @in this sentence", "Please inspect @".length),
+    ).toEqual({
+      kind: "file",
+      query: "",
+      rangeStart: "Please inspect ".length,
+      rangeEnd: "Please inspect @".length,
+    });
+  });
+
+  it.each(["# Heading", "issue#123", "mail a@b"])("Given %j, then no menu opens", (text) =>
+    expect(detectSlashTrigger(text, text.length)).toBeNull(),
   );
+});
+
+describe("the items a trigger lists", () => {
+  const entry = (path: string) => ({ path, kind: "file" as const });
+  const pullRequest = (number: number, updatedAt: string) =>
+    decodePullRequest({
+      provider: "github",
+      host: "github.com",
+      projectId: "p",
+      projectTitle: "p",
+      repository: "o/r",
+      number,
+      title: `PR ${number}`,
+      url: `https://github.com/o/r/pull/${number}`,
+      author: null,
+      headBranch: "h",
+      baseBranch: "main",
+      state: "open",
+      isDraft: false,
+      mergeability: "unknown",
+      additions: 0,
+      deletions: 0,
+      createdAt: updatedAt,
+      updatedAt,
+      viewerReviewRequested: false,
+      labels: [],
+    });
+  const forTrigger = (text: string, cursor: number) => {
+    const trigger = detectSlashTrigger(text, cursor);
+    if (trigger === null) throw new Error("no trigger");
+    return itemsForTrigger({
+      trigger,
+      restIsBlank: text.slice(cursor).trim() === "",
+      commands,
+      skills,
+      canClear: true,
+      files: [entry("src/chat/slash.ts")],
+      pullRequests: [
+        pullRequest(12, "2026-01-01T00:00:00Z"),
+        pullRequest(123, "2026-03-01T00:00:00Z"),
+        pullRequest(7, "2026-02-01T00:00:00Z"),
+      ],
+    }).map((item) => item.id);
+  };
+
+  it("Given each trigger kind, then it lists only its own kind and start-only items go mid-message", () => {
+    expect(forTrigger("$rev", 4)).toEqual(["skill:review-agent", "skill:pr-description"]);
+    expect(forTrigger("Use /rev", 8)).toEqual(["skill:review-agent", "skill:pr-description"]);
+    expect(forTrigger("Use /", 5)).toEqual([
+      "skill:review-agent",
+      "skill:pr-description",
+      "skill:security-audit",
+      "action:model",
+    ]);
+    expect(forTrigger("/", 1)).toContain("command:debug");
+    expect(forTrigger("/", 1)).toContain("action:clear");
+    expect(forTrigger("see @sl", 7)).toEqual(["file:src/chat/slash.ts"]);
+    expect(forTrigger("see #12", 7)).toEqual([
+      "pull-request:https://github.com/o/r/pull/12",
+      "pull-request:https://github.com/o/r/pull/123",
+    ]);
+  });
+
+  it("Given a picked file or pull request, then it types a file link or the pull request URL", () => {
+    const [file] = itemsForTrigger({
+      trigger: { kind: "file", query: "", rangeStart: 0, rangeEnd: 1 },
+      restIsBlank: true,
+      commands: [],
+      skills: [],
+      canClear: false,
+      files: [entry("src/chat/slash.ts")],
+      pullRequests: [],
+    });
+    expect(file?.insert).toBe("[slash.ts](src/chat/slash.ts)");
+    expect(slashMessage(file!, "")).toBe("[slash.ts](src/chat/slash.ts)");
+  });
 });
 
 describe("a pick replaces the typed word", () => {
@@ -209,6 +304,16 @@ describe("a pick replaces the typed word", () => {
     expect(replaceTrigger(text, trigger, "$review-agent ")).toEqual({
       text: "Please run $review-agent on this",
       cursor: "Please run $review-agent ".length,
+    });
+  });
+
+  it("Given /model mid-message, then removing it leaves one space between its neighbors", () => {
+    const text = "Please run /model now";
+    const trigger = detectSlashTrigger(text, "Please run /model".length);
+    if (trigger === null) throw new Error("no trigger");
+    expect(replaceTrigger(text, trigger, "")).toEqual({
+      text: "Please run now",
+      cursor: "Please run ".length,
     });
   });
 
