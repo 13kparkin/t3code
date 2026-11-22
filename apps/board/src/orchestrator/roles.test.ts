@@ -8,7 +8,7 @@ import { resolveRoles, ROLES } from "./roles";
 const rolesDir = NodePath.resolve(import.meta.dirname, "../../roles");
 
 describe("the role registry", () => {
-  it("Given the registry, when it is read, then it is these 16 roles on these models", () => {
+  it("Given the registry, when it is read, then it is these 17 roles on these models", () => {
     const SONNET = ["claude-sonnet-5-5", "medium"];
     const OPUS = ["claude-opus-5-5", "medium"];
     expect(
@@ -25,6 +25,7 @@ describe("the role registry", () => {
       ["reviewer", "review", "shared", ...SONNET],
       ["security-reviewer", "review", "shared", "claude-opus-5-5", "high"],
       ["sonic", "implementation", "shared", "claude-haiku-5-5", "low"],
+      ["verifier", "test", "shared", ...SONNET],
       ["comment-sicko", "review", "shared", ...OPUS],
       ["poteto-agent", "general", "worktree", ...OPUS],
       ["egm-bootstrap-orchestrator", "general", "worktree", ...OPUS],

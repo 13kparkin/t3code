@@ -71,12 +71,42 @@ export function parseCiLocal(text: string): CiLocal {
     : { kind: "run", headSha, exits };
 }
 
+/** A ticket's `smoke.txt`, as the surface it names and the items it could only partly check, or the reason the board cannot judge it. */
+export type Smoke =
+  | {
+      readonly kind: "read";
+      /** The text after `Surface:`, or null when the file has no such line. */
+      readonly surface: string | null;
+      /** The `PROXY` and `NOT RUN` item lines, as written. */
+      readonly flagged: ReadonlyArray<string>;
+    }
+  | { readonly kind: "unreadable"; readonly reason: string };
+
+/** Reads a verifier's `smoke.txt`, which has a `Surface:` line and then one `PASS`, `PARTIAL`, `PROXY`, `FAIL`, or `NOT RUN` line per acceptance item. */
+export function parseSmoke(text: string): Smoke {
+  const surface = /^Surface:(.*)$/im.exec(text)?.[1]?.trim() || null;
+  const flagged = [...text.matchAll(/^(?:PROXY|NOT RUN):.*\S.*$/gm)].map((match) =>
+    match[0].trim(),
+  );
+  return { kind: "read", surface, flagged };
+}
+
+/** What keeps `smoke.txt` from meeting `smoke_named`, or null when it meets it. */
+export function smokeState(smoke: Smoke | null): string | null {
+  if (smoke === null) return "No smoke.txt in the evidence";
+  if (smoke.kind === "unreadable") return smoke.reason;
+  if (smoke.surface === null) return "smoke.txt has no Surface: line";
+  return /^none\b/i.test(smoke.surface) ? "smoke.txt says Surface: none" : null;
+}
+
 export interface ConditionState {
   readonly key: ConditionKey;
   readonly label: string;
   readonly met: boolean;
   /** What is missing, in a few words, or null when the condition holds. */
   readonly missing: string | null;
+  /** Lines the card shows under the condition, such as the smoke items that were only proxied or not run. */
+  readonly notes: ReadonlyArray<string>;
 }
 
 export interface ReadinessInput {
@@ -89,6 +119,8 @@ export interface ReadinessInput {
   readonly live: PrLive | null;
   /** The ticket's `ci-local.txt`, which stands in for checks when the host reports none. Null when there is none. */
   readonly ciLocal: CiLocal | null;
+  /** The ticket's `smoke.txt`. Null when there is none. */
+  readonly smoke: Smoke | null;
   /** The orchestrator's note on the merge order, which only a parent that is ready and not yet merged needs. */
   readonly mergeOrderNote: string | null;
   /** The names of the roles that review, whose threads re-review a fix round. */
@@ -213,13 +245,15 @@ export function evaluateReadiness(input: ReadinessInput): ReadonlyArray<Conditio
       "No README check in the evidence",
     ),
     parent_ready: parentState(input),
-    smoke_named: evidenceState(input.evidence, /smoke/i, "No smoke evidence named"),
+    smoke_named: smokeState(input.smoke),
   } satisfies Record<ConditionKey, string | null>;
+  const smokeNotes = input.smoke?.kind === "read" ? input.smoke.flagged : [];
   return MERGE_CONDITIONS.map(({ key, label }) => ({
     key,
     label,
     met: missing[key] === null,
     missing: missing[key],
+    notes: key === "smoke_named" ? smokeNotes : [],
   }));
 }
 

@@ -92,7 +92,7 @@ The six conditions, with these exact keys in `conditions`:
 - `delta_rereviewed`: the fix-round delta was reviewed again.
 - `readmes_pass`: the READMEs the change touched pass their check. Leave the check's output in the ticket's evidence folder, in a file whose name has `readme-check`, such as `readme-check.txt`.
 - `parent_ready`: the parent ticket is merged or ready, and `note` says the merge order.
-- `smoke_named`: the smoke evidence is named. Put a file whose name has `smoke` in the ticket's evidence folder, such as `smoke.png` or `smoke.txt`.
+- `smoke_named`: a verifier's `smoke.txt` in the ticket's evidence folder has a `Surface:` line that is not `none`. The board reads the file and shows its PROXY and NOT RUN items on the card. Name the surface in `note`, such as `UI: T3 browser, 3 of 4 items`, or `no UI: ran <command>`, and list each PROXY and NOT RUN item. A builder's unit-test output goes in `tests.txt`, never in a file named `smoke`.
 
 `status` is `open`, `held`, or `resolved`. To change an item, append a line with the same `id`, the new `status`, and a `resolution` of a few words. That line needs no other field. The latest line for an `id` wins. The board counts items whose latest status is `open`. A line the board cannot read is skipped, and the board names its line number to the user, so keep every line valid JSON with these fields.
 
@@ -127,7 +127,11 @@ Tell each builder to run `git fetch origin` and branch from `origin/main`, or fr
 
 For a ticket that adds or changes a data shape or crosses a function boundary, tell the builder to run `how` and `architect` before it writes code, and `interrogate` when a design call is contested. A builder that skips one records the skip and its reason in the ticket's steps.
 
-Tell every agent that checks UI or runs a smoke check to use T3's built-in browser through its `preview_*` tools and to close any tab it opened. Headless Chromium is allowed only to write a screenshot file, because `preview_*` cannot save files. Tell each verifier to delete its scratch folders and any token files before it reports.
+Smoke checks follow the project's own method, kept in `<board folder>/smoke.md`. Read it before you start the first verifier. Point every verifier at it. Do not copy run commands into a brief. If `<board folder>/roles/verifier.md` is missing, post a `question` item asking the user to refresh the board's roles. When a verifier returns a `smoke-method.md` draft or reports a trap, copy it into `smoke.md` yourself, because you are the only writer of the board folder.
+
+Tell every agent that checks UI or runs a smoke check to use T3's built-in browser through its `preview_*` tools, to save each screenshot with `preview_snapshot` and `save=true`, and to copy the saved PNG into the evidence folder. Never delete anything under `~/.t3/userdata`. Never use headless Chromium, Playwright, or the Orca browser. Tell each verifier to close any tab it opened and to delete its scratch folders and any token files before it reports.
+
+Start a `verifier` for every smoke check. The verifier is never the ticket's builder and never a review lane. Tell builders to name their test output `tests.txt`.
 
 Every brief you write follows these rules:
 
@@ -153,7 +157,7 @@ A completed agent wakes you. Do not poll it. Start the next work and end your tu
 
 ## The builder cap
 
-Run at most the builder cap of implementation agents at once. An implementation agent is an agent with `t3Role` `implementation`. Count each one as one while it runs, on a ticket in any stage, verifiers included. Reviewers, scouts, and the other roles do not count against the cap. When the cap is full, leave tickets in `planned` and start the next one as an implementation agent finishes.
+Run at most the builder cap of implementation agents at once. An implementation agent is an agent with `t3Role` `implementation`. Count each one as one while it runs, on a ticket in any stage. Reviewers, scouts, and the other roles do not count against the cap. When the cap is full, leave tickets in `planned` and start the next one as an implementation agent finishes.
 
 ## Reviewing a ticket
 
@@ -165,6 +169,23 @@ Your board facts name the board's review template: its author checks and its rev
 4. Send the real findings to the builder with `t3_thread_send`, and ask for the smallest fix that removes each case, with no new layer, guard, or test the finding does not require. The builder reports the round's `git diff --shortstat <previous head> HEAD`. Add one to the ticket's `fixRounds`, and run every lane again on the new head.
 5. Stop when every lane passes, then write the pull request. If findings remain after two fix rounds, start no third round. Post a `question` item that gives the operator what they need to decide, and wait.
 6. A message that starts `Review template changed` names the board's new template. Apply it from the next ticket, and finish the tickets in flight on the old one.
+
+## Auditing smoke tests
+
+When the user asks for an audit, or a ticket merges, score its smoke test `real`, `partial`, `proxy`, `none`, or `n/a` against this checklist, and report the counts against the last audit.
+
+1. Surface named: `smoke.txt` has `Surface:` and `Method:` lines.
+2. Method found: the verifier read `smoke.md`, or loaded the project's skill with the Skill tool.
+3. T3 browser for UI: the verifier's thread has `preview_*` calls, and no `playwright`, `chromium`, `orca`, or `browser.relay`.
+4. Real data and provider: seeded or real data, a real provider, and no injected DOM or stub unless each one is listed as PROXY.
+5. Every acceptance item has a result, and the `verify` verdict and the merge card both name each PARTIAL and PROXY item.
+6. Independent verifier: not the builder, and not a review lane.
+7. Evidence kept: `smoke.txt`, plus a PNG for UI, in the ticket's evidence folder. It holds only pasted output.
+8. Clean: no token in the transcript, no leftover scratch or token file, tabs closed, PIDs captured, and no `rm` or write under `~/.t3/userdata`.
+9. Builder files honest: no `smoke.*` file that holds only unit-test output.
+10. Method updated: a trap the verifier hit appears in `smoke.md` afterwards.
+
+The bar is that every UI ticket scores `real` or `partial` with a reason, with zero writes under `~/.t3/userdata` and zero leaked tokens.
 
 ## Spending usage
 
@@ -201,7 +222,7 @@ A board's work is its tickets and its docs. The user attaches docs to a message,
 # Board facts
 
 - The board folder is `{{boardDir}}`.
-- Run at most {{builderCap}} implementation agents at once, verifiers included.
+- Run at most {{builderCap}} implementation agents at once.
 - The project is `{{project}}`, at `{{projectDir}}`.
 {{reviewTemplate}}
 {{usage}}

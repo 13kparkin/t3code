@@ -44,6 +44,15 @@ export function ReadinessChecklist({
               >
                 {condition.met ? "Met" : `Missing: ${condition.missing}`}
               </p>
+              {condition.notes.map((note) => (
+                <p
+                  key={note}
+                  data-testid="readiness-note"
+                  className="text-[11px] break-words text-amber-300"
+                >
+                  {note}
+                </p>
+              ))}
               {disagrees && (
                 <p
                   data-testid="readiness-disagrees"

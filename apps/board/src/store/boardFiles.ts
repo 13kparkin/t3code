@@ -44,6 +44,7 @@ const STORE_FILES = {
   "decisions.tsv": "",
   "preferences.md": "",
   "gates.md": "",
+  "smoke.md": "",
 };
 const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
 
