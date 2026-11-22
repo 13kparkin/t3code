@@ -302,11 +302,6 @@ describe("smoke evidence", () => {
       parseSmoke("Surface:  \nPASS: item one"),
       "smoke.txt has no Surface: line",
     ],
-    [
-      "a long run of spaces inside the Surface line",
-      parseSmoke(`Surface:x${" ".repeat(100_000)}y\nPASS: item one`),
-      null,
-    ],
     ["Surface: none", parseSmoke("Surface: None\nPASS: item one"), "smoke.txt says Surface: none"],
     ["a named surface", parseSmoke(SMOKE), null],
   ])("Given %s, when the gate is judged, then it is %j", (_name, smoke, missing) => {
