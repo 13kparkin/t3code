@@ -10,6 +10,8 @@ import {
   pickOf,
   resolvePick,
   selectionOf,
+  selectionWarning,
+  textInstances,
 } from "./providers";
 
 const decodeProvider = Schema.decodeUnknownSync(ServerProvider);
@@ -261,5 +263,73 @@ describe("the orchestrator's pick", () => {
         options: [{ id: "effort", value: "low" }],
       }),
     ).toEqual({ instanceId: "claudeAgent", model: "claude-sonnet-5-5", effort: "low" });
+  });
+});
+
+describe("the text model settings", () => {
+  const haiku = { instanceId: ProviderInstanceId.make("claudeAgent"), model: "claude-haiku-5-5" };
+  const claude = provider({ instanceId: "claudeAgent", driver: "claudeAgent" });
+
+  it.each([
+    ["runs", [claude], haiku, null],
+    [
+      "is missing",
+      [],
+      { ...haiku, instanceId: ProviderInstanceId.make("omp") },
+      "omp is not an instance this engine runs.",
+    ],
+    ["is off", [{ ...claude, enabled: false }], haiku, "claudeAgent is turned off."],
+    [
+      "cannot start",
+      [
+        {
+          ...claude,
+          enabled: false,
+          installed: false,
+          availability: "unavailable",
+          unavailableReason: "Driver 'omp' is not registered in this build.",
+        },
+      ],
+      haiku,
+      "claudeAgent: Driver 'omp' is not registered in this build.",
+    ],
+    [
+      "is not installed",
+      [{ ...claude, installed: false }],
+      haiku,
+      "claudeAgent is not installed on the machine that runs T3.",
+    ],
+    [
+      "cannot write text",
+      [{ ...claude, supportsTextGeneration: false }],
+      haiku,
+      "claudeAgent cannot write text.",
+    ],
+    [
+      "is signed out",
+      [provider({ instanceId: "claudeAgent", driver: "claudeAgent", status: "unauthenticated" })],
+      haiku,
+      "claudeAgent is signed out.",
+    ],
+  ] as const)(
+    "Given a saved instance that %s, when it is checked, then the warning is %j",
+    (_, providers, selection, warning) => {
+      expect(selectionWarning(providers, selection)).toBe(warning);
+    },
+  );
+
+  it("Given Cursor, a disabled provider and one that cannot write text, when text instances are listed, then only Cursor is kept and it keeps its own name", () => {
+    const listed = textInstances([
+      provider({ instanceId: "cursor", driver: "cursor", displayName: "Cursor" }),
+      { ...claude, supportsTextGeneration: false },
+      { ...provider({ instanceId: "claudeAgent2", driver: "claudeAgent" }), enabled: false },
+    ]);
+    expect(listed.map(({ instanceId, name }) => [instanceId, name])).toEqual([
+      ["cursor", "Cursor"],
+    ]);
+  });
+
+  it("Given the default Claude Code instance, when text instances are listed, then it is named Claude Code", () => {
+    expect(textInstances([claude]).map((entry) => entry.name)).toEqual(["Claude Code"]);
   });
 });

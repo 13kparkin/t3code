@@ -78,36 +78,70 @@ const SIGN_IN = {
   unknown: "unknown",
 } as const satisfies Record<ServerProvider["auth"]["status"], SignInState>;
 
+function toPickable(provider: ServerProvider): PickableInstance {
+  const models = provider.models.filter((model) => model.isLegacy !== true);
+  const isDefault = provider.instanceId === defaultInstanceIdForDriver(provider.driver);
+  return {
+    instanceId: provider.instanceId,
+    driver: provider.driver,
+    name:
+      isDefault && provider.driver === "claudeAgent"
+        ? CLAUDE_CODE
+        : (provider.displayName ?? provider.instanceId),
+    signIn: SIGN_IN[provider.auth.status],
+    account: provider.auth.email ?? provider.auth.label ?? null,
+    canSignIn: provider.setup?.canAuthenticate === true,
+    unavailable: provider.installed ? null : "Not installed on the machine that runs T3",
+    message: provider.message ?? null,
+    offered: provider.models.map((model) => model.slug),
+    models: models.map((model) => ({
+      slug: model.slug,
+      name: model.name,
+      effort: effortControl(model),
+    })),
+    defaultModel: (models.find((model) => model.isDefault === true) ?? models[0])?.slug ?? null,
+  };
+}
+
+const byInstanceId = (left: PickableInstance, right: PickableInstance) =>
+  left.instanceId.localeCompare(right.instanceId);
+
 /** The enabled Claude Code instances with each one's sign-in state and models. */
 export function pickableInstances(
   providers: ReadonlyArray<ServerProvider>,
 ): ReadonlyArray<PickableInstance> {
   return providers
     .filter((provider) => provider.enabled && provider.driver === "claudeAgent")
-    .toSorted((left, right) => left.instanceId.localeCompare(right.instanceId))
-    .map((provider) => {
-      const models = provider.models.filter((model) => model.isLegacy !== true);
-      return {
-        instanceId: provider.instanceId,
-        driver: provider.driver,
-        name:
-          provider.instanceId === defaultInstanceIdForDriver(provider.driver)
-            ? CLAUDE_CODE
-            : (provider.displayName ?? provider.instanceId),
-        signIn: SIGN_IN[provider.auth.status],
-        account: provider.auth.email ?? provider.auth.label ?? null,
-        canSignIn: provider.setup?.canAuthenticate === true,
-        unavailable: provider.installed ? null : "Not installed on the machine that runs T3",
-        message: provider.message ?? null,
-        offered: provider.models.map((model) => model.slug),
-        models: models.map((model) => ({
-          slug: model.slug,
-          name: model.name,
-          effort: effortControl(model),
-        })),
-        defaultModel: (models.find((model) => model.isDefault === true) ?? models[0])?.slug ?? null,
-      };
-    });
+    .map(toPickable)
+    .toSorted(byInstanceId);
+}
+
+export function textInstances(
+  providers: ReadonlyArray<ServerProvider>,
+): ReadonlyArray<PickableInstance> {
+  return providers
+    .filter((provider) => provider.enabled && provider.supportsTextGeneration !== false)
+    .map(toPickable)
+    .toSorted(byInstanceId);
+}
+
+export function selectionWarning(
+  providers: ReadonlyArray<ServerProvider>,
+  selection: ModelSelection,
+): string | null {
+  const provider = providers.find((entry) => entry.instanceId === selection.instanceId);
+  if (provider === undefined) return `${selection.instanceId} is not an instance this engine runs.`;
+  if (provider.availability === "unavailable") {
+    return `${selection.instanceId}: ${provider.unavailableReason ?? provider.message ?? "the engine cannot start it."}`;
+  }
+  if (!provider.enabled) return `${selection.instanceId} is turned off.`;
+  if (!provider.installed)
+    return `${selection.instanceId} is not installed on the machine that runs T3.`;
+  if (provider.supportsTextGeneration === false) {
+    return `${selection.instanceId} cannot write text.`;
+  }
+  if (provider.auth.status === "unauthenticated") return `${selection.instanceId} is signed out.`;
+  return null;
 }
 
 /** Whether an orchestrator can start on the instance now. An instance with an unknown sign-in is tried. */

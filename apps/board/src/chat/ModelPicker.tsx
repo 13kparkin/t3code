@@ -28,6 +28,7 @@ export function ModelPicker({
   switchBlocked,
   open,
   onOpenChange,
+  dropDown = false,
 }: {
   instances: ReadonlyArray<PickableInstance>;
   value: PickerValue;
@@ -36,6 +37,7 @@ export function ModelPicker({
   switchBlocked: { readonly reason: string; readonly stayOn: string } | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  dropDown?: boolean;
 }) {
   const panelId = useId();
   const selected = instances.find((instance) => instance.instanceId === value.instanceId);
@@ -80,7 +82,7 @@ export function ModelPicker({
           role="dialog"
           aria-label="Model"
           tabIndex={-1}
-          className="outline-none absolute bottom-full left-0 z-20 mb-1 flex max-h-[min(22rem,50vh)] w-[min(22rem,calc(100vw-2rem))] flex-col gap-2 overflow-y-auto rounded-xl border border-line bg-panel p-2 shadow-panel"
+          className={`outline-none absolute z-20 flex max-h-[min(22rem,50vh)] w-[min(22rem,calc(100vw-2rem))] flex-col gap-2 overflow-y-auto rounded-xl border border-line bg-panel p-2 shadow-panel ${dropDown ? "top-full right-0 mt-1" : "bottom-full left-0 mb-1"}`}
         >
           <div role="group" aria-label="Provider" className="flex flex-col">
             {instances.map((instance) => {
