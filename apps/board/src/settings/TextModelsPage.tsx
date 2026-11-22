@@ -37,6 +37,7 @@ export function TextModelsPage({
   return (
     <SettingsSection
       title="Text generation models"
+      clip={false}
       note="Branch names come from the commit and branch model, or from the first when that is unset. Pick an instance that is installed and signed in."
     >
       {TASKS.map((task) => {
