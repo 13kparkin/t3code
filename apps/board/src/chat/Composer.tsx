@@ -447,7 +447,7 @@ export function Composer({
             aria-activedescendant={
               highlightedItem === undefined ? undefined : slashOptionId(menuId, highlightedItem)
             }
-            className="max-h-40 min-h-10 min-w-0 flex-1 resize-none bg-transparent text-fg outline-none placeholder:text-faint"
+            className="field-sizing-content max-h-40 min-h-10 min-w-0 flex-1 resize-none bg-transparent text-fg outline-none placeholder:text-faint"
           />
           <input
             ref={picker}
