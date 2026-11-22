@@ -1,5 +1,5 @@
 import type { Board } from "../domain/board";
-import { type ProjectFiles, writeBoard } from "./boardFiles";
+import { type ProjectFiles, updateBoard } from "./boardFiles";
 
 export interface FamilyThread {
   readonly id: string;
@@ -71,7 +71,7 @@ export async function archiveBoard(
       await threads.archive(thread.id);
     }
   }
-  await writeBoard(files, cwd, folder, { ...board, archived: true });
+  await updateBoard(files, cwd, folder, { archived: true });
 }
 
 /** Reverses the archive: unarchives the family, then clears the mark. Stopped agents stay stopped. */
@@ -87,5 +87,5 @@ export async function restoreBoard(
       await threads.unarchive(thread.id);
     }
   }
-  await writeBoard(files, cwd, folder, { ...board, archived: false });
+  await updateBoard(files, cwd, folder, { archived: false });
 }

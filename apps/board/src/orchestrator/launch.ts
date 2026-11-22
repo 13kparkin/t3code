@@ -2,7 +2,7 @@ import type { ProviderOptionSelection } from "@t3tools/contracts";
 
 import { BOARDS_DIR, type Board } from "../domain/board";
 import type { ReviewTemplate } from "../domain/reviewTemplate";
-import { type ProjectFiles, refreshRoles, writeBoard } from "../store/boardFiles";
+import { type ProjectFiles, refreshRoles, updateBoard } from "../store/boardFiles";
 import type { UsageReading } from "../usage/usageNotice";
 import { renderFacts } from "./brief";
 import type { OrchestratorModel } from "./roles";
@@ -108,14 +108,13 @@ export async function launchOrchestrator(
     model: selection.model,
     options: selection.options,
   });
-  const launched: Board = { ...board, orchestratorThreadId: threadId };
-  await writeBoard(ports.files, cwd, folder, launched);
+  const launched = await updateBoard(ports.files, cwd, folder, { orchestratorThreadId: threadId });
 
   for (let waited = 0; waited < SIGNAL_TIMEOUT_MS; waited += POLL_MS) {
     const signal = readLaunchSignal(await ports.projection(threadId));
     if (signal.state === "started") return launched;
     if (signal.state === "failed") {
-      await writeBoard(ports.files, cwd, folder, board);
+      await updateBoard(ports.files, cwd, folder, { orchestratorThreadId: null });
       // The launch failure is the reason to show, so a thread that will not archive stays in the list.
       await ports.discard(threadId).catch(() => undefined);
       throw new Error(signal.message);

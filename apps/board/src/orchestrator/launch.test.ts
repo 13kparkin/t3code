@@ -1,9 +1,9 @@
 import * as Result from "effect/Result";
 import { describe, expect, it } from "vite-plus/test";
 
-import { type Board, parseBoard } from "../domain/board";
+import { type Board, parseBoard, serializeBoard } from "../domain/board";
 import { SYSTEM_TEMPLATE } from "../domain/reviewTemplate";
-import type { ProjectFiles } from "../store/boardFiles";
+import { type ProjectFiles, setBuilderCap } from "../store/boardFiles";
 import {
   type LaunchPorts,
   type LaunchProjection,
@@ -34,8 +34,11 @@ const SELECTION = {
 
 const PENDING: LaunchProjection = { runs: [], messages: [], failures: [] };
 
-function harness(answers: ReadonlyArray<LaunchProjection>) {
-  const store = new Map<string, string>();
+function harness(
+  answers: ReadonlyArray<LaunchProjection>,
+  whileLaunching?: (files: ProjectFiles) => Promise<Board>,
+) {
+  const store = new Map([[".agentboard/claude-connector/board.json", serializeBoard(BOARD)]]);
   const launched: LaunchRequest[] = [];
   const discarded: string[] = [];
   let polls = 0;
@@ -48,6 +51,7 @@ function harness(answers: ReadonlyArray<LaunchProjection>) {
     files,
     launchThread: async (request) => {
       launched.push(request);
+      await whileLaunching?.(files);
       return "thread-1";
     },
     orchestratorInstance: async (selection) => `board-orchestrator-${selection.instanceId}`,
@@ -127,6 +131,28 @@ describe("launching an orchestrator", () => {
     );
     expect(boardJson(store)?.orchestratorThreadId).toBeNull();
     expect(discarded).toEqual(["thread-1"]);
+  });
+});
+
+describe("a cap saved while the orchestrator launches", () => {
+  const saveCap = (files: ProjectFiles) => setBuilderCap(files, CWD, "claude-connector", 5);
+  const ready = { ...PENDING, messages: [{ role: "assistant", text: "Ready." }] };
+
+  it("Given a cap saved from the card during the launch, when the launch succeeds, then the cap and the thread id are both saved", async () => {
+    const { ports, store } = harness([ready], saveCap);
+    await launchOrchestrator(ports, target, SELECTION);
+    expect(boardJson(store)).toMatchObject({ builderCap: 5, orchestratorThreadId: "thread-1" });
+  });
+
+  it("Given a cap saved from the card during the launch, when the launch fails, then the cap stays and the thread id is cleared", async () => {
+    const failed = {
+      ...PENDING,
+      runs: [{ status: "failed" }],
+      failures: [{ message: "no model" }],
+    };
+    const { ports, store } = harness([failed], saveCap);
+    await expect(launchOrchestrator(ports, target, SELECTION)).rejects.toThrow("no model");
+    expect(boardJson(store)).toMatchObject({ builderCap: 5, orchestratorThreadId: null });
   });
 });
 

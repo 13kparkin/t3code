@@ -174,15 +174,20 @@ async function readBoard(files: ProjectFiles, cwd: string, folder: string) {
   return parsed.success;
 }
 
-/** Sets the board's builder cap in its own file, read fresh so a change made since the last listing is kept. */
-export async function setBuilderCap(
+/** Writes only the given fields into the board's own file, read fresh so a change made since the last listing is kept. */
+export async function updateBoard(
   files: ProjectFiles,
   cwd: string,
   folder: string,
-  builderCap: number,
-): Promise<void> {
-  await writeBoard(files, cwd, folder, { ...(await readBoard(files, cwd, folder)), builderCap });
+  fields: Partial<Board>,
+): Promise<Board> {
+  const board = { ...(await readBoard(files, cwd, folder)), ...fields };
+  await writeBoard(files, cwd, folder, board);
+  return board;
 }
+
+export const setBuilderCap = (files: ProjectFiles, cwd: string, folder: string, cap: number) =>
+  updateBoard(files, cwd, folder, { builderCap: cap });
 
 /** Adds the names to the board's docs in the board's own file, read fresh so two sends in a row both count. */
 export async function appendDocs(
