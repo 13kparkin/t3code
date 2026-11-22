@@ -184,7 +184,10 @@ export function defaultSetupPatch(
   project: ProjectRef,
 ): SettingsInput | null {
   const own = settings.projectSettingsOverrides[project.id]?.defaultProjectScripts;
-  if (own !== undefined || scriptsFor(settings, project).some((s) => s.runOnWorktreeCreate)) {
+  if (
+    own !== undefined ||
+    scriptsFor(settings, project).some((script) => script.runOnWorktreeCreate)
+  ) {
     return null;
   }
   return saveSetupScript(settings, project, DEFAULT_SETUP_SCRIPT);
