@@ -75,6 +75,11 @@ describe("planCleanup", () => {
       { kind: "keep", reason: "unpushed" },
     ],
     [
+      "the worktree detached after git listed it, with a commit no ref holds",
+      { status: { ...clean, refName: null, hasUpstream: false, aheadCount: 0 } },
+      { kind: "keep", reason: "unpushed" },
+    ],
+    [
       "ASK T-2: one untracked file",
       { status: { ...clean, hasWorkingTreeChanges: true } },
       { kind: "keep", reason: "dirty" },

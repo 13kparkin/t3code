@@ -79,8 +79,10 @@ const ownThreadIds = (ticket: Ticket) => new Set((ticket.threads ?? []).map((t) 
 const samePath = (a: string | null | undefined, b: string) =>
   a != null && trimSlashes(a) === trimSlashes(b);
 
+// A worktree that detached since git listed it reports no ahead count, so it is never safe.
 const branchSafe = (status: WorktreeStatus) =>
-  (status.hasUpstream && status.aheadCount === 0) || status.aheadOfDefaultCount === 0;
+  status.refName !== null &&
+  ((status.hasUpstream && status.aheadCount === 0) || status.aheadOfDefaultCount === 0);
 
 const evidenceCopied = ({ worktree, board, partial }: Evidence) => {
   if (worktree === null || partial) return false;
