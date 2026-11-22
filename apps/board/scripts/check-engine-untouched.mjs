@@ -11,6 +11,7 @@ const ALLOWED = [
   "pnpm-lock.yaml",
   ".gitignore",
   "AGENTS.md",
+  ".agents/skills/test-t3-app/SKILL.md",
 ];
 const UPSTREAM_URL = "https://github.com/pingdotgg/t3code.git";
 

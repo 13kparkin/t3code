@@ -140,7 +140,7 @@ An empty database is a bad test. Seed your worktree's `.t3` with a copy of real 
 
 - User-visible frontend changes should get one integrated pass in a real client: `test-t3-app` for web, `test-t3-mobile` for mobile. The primary agent does this once after integrating. Subagents do not launch their own dev servers.
 
-- Smoke tests may use real providers. To watch a recorded turn stream through the pipeline and UI without one, `vp run dev` registers the `Replay (dev)` provider; [test-t3-app](.agents/skills/test-t3-app/SKILL.md) shows how to start one.
+- Smoke tests use real providers. Pick the cheapest model that exercises the change.
 
 For mobile verification, a missing or outdated native client is an install step, not a blocker. Run `vp run mobile:install <ios|android> [device-id]` on the device host before starting Metro; it targets the only booted simulator or connected Android device when the id is omitted. It installs the dev client for this checkout's native fingerprint from the shared cache in seconds and builds only when no machine has built it yet, so prefer it over `expo run:*`, `xcodebuild`, or `gradlew`, which rebuild from scratch. Its stdout is one JSON line; build output goes to the log it names. See `test-t3-mobile` for the full workflow.
 
