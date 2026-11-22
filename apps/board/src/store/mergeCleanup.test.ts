@@ -13,6 +13,7 @@ import {
 
 const ROOT = "/repo";
 const WT = "/wt/t3-2cc5f690";
+const OTHER = "/wt/t3-reviewer";
 
 const ticket = (patch: Partial<Ticket> = {}): Ticket => ({
   key: "T-26",
@@ -61,8 +62,13 @@ describe("planCleanup", () => {
       { kind: "keep", reason: "unpushed" },
     ],
     [
-      "ASK t3-9dff628b: 2 commits not in main and no upstream",
-      { status: { ...clean, hasUpstream: false, aheadCount: 2, aheadOfDefaultCount: 2 } },
+      "ASK t3-9dff628b: 2 commits not in main, already pushed to origin",
+      { status: { ...clean, hasUpstream: true, aheadCount: 0, aheadOfDefaultCount: 2 } },
+      { kind: "remove" },
+    ],
+    [
+      "a commit not pushed to its upstream and not in main",
+      { status: { ...clean, hasUpstream: true, aheadCount: 1, aheadOfDefaultCount: 1 } },
       { kind: "keep", reason: "unpushed" },
     ],
     [
@@ -157,6 +163,7 @@ describe("planCleanup", () => {
       { path: `${ROOT}/` },
       { kind: "keep", reason: "main-checkout" },
     ],
+    ["the path is relative", { path: "../wt" }, { kind: "keep", reason: "relative-path" }],
     ["the worktree is already gone", { status: { ...clean, isRepo: false } }, { kind: "gone" }],
   ])("%s", (_name, patch, expected) => {
     expect(planCleanup(facts(patch))).toEqual(expected);
@@ -186,26 +193,45 @@ function filesOf(tree: Record<string, ReadonlyArray<string>>): ProjectFiles {
 
 function world(input: {
   readonly board: ReadonlyArray<string>;
+  readonly partial?: boolean;
   readonly threads?: ReadonlyArray<LiveThread>;
   readonly statuses?: ReadonlyArray<WorktreeStatus>;
+  readonly statusOf?: Readonly<Record<string, WorktreeStatus>>;
   readonly removeFails?: string;
+  /** A worktree evidence folder whose listing fails, as a read error does. */
+  readonly unlisted?: string;
 }) {
   const removed: string[] = [];
   const archived: string[] = [];
   const statuses = [...(input.statuses ?? [clean, clean])];
+  const files = filesOf({
+    [ROOT]: [
+      ...input.board.map((name) => `${BOARD}/artifacts/T-26/${name}`),
+      ...(input.partial ? [`${BOARD}/artifacts/T-26.partial/smoke.png`] : []),
+    ],
+    [WT]: [
+      ".omp/artifacts/T-26/README.txt",
+      ".omp/artifacts/T-26/smoke.png",
+      ...(input.unlisted ? [`${input.unlisted}/1.png`] : []),
+    ],
+    [OTHER]: [".omp/artifacts/T-26/README.txt"],
+  });
   const ports: CleanupPorts = {
-    files: filesOf({
-      [ROOT]: input.board.map((name) => `${BOARD}/artifacts/T-26/${name}`),
-      [WT]: [".omp/artifacts/T-26/README.txt", ".omp/artifacts/T-26/smoke.png"],
-    }),
+    files: {
+      ...files,
+      list: async (cwd, directory) =>
+        directory === input.unlisted ? null : files.list(cwd, directory),
+    },
     tickets: async () => [ticket()],
     threads: () =>
       input.threads ?? [
         { id: "orchestrator", worktreePath: null, working: true, isRoot: true },
         { id: "builder", worktreePath: WT, working: false, isRoot: false },
       ],
-    status: async () =>
-      removed.includes(WT) ? { ...clean, isRepo: false } : (statuses.shift() ?? clean),
+    status: async (path) =>
+      removed.includes(path)
+        ? { ...clean, isRepo: false }
+        : (input.statusOf?.[path] ?? statuses.shift() ?? clean),
     remove: async (path) => {
       if (input.removeFails !== undefined) return input.removeFails;
       removed.push(path);
@@ -221,23 +247,73 @@ describe("cleanupMerged", () => {
 
   it("deletes the worktree only once its evidence is on the board, then archives the ticket's threads", async () => {
     const skipped = world({ board: ["README.txt"] });
-    expect(await cleanupMerged(skipped.ports, target, [ticket()])).toEqual(
+    expect((await cleanupMerged(skipped.ports, target, [ticket()])).kept).toEqual(
       new Map([["T-26", "evidence-missing"]]),
     );
     expect(skipped.removed).toEqual([]);
     expect(skipped.archived).toEqual([]);
 
     const copied = world({ board: ["README.txt", "smoke.png"] });
-    expect(await cleanupMerged(copied.ports, target, [ticket()])).toEqual(new Map());
+    expect((await cleanupMerged(copied.ports, target, [ticket()])).kept).toEqual(new Map());
     expect(copied.removed).toEqual([WT]);
     expect(copied.archived).toEqual(["builder"]);
   });
 
-  it("archives without a delete when the worktree is already gone, so a second run converges", async () => {
+  it("keeps the worktree while the orchestrator's copy is still in its .partial folder", async () => {
+    const copying = world({ board: ["README.txt", "smoke.png"], partial: true });
+    expect((await cleanupMerged(copying.ports, target, [ticket()])).kept).toEqual(
+      new Map([["T-26", "evidence-missing"]]),
+    );
+    expect(copying.removed).toEqual([]);
+  });
+
+  it("keeps the worktree when an evidence subfolder does not list", async () => {
+    const unreadable = world({
+      board: ["README.txt", "smoke.png"],
+      unlisted: ".omp/artifacts/T-26/shots",
+    });
+    expect((await cleanupMerged(unreadable.ports, target, [ticket()])).kept).toEqual(
+      new Map([["T-26", "evidence-missing"]]),
+    );
+    expect(unreadable.removed).toEqual([]);
+  });
+
+  it("deletes a ticket's clean worktree but archives nothing while its other worktree is kept", async () => {
+    const two = world({
+      board: ["README.txt", "smoke.png"],
+      threads: [
+        { id: "builder", worktreePath: WT, working: false, isRoot: false },
+        { id: "reviewer", worktreePath: `${OTHER}/`, working: false, isRoot: false },
+      ],
+      statusOf: { [OTHER]: { ...clean, hasWorkingTreeChanges: true } },
+    });
+    const owner = ticket({
+      threads: [
+        { threadId: "builder", role: "task" },
+        { threadId: "reviewer", role: "reviewer" },
+      ],
+    });
+    expect((await cleanupMerged(two.ports, target, [owner])).kept).toEqual(
+      new Map([["T-26", "dirty"]]),
+    );
+    expect(two.removed).toEqual([WT]);
+    expect(two.archived).toEqual([]);
+  });
+
+  it("archives without a delete when the worktree is already gone", async () => {
     const gone = world({ board: [], statuses: [{ ...clean, isRepo: false }] });
-    expect(await cleanupMerged(gone.ports, target, [ticket()])).toEqual(new Map());
+    expect(await cleanupMerged(gone.ports, target, [ticket()])).toEqual({
+      kept: new Map(),
+      settled: [],
+    });
     expect(gone.removed).toEqual([]);
     expect(gone.archived).toEqual(["builder"]);
+
+    const archived = world({ board: [], statuses: [{ ...clean, isRepo: false }], threads: [] });
+    expect(await cleanupMerged(archived.ports, target, [ticket()])).toEqual({
+      kept: new Map(),
+      settled: ["T-26"],
+    });
   });
 
   it("keeps a worktree that turned dirty between the two reads", async () => {
@@ -245,7 +321,7 @@ describe("cleanupMerged", () => {
       board: ["README.txt", "smoke.png"],
       statuses: [clean, { ...clean, hasWorkingTreeChanges: true }],
     });
-    expect(await cleanupMerged(changed.ports, target, [ticket()])).toEqual(
+    expect((await cleanupMerged(changed.ports, target, [ticket()])).kept).toEqual(
       new Map([["T-26", "dirty"]]),
     );
     expect(changed.removed).toEqual([]);
@@ -256,19 +332,19 @@ describe("cleanupMerged", () => {
       board: ["README.txt", "smoke.png"],
       removeFails: "fatal: contains modified or untracked files",
     });
-    expect(await cleanupMerged(refused.ports, target, [ticket()])).toEqual(
+    expect((await cleanupMerged(refused.ports, target, [ticket()])).kept).toEqual(
       new Map([["T-26", "fatal: contains modified or untracked files"]]),
     );
     expect(refused.archived).toEqual([]);
   });
 
-  it("never archives or stops a running agent", async () => {
+  it("never archives a running agent", async () => {
     const busy = world({
       board: ["README.txt", "smoke.png"],
       statuses: [{ ...clean, isRepo: false }],
       threads: [{ id: "builder", worktreePath: null, working: true, isRoot: false }],
     });
-    expect(await cleanupMerged(busy.ports, target, [ticket()])).toEqual(new Map());
+    expect((await cleanupMerged(busy.ports, target, [ticket()])).kept).toEqual(new Map());
     expect(busy.archived).toEqual([]);
   });
 });

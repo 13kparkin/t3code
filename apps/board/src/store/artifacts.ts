@@ -49,20 +49,27 @@ async function inBatches<T, R>(
   return results;
 }
 
-/** Every file under a directory, which `projects.listEntries` lists one level at a time. Paths are relative to `cwd`. */
+/**
+ * Every file under a directory, which `projects.listEntries` lists one level at a time. Paths are
+ * relative to `cwd`. `strict` also lists hidden files, and throws when a folder below `directory`
+ * does not list, because the engine answers a failed read the same way as a missing folder.
+ */
 export async function walk(
   files: ProjectFiles,
   cwd: string,
   directory: string,
-  { hidden = false } = {},
+  { strict = false } = {},
 ): Promise<string[]> {
   const found: string[] = [];
   let level = [directory];
-  while (level.length > 0) {
+  for (let depth = 0; level.length > 0; depth += 1) {
     const next: string[] = [];
     const listings = await inBatches(level, (path) => files.list(cwd, path));
+    if (strict && depth > 0 && listings.includes(null)) {
+      throw new Error(`A folder under ${directory} did not list.`);
+    }
     for (const entry of listings.flatMap((listing) => listing ?? [])) {
-      if (!hidden && baseName(entry.path).startsWith(".")) continue;
+      if (!strict && baseName(entry.path).startsWith(".")) continue;
       (entry.kind === "directory" ? next : found).push(entry.path);
     }
     level = next;

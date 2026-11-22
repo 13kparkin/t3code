@@ -21,6 +21,8 @@ export const keptWorktreesAtom = Atom.family((storeKey: string) =>
 );
 
 const inFlight = new Set<string>();
+// Per board, the merged tickets whose worktrees and threads are all gone, so later ticks skip them.
+const settledTickets = new Map<string, Set<string>>();
 
 function cleanupPorts(registry: AtomRegistry.AtomRegistry, project: CleanupProject): CleanupPorts {
   const { environmentId, workspaceRoot } = project;
@@ -66,14 +68,21 @@ function cleanupPorts(registry: AtomRegistry.AtomRegistry, project: CleanupProje
 export function runMergeCleanup(
   registry: AtomRegistry.AtomRegistry,
   project: CleanupProject,
+  storeKey: string,
   folder: string,
   ticketsText: string | null,
 ): void {
   const parsed = ticketsText === null ? null : parseTickets(ticketsText);
-  if (parsed === null || Result.isFailure(parsed)) return;
-  const merged = parsed.success.filter((ticket) => ticket.stage === "merged");
-  const storeKey = `${project.id}/${folder}`;
-  if (merged.length === 0 || inFlight.has(storeKey)) return;
+  if (parsed === null || Result.isFailure(parsed) || inFlight.has(storeKey)) return;
+  const settled = settledTickets.get(storeKey) ?? new Set<string>();
+  settledTickets.set(storeKey, settled);
+  const merged = parsed.success.filter(
+    (ticket) => ticket.stage === "merged" && !settled.has(ticket.key),
+  );
+  if (merged.length === 0) {
+    registry.set(keptWorktreesAtom(storeKey), NONE);
+    return;
+  }
   inFlight.add(storeKey);
   void cleanupMerged(
     cleanupPorts(registry, project),
@@ -81,7 +90,10 @@ export function runMergeCleanup(
     merged,
   )
     .then(
-      (kept) => registry.set(keptWorktreesAtom(storeKey), kept),
+      (result) => {
+        for (const key of result.settled) settled.add(key);
+        registry.set(keptWorktreesAtom(storeKey), result.kept);
+      },
       () => undefined,
     )
     .finally(() => inFlight.delete(storeKey));

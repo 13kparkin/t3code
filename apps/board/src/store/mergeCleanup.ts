@@ -9,6 +9,7 @@ import type { ProjectFiles } from "./boardFiles";
 type KeepReason =
   | "store-unreadable"
   | "not-merged"
+  | "relative-path"
   | "main-checkout"
   | "shared"
   | "running"
@@ -61,6 +62,8 @@ export interface WorktreeFacts {
   readonly evidence: Evidence | null;
 }
 
+const ABSOLUTE = /^(\/|[A-Za-z]:[\\/])/;
+
 const CLOSED_STAGES: ReadonlySet<string> = new Set(["merged", "off_path"]);
 
 const ownThreadIds = (ticket: Ticket) => new Set((ticket.threads ?? []).map((t) => t.threadId));
@@ -87,6 +90,7 @@ export function planCleanup(facts: WorktreeFacts): Plan {
   const own = ownThreadIds(ticket);
   if (facts.projectTickets === null) return keep("store-unreadable");
   if (ticket.stage !== "merged") return keep("not-merged");
+  if (!ABSOLUTE.test(path)) return keep("relative-path");
   if (samePath(facts.workspaceRoot, path)) return keep("main-checkout");
   if (status === null) return keep("status-unknown");
   if (!status.isRepo) return { kind: "gone" };
@@ -149,11 +153,11 @@ async function readEvidence(
   try {
     const [hasSource, board, partial] = await Promise.all([
       files.list(path, source),
-      walk(files, target.workspaceRoot, copy, { hidden: true }).then(under(copy)),
+      walk(files, target.workspaceRoot, copy, { strict: true }).then(under(copy)),
       files.list(target.workspaceRoot, `${copy}.partial`),
     ]);
     const worktree =
-      hasSource === null ? null : under(source)(await walk(files, path, source, { hidden: true }));
+      hasSource === null ? null : under(source)(await walk(files, path, source, { strict: true }));
     return { worktree, board, partial: partial !== null };
   } catch {
     return null;
@@ -164,14 +168,18 @@ async function readEvidence(
  * Deletes the merged tickets' worktrees that pass every check in `planCleanup`, then archives the
  * ticket's own threads once its worktrees are gone. Each run reads the world again and stores
  * nothing, so a run that stopped part way is finished by the next. Resolves to the reason each
- * kept ticket shows.
+ * kept ticket shows, and the tickets with no worktree and no live thread left.
  */
 export async function cleanupMerged(
   ports: CleanupPorts,
   target: CleanupTarget,
   merged: ReadonlyArray<Ticket>,
-): Promise<ReadonlyMap<string, string>> {
+): Promise<{
+  readonly kept: ReadonlyMap<string, string>;
+  readonly settled: ReadonlyArray<string>;
+}> {
   const kept = new Map<string, string>();
+  const settled: string[] = [];
   const projectTickets = await ports.tickets().catch(() => null);
   for (const ticket of merged) {
     const facts = async (path: string): Promise<WorktreeFacts> => ({
@@ -201,7 +209,8 @@ export async function cleanupMerged(
     if (threads === null) continue;
     const live = threads.filter((thread) => own.has(thread.id) && !thread.isRoot);
     if (live.some((thread) => thread.working)) continue;
+    if (live.length === 0) settled.push(ticket.key);
     for (const thread of live) await ports.archive(thread.id).catch(() => undefined);
   }
-  return kept;
+  return { kept, settled };
 }
