@@ -60,6 +60,8 @@ export function createAppUpdater(deps: {
   let state: AppUpdateState = { current, status: deps.packaged ? "unchecked" : "disabled" };
   let prereleases = false;
   let checking = false;
+  // Bumped when the test-release switch flips, so work started under the old setting is dropped.
+  let generation = 0;
   const set = (next: AppUpdateState) => {
     state = next;
     publish(state);
@@ -82,6 +84,7 @@ export function createAppUpdater(deps: {
       return;
     }
     checking = true;
+    const started = generation;
     try {
       const version = newerRelease(await deps.fetchReleases(), current, prereleases);
       if (version === null) return set({ current, status: "current" });
@@ -90,13 +93,14 @@ export function createAppUpdater(deps: {
         url: `https://github.com/${REPOSITORY}/releases/download/${TAG_PREFIX}${version}`,
       });
       const result = await updater.checkForUpdates();
+      if (started !== generation) return set({ current, status: "unchecked" });
       set(
         result?.isUpdateAvailable === true
           ? { current, status: "available", version }
           : { current, status: "current" },
       );
     } catch (error) {
-      if (state.status !== "available") {
+      if (appUpdateStep(state, 0) !== "download") {
         set({ current, status: "error", message: String(error), version: null });
       }
     } finally {
@@ -109,12 +113,12 @@ export function createAppUpdater(deps: {
       appUpdateStep(state, 0) === "download" && "version" in state ? state.version : null;
     if (checking || version === null) return;
     set({ current, status: "downloading", version, percent: 0 });
-    try {
-      await updater.downloadUpdate();
-      set({ current, status: "downloaded", version });
-    } catch (error) {
-      set({ current, status: "error", message: String(error), version });
-    }
+    const started = generation;
+    const next = await updater.downloadUpdate().then(
+      (): AppUpdateState => ({ current, status: "downloaded", version }),
+      (error): AppUpdateState => ({ current, status: "error", message: String(error), version }),
+    );
+    set(started === generation ? next : { current, status: "unchecked" });
   };
 
   return {
@@ -130,8 +134,10 @@ export function createAppUpdater(deps: {
     setPrereleases: (enabled: boolean) => {
       if (enabled === prereleases) return;
       prereleases = enabled;
+      generation += 1;
       // Turning test releases off must not leave a pre-release offered or ready to install.
-      if (!enabled && (state.status === "available" || state.status === "downloaded")) {
+      // A running download is dropped when it lands.
+      if (!enabled && state.status !== "downloading" && "version" in state) {
         set({ current, status: "unchecked" });
       }
       void check();
