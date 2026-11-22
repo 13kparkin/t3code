@@ -1,6 +1,6 @@
 import { useAtomValue } from "@effect/atom-react";
-import type { ModelSelection, ServerSettings } from "@t3tools/contracts";
-import { useState } from "react";
+import type { ServerSettings } from "@t3tools/contracts";
+import { useMemo, useState } from "react";
 
 import { ModelPicker } from "../chat/ModelPicker";
 import { modelSelectionOf, pickOf, textInstances, selectionWarning } from "../providers/providers";
@@ -31,7 +31,7 @@ export function TextModelsPage({
   save: (input: SettingsInput) => void;
 }) {
   const providers = useAtomValue(engineProvidersAtom);
-  const instances = textInstances(providers);
+  const instances = useMemo(() => textInstances(providers), [providers]);
   const [open, setOpen] = useState<string | null>(null);
 
   return (
@@ -41,7 +41,7 @@ export function TextModelsPage({
       note="Branch names come from the commit and branch model, or from the first when that is unset. Pick an instance that is installed and signed in."
     >
       {TASKS.map((task) => {
-        const own: ModelSelection | null = settings[task.key];
+        const own = settings[task.key];
         const selection = own ?? settings.textGenerationModelSelection;
         const warning = selectionWarning(providers, selection);
         return (

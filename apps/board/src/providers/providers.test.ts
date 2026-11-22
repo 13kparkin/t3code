@@ -280,10 +280,22 @@ describe("the text model settings", () => {
     ],
     ["is off", [{ ...claude, enabled: false }], haiku, "claudeAgent is turned off."],
     [
+      "is off and not installed",
+      [{ ...claude, enabled: false, installed: false }],
+      haiku,
+      "claudeAgent is turned off.",
+    ],
+    [
       "is not installed",
       [{ ...claude, installed: false }],
       haiku,
       "claudeAgent is not installed on the machine that runs T3.",
+    ],
+    [
+      "cannot write text",
+      [{ ...claude, supportsTextGeneration: false }],
+      haiku,
+      "claudeAgent cannot write text.",
     ],
     [
       "is signed out",
@@ -298,11 +310,18 @@ describe("the text model settings", () => {
     },
   );
 
-  it("Given Cursor and a provider that cannot write text, when text instances are listed, then Cursor is kept and the other is left out", () => {
+  it("Given Cursor, a disabled provider and one that cannot write text, when text instances are listed, then only Cursor is kept and it keeps its own name", () => {
     const listed = textInstances([
-      provider({ instanceId: "cursor", driver: "cursor" }),
+      provider({ instanceId: "cursor", driver: "cursor", displayName: "Cursor" }),
       { ...claude, supportsTextGeneration: false },
+      { ...provider({ instanceId: "claudeAgent2", driver: "claudeAgent" }), enabled: false },
     ]);
-    expect(listed.map((entry) => entry.instanceId)).toEqual(["cursor"]);
+    expect(listed.map(({ instanceId, name }) => [instanceId, name])).toEqual([
+      ["cursor", "Cursor"],
+    ]);
+  });
+
+  it("Given the default Claude Code instance, when text instances are listed, then it is named Claude Code", () => {
+    expect(textInstances([claude]).map((entry) => entry.name)).toEqual(["Claude Code"]);
   });
 });

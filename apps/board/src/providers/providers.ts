@@ -103,7 +103,7 @@ function toPickable(provider: ServerProvider): PickableInstance {
   };
 }
 
-const bySlot = (left: PickableInstance, right: PickableInstance) =>
+const byInstanceId = (left: PickableInstance, right: PickableInstance) =>
   left.instanceId.localeCompare(right.instanceId);
 
 /** The enabled Claude Code instances with each one's sign-in state and models. */
@@ -113,7 +113,7 @@ export function pickableInstances(
   return providers
     .filter((provider) => provider.enabled && provider.driver === "claudeAgent")
     .map(toPickable)
-    .toSorted(bySlot);
+    .toSorted(byInstanceId);
 }
 
 export function textInstances(
@@ -122,7 +122,7 @@ export function textInstances(
   return providers
     .filter((provider) => provider.enabled && provider.supportsTextGeneration !== false)
     .map(toPickable)
-    .toSorted(bySlot);
+    .toSorted(byInstanceId);
 }
 
 export function selectionWarning(
