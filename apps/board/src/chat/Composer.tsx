@@ -29,7 +29,7 @@ import {
   useState,
 } from "react";
 
-import { baseInstanceId } from "../orchestrator/orchestratorInstance";
+import { baseInstanceId, menuInstance } from "../orchestrator/orchestratorInstance";
 import {
   modelSelectionOf,
   NO_PICK,
@@ -118,7 +118,7 @@ export function Composer({
           ...thread.modelSelection,
           instanceId: ProviderInstanceId.make(baseInstanceId(thread.modelSelection.instanceId)),
         }));
-  const provider = providersForCwd.find((entry) => entry.instanceId === shown.instanceId);
+  const provider = menuInstance(providersForCwd, shown.instanceId);
   const { refresh } = useWorkspaceSnapshot(environmentId, provider?.instanceId, cwd);
   const canFresh =
     useAtomValue(serverEnvironment.configValueAtom(environmentId))?.environment.capabilities

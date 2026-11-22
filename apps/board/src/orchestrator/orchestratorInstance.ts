@@ -30,6 +30,14 @@ export const isBoardInstance = (instanceId: string) =>
 export const baseInstanceId = (instanceId: string) =>
   isOrchestratorInstance(instanceId) ? instanceId.slice(PREFIX.length) : instanceId;
 
+/** The provider the slash menu lists: the orchestrator's copy of the picked instance, where its turns run, else the picked one. */
+export const menuInstance = <P extends { readonly instanceId: string }>(
+  providers: ReadonlyArray<P>,
+  pickedId: string,
+): P | undefined =>
+  providers.find((entry) => entry.instanceId === orchestratorInstanceId(pickedId)) ??
+  providers.find((entry) => entry.instanceId === pickedId);
+
 /**
  * Everything an orchestrator is told once and keeps through compaction: poteto-mode, the adapter
  * that maps it onto T3's tools, then the board's rules, which win where they differ. The two
