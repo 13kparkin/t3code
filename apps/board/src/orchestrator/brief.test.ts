@@ -67,8 +67,9 @@ describe("the orchestrator's standing rules and board facts", () => {
       "Before you move a ticket to `planned`, set its `playbook` and `steps`",
     );
     expect(rules).toContain("Start `poteto-agent` for a ticket that crosses several modules");
-    expect(rules).toContain("start every bug-fix round, the first build and each fix round");
-    expect(rules).toContain("`repro-before.txt`");
+    expect(rules).toContain("start every bug-fix round whose finding can fail when run");
+    expect(rules).toContain("`repro-before-2.txt` for fix round 2");
+    expect(rules).toContain("Put this in each fix-round send too");
   });
 
   it("Given the rules, when they render, then they start a sonic local CI run and state its file format", () => {
