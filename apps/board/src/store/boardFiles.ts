@@ -174,14 +174,15 @@ async function readBoard(files: ProjectFiles, cwd: string, folder: string) {
   return parsed.success;
 }
 
-/** Writes only the given fields into the board's own file, read fresh so a change made since the last listing is kept. */
+/** Writes only the given fields (an undefined review template removes its key) into the board's own file, read fresh so a change made since the last listing is kept. */
 export async function updateBoard(
   files: ProjectFiles,
   cwd: string,
   folder: string,
-  fields: Partial<Board>,
+  fields: Omit<Partial<Board>, "reviewTemplate"> & { reviewTemplate?: string | undefined },
 ): Promise<Board> {
-  const board = { ...(await readBoard(files, cwd, folder)), ...fields };
+  const { reviewTemplate, ...rest } = { ...(await readBoard(files, cwd, folder)), ...fields };
+  const board = reviewTemplate === undefined ? rest : { ...rest, reviewTemplate };
   await writeBoard(files, cwd, folder, board);
   return board;
 }

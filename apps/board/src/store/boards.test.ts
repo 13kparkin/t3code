@@ -3,7 +3,14 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { parseBoard } from "../domain/board";
 import { archiveBoard, type BoardThreads, type FamilyThread, restoreBoard } from "./boardArchive";
-import { createBoard, listBoards, type ProjectFiles, setBuilderCap, sha256 } from "./boardFiles";
+import {
+  createBoard,
+  listBoards,
+  type ProjectFiles,
+  setBuilderCap,
+  sha256,
+  updateBoard,
+} from "./boardFiles";
 import { roleFiles } from "../orchestrator/roles";
 
 const CWD = "/work/project";
@@ -215,6 +222,19 @@ describe("saving the builder cap", () => {
       orchestratorThreadId: "orchestrator",
       docs,
     });
+  });
+
+  it("Given a saved cap, when a review template is set and then cleared, then the cap stays and the key is removed", async () => {
+    const { files, store, target } = await boardWith("orchestrator");
+    await setBuilderCap(files, CWD, target.folder, 5);
+    await updateBoard(files, CWD, target.folder, { reviewTemplate: "Strict" });
+    expect(savedBoard(store)).toMatchObject({ builderCap: 5, reviewTemplate: "Strict" });
+    await updateBoard(files, CWD, target.folder, { reviewTemplate: undefined });
+    expect(savedBoard(store)).toMatchObject({
+      builderCap: 5,
+      orchestratorThreadId: "orchestrator",
+    });
+    expect(store.get(".agentboard/claude-connector/board.json")).not.toContain("reviewTemplate");
   });
 
   it("Given a cap saved after the board was listed, when the stale board is archived and restored, then the cap stays", async () => {
