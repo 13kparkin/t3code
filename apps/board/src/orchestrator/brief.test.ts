@@ -108,6 +108,11 @@ describe("the orchestrator's standing rules and board facts", () => {
     expect(rules).toContain("fixture injected into the page during a check as a P2");
     expect(rules).toContain("branch from `origin/main`, or from the ticket's `base`");
     expect(rules).toContain("matched to a playbook, with `playbook` and `steps` filled");
+    expect(rules).toContain("`<checkout>/skills/<name>/SKILL.md`");
+    expect(rules).toContain("A skill with no artifact counts as not run.");
+    expect(rules).toContain("An unmet criterion or an out-of-scope change counts as P1.");
+    expect(rules).toContain("Only a ticket's builder gets a worktree.");
+    expect(rules).toContain("A reviewer may run tests, typecheck, lint, and format");
   });
 });
 

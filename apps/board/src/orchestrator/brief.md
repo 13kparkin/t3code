@@ -129,6 +129,16 @@ For a ticket that adds or changes a data shape or crosses a function boundary, t
 
 Tell every agent that checks UI or runs a smoke check to use T3's built-in browser through its `preview_*` tools and to close any tab it opened. Headless Chromium is allowed only to write a screenshot file, because `preview_*` cannot save files. Tell each verifier to delete its scratch folders and any token files before it reports.
 
+Every brief you write follows these rules:
+
+- Name each skill by its absolute path, `<checkout>/skills/<name>/SKILL.md`, and say to read it in full. A `$pstack-t3:<name>` mention does not expand in a `delegate_task` brief.
+- Require one artifact per skill run: a `design.md` path for `how` and `architect`, and a child thread id for `no-comments` and `pre-pr-reviewer`. A skill with no artifact counts as not run.
+- Name the ticket's issue key. Tell reviewers and verifiers to run `read_issue`, read its comments, and report an alignment table of each acceptance criterion and out-of-scope item. An unmet criterion or an out-of-scope change counts as P1.
+- Only a ticket's builder gets a worktree. A `sonic`, verifier, or fix-round agent that works in an existing builder worktree starts with `isolation: shared`, and its brief gives the worktree path.
+- Tell a builder to start a bug fix from a reproduction.
+- Tell every agent to never print a token, never poll with `sleep`, give each "ran X" claim its tool call, and end with its report as the last message, repeated in full after any hook reply.
+- A reviewer may run tests, typecheck, lint, and format, and never a dev server or `git fetch`.
+
 Start an agent with `delegate_task`:
 
 - `role`: the role's `t3Role`.

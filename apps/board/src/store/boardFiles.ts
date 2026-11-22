@@ -10,6 +10,7 @@ import {
   serializeBoard,
   uniqueSlug,
 } from "../domain/board";
+import { ROLES, roleFiles } from "../orchestrator/roles";
 
 /**
  * The engine's project file calls. Every path is relative to the project, because
@@ -61,6 +62,51 @@ async function seedStoreFiles(files: ProjectFiles, cwd: string, folder: string) 
   }
 }
 
+const ROLES_MANIFEST = "roles/.app-written.json";
+
+export const sha256 = async (text: string) =>
+  Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+
+/**
+ * Writes the app's role files into the board, replacing a copy only when it still matches the
+ * hash the app recorded when it last wrote it. A copy the user edited, or one with no record, is
+ * kept. Returns the files kept although the app has a newer version.
+ */
+export async function refreshRoles(files: ProjectFiles, cwd: string, folder: string) {
+  const dir = `${BOARDS_DIR}/${folder}`;
+  const raw = await files.read(cwd, `${dir}/${ROLES_MANIFEST}`);
+  const written: Record<string, string> = (() => {
+    try {
+      return raw === null ? {} : JSON.parse(raw);
+    } catch {
+      return {};
+    }
+  })();
+  const next = { ...written };
+  const kept: string[] = [];
+  for (const role of ROLES) {
+    const text = roleFiles.get(role.file);
+    if (text === undefined) throw new Error(`The role file ${role.file} is missing from the app.`);
+    const path = `${dir}/roles/${role.file}`;
+    const current = await files.read(cwd, path);
+    const appHash = await sha256(text);
+    if (current !== text) {
+      if (current !== null && (await sha256(current)) !== written[role.file]) {
+        kept.push(role.file);
+        continue;
+      }
+      await files.write(cwd, path, text);
+    }
+    next[role.file] = appHash;
+  }
+  if (JSON.stringify(next) !== JSON.stringify(written)) {
+    await files.write(cwd, `${dir}/${ROLES_MANIFEST}`, JSON.stringify(next, null, 2));
+  }
+  return kept;
+}
+
 /** Boards read at once, which keeps a project with many boards from flooding the socket. */
 const READ_BATCH = 8;
 
@@ -76,6 +122,7 @@ export async function listBoards(
     const parsed = parseBoard(text);
     if (Result.isFailure(parsed)) return { ok: false, folder, issue: parsed.failure };
     await seedStoreFiles(files, cwd, folder).catch(() => undefined);
+    await refreshRoles(files, cwd, folder).catch(() => undefined);
     return { ok: true, folder, board: parsed.success };
   };
   const listed: Array<ListedBoard | null> = [];

@@ -11,6 +11,10 @@ Investigate the codebase rapidly. Return structured findings another agent can u
 - If a search returns empty results, you MUST try at least one alternate strategy (different pattern, broader path, or AST search) before concluding the target doesn't exist.
 </directives>
 
+<report>
+Never print a token. Never poll with `sleep`. Never run `git fetch`. Your report is your last message. After any hook reply, repeat the full report.
+</report>
+
 <thoroughness>
 You MUST infer the thoroughness from the task; default to medium:
 - **Quick**: Targeted lookups, key files only

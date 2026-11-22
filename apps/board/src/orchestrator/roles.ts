@@ -55,7 +55,7 @@ const SPECS: ReadonlyArray<RoleSpec> = [
   spec("scout", "research", "shared", true, SCOUT),
   spec("reviewer", "review", "shared", true, REVIEW),
   spec("security-reviewer", "review", "shared", true, SECURITY),
-  spec("sonic", "implementation", "worktree", false, SONIC),
+  spec("sonic", "implementation", "shared", false, SONIC),
   spec("comment-sicko", "review", "shared", true),
   spec("poteto-agent", "general", "worktree", false),
   spec("egm-bootstrap-orchestrator", "general", "worktree", false),

@@ -3,7 +3,8 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { parseBoard } from "../domain/board";
 import { archiveBoard, type BoardThreads, type FamilyThread, restoreBoard } from "./boardArchive";
-import { createBoard, listBoards, type ProjectFiles } from "./boardFiles";
+import { createBoard, listBoards, type ProjectFiles, sha256 } from "./boardFiles";
+import { roleFiles } from "../orchestrator/roles";
 
 const CWD = "/work/project";
 const PROJECT_ID = "586df7d0-cfc5-44b8-957a-ae03fb872e67";
@@ -44,6 +45,31 @@ describe("boards in a project", () => {
     expect(store.get(".agentboard/.gitignore")).toBe("*\n");
     const parsed = parseBoard(store.get(".agentboard/claude-connector/board.json") ?? "");
     expect(Result.isSuccess(parsed) && parsed.success.archived).toBe(false);
+  });
+
+  it("Given role copies in each state, when the boards are listed, then a stale unchanged copy is refreshed, an edited copy is kept, a missing copy is written, and a second listing writes nothing", async () => {
+    const { files, store } = fakeFiles();
+    const created = await createBoard(files, CWD, input("Claude connector"));
+    const roles = `.agentboard/${created.folder}/roles`;
+    await listBoards(files, CWD);
+    const reviewer = roleFiles.get("reviewer.md") ?? "";
+    expect(store.get(`${roles}/reviewer.md`)).toBe(reviewer);
+
+    const manifest = JSON.parse(store.get(`${roles}/.app-written.json`) ?? "{}");
+    const oldTask = "old task role";
+    store.set(`${roles}/task.md`, oldTask);
+    manifest["task.md"] = await sha256(oldTask);
+    store.set(`${roles}/.app-written.json`, JSON.stringify(manifest));
+    store.set(`${roles}/reviewer.md`, "my reviewer edits");
+    store.delete(`${roles}/scout.md`);
+    await listBoards(files, CWD);
+    expect(store.get(`${roles}/task.md`)).toBe(roleFiles.get("task.md"));
+    expect(store.get(`${roles}/reviewer.md`)).toBe("my reviewer edits");
+    expect(store.get(`${roles}/scout.md`)).toBe(roleFiles.get("scout.md"));
+
+    const writes: string[] = [];
+    await listBoards({ ...files, write: async (_c, p) => void writes.push(p) }, CWD);
+    expect(writes).toEqual([]);
   });
 
   it("Given a new board, when it is created, then the five store files exist, and listing an older board fills in only the missing ones", async () => {

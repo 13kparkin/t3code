@@ -24,7 +24,7 @@ describe("the role registry", () => {
       ["scout", "research", "shared", ...SONNET],
       ["reviewer", "review", "shared", ...SONNET],
       ["security-reviewer", "review", "shared", "claude-opus-5-5", "high"],
-      ["sonic", "implementation", "worktree", "claude-haiku-5-5", "low"],
+      ["sonic", "implementation", "shared", "claude-haiku-5-5", "low"],
       ["comment-sicko", "review", "shared", ...OPUS],
       ["poteto-agent", "general", "worktree", ...OPUS],
       ["egm-bootstrap-orchestrator", "general", "worktree", ...OPUS],
@@ -47,6 +47,15 @@ describe("the role registry", () => {
     expect(NodeFS.readdirSync(rolesDir).toSorted()).toEqual(
       ROLES.map((role) => role.file).toSorted(),
     );
+  });
+
+  it("Given the reviewer and task roles, when their files are read, then the reviewer may run checks and the task role loads poteto-mode", () => {
+    const reviewer = NodeFS.readFileSync(NodePath.join(rolesDir, "reviewer.md"), "utf8");
+    expect(reviewer).not.toContain("trigger builds");
+    expect(reviewer).toContain("A UI row marked `not checked` is never met.");
+    expect(reviewer).toContain("is a P2");
+    const task = NodeFS.readFileSync(NodePath.join(rolesDir, "task.md"), "utf8");
+    expect(task).toContain("<checkout>/skills/poteto-mode/SKILL.md");
   });
 
   it("Given no omp-only front matter keys, when roles/ is read, then none carries tools, model, spawns, or thinking-level", () => {
