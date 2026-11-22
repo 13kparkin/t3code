@@ -18,7 +18,6 @@ type KeepReason =
   | "threads-unknown"
   | "status-unknown"
   | "dirty"
-  | "detached"
   | "unpushed"
   | "no-evidence"
   | "evidence-missing";
@@ -126,8 +125,6 @@ export function planCleanup(facts: WorktreeFacts): Plan {
   if (status === null) return keep("status-unknown");
   if (!status.isRepo) return { kind: "gone" };
   if (status.hasWorkingTreeChanges) return keep("dirty");
-  // Git keeps a named branch when its worktree goes, so only a detached HEAD can lose commits.
-  if (status.refName === null) return keep("detached");
   if (!branchSafe(status)) return keep("unpushed");
   if (evidence === undefined) return { kind: "read" };
   if (evidence?.worktree === null) return keep("no-evidence");
@@ -146,7 +143,10 @@ function ticketWorktrees(ticket: Ticket, threads: ReadonlyArray<LiveThread>): st
 
 const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
 
-/** Every board's tickets by folder, or null when any board's `tickets.json` is missing or invalid. */
+/**
+ * Every board's tickets by folder, or null when any board's `tickets.json` is missing or invalid.
+ * A folder without `board.json` is not a board, as in `listBoards`.
+ */
 export async function readBoardTickets(
   files: ProjectFiles,
   workspaceRoot: string,
@@ -156,12 +156,33 @@ export async function readBoardTickets(
   const boards = new Map<string, ReadonlyArray<Ticket>>();
   for (const entry of entries) {
     if (entry.kind !== "directory") continue;
+    if ((await files.read(workspaceRoot, `${entry.path}/board.json`)) === null) continue;
     const text = await files.read(workspaceRoot, `${entry.path}/tickets.json`);
     const parsed = text === null ? null : parseTickets(text);
     if (parsed === null || Result.isFailure(parsed)) return null;
     boards.set(baseName(entry.path), parsed.success);
   }
   return boards;
+}
+
+const runningJobs = new Set<string>();
+const queuedJobs = new Map<string, () => Promise<void>>();
+
+/** Runs one job per key at a time. A job sent while one runs waits for it, and replaces any job already waiting. */
+export function runOnePerKey(key: string, job: () => Promise<void>): void {
+  if (runningJobs.has(key)) {
+    queuedJobs.set(key, job);
+    return;
+  }
+  runningJobs.add(key);
+  void job()
+    .catch(() => undefined)
+    .finally(() => {
+      runningJobs.delete(key);
+      const next = queuedJobs.get(key);
+      queuedJobs.delete(key);
+      if (next !== undefined) runOnePerKey(key, next);
+    });
 }
 
 export interface CleanupPorts {

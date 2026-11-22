@@ -59,7 +59,7 @@ describe("the orchestrator's standing rules and board facts", () => {
     expect(rules).toContain("<its worktree>/.omp/artifacts/<ticket key>/");
     expect(rules).toContain("<board folder>/artifacts/<ticket key>/");
     expect(rules).toContain(
-      "copy each of its worktrees' evidence to the board before you write `stage: merged`",
+      "Copy every key folder under `<worktree>/.omp/artifacts/`, not only this ticket's",
     );
     expect(rules).toContain("`met`, `evidence`, and `note` are all required");
     expect(rules).toContain("- `todo`: captured, no plan yet.");

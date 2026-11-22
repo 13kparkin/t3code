@@ -4,7 +4,12 @@ import { Atom, type AtomRegistry } from "effect/reactivity";
 import * as Result from "effect/Result";
 
 import { parseTickets } from "../domain/ticket";
-import { type CleanupPorts, cleanupMerged, readBoardTickets } from "../store/mergeCleanup";
+import {
+  type CleanupPorts,
+  cleanupMerged,
+  readBoardTickets,
+  runOnePerKey,
+} from "../store/mergeCleanup";
 import { boardEngine, familyThread } from "./boards";
 import { environmentSnapshotAtom } from "./projects";
 import { deleteWorktree, vcsEnvironment } from "./vcs";
@@ -17,8 +22,6 @@ const NONE: ReadonlyMap<string, string> = new Map();
 export const keptWorktreesAtom = Atom.family((storeKey: string) =>
   Atom.make(NONE).pipe(Atom.keepAlive, Atom.withLabel(`kept-worktrees:${storeKey}`)),
 );
-
-const inFlight = new Set<string>();
 
 function cleanupPorts(registry: AtomRegistry.AtomRegistry, project: CleanupProject): CleanupPorts {
   const { environmentId, workspaceRoot } = project;
@@ -64,7 +67,7 @@ function cleanupPorts(registry: AtomRegistry.AtomRegistry, project: CleanupProje
   };
 }
 
-/** Starts a cleanup of the board's merged tickets unless one is already running for it. */
+/** Starts a cleanup of the board's merged tickets, after the one already running for it ends. */
 export function runMergeCleanup(
   registry: AtomRegistry.AtomRegistry,
   project: CleanupProject,
@@ -73,21 +76,17 @@ export function runMergeCleanup(
   ticketsText: string | null,
 ): void {
   const parsed = ticketsText === null ? null : parseTickets(ticketsText);
-  if (parsed === null || Result.isFailure(parsed) || inFlight.has(storeKey)) return;
+  if (parsed === null || Result.isFailure(parsed)) return;
   const merged = parsed.success.filter((ticket) => ticket.stage === "merged");
-  if (merged.length === 0) {
-    registry.set(keptWorktreesAtom(storeKey), NONE);
-    return;
-  }
-  inFlight.add(storeKey);
-  void cleanupMerged(
-    cleanupPorts(registry, project),
-    { workspaceRoot: project.workspaceRoot, folder },
-    merged,
-  )
-    .then(
-      (kept) => registry.set(keptWorktreesAtom(storeKey), kept),
-      () => undefined,
-    )
-    .finally(() => inFlight.delete(storeKey));
+  runOnePerKey(storeKey, async () => {
+    const kept =
+      merged.length === 0
+        ? NONE
+        : await cleanupMerged(
+            cleanupPorts(registry, project),
+            { workspaceRoot: project.workspaceRoot, folder },
+            merged,
+          );
+    registry.set(keptWorktreesAtom(storeKey), kept);
+  });
 }

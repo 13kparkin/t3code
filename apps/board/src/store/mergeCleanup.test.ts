@@ -8,6 +8,7 @@ import {
   type LiveThread,
   planCleanup,
   readBoardTickets,
+  runOnePerKey,
   type WorktreeFacts,
   type WorktreeStatus,
 } from "./mergeCleanup";
@@ -77,11 +78,6 @@ describe("planCleanup", () => {
       "ASK T-2: one untracked file",
       { status: { ...clean, hasWorkingTreeChanges: true } },
       { kind: "keep", reason: "dirty" },
-    ],
-    [
-      "SAFE t3-03816c33: detached HEAD, clean",
-      { status: { ...clean, refName: null } },
-      { kind: "keep", reason: "detached" },
     ],
     [
       "KEEP T-39: another open ticket builds in the same worktree",
@@ -378,12 +374,19 @@ describe("cleanupMerged", () => {
 describe("readBoardTickets", () => {
   const tree = (boards: Record<string, string | null>): ProjectFiles => ({
     list: async () =>
-      Object.keys(boards).map((name) => ({ path: `.agentboard/${name}`, kind: "directory" })),
-    read: async (_cwd, path) => boards[path.split("/")[1]!] ?? null,
+      [...Object.keys(boards), "stray"].map((name) => ({
+        path: `.agentboard/${name}`,
+        kind: "directory",
+      })),
+    read: async (_cwd, path) => {
+      const [, folder, file] = path.split("/");
+      if (folder === "stray") return null;
+      return file === "board.json" ? "{}" : (boards[folder!] ?? null);
+    },
     write: async () => undefined,
   });
 
-  it("reads every board's tickets, and fails when one board's tickets.json is missing", async () => {
+  it("reads every board's tickets, skips a folder with no board.json, and fails when a board's tickets.json is missing", async () => {
     const text = JSON.stringify([ticket()]);
     expect(await readBoardTickets(tree({ main: text, other: "[]" }), ROOT)).toEqual(
       new Map([
@@ -392,5 +395,28 @@ describe("readBoardTickets", () => {
       ]),
     );
     expect(await readBoardTickets(tree({ main: text, other: null }), ROOT)).toBeNull();
+  });
+});
+
+describe("runOnePerKey", () => {
+  it("runs the newest job sent during a run once that run ends, and drops the ones it replaced", async () => {
+    const ran: string[] = [];
+    let release = () => {};
+    const first = new Promise<void>((resolve) => (release = resolve));
+    let finished = () => {};
+    const last = new Promise<void>((resolve) => (finished = resolve));
+    runOnePerKey("p/main", async () => {
+      ran.push("first");
+      await first;
+    });
+    runOnePerKey("p/main", async () => void ran.push("replaced"));
+    runOnePerKey("p/main", async () => {
+      ran.push("newest");
+      finished();
+    });
+    expect(ran).toEqual(["first"]);
+    release();
+    await last;
+    expect(ran).toEqual(["first", "newest"]);
   });
 });
