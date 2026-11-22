@@ -27,6 +27,7 @@ const resolve = (
   resolveLookup({
     kind,
     projectId: "p",
+    pullRequestsAvailable: true,
     files: noFiles,
     list: listOf([]),
     detail: null,
@@ -73,6 +74,13 @@ describe("the lookup status and the menu's empty text", () => {
     ],
     ["a list with entries", "pull-request", { list: listOf([7]) }, "ready", "No matches."],
     ["an empty list", "pull-request", { list: listOf([]) }, "ready", "No matches."],
+    [
+      "a project with no repository",
+      "pull-request",
+      { pullRequestsAvailable: false, list: initial },
+      "unavailable",
+      "Pull requests are not available for this project.",
+    ],
     [
       "a single read not answered",
       "pull-request",

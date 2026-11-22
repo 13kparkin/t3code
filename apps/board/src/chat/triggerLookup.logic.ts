@@ -8,7 +8,7 @@ export type Read<A> =
   | { readonly state: "failed" }
   | { readonly state: "ready"; readonly value: A };
 
-export type LookupStatus = "ready" | "pending" | "failed";
+export type LookupStatus = "ready" | "pending" | "failed" | "unavailable";
 
 type ListedPullRequest = PullRequestLine & { readonly repository: string };
 
@@ -32,6 +32,8 @@ export function detailTarget(query: string, recent: ReadonlyArray<ListedPullRequ
 export function resolveLookup(input: {
   readonly kind: SlashTrigger["kind"] | undefined;
   readonly projectId: string;
+  /** False when the project has no repository to list pull requests of. */
+  readonly pullRequestsAvailable: boolean;
   readonly files: Read<{ readonly entries: ReadonlyArray<ProjectEntry> }>;
   readonly list: Read<{
     readonly entries: ReadonlyArray<ListedPullRequest>;
@@ -48,6 +50,7 @@ export function resolveLookup(input: {
       return files.state === "ready" ? "ready" : files.state === "failed" ? "failed" : "pending";
     }
     if (input.kind === "pull-request") {
+      if (!input.pullRequestsAvailable) return "unavailable";
       if (list.state === "initial" || detail?.state === "initial") return "pending";
       const failed =
         list.state === "failed" || list.value.errors.some((e) => e.projectId === input.projectId);
@@ -65,6 +68,7 @@ export function resolveLookup(input: {
 /** What the menu says when it lists nothing. */
 export function emptyText(status: LookupStatus, kind: SlashTrigger["kind"] | undefined) {
   if (status === "pending") return "Searching...";
+  if (status === "unavailable") return "Pull requests are not available for this project.";
   if (status === "failed") {
     return kind === "pull-request"
       ? "Pull requests could not be read for this project."

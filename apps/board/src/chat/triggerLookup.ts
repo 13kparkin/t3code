@@ -1,4 +1,5 @@
 import { useAtomValue } from "@effect/atom-react";
+import { sourceControlClients } from "@t3tools/client-runtime/source-control-clients";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { AsyncResult, Atom } from "effect/reactivity";
 import { useEffect, useState } from "react";
@@ -44,6 +45,8 @@ export function useTriggerLookup(project: EnvironmentProject, trigger: SlashTrig
   const word = immediate ? query : settled;
   const ready = word === query;
   const { environmentId, workspaceRoot: cwd } = project;
+  const pullRequestsAvailable =
+    sourceControlClients.repositorySelector(project.repositoryIdentity) != null;
 
   const files = useAtomValue(
     trigger?.kind === "file" && ready
@@ -54,7 +57,7 @@ export function useTriggerLookup(project: EnvironmentProject, trigger: SlashTrig
       : idle,
   );
   const list = useAtomValue(
-    trigger?.kind === "pull-request" && ready
+    trigger?.kind === "pull-request" && pullRequestsAvailable && ready
       ? pullRequestEnvironment.list({
           environmentId,
           input: {
@@ -79,6 +82,7 @@ export function useTriggerLookup(project: EnvironmentProject, trigger: SlashTrig
   return resolveLookup({
     kind: trigger?.kind,
     projectId: project.id,
+    pullRequestsAvailable,
     files: toRead(files),
     list: listRead,
     detail: target ? toRead(detail) : null,
