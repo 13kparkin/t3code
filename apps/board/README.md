@@ -196,6 +196,8 @@ A merge approval card shows the same six, each with the orchestrator's claim fro
 
 **Remove worktree** appears on a ticket in the Merged lane whose `worktreePath` is still a worktree of the project. It runs T3's `vcs.removeWorktree`, the delete the Cleanup page uses, behind the same confirm.
 
+The board also deletes a merged ticket's worktrees on its own. Each time an open board reads a changed `tickets.json`, `src/store/mergeCleanup.ts` plans every worktree of a `merged` ticket: its `worktreePath` and the worktrees of its own threads. It deletes one only when the ticket's threads are idle, no other open ticket or thread uses it, `git status` shows no changes, a named branch is pushed or in the default branch, and the board's `artifacts/<KEY>/` holds every file name in the worktree's `.omp/artifacts/<KEY>/` with no `<KEY>.partial/` left. The delete runs without force, so git refuses a dirty tree too. A detached HEAD is always kept, because it is the one case where a delete loses commits. A kept worktree shows `Kept: <reason>` on the frame's branch line. Once every worktree is gone, the ticket's own threads are archived, never stopped, and never the orchestrator. The orchestrator copies the evidence before it writes `merged`, as its brief says.
+
 The chip marks `board:pr-event` when a pull request's live state changes and `board:pr-painted` after the commit that shows a new reading.
 
 The right sidebar's **Checks** tab is fifth, after **Source Control**. It shows one ticket's pull request, laid out like Orca's checks view. It follows the root chosen in the explorer. The ticket picker over it names another ticket, and choosing a root again clears that pick. A pick belongs to the board it was made on.
