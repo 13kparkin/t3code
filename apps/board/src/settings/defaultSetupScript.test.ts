@@ -41,16 +41,23 @@ function runSetup(root: string, worktree: string, env: Record<string, string> = 
 
 // POSIX only, because the engine runs in WSL or Linux and the stub package manager is a sh script.
 describe("the default setup script", () => {
-  it("links the main checkout's ignored .env files, keeps the worktree's own, and installs from the lockfile", () => {
+  it("Given ignored .env files in the main checkout, when setup runs, then it links them, keeps the worktree's own, and installs from the lockfile", () => {
     const { dir, root, worktree } = repo({
-      ".gitignore": ".env*\n!.env.example\nnode_modules/\n",
+      ".gitignore": ".env*\n!.env.example\nnode_modules/\nlocal.txt\n",
       ".env.example": "SAMPLE=1\n",
+      "infra/README.md": "infra\n",
+      "tools/README.md": "tools\n",
       "pnpm-lock.yaml": "lockfileVersion: '9.0'\n",
     });
     try {
       NodeFS.writeFileSync(NodePath.join(root, ".env"), "MAIN=1\n");
-      NodeFS.mkdirSync(NodePath.join(root, "infra"));
       NodeFS.writeFileSync(NodePath.join(root, "infra", ".env.local"), "INFRA=1\n");
+      NodeFS.writeFileSync(NodePath.join(root, "local.txt"), "LOCAL=1\n");
+      NodeFS.writeFileSync(NodePath.join(root, "tools", ".env"), "TOOLS=1\n");
+      const outside = NodePath.join(dir, "outside");
+      NodeFS.mkdirSync(outside);
+      NodeFS.rmSync(NodePath.join(worktree, "tools"), { recursive: true });
+      NodeFS.symlinkSync(outside, NodePath.join(worktree, "tools"));
       NodeFS.mkdirSync(NodePath.join(root, "node_modules"));
       NodeFS.writeFileSync(NodePath.join(root, "node_modules", ".env"), "DEP=1\n");
       NodeFS.writeFileSync(NodePath.join(worktree, ".env"), "MINE=1\n");
@@ -73,10 +80,11 @@ describe("the default setup script", () => {
         NodePath.join(root, "infra", ".env.local"),
       );
       expect(NodeFS.existsSync(NodePath.join(worktree, "node_modules"))).toBe(false);
-      expect(NodeFS.lstatSync(NodePath.join(worktree, ".env.example")).isSymbolicLink()).toBe(
-        false,
-      );
+      expect(NodeFS.existsSync(NodePath.join(worktree, "local.txt"))).toBe(false);
+      expect(NodeFS.readdirSync(outside)).toEqual([]);
 
+      // The engine's forced removal: delete the folder, then drop Git's metadata.
+      NodeFS.rmSync(worktree, { recursive: true });
       git(root, "worktree", "remove", "--force", "--force", "--", worktree);
 
       expect(NodeFS.existsSync(worktree)).toBe(false);
@@ -89,7 +97,7 @@ describe("the default setup script", () => {
     }
   });
 
-  it("finishes cleanly and changes nothing on a project with no lockfile and no .env files", () => {
+  it("Given no lockfile and no .env files, when setup runs, then it exits cleanly and changes nothing", () => {
     const { dir, root, worktree } = repo({ "README.md": "hi\n" });
     try {
       const before = git(root, "status", "--porcelain", "--ignored");
