@@ -158,7 +158,6 @@ export async function createBoard(
   if (!hasIgnoreFile) await files.write(cwd, IGNORE_FILE, "*\n");
   await files.write(cwd, boardPath(slug), serializeBoard(board));
   await seedStoreFiles(files, cwd, slug);
-  await refreshRoles(files, cwd, slug);
   return { ok: true, folder: slug, board };
 }
 

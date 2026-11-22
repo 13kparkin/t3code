@@ -75,11 +75,7 @@ describe("boards in a project", () => {
   it("Given a dev build, when a board in a project outside the dev state is listed, then nothing is written into its .agentboard", async () => {
     const { files, store } = fakeFiles();
     const created = await createBoard(files, CWD, input("Claude connector"));
-    const dir = `.agentboard/${created.folder}`;
-    for (const path of store.keys()) {
-      if (path.startsWith(`${dir}/roles/`)) store.delete(path);
-    }
-    store.delete(`${dir}/gates.md`);
+    store.delete(`.agentboard/${created.folder}/gates.md`);
     const writes: string[] = [];
     await listBoards({ ...files, write: async (_c, p) => void writes.push(p) }, CWD, false);
     expect(writes).toEqual([]);
