@@ -54,13 +54,6 @@ export interface BoardModel {
   readonly unassigned: ReadonlyArray<AgentView>;
 }
 
-export interface AgentNode {
-  readonly agent: AgentView;
-  readonly children: ReadonlyArray<AgentNode>;
-  /** Direct children that are working now. */
-  readonly working: number;
-}
-
 const ROLE_NAMES: ReadonlySet<string> = new Set(ROLES.map((role) => role.name));
 const TITLE = /^\[([^\]]+)\]\s*(.+)$/;
 const LIVE_STATUSES: ReadonlySet<string> = new Set([
@@ -183,33 +176,4 @@ export function countImplementationAgents(model: BoardModel): number {
       IMPLEMENTATION_ROLES.has(agent.role) &&
       (agent.runState === "working" || agent.runState === "waiting"),
   ).length;
-}
-
-/** The family as a tree by `lineage.parentThreadId`. A thread whose parent is missing from the family hangs off the root. */
-export function agentTree(input: {
-  readonly family: ReadonlyArray<FamilyRow>;
-  readonly orchestratorThreadId: string;
-  readonly driverOf: (instanceId: string) => string | null;
-}): ReadonlyArray<AgentNode> {
-  const rows = input.family.filter((row) => row.id !== input.orchestratorThreadId);
-  const present = new Set<string>(rows.map((row) => row.id));
-  const childrenOf = new Map<string, FamilyRow[]>();
-  for (const row of rows) {
-    const parent = row.lineage.parentThreadId;
-    const key = parent !== null && present.has(parent) ? parent : input.orchestratorThreadId;
-    childrenOf.set(key, [...(childrenOf.get(key) ?? []), row]);
-  }
-  const build = (row: FamilyRow, seen: ReadonlySet<string>): AgentNode => {
-    const children = (childrenOf.get(row.id) ?? [])
-      .filter((child) => !seen.has(child.id))
-      .map((child) => build(child, new Set(seen).add(child.id)));
-    return {
-      agent: agentOf(row, input.driverOf, null),
-      children,
-      working: children.filter((child) => child.agent.runState === "working").length,
-    };
-  };
-  return (childrenOf.get(input.orchestratorThreadId) ?? []).map((row) =>
-    build(row, new Set([row.id])),
-  );
 }

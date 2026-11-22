@@ -6,10 +6,11 @@ import { ListChecks, Plus } from "lucide-react";
 import { useContext, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { chooseTicket } from "../browser/panel";
 import { BOARD_KEY, useArtifacts } from "../artifacts/ArtifactsContext";
 import { isRunLive } from "../chat/timeline";
 import { pickTemplate, SYSTEM_TEMPLATE } from "../domain/reviewTemplate";
-import { STAGE_LABEL, TICKET_STAGES } from "../domain/ticket";
+import { STAGE_LABEL, TICKET_STAGES, type Ticket } from "../domain/ticket";
 import { AddFromIssue } from "../issues/AddFromIssue";
 import type { OrchestratorStats } from "../orchestrator/brief";
 import { baseInstanceId } from "../orchestrator/orchestratorInstance";
@@ -36,11 +37,14 @@ export function OrchestratorCard({
   listed,
   stats,
   builders,
+  offPath,
 }: {
   project: EnvironmentProject;
   listed: ValidBoard;
   stats: OrchestratorStats;
   builders: number;
+  /** Tickets with no lane on the canvas. */
+  offPath: ReadonlyArray<Ticket>;
 }) {
   const { board } = listed;
   // The panel holds the same thread open, so this adds no second subscription.
@@ -121,7 +125,21 @@ export function OrchestratorCard({
           <div key={stage} className="min-w-0">
             <dt className="text-[10px] leading-tight text-faint">{STAGE_LABEL[stage]}</dt>
             <dd className={stats.stages[stage] === 0 ? "text-faint" : "text-fg"}>
-              {stats.stages[stage]}
+              {stage === "off_path" && offPath.length > 0 ? (
+                <PopMenu
+                  label="Off path tickets"
+                  align="start"
+                  triggerClass="text-fg underline decoration-dotted hover:text-accent"
+                  trigger={stats.stages[stage]}
+                  items={offPath.map((ticket) => ({
+                    label: `${ticket.key} ${ticket.title}`,
+                    onSelect: () =>
+                      chooseTicket(registry, { threadId: null, ticketKey: ticket.key }),
+                  }))}
+                />
+              ) : (
+                stats.stages[stage]
+              )}
             </dd>
           </div>
         ))}

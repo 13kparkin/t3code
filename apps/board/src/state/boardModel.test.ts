@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import type { Ticket } from "../domain/ticket";
-import { agentTree, countImplementationAgents, type FamilyRow, joinBoard } from "./boardModel";
+import { countImplementationAgents, type FamilyRow, joinBoard } from "./boardModel";
 
 const ORCHESTRATOR = "th-orch";
 
@@ -169,33 +169,5 @@ describe("an agent outside the role registry", () => {
 
   it("Given a provider thread that is not a subagent, when joined, then it is not flagged", () => {
     expect(flagged("provider", false)).toBe(false);
-  });
-});
-
-describe("the agent tree", () => {
-  it("Given nested children, when built, then each parent counts its direct children and those working", () => {
-    const tree = agentTree({
-      family: [
-        row("th-orch", "board"),
-        row("th-a", "[T-1] task", { status: "running" }),
-        row("th-a1", "[T-1] sonic", { parent: "th-a", status: "running" }),
-        row("th-a2", "[T-1] scout", { parent: "th-a" }),
-        row("th-b", "[T-2] scout"),
-        row("th-lost", "[T-3] task", { parent: "th-gone" }),
-      ],
-      orchestratorThreadId: ORCHESTRATOR,
-      driverOf,
-    });
-    expect(
-      tree.map((node) => [
-        node.agent.threadId,
-        node.children.map((child) => child.agent.threadId),
-        node.working,
-      ]),
-    ).toEqual([
-      ["th-a", ["th-a1", "th-a2"], 1],
-      ["th-b", [], 0],
-      ["th-lost", [], 0],
-    ]);
   });
 });

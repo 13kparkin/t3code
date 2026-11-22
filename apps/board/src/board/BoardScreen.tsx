@@ -102,6 +102,7 @@ export function BoardScreen({
                 listed={listed}
                 stats={{ ...stats, forYouOpen: forYou.open }}
                 builders={builders}
+                offPath={model.lanes.off_path.map((view) => view.ticket)}
               />
               <Lanes
                 layout={layout}

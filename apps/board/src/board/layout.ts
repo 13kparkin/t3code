@@ -4,8 +4,13 @@ import type { BoardModel } from "../state/boardModel";
 import type { FrameOrder } from "../state/boardUi";
 import type { Rect } from "./viewport";
 
-export type LaneId = "for_you" | TicketStage | "unassigned";
-export const LANE_IDS: ReadonlyArray<LaneId> = ["for_you", ...TICKET_STAGES, "unassigned"];
+export type LaneId = "for_you" | Exclude<TicketStage, "off_path"> | "unassigned";
+/** Off-path tickets have no lane. The orchestrator card lists them. */
+export const LANE_IDS: ReadonlyArray<LaneId> = [
+  "for_you",
+  ...TICKET_STAGES.filter((stage) => stage !== "off_path"),
+  "unassigned",
+];
 
 /** The key of the one frame that holds the agents no ticket claims. */
 export const UNASSIGNED_KEY = "__unassigned";
