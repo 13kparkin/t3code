@@ -8,6 +8,7 @@ import {
   orchestratorInstanceId,
   agentsInstanceId,
   isBoardInstance,
+  menuInstance,
   planAgentsInstance,
   planOrchestratorInstance,
   standingInstructions,
@@ -223,5 +224,22 @@ describe("the orchestrator instance", () => {
       planAgentsInstance({ providerInstances: settings, base: claude, pluginDir: "/moved" })
         .mutation,
     ).not.toBeNull();
+  });
+});
+
+describe("the instance the slash menu lists", () => {
+  const providers = [
+    { instanceId: "claudeAgent" },
+    { instanceId: "board-orchestrator-claudeAgent" },
+  ];
+
+  it("Given the orchestrator's copy of the picked instance, when the menu picks its provider, then it is the copy, which carries the pstack skills", () => {
+    expect(menuInstance(providers, "claudeAgent")?.instanceId).toBe(
+      "board-orchestrator-claudeAgent",
+    );
+  });
+
+  it("Given no copy yet, when the menu picks its provider, then it is the picked instance", () => {
+    expect(menuInstance(providers.slice(0, 1), "claudeAgent")?.instanceId).toBe("claudeAgent");
   });
 });
