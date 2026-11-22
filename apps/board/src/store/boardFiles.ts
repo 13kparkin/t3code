@@ -110,6 +110,7 @@ const READ_BATCH = 8;
 export async function listBoards(
   files: ProjectFiles,
   cwd: string,
+  refresh: boolean,
 ): Promise<ReadonlyArray<ListedBoard>> {
   const { folders } = await listFolders(files, cwd);
   const readOne = async (folder: string): Promise<ListedBoard | null> => {
@@ -117,8 +118,10 @@ export async function listBoards(
     if (text === null) return null;
     const parsed = parseBoard(text);
     if (Result.isFailure(parsed)) return { ok: false, folder, issue: parsed.failure };
-    await seedStoreFiles(files, cwd, folder).catch(() => undefined);
-    await refreshRoles(files, cwd, folder).catch(() => undefined);
+    if (refresh) {
+      await seedStoreFiles(files, cwd, folder).catch(() => undefined);
+      await refreshRoles(files, cwd, folder).catch(() => undefined);
+    }
     return { ok: true, folder, board: parsed.success };
   };
   const listed: Array<ListedBoard | null> = [];

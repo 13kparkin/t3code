@@ -51,7 +51,7 @@ describe("boards in a project", () => {
     const { files, store } = fakeFiles();
     const created = await createBoard(files, CWD, input("Claude connector"));
     const roles = `.agentboard/${created.folder}/roles`;
-    await listBoards(files, CWD);
+    await listBoards(files, CWD, true);
     const reviewer = roleFiles.get("reviewer.md") ?? "";
     expect(store.get(`${roles}/reviewer.md`)).toBe(reviewer);
 
@@ -62,13 +62,22 @@ describe("boards in a project", () => {
     store.set(`${roles}/.app-written.json`, JSON.stringify(manifest));
     store.set(`${roles}/reviewer.md`, "my reviewer edits");
     store.delete(`${roles}/scout.md`);
-    await listBoards(files, CWD);
+    await listBoards(files, CWD, true);
     expect(store.get(`${roles}/task.md`)).toBe(roleFiles.get("task.md"));
     expect(store.get(`${roles}/reviewer.md`)).toBe("my reviewer edits");
     expect(store.get(`${roles}/scout.md`)).toBe(roleFiles.get("scout.md"));
 
     const writes: string[] = [];
-    await listBoards({ ...files, write: async (_c, p) => void writes.push(p) }, CWD);
+    await listBoards({ ...files, write: async (_c, p) => void writes.push(p) }, CWD, true);
+    expect(writes).toEqual([]);
+  });
+
+  it("Given a dev build, when a board in a project outside the dev state is listed, then nothing is written into its .agentboard", async () => {
+    const { files, store } = fakeFiles();
+    const created = await createBoard(files, CWD, input("Claude connector"));
+    store.delete(`.agentboard/${created.folder}/gates.md`);
+    const writes: string[] = [];
+    await listBoards({ ...files, write: async (_c, p) => void writes.push(p) }, CWD, false);
     expect(writes).toEqual([]);
   });
 
@@ -83,6 +92,7 @@ describe("boards in a project", () => {
     await listBoards(
       { ...files, write: async (_c, p, t) => (writes.push(p), files.write(_c, p, t)) },
       CWD,
+      true,
     );
     expect(writes).toEqual([`${roles}/.app-written.json`]);
     const recorded = JSON.parse(store.get(`${roles}/.app-written.json`) ?? "{}");
@@ -101,8 +111,8 @@ describe("boards in a project", () => {
     }
     store.delete(`${dir}/gates.md`);
     store.set(`${dir}/tickets.json`, '[{"key":"T-1"}]');
-    await listBoards(files, CWD);
-    await listBoards(files, CWD);
+    await listBoards(files, CWD, true);
+    await listBoards(files, CWD, true);
     expect(store.get(`${dir}/gates.md`)).toBe("");
     expect(store.get(`${dir}/tickets.json`)).toBe('[{"key":"T-1"}]');
   });
@@ -119,7 +129,7 @@ describe("boards in a project", () => {
     const { files, store } = fakeFiles();
     await createBoard(files, CWD, input("Good one"));
     store.set(".agentboard/broken/board.json", JSON.stringify({ slug: "broken" }));
-    const listed = await listBoards(files, CWD);
+    const listed = await listBoards(files, CWD, true);
     expect(listed.map((board) => [board.folder, board.ok])).toEqual([
       ["broken", false],
       ["good-one", true],
@@ -129,7 +139,7 @@ describe("boards in a project", () => {
   });
 
   it("Given no .agentboard folder, when boards are listed, then there are none", async () => {
-    expect(await listBoards(fakeFiles().files, CWD)).toEqual([]);
+    expect(await listBoards(fakeFiles().files, CWD, true)).toEqual([]);
   });
 });
 
