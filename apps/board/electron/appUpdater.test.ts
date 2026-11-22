@@ -180,9 +180,11 @@ describe("turning test releases off", () => {
     updates.setPrereleases(true);
     await asked.promise;
     updates.setPrereleases(false);
-    const settled = nextState();
+    const dropped = nextState();
+    const fresh = nextState();
     answer.resolve({ isUpdateAvailable: true });
-    expect(await settled).toEqual({ current: "0.2.1", status: "unchecked" });
+    expect(await dropped).toEqual({ current: "0.2.1", status: "unchecked" });
+    expect(await fresh).toEqual({ current: "0.2.1", status: "current" });
   });
 
   it("Given a running pre-release download, when the switch goes off, then Restart cannot install it", async () => {
@@ -198,8 +200,19 @@ describe("turning test releases off", () => {
     updates.setPrereleases(false);
     downloaded.resolve([]);
     await downloading;
-    expect(updates.state()).toEqual({ current: "0.2.1", status: "unchecked" });
+    expect(updates.state()).toEqual({ current: "0.2.1", status: "current" });
     expect(updates.restart(0)).toBe(false);
     expect(installs).toEqual([]);
+  });
+
+  it("Given a running stable download, when the switch goes on, then the app is offered a fresh update", async () => {
+    const downloaded = Promise.withResolvers<ReadonlyArray<string>>();
+    const { updates } = setup({ downloadUpdate: () => downloaded.promise });
+    await updates.check();
+    const downloading = updates.download();
+    updates.setPrereleases(true);
+    downloaded.resolve([]);
+    await downloading;
+    expect(updates.state()).toEqual({ current: "0.2.1", status: "available", version: "0.3.0" });
   });
 });

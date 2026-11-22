@@ -60,7 +60,7 @@ export function createAppUpdater(deps: {
   let state: AppUpdateState = { current, status: deps.packaged ? "unchecked" : "disabled" };
   let prereleases = false;
   let checking = false;
-  // Bumped when the test-release switch flips, so work started under the old setting is dropped.
+  // Bumped when the test-release switch flips. Work started under the old setting is dropped, then re-run.
   let generation = 0;
   const set = (next: AppUpdateState) => {
     state = next;
@@ -105,6 +105,7 @@ export function createAppUpdater(deps: {
       }
     } finally {
       checking = false;
+      if (started !== generation) await check();
     }
   };
 
@@ -118,7 +119,9 @@ export function createAppUpdater(deps: {
       (): AppUpdateState => ({ current, status: "downloaded", version }),
       (error): AppUpdateState => ({ current, status: "error", message: String(error), version }),
     );
-    set(started === generation ? next : { current, status: "unchecked" });
+    if (started === generation) return set(next);
+    set({ current, status: "unchecked" });
+    await check();
   };
 
   return {
