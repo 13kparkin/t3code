@@ -222,7 +222,11 @@ export const projectBoardsAtom = Atom.family((projectId: string) =>
       .once(environmentProjects.projectsAtom)
       .find((entry) => entry.id === projectId);
     if (get(engineConnectedAtom) && environmentId !== null && project !== undefined) {
-      listBoards(boardEngine(get.registry, environmentId).files, project.workspaceRoot)
+      listBoards(
+        boardEngine(get.registry, environmentId).files,
+        project.workspaceRoot,
+        !import.meta.env.DEV,
+      )
         .then(
           (boards): ProjectBoards => ({ status: "ready", boards }),
           (error): ProjectBoards => ({

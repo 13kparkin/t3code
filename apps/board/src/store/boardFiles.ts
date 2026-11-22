@@ -106,10 +106,15 @@ export async function refreshRoles(files: ProjectFiles, cwd: string, folder: str
 /** Boards read at once, which keeps a project with many boards from flooding the socket. */
 const READ_BATCH = 8;
 
-/** Every `.agentboard/<slug>/board.json` in the project. A broken one is listed with its issue. */
+/**
+ * Every `.agentboard/<slug>/board.json` in the project. A broken one is listed with its issue.
+ * `refresh` seeds store files and role copies. A dev build passes false, because its seeded
+ * projects point at the developer's live checkout.
+ */
 export async function listBoards(
   files: ProjectFiles,
   cwd: string,
+  refresh: boolean,
 ): Promise<ReadonlyArray<ListedBoard>> {
   const { folders } = await listFolders(files, cwd);
   const readOne = async (folder: string): Promise<ListedBoard | null> => {
@@ -117,8 +122,10 @@ export async function listBoards(
     if (text === null) return null;
     const parsed = parseBoard(text);
     if (Result.isFailure(parsed)) return { ok: false, folder, issue: parsed.failure };
-    await seedStoreFiles(files, cwd, folder).catch(() => undefined);
-    await refreshRoles(files, cwd, folder).catch(() => undefined);
+    if (refresh) {
+      await seedStoreFiles(files, cwd, folder).catch(() => undefined);
+      await refreshRoles(files, cwd, folder).catch(() => undefined);
+    }
     return { ok: true, folder, board: parsed.success };
   };
   const listed: Array<ListedBoard | null> = [];
@@ -155,6 +162,7 @@ export async function createBoard(
   if (!hasIgnoreFile) await files.write(cwd, IGNORE_FILE, "*\n");
   await files.write(cwd, boardPath(slug), serializeBoard(board));
   await seedStoreFiles(files, cwd, slug);
+  await refreshRoles(files, cwd, slug);
   return { ok: true, folder: slug, board };
 }
 
