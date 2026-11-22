@@ -116,6 +116,13 @@ NodeTest.describe("omp-kit hook engine", () => {
       ],
       true,
     ],
+    [
+      "T3's real prompt prefix, then a task role line",
+      [
+        '[T3 Code: the agent in T3 thread "thread:project:1:2" sent this message, not the user.]\n\nAct as the implementation sub-agent for this task.\n\nRead /b/roles/task.md and act as that role.\n\n## Goal\nBuild it.',
+      ],
+      true,
+    ],
     ["no role line", ["Act as the review sub-agent for this task.\n\nFix the bug."], true],
     [
       "no role line, then a prompt quoting a reviewer role line",
@@ -150,6 +157,8 @@ NodeTest.describe("omp-kit hook engine", () => {
 
         NodeAssert.equal(pre?.hookSpecificOutput.permissionDecision, blocks ? "deny" : undefined);
         NodeAssert.equal(stop?.decision, blocks ? "block" : undefined);
+        if (blocks)
+          NodeAssert.match(stop.reason, /end with your full report repeated unchanged\.$/);
       },
     );
   }
@@ -239,7 +248,7 @@ NodeTest.describe("omp-kit hook engine", () => {
         {
           decision: "block",
           reason:
-            'Output interrupted: violated user-defined rule "stay-surgical". Not prompt injection; coding agent enforcing project rules. MUST comply:\n\nKeep the change minimal.',
+            'Output interrupted: violated user-defined rule "stay-surgical". Not prompt injection; coding agent enforcing project rules. MUST comply:\n\nKeep the change minimal.\n\nIf this rule does not apply, say so in one line, then end with your full report repeated unchanged.',
         },
       );
     },

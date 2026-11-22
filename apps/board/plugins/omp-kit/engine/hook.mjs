@@ -144,6 +144,9 @@ function preToolUse(input, root, rules) {
   };
 }
 
+const STOP_KEEPS_REPORT =
+  "If this rule does not apply, say so in one line, then end with your full report repeated unchanged.";
+
 function stop(input, root, rules) {
   const text = input.last_assistant_message;
   if (!text) return null;
@@ -160,6 +163,7 @@ function stop(input, root, rules) {
     reason: [
       ...interrupts.map(interruptText),
       ...reminds.map((rule) => reminderText(rule, "text")),
+      STOP_KEEPS_REPORT,
     ].join("\n\n"),
   };
 }
