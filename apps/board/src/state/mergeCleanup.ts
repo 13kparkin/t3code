@@ -3,10 +3,8 @@ import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { Atom, type AtomRegistry } from "effect/reactivity";
 import * as Result from "effect/Result";
 
-import { BOARDS_DIR } from "../domain/board";
-import { parseTickets, type Ticket } from "../domain/ticket";
-import { listBoards } from "../store/boardFiles";
-import { type CleanupPorts, cleanupMerged } from "../store/mergeCleanup";
+import { parseTickets } from "../domain/ticket";
+import { type CleanupPorts, cleanupMerged, readBoardTickets } from "../store/mergeCleanup";
 import { boardEngine, familyThread } from "./boards";
 import { environmentSnapshotAtom } from "./projects";
 import { deleteWorktree, vcsEnvironment } from "./vcs";
@@ -21,25 +19,27 @@ export const keptWorktreesAtom = Atom.family((storeKey: string) =>
 );
 
 const inFlight = new Set<string>();
-// Per board, the merged tickets whose worktrees and threads are all gone, so later ticks skip them.
-const settledTickets = new Map<string, Set<string>>();
 
 function cleanupPorts(registry: AtomRegistry.AtomRegistry, project: CleanupProject): CleanupPorts {
   const { environmentId, workspaceRoot } = project;
   const { files, threads } = boardEngine(registry, environmentId);
   return {
     files,
-    tickets: async () => {
-      const all: Ticket[] = [];
-      for (const listed of await listBoards(files, workspaceRoot)) {
-        if (!listed.ok) return null;
-        const text = await files.read(workspaceRoot, `${BOARDS_DIR}/${listed.folder}/tickets.json`);
-        if (text === null) continue;
-        const parsed = parseTickets(text);
-        if (Result.isFailure(parsed)) return null;
-        all.push(...parsed.success);
-      }
-      return all;
+    tickets: () => readBoardTickets(files, workspaceRoot),
+    worktrees: async () => {
+      const result = await runAtomCommand(
+        registry,
+        vcsEnvironment.readRefs,
+        {
+          environmentId,
+          input: { cwd: workspaceRoot, refKind: "local", limit: 200, refresh: true },
+        },
+        { reportFailure: false },
+      );
+      // shortcut: one page of 200 local refs; a worktree past it is kept as unlisted.
+      return result._tag === "Success"
+        ? result.value.refs.flatMap((ref) => (ref.worktreePath === null ? [] : [ref.worktreePath]))
+        : null;
     },
     threads: () =>
       registry
@@ -74,11 +74,7 @@ export function runMergeCleanup(
 ): void {
   const parsed = ticketsText === null ? null : parseTickets(ticketsText);
   if (parsed === null || Result.isFailure(parsed) || inFlight.has(storeKey)) return;
-  const settled = settledTickets.get(storeKey) ?? new Set<string>();
-  settledTickets.set(storeKey, settled);
-  const merged = parsed.success.filter(
-    (ticket) => ticket.stage === "merged" && !settled.has(ticket.key),
-  );
+  const merged = parsed.success.filter((ticket) => ticket.stage === "merged");
   if (merged.length === 0) {
     registry.set(keptWorktreesAtom(storeKey), NONE);
     return;
@@ -90,10 +86,7 @@ export function runMergeCleanup(
     merged,
   )
     .then(
-      (result) => {
-        for (const key of result.settled) settled.add(key);
-        registry.set(keptWorktreesAtom(storeKey), result.kept);
-      },
+      (kept) => registry.set(keptWorktreesAtom(storeKey), kept),
       () => undefined,
     )
     .finally(() => inFlight.delete(storeKey));

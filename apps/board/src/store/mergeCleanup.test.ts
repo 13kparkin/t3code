@@ -7,6 +7,7 @@ import {
   cleanupMerged,
   type LiveThread,
   planCleanup,
+  readBoardTickets,
   type WorktreeFacts,
   type WorktreeStatus,
 } from "./mergeCleanup";
@@ -38,11 +39,12 @@ const facts = (patch: Partial<WorktreeFacts> = {}): WorktreeFacts => ({
   path: WT,
   workspaceRoot: ROOT,
   projectTickets: [ticket()],
+  listed: [OTHER, WT],
   threads: [{ id: "builder", worktreePath: WT, working: false, isRoot: false }],
   status: clean,
   evidence: {
-    worktree: ["README.txt", "smoke.png"],
-    board: ["README.txt", "smoke.png"],
+    worktree: ["T-26/README.txt", "T-26/smoke.png"],
+    board: ["T-26/README.txt", "T-26/smoke.png"],
     partial: false,
   },
   ...patch,
@@ -50,11 +52,11 @@ const facts = (patch: Partial<WorktreeFacts> = {}): WorktreeFacts => ({
 
 describe("planCleanup", () => {
   it.each<[string, Partial<WorktreeFacts>, ReturnType<typeof planCleanup>]>([
-    ["SAFE: T-26 merged, clean, pushed, evidence on the board", {}, { kind: "remove" }],
+    ["SAFE: T-26 merged, clean, pushed, evidence on the board", {}, { kind: "remove", path: WT }],
     [
       "SAFE after GitHub deleted the merged branch and a fetch pruned it",
       { status: { ...clean, hasUpstream: false, aheadCount: 0, aheadOfDefaultCount: 0 } },
-      { kind: "remove" },
+      { kind: "remove", path: WT },
     ],
     [
       "squash-merged branch with its upstream pruned",
@@ -64,7 +66,7 @@ describe("planCleanup", () => {
     [
       "ASK t3-9dff628b: 2 commits not in main, already pushed to origin",
       { status: { ...clean, hasUpstream: true, aheadCount: 0, aheadOfDefaultCount: 2 } },
-      { kind: "remove" },
+      { kind: "remove", path: WT },
     ],
     [
       "a commit not pushed to its upstream and not in main",
@@ -89,7 +91,7 @@ describe("planCleanup", () => {
     [
       "an off-path ticket on the same worktree does not hold it",
       { projectTickets: [ticket(), ticket({ key: "T-59", stage: "off_path" })] },
-      { kind: "remove" },
+      { kind: "remove", path: WT },
     ],
     [
       "a live thread outside the ticket uses the worktree",
@@ -122,7 +124,11 @@ describe("planCleanup", () => {
     [
       "the orchestrator skipped the evidence copy",
       {
-        evidence: { worktree: ["README.txt", "smoke.png"], board: ["README.txt"], partial: false },
+        evidence: {
+          worktree: ["T-26/README.txt", "T-26/smoke.png"],
+          board: ["T-26/README.txt"],
+          partial: false,
+        },
       },
       { kind: "keep", reason: "evidence-missing" },
     ],
@@ -130,8 +136,8 @@ describe("planCleanup", () => {
       "the evidence copy stopped part way",
       {
         evidence: {
-          worktree: ["README.txt", "smoke.png"],
-          board: ["README.txt", "smoke.png"],
+          worktree: ["T-26/README.txt", "T-26/smoke.png"],
+          board: ["T-26/README.txt", "T-26/smoke.png"],
           partial: true,
         },
       },
@@ -164,6 +170,17 @@ describe("planCleanup", () => {
       { kind: "keep", reason: "main-checkout" },
     ],
     ["the path is relative", { path: "../wt" }, { kind: "keep", reason: "relative-path" }],
+    [
+      "the path names a listed worktree another way, so git could resolve a different folder",
+      { path: `${WT}/.` },
+      { kind: "keep", reason: "unlisted" },
+    ],
+    ["git's worktree list did not read", { listed: null }, { kind: "keep", reason: "unlisted" }],
+    [
+      "the worktree was deleted and git no longer lists it",
+      { listed: [OTHER], status: { ...clean, isRepo: false } },
+      { kind: "gone" },
+    ],
     ["the worktree is already gone", { status: { ...clean, isRepo: false } }, { kind: "gone" }],
   ])("%s", (_name, patch, expected) => {
     expect(planCleanup(facts(patch))).toEqual(expected);
@@ -200,19 +217,24 @@ function world(input: {
   readonly removeFails?: string;
   /** A worktree evidence folder whose listing fails, as a read error does. */
   readonly unlisted?: string;
+  /** Evidence a closed sibling ticket left in the same worktree. */
+  readonly sibling?: boolean;
 }) {
   const removed: string[] = [];
   const archived: string[] = [];
   const statuses = [...(input.statuses ?? [clean, clean])];
   const files = filesOf({
     [ROOT]: [
-      ...input.board.map((name) => `${BOARD}/artifacts/T-26/${name}`),
+      ...input.board.map((name) =>
+        name.includes("/") ? `${BOARD}/artifacts/${name}` : `${BOARD}/artifacts/T-26/${name}`,
+      ),
       ...(input.partial ? [`${BOARD}/artifacts/T-26.partial/smoke.png`] : []),
     ],
     [WT]: [
       ".omp/artifacts/T-26/README.txt",
       ".omp/artifacts/T-26/smoke.png",
       ...(input.unlisted ? [`${input.unlisted}/1.png`] : []),
+      ...(input.sibling ? [".omp/artifacts/T-25/notes.md"] : []),
     ],
     [OTHER]: [".omp/artifacts/T-26/README.txt"],
   });
@@ -222,7 +244,8 @@ function world(input: {
       list: async (cwd, directory) =>
         directory === input.unlisted ? null : files.list(cwd, directory),
     },
-    tickets: async () => [ticket()],
+    tickets: async () => new Map([["main", [ticket()]]]),
+    worktrees: async () => [OTHER, WT],
     threads: () =>
       input.threads ?? [
         { id: "orchestrator", worktreePath: null, working: true, isRoot: true },
@@ -247,21 +270,21 @@ describe("cleanupMerged", () => {
 
   it("deletes the worktree only once its evidence is on the board, then archives the ticket's threads", async () => {
     const skipped = world({ board: ["README.txt"] });
-    expect((await cleanupMerged(skipped.ports, target, [ticket()])).kept).toEqual(
+    expect(await cleanupMerged(skipped.ports, target, [ticket()])).toEqual(
       new Map([["T-26", "evidence-missing"]]),
     );
     expect(skipped.removed).toEqual([]);
     expect(skipped.archived).toEqual([]);
 
     const copied = world({ board: ["README.txt", "smoke.png"] });
-    expect((await cleanupMerged(copied.ports, target, [ticket()])).kept).toEqual(new Map());
+    expect(await cleanupMerged(copied.ports, target, [ticket()])).toEqual(new Map());
     expect(copied.removed).toEqual([WT]);
     expect(copied.archived).toEqual(["builder"]);
   });
 
   it("keeps the worktree while the orchestrator's copy is still in its .partial folder", async () => {
     const copying = world({ board: ["README.txt", "smoke.png"], partial: true });
-    expect((await cleanupMerged(copying.ports, target, [ticket()])).kept).toEqual(
+    expect(await cleanupMerged(copying.ports, target, [ticket()])).toEqual(
       new Map([["T-26", "evidence-missing"]]),
     );
     expect(copying.removed).toEqual([]);
@@ -272,10 +295,22 @@ describe("cleanupMerged", () => {
       board: ["README.txt", "smoke.png"],
       unlisted: ".omp/artifacts/T-26/shots",
     });
-    expect((await cleanupMerged(unreadable.ports, target, [ticket()])).kept).toEqual(
+    expect(await cleanupMerged(unreadable.ports, target, [ticket()])).toEqual(
       new Map([["T-26", "evidence-missing"]]),
     );
     expect(unreadable.removed).toEqual([]);
+  });
+
+  it("keeps a worktree holding a sibling ticket's evidence that was never copied", async () => {
+    const skipped = world({ board: ["README.txt", "smoke.png"], sibling: true });
+    expect(await cleanupMerged(skipped.ports, target, [ticket()])).toEqual(
+      new Map([["T-26", "evidence-missing"]]),
+    );
+    expect(skipped.removed).toEqual([]);
+
+    const copied = world({ board: ["README.txt", "smoke.png", "T-25/notes.md"], sibling: true });
+    expect(await cleanupMerged(copied.ports, target, [ticket()])).toEqual(new Map());
+    expect(copied.removed).toEqual([WT]);
   });
 
   it("deletes a ticket's clean worktree but archives nothing while its other worktree is kept", async () => {
@@ -293,27 +328,16 @@ describe("cleanupMerged", () => {
         { threadId: "reviewer", role: "reviewer" },
       ],
     });
-    expect((await cleanupMerged(two.ports, target, [owner])).kept).toEqual(
-      new Map([["T-26", "dirty"]]),
-    );
+    expect(await cleanupMerged(two.ports, target, [owner])).toEqual(new Map([["T-26", "dirty"]]));
     expect(two.removed).toEqual([WT]);
     expect(two.archived).toEqual([]);
   });
 
   it("archives without a delete when the worktree is already gone", async () => {
     const gone = world({ board: [], statuses: [{ ...clean, isRepo: false }] });
-    expect(await cleanupMerged(gone.ports, target, [ticket()])).toEqual({
-      kept: new Map(),
-      settled: [],
-    });
+    expect(await cleanupMerged(gone.ports, target, [ticket()])).toEqual(new Map());
     expect(gone.removed).toEqual([]);
     expect(gone.archived).toEqual(["builder"]);
-
-    const archived = world({ board: [], statuses: [{ ...clean, isRepo: false }], threads: [] });
-    expect(await cleanupMerged(archived.ports, target, [ticket()])).toEqual({
-      kept: new Map(),
-      settled: ["T-26"],
-    });
   });
 
   it("keeps a worktree that turned dirty between the two reads", async () => {
@@ -321,7 +345,7 @@ describe("cleanupMerged", () => {
       board: ["README.txt", "smoke.png"],
       statuses: [clean, { ...clean, hasWorkingTreeChanges: true }],
     });
-    expect((await cleanupMerged(changed.ports, target, [ticket()])).kept).toEqual(
+    expect(await cleanupMerged(changed.ports, target, [ticket()])).toEqual(
       new Map([["T-26", "dirty"]]),
     );
     expect(changed.removed).toEqual([]);
@@ -332,7 +356,7 @@ describe("cleanupMerged", () => {
       board: ["README.txt", "smoke.png"],
       removeFails: "fatal: contains modified or untracked files",
     });
-    expect((await cleanupMerged(refused.ports, target, [ticket()])).kept).toEqual(
+    expect(await cleanupMerged(refused.ports, target, [ticket()])).toEqual(
       new Map([["T-26", "fatal: contains modified or untracked files"]]),
     );
     expect(refused.archived).toEqual([]);
@@ -344,7 +368,29 @@ describe("cleanupMerged", () => {
       statuses: [{ ...clean, isRepo: false }],
       threads: [{ id: "builder", worktreePath: null, working: true, isRoot: false }],
     });
-    expect((await cleanupMerged(busy.ports, target, [ticket()])).kept).toEqual(new Map());
+    expect(await cleanupMerged(busy.ports, target, [ticket()])).toEqual(
+      new Map([["T-26", "running"]]),
+    );
     expect(busy.archived).toEqual([]);
+  });
+});
+
+describe("readBoardTickets", () => {
+  const tree = (boards: Record<string, string | null>): ProjectFiles => ({
+    list: async () =>
+      Object.keys(boards).map((name) => ({ path: `.agentboard/${name}`, kind: "directory" })),
+    read: async (_cwd, path) => boards[path.split("/")[1]!] ?? null,
+    write: async () => undefined,
+  });
+
+  it("reads every board's tickets, and fails when one board's tickets.json is missing", async () => {
+    const text = JSON.stringify([ticket()]);
+    expect(await readBoardTickets(tree({ main: text, other: "[]" }), ROOT)).toEqual(
+      new Map([
+        ["main", [ticket()]],
+        ["other", []],
+      ]),
+    );
+    expect(await readBoardTickets(tree({ main: text, other: null }), ROOT)).toBeNull();
   });
 });
