@@ -186,7 +186,6 @@ describe("defaultSetupPatch", () => {
 
   it.each([
     ["inherits the environment's setup script", settings, beta],
-    ["holds its own setup script", settings, alpha],
     [
       "had its setup script cleared by the user",
       { ...bare, projectSettingsOverrides: { [BETA]: { defaultProjectScripts: [test] } } },

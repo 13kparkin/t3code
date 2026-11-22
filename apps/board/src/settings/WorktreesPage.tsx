@@ -1,8 +1,10 @@
 import type { BranchNamingMode, ServerSettings } from "@t3tools/contracts";
 
+import { buttonClass } from "./controls/buttonClass";
 import { Select } from "./controls/Select";
 import { TextArea } from "./controls/TextArea";
 import { TextInput } from "./controls/TextInput";
+import { INSTALL_SETUP_SCRIPT } from "./defaultSetupScript";
 import { type Origin, SettingsRow } from "./SettingsRow";
 import { SettingsSection } from "./SettingsSection";
 import {
@@ -59,8 +61,27 @@ export function WorktreesPage({
       >
         <SettingsRow
           title="Setup script"
-          description="Runs in a terminal when T3 creates a worktree for a thread. T3CODE_PROJECT_ROOT and T3CODE_WORKTREE_PATH are set."
+          description="Runs in a terminal when T3 creates a worktree for a thread. T3CODE_PROJECT_ROOT and T3CODE_WORKTREE_PATH are set. Add dependency install adds a frozen install picked by the lockfile, which runs the repo's install scripts."
           origin={originOf(values.setupScript, "defaultProjectScripts")}
+          control={
+            !values.setupScript.value.includes(INSTALL_SETUP_SCRIPT) && (
+              <button
+                type="button"
+                className={buttonClass}
+                onClick={() =>
+                  save(
+                    saveSetupScript(
+                      settings,
+                      project,
+                      `${values.setupScript.value}\n${INSTALL_SETUP_SCRIPT}`,
+                    ),
+                  )
+                }
+              >
+                Add dependency install
+              </button>
+            )
+          }
         >
           <TextArea
             label="Setup script"
