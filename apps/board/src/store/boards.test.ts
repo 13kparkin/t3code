@@ -72,7 +72,7 @@ describe("boards in a project", () => {
     expect(writes).toEqual([]);
   });
 
-  it("Given a board with no record of written roles, when the boards are listed, then copies matching the app are recorded without a rewrite and a differing copy is kept", async () => {
+  it("Given a board with no usable record of written roles, when the boards are listed, then copies matching the app are recorded without a rewrite and a differing copy is kept", async () => {
     const { files, store } = fakeFiles();
     const created = await createBoard(files, CWD, input("Claude connector"));
     const roles = `.agentboard/${created.folder}/roles`;

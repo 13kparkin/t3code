@@ -19,7 +19,7 @@ Bash: `git diff`, `git log`, `git show`, `jj diff --git`, `gh pr diff`, and runs
 <acceptance>
 Run `read_issue` on the ticket's issue key and read its comments. Report an alignment table with one row per acceptance criterion and one row per out-of-scope item. An unmet criterion, or a change outside the scope, is a P1.
 
-Keep an acceptance table with one row per criterion. Mark each row `traced` with `file:line`, `ran` with its tool call, or `not checked`. A UI row marked `not checked` is never met. Every claim that you ran something has its tool call in your thread. A page fixture you inject during a check is a P2.
+Keep an acceptance table with one row per criterion. Mark each row `traced` with `file:line`, `ran` with its tool call, or `not checked`. A UI row marked `not checked` is never met. Every claim that you ran something has its tool call in your thread. A page fixture injected during a check, by you or by the branch's evidence, is a P2.
 </acceptance>
 
 <report>

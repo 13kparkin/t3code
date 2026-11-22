@@ -77,14 +77,13 @@ export const sha256 = async (text: string) =>
 /**
  * Writes the app's role files into the board, replacing a copy only when it still matches the
  * hash the app recorded when it last wrote it. A copy the user edited, or one with no record, is
- * kept. Returns the files kept although the app has a newer version.
+ * kept.
  */
 export async function refreshRoles(files: ProjectFiles, cwd: string, folder: string) {
   const dir = `${BOARDS_DIR}/${folder}`;
   const raw = await files.read(cwd, `${dir}/${ROLES_MANIFEST}`);
   const written = raw === null ? {} : Option.getOrElse(decodeManifest(raw), () => ({}));
   const next = { ...written };
-  const kept: string[] = [];
   for (const role of ROLES) {
     const text = roleFiles.get(role.file);
     if (text === undefined) throw new Error(`The role file ${role.file} is missing from the app.`);
@@ -93,7 +92,6 @@ export async function refreshRoles(files: ProjectFiles, cwd: string, folder: str
     const appHash = await sha256(text);
     if (current !== text) {
       if (current !== null && (await sha256(current)) !== written[role.file]) {
-        kept.push(role.file);
         continue;
       }
       await files.write(cwd, path, text);
@@ -103,7 +101,6 @@ export async function refreshRoles(files: ProjectFiles, cwd: string, folder: str
   if (JSON.stringify(next) !== JSON.stringify(written)) {
     await files.write(cwd, `${dir}/${ROLES_MANIFEST}`, JSON.stringify(next, null, 2));
   }
-  return kept;
 }
 
 /** Boards read at once, which keeps a project with many boards from flooding the socket. */
