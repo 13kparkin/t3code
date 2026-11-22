@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { attachmentInputs, sentAttachment } from "./attachments";
+import { attachmentInputs, pastedFiles, sentAttachment } from "./attachments";
 
 const MIB = 1024 * 1024;
 
@@ -31,5 +31,19 @@ describe("attachmentInputs", () => {
     expect(
       attachmentInputs([{ name: "big.pdf", type: "application/pdf", size: 50 * MIB + 1 }]),
     ).toEqual({ error: "'big.pdf' exceeds the 50 MB attachment limit." });
+  });
+});
+
+describe("pastedFiles", () => {
+  const png = new File(["x"], "image.png", { type: "image/png" });
+  const txt = new File(["x"], "a.txt", { type: "text/plain" });
+
+  it.each([
+    ["an image beside its text", [png], "alt text", true],
+    ["a file alone", [txt], "", true],
+    ["a file beside text", [txt], "copied cells", false],
+    ["text alone", [], "hello", false],
+  ])("%s", (_name, files, text, attached) => {
+    expect(pastedFiles(files, text).length > 0).toBe(attached);
   });
 });

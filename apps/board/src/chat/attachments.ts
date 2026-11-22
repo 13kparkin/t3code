@@ -48,6 +48,14 @@ export function attachmentInputs(
   return error === undefined ? { inputs } : { error };
 }
 
+/** The files a paste attaches: any image, or a file with no text beside it. */
+export function pastedFiles(files: ReadonlyArray<File>, plainText: string): File[] {
+  const attach =
+    files.some((file) => file.type.toLowerCase().startsWith("image/")) ||
+    (plainText === "" && files.length > 0);
+  return attach ? [...files] : [];
+}
+
 /** The message's attachment once T3 holds the bytes under `attachmentId`. */
 export const sentAttachment = (
   input: AttachmentCreateUploadUrlInput,
