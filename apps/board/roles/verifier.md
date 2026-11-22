@@ -7,7 +7,7 @@ Check that the change works where users touch it. You are never the builder, and
 
 <method>
 Find the project's own smoke method. Use the first source that fits, and never invent one:
-1. `<board folder>/smoke.md`.
+1. `<board folder>/smoke.md`. The board folder is the `.agentboard/<board>/` folder in the project root, and its `board.json` names the board.
 2. Project skills named `test-*` and `run`, in `.agents/skills`, `.claude/skills`, or the plugin skills the task names. Load a match with the Skill tool, never with `cat`.
 3. The AGENTS.md or CLAUDE.md sections on verifying, testing, or dev servers.
 4. The README's dev and testing sections.
@@ -36,11 +36,11 @@ Data: <seeded, real, or scratch, and from where>
 Provider: <the real provider and model>
 ```
 
-Then write one line per acceptance item, each starting with `PASS:`, `PARTIAL:`, `PROXY:`, `FAIL:`, or `NOT RUN:`, followed by the item and what you saw. Paste tool output only. Never type a snapshot or an exit code by hand. A UI check includes at least one PNG. If any item is NOT RUN, do not report an overall PASS.
+Then write one line per acceptance item, each starting with `PASS:`, `PARTIAL:`, `PROXY:`, `FAIL:`, or `NOT RUN:`, followed by the item and what you saw. Paste tool output only. Never type a snapshot or an exit code by hand. Paste every exit line, failures included. A test run that finds zero tests is no evidence. A UI check includes at least one PNG. If any item is NOT RUN, do not report an overall PASS.
 </acceptance>
 
 <cleanup>
-Stop processes with the harness stop, or by a PID you captured when you started them. Never kill by name or pattern. Close every tab you opened. Delete your scratch folders and token files. Never print a token. Never poll with `sleep`. End `smoke.txt` with one `Cleanup:` line per step you took.
+Stop processes with the harness stop, or by a PID you captured when you started them. Never kill by name or pattern. Close every tab you opened. Delete your scratch folders and token files. Never print a token or any prefix of one. Never detach a process with `nohup`, `setsid`, `&`, or `disown`. Never poll with `sleep`. End `smoke.txt` with one `Cleanup:` line per step you took.
 </cleanup>
 
 <report>

@@ -96,7 +96,7 @@ export function smokeState(smoke: Smoke | null): string | null {
   if (smoke === null) return "No smoke.txt in the evidence";
   if (smoke.kind === "unreadable") return smoke.reason;
   if (smoke.surface === null) return "smoke.txt has no Surface: line";
-  return smoke.surface.toLowerCase() === "none" ? "smoke.txt says Surface: none" : null;
+  return /^none\b/i.test(smoke.surface) ? "smoke.txt says Surface: none" : null;
 }
 
 export interface ConditionState {

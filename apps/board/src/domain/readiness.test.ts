@@ -303,6 +303,11 @@ describe("smoke evidence", () => {
       "smoke.txt has no Surface: line",
     ],
     ["Surface: none", parseSmoke("Surface: None\nPASS: item one"), "smoke.txt says Surface: none"],
+    [
+      "Surface: none with a note",
+      parseSmoke("Surface: none (no UI run)\nPASS: item one"),
+      "smoke.txt says Surface: none",
+    ],
     ["a named surface", parseSmoke(SMOKE), null],
   ])("Given %s, when the gate is judged, then it is %j", (_name, smoke, missing) => {
     expect(smokeState(smoke)).toBe(missing);
