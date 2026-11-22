@@ -24,7 +24,7 @@ describe("the role registry", () => {
       ["scout", "research", "shared", ...SONNET],
       ["reviewer", "review", "shared", ...SONNET],
       ["security-reviewer", "review", "shared", "claude-opus-5-5", "high"],
-      ["sonic", "implementation", "worktree", "claude-haiku-5-5", "low"],
+      ["sonic", "implementation", "shared", "claude-haiku-5-5", "low"],
       ["comment-sicko", "review", "shared", ...OPUS],
       ["poteto-agent", "general", "worktree", ...OPUS],
       ["egm-bootstrap-orchestrator", "general", "worktree", ...OPUS],

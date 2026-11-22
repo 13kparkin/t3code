@@ -2,10 +2,10 @@ import type { ProviderOptionSelection } from "@t3tools/contracts";
 
 import { BOARDS_DIR, type Board } from "../domain/board";
 import type { ReviewTemplate } from "../domain/reviewTemplate";
-import { type ProjectFiles, writeBoard } from "../store/boardFiles";
+import { type ProjectFiles, refreshRoles, writeBoard } from "../store/boardFiles";
 import type { UsageReading } from "../usage/usageNotice";
 import { renderFacts } from "./brief";
-import { type OrchestratorModel, ROLES, roleFiles } from "./roles";
+import type { OrchestratorModel } from "./roles";
 
 export interface OrchestratorSelection extends OrchestratorModel {
   readonly driver: string;
@@ -91,11 +91,7 @@ export async function launchOrchestrator(
 ): Promise<Board> {
   const { cwd, folder, board, project, reviewTemplate, usage } = target;
   const boardPath = `${BOARDS_DIR}/${folder}`;
-  for (const role of ROLES) {
-    const text = roleFiles.get(role.file);
-    if (text === undefined) throw new Error(`The role file ${role.file} is missing from the app.`);
-    await ports.files.write(cwd, `${boardPath}/roles/${role.file}`, text);
-  }
+  await refreshRoles(ports.files, cwd, folder);
 
   const instanceId = await ports.orchestratorInstance(selection);
   const threadId = await ports.launchThread({

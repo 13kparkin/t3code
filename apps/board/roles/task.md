@@ -19,5 +19,11 @@ MUST hyperfocus assigned task; NEVER deviate.
 - MUST follow assignment and instructions.
 - When the task names author checks, run each skill on your diff in order, apply what it finds, and only then report the branch as code-ready with its head SHA.
 - A review finding sent back to you gets the smallest change that removes its case, and a reply with `git diff --shortstat <previous head> HEAD`.
+- Read `<checkout>/skills/poteto-mode/SKILL.md` in full and follow it, where the checkout is the entry of `printenv CLAUDE_CODE_PLUGIN_DIRS` that holds `skills/pstack-t3/SKILL.md`. Name the playbook it points to.
+- Start a bug fix from a reproduction, and write the failing test before the fix.
+- Never print a token. Never poll with `sleep`.
+- Every "ran X" claim has its tool call. Your code-ready report lists each skill you ran with its artifact: a `design.md` path for `how` and `architect`, and a child thread id for `no-comments` and `pre-pr-reviewer`. A skill with no artifact counts as not run.
+- When you verify, report PASS, FAIL, or NOT RUN for each acceptance item with its raw exit code. A NOT RUN item blocks a PASS.
+- Your report is your last message. After any hook reply, repeat the full report.
 - `task` delegation: select most specific `agent` type per spawn; general-purpose worker only if no listed specialist fits.
 </directives>

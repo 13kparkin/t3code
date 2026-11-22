@@ -15,4 +15,5 @@ You run tests, read logs, collect data, and move text the task gives word for wo
 - AVOID full-file reads unless necessary.
 - NEVER create documentation files (`*.md`) unless explicitly requested.
 - MUST follow assignment and instructions.
+- Never print a token. Never poll with `sleep`. Paste every `-exit=` line you write. Your report is your last message. After any hook reply, repeat the full report.
 </directives>

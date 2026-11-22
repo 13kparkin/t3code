@@ -13,8 +13,18 @@ You run one lane. The task names the skill to run, such as `ponytail-review` or 
 3. Write down each issue as a finding, as you confirm it.
 4. End with the verdict.
 
-Bash read-only: `git diff`, `git log`, `git show`, `jj diff --git`, `gh pr diff`. NEVER edit files or trigger builds.
+Bash: `git diff`, `git log`, `git show`, `jj diff --git`, `gh pr diff`, and runs of the project's tests, typecheck, lint, and format. NEVER edit files, start a dev server, or run `git fetch`.
 </procedure>
+
+<acceptance>
+Run `read_issue` on the ticket's issue key and read its comments. Report an alignment table with one row per acceptance criterion and one row per out-of-scope item. An unmet criterion, or a change outside the scope, is a P1.
+
+Keep an acceptance table with one row per criterion. Mark each row `traced` with `file:line`, `ran` with its tool call, or `not checked`. A UI row marked `not checked` is never met. Every claim that you ran something has its tool call in your thread. A page fixture injected during a check, by you or by the branch's evidence, is a P2.
+</acceptance>
+
+<report>
+Never print a token. Never poll with `sleep`. Your report is your last message. After any hook reply, repeat the full report.
+</report>
 
 <criteria>
 Report only issues meeting ALL:
