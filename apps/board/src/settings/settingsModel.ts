@@ -11,6 +11,8 @@ import type {
   WorktreeCleanupRules,
 } from "@t3tools/contracts";
 
+import { DEFAULT_SETUP_SCRIPT } from "./defaultSetupScript";
+
 /** What `server.updateSettings` takes. */
 export interface SettingsInput {
   readonly patch: typeof ClientServerSettingsPatch.Type;
@@ -171,6 +173,21 @@ export function saveSetupScript(
   return project === null
     ? { patch: { defaultProjectScripts: next } }
     : overridePatch(settings, project.id, { defaultProjectScripts: next });
+}
+
+// A project holding its own script list is left alone, so a user who cleared the field keeps it empty.
+export function defaultSetupPatch(
+  settings: ServerSettings,
+  project: ProjectRef,
+): SettingsInput | null {
+  const own = settings.projectSettingsOverrides[project.id]?.defaultProjectScripts;
+  if (
+    own !== undefined ||
+    scriptsFor(settings, project).some((script) => script.runOnWorktreeCreate)
+  ) {
+    return null;
+  }
+  return saveSetupScript(settings, project, DEFAULT_SETUP_SCRIPT);
 }
 
 export interface BranchNamingChange {

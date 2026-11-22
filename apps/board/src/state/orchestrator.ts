@@ -24,6 +24,7 @@ import {
 } from "../orchestrator/launch";
 import { planAgentsInstance, planOrchestratorInstance } from "../orchestrator/orchestratorInstance";
 import { resolveRoles, ROLES } from "../orchestrator/roles";
+import { defaultSetupPatch } from "../settings/settingsModel";
 import type { ValidBoard } from "../store/boardFiles";
 import { readingsFor } from "../usage/usageNotice";
 import { boardEngine, localState, newId, projectBoardsAtom } from "./boards";
@@ -39,7 +40,10 @@ const threadProjection = createEnvironmentRpcCommand(connectionAtomRuntime, {
   tag: ORCHESTRATION_V2_WS_METHODS.getThreadProjection,
 });
 
-type BoardProject = Pick<EnvironmentProject, "id" | "environmentId" | "workspaceRoot" | "title">;
+type BoardProject = Pick<
+  EnvironmentProject,
+  "id" | "environmentId" | "workspaceRoot" | "title" | "scripts"
+>;
 
 /**
  * The orchestrator instance for the picked instance, with the standing instructions in its launch
@@ -90,6 +94,18 @@ export async function startBoardOrchestrator(
 ): Promise<ValidBoard> {
   const { environmentId } = project;
   const { files, threads, run } = boardEngine(registry, environmentId);
+  const settings = registry.get(engineSettingsAtom);
+  const setup = settings === null ? null : defaultSetupPatch(settings, project);
+  if (setup !== null) {
+    await run(
+      runAtomCommand(
+        registry,
+        serverEnvironment.updateSettings,
+        { environmentId, input: setup },
+        { reportFailure: false },
+      ),
+    );
+  }
   const ports: LaunchPorts = {
     files,
     orchestratorInstance: (picked) => ensureOrchestratorInstance(registry, environmentId, picked),

@@ -7,8 +7,10 @@ import {
 } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
+import { DEFAULT_SETUP_SCRIPT } from "./defaultSetupScript";
 import {
   cleanupValues,
+  defaultSetupPatch,
   formatBytes,
   hasCleanupRules,
   latestReport,
@@ -155,6 +157,42 @@ describe("saveSetupScript", () => {
     expect(saveSetupScript(settings, null, "  ")).toEqual({
       patch: { defaultProjectScripts: [test] },
     });
+  });
+});
+
+describe("defaultSetupPatch", () => {
+  const bare = { ...settings, defaultProjectScripts: [test] };
+
+  it("Given a project that resolves to no setup script, when checked, then its override gets the default", () => {
+    expect(defaultSetupPatch(bare, beta)).toEqual({
+      patch: {
+        projectSettingsOverrides: {
+          [BETA]: {
+            defaultProjectScripts: [
+              test,
+              {
+                id: "setup",
+                name: "Setup",
+                command: DEFAULT_SETUP_SCRIPT,
+                icon: "configure",
+                runOnWorktreeCreate: true,
+              },
+            ],
+          },
+        },
+      },
+    });
+  });
+
+  it.each([
+    ["inherits the environment's setup script", settings, beta],
+    [
+      "had its setup script cleared by the user",
+      { ...bare, projectSettingsOverrides: { [BETA]: { defaultProjectScripts: [test] } } },
+      beta,
+    ],
+  ])("Given a project that %s, when checked, then nothing is written", (_, given, project) => {
+    expect(defaultSetupPatch(given, project)).toBeNull();
   });
 });
 
