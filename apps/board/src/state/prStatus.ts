@@ -16,12 +16,13 @@ import {
   type ConditionState,
   evaluateReadiness,
   type PrLive,
+  type Smoke,
 } from "../domain/readiness";
 import { connectionAtomRuntime } from "../connection/runtime";
 import { locate } from "../files/target";
 import { ROLES } from "../orchestrator/roles";
 import type { FamilyRow, TicketView } from "./boardModel";
-import { ciLocalAtom, ciLocalKey } from "./artifacts";
+import { artifactContentsKey, ciLocalAtom, ciLocalKey, smokeAtom } from "./artifacts";
 import { threadFamilies } from "./family";
 import { buildLive, sameRef, ticketPrRef, trackRunning } from "./prLive";
 
@@ -140,6 +141,7 @@ export const prLiveAtom = Atom.family((key: string) => {
 
 const NO_PR = Atom.make<PrLive | null>(null).pipe(Atom.withLabel("board-pr:none"));
 const NO_CI_LOCAL = Atom.make<CiLocal | null>(null).pipe(Atom.withLabel("board-ci-local:none"));
+const NO_SMOKE = Atom.make<Smoke | null>(null).pipe(Atom.withLabel("board-smoke:none"));
 
 export interface PrContextValue {
   readonly project: EnvironmentProject;
@@ -209,6 +211,13 @@ export function useTicketReadiness(view: TicketView | null): ReadonlyArray<Condi
       ? NO_CI_LOCAL
       : ciLocalAtom(ciLocalKey(files.environmentId, located.root.cwd, located.path, head)),
   );
+  const smokeFile = evidence?.find((artifact) => artifact.name === "smoke.txt");
+  const smokeAt = smokeFile === undefined ? null : locate(files.roots, smokeFile.absolutePath);
+  const smoke = useAtomValue(
+    smokeAt === null
+      ? NO_SMOKE
+      : smokeAtom(artifactContentsKey(files.environmentId, smokeAt.root.cwd, smokeAt.path)),
+  );
   return useMemo(
     () =>
       view === null
@@ -219,10 +228,11 @@ export function useTicketReadiness(view: TicketView | null): ReadonlyArray<Condi
             evidence: (evidence ?? []).map((artifact) => artifact.path),
             live,
             ciLocal,
+            smoke,
             mergeOrderNote: mergeOrderNotes.get(view.ticket.key) ?? null,
             reviewRoles: REVIEW_ROLES,
             now,
           }),
-    [view, tickets, evidence, live, ciLocal, mergeOrderNotes, now],
+    [view, tickets, evidence, live, ciLocal, smoke, mergeOrderNotes, now],
   );
 }

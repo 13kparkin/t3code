@@ -44,6 +44,7 @@ const STORE_FILES = {
   "decisions.tsv": "",
   "preferences.md": "",
   "gates.md": "",
+  "smoke.md": "",
 };
 const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
 
@@ -158,6 +159,7 @@ export async function createBoard(
   if (!hasIgnoreFile) await files.write(cwd, IGNORE_FILE, "*\n");
   await files.write(cwd, boardPath(slug), serializeBoard(board));
   await seedStoreFiles(files, cwd, slug);
+  await refreshRoles(files, cwd, slug);
   return { ok: true, folder: slug, board };
 }
 

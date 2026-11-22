@@ -16,7 +16,14 @@ import * as Schema from "effect/Schema";
 import { Atom, type AtomRegistry } from "effect/reactivity";
 
 import { connectionAtomRuntime } from "../connection/runtime";
-import { type CiLocal, localCiState, parseCiLocal } from "../domain/readiness";
+import {
+  type CiLocal,
+  localCiState,
+  parseCiLocal,
+  parseSmoke,
+  type Smoke,
+  smokeState,
+} from "../domain/readiness";
 import { type Artifact, type ArtifactContents, listArtifacts } from "../store/artifacts";
 import { failureText } from "../settings/failureText";
 import { boardEngine } from "./boards";
@@ -246,3 +253,44 @@ export const ciLocalKey = (
   path: string,
   head: string | null,
 ) => JSON.stringify([environmentId, cwd, path, head]);
+
+function smokeOf(contents: ArtifactContents): Smoke | null {
+  if (contents.kind === "missing") return null;
+  if (contents.kind === "binary") return { kind: "unreadable", reason: "smoke.txt is not text" };
+  // A cut file can lose its Surface: line or its PROXY items, so it never counts as read.
+  return contents.truncated
+    ? { kind: "unreadable", reason: "smoke.txt is past the engine's read limit" }
+    : parseSmoke(contents.contents);
+}
+
+/**
+ * A ticket's `smoke.txt`, keyed by `artifactContentsKey`. It reads the file again on a timer until
+ * the file names a surface, since a verifier writes it in place. It is null until the first read
+ * answers or when the file is gone.
+ */
+export const smokeAtom = Atom.family((key: string) =>
+  Atom.make<Smoke | null>((get) => {
+    const [environmentId, cwd, path] = decodeContentsKey(key);
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const read = async () => {
+      const next = await readArtifact(get.registry, EnvironmentId.make(environmentId), cwd, path)
+        .then(smokeOf)
+        .catch((error): Smoke => ({
+          kind: "unreadable",
+          reason: `smoke.txt could not be read: ${error instanceof Error ? error.message : String(error)}`,
+        }));
+      const before = Option.getOrNull(get.self<Smoke | null>()) ?? null;
+      if (!stopped && JSON.stringify(next) !== JSON.stringify(before)) get.setSelf(next);
+      if (!stopped && smokeState(next) !== null) {
+        timer = setTimeout(() => void read(), CI_LOCAL_POLL_MS);
+      }
+    };
+    void read();
+    get.addFinalizer(() => {
+      stopped = true;
+      clearTimeout(timer);
+    });
+    return Option.getOrElse(get.self<Smoke | null>(), () => null);
+  }).pipe(Atom.withLabel(`board-smoke:${key}`)),
+);

@@ -99,7 +99,13 @@ describe("the orchestrator's standing rules and board facts", () => {
     expect(rules).toContain("run `how` and `architect` before it writes code, and `interrogate`");
     expect(rules).toContain("records the skip and its reason in the ticket's steps");
     expect(rules).toContain("T3's built-in browser through its `preview_*` tools");
-    expect(rules).toContain("Headless Chromium is allowed only to write a screenshot file");
+    expect(rules).toContain("save each screenshot with `preview_snapshot` and `save=true`");
+    expect(rules).not.toContain("`preview_*` cannot save files");
+    expect(rules).toContain(
+      "Point every verifier at it, and never write a run recipe into a brief.",
+    );
+    expect(rules).toContain("name their test output `tests.txt`");
+    expect(rules).toContain("## Auditing smoke tests");
     expect(rules).toContain("delete its scratch folders and any token files before it reports");
     expect(rules).toContain(
       "names a concrete input sequence gets a verify check before you decline it",

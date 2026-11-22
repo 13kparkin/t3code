@@ -8,9 +8,12 @@ import {
   missingKeys,
   mergeTicketKey,
   parseCiLocal,
+  parseSmoke,
   type PrLive,
   type ReadinessInput,
   rollupChecks,
+  type Smoke,
+  smokeState,
 } from "./readiness";
 import type { Ticket } from "./ticket";
 
@@ -49,7 +52,8 @@ const clean = [
   { role: "reviewer", p0: 0, p1: 0, p2: 1, p3: 0 },
   { role: "security-reviewer", p0: 0, p1: 0, p2: 0, p3: 0 },
 ];
-const evidence = ["artifacts/T-1/readme-check.txt", "artifacts/T-1/smoke.png"];
+const evidence = ["artifacts/T-1/readme-check.txt", "artifacts/T-1/smoke.txt"];
+const smoked: Smoke = { kind: "read", surface: "T3 browser", flagged: [] };
 
 const missingOf = (
   fields: Partial<ReadinessInput> & { ticket: Ticket },
@@ -60,6 +64,7 @@ const missingOf = (
       evidence,
       live: green,
       ciLocal: null,
+      smoke: smoked,
       mergeOrderNote: null,
       reviewRoles: REVIEW_ROLES,
       now: NOW,
@@ -92,6 +97,7 @@ describe("merge readiness", () => {
       evidence,
       live: green,
       ciLocal: null,
+      smoke: smoked,
       mergeOrderNote: null,
       reviewRoles: REVIEW_ROLES,
       now: NOW,
@@ -116,7 +122,7 @@ describe("merge readiness", () => {
       missingOf({
         ticket,
         tickets: [parent, ticket],
-        evidence: ["artifacts/T-1/smoke.png"],
+        evidence: ["artifacts/T-1/smoke.txt"],
         live: live([check("lint", "success"), check("test", "failure")]),
       }),
     ).toEqual(["ci_green", "readmes_pass", "parent_ready"]);
@@ -131,7 +137,9 @@ describe("merge readiness", () => {
       fixRounds: 2,
       threads: [{ threadId: "th-1", role: "reviewer", round: 1 }],
     });
-    expect(missingOf({ ticket, tickets: [parent, ticket], evidence: [], live: null })).toEqual([
+    expect(
+      missingOf({ ticket, tickets: [parent, ticket], evidence: [], live: null, smoke: null }),
+    ).toEqual([
       "ci_green",
       "reviews_fixed",
       "delta_rereviewed",
@@ -172,6 +180,7 @@ describe("stuck checks", () => {
       evidence,
       live: live([check("test", "pending", minutesAgo(21))]),
       ciLocal: null,
+      smoke: smoked,
       mergeOrderNote: null,
       reviewRoles: REVIEW_ROLES,
       now: NOW,
@@ -189,6 +198,7 @@ describe("local CI evidence", () => {
       evidence,
       live: live([], "abc1234def"),
       ciLocal: null,
+      smoke: smoked,
       mergeOrderNote: null,
       reviewRoles: REVIEW_ROLES,
       now: NOW,
@@ -264,5 +274,57 @@ describe("the ticket a merge approval is about", () => {
 
   it("Given a title that names no ticket, when it is matched, then nothing is found", () => {
     expect(mergeTicketKey({ id: "m1", title: "Ship it" }, keys)).toBeNull();
+  });
+});
+
+describe("smoke evidence", () => {
+  const SMOKE = [
+    "Head: abc1234",
+    "Surface: T3 browser on dev:web",
+    "Method: smoke.md",
+    "PASS: item one",
+    "PROXY: item two, a stubbed window.board",
+    "NOT RUN: item three",
+  ].join("\n");
+
+  const unreadable: Smoke = { kind: "unreadable", reason: "smoke.txt is not text" };
+
+  it.each([
+    ["no file", null, "No smoke.txt in the evidence"],
+    ["an unreadable file", unreadable, "smoke.txt is not text"],
+    [
+      "no Surface line",
+      parseSmoke("Head: abc1234\nPASS: item one"),
+      "smoke.txt has no Surface: line",
+    ],
+    [
+      "an empty Surface line",
+      parseSmoke("Surface:  \nPASS: item one"),
+      "smoke.txt has no Surface: line",
+    ],
+    ["Surface: none", parseSmoke("Surface: None\nPASS: item one"), "smoke.txt says Surface: none"],
+    ["a named surface", parseSmoke(SMOKE), null],
+  ])("Given %s, when the gate is judged, then it is %j", (_name, smoke, missing) => {
+    expect(smokeState(smoke)).toBe(missing);
+  });
+
+  it("Given a smoke file with PROXY and NOT RUN items, when readiness is computed, then the smoke condition lists them", () => {
+    const ticket = ticketOf({ key: "T-1", pr: 12, verdicts: clean });
+    const conditions = evaluateReadiness({
+      ticket,
+      tickets: [ticket],
+      evidence,
+      live: green,
+      ciLocal: null,
+      smoke: parseSmoke(SMOKE),
+      mergeOrderNote: null,
+      reviewRoles: REVIEW_ROLES,
+      now: NOW,
+    });
+    expect(missingKeys(conditions)).toEqual([]);
+    expect(conditions.find((condition) => condition.key === "smoke_named")?.notes).toEqual([
+      "PROXY: item two, a stubbed window.board",
+      "NOT RUN: item three",
+    ]);
   });
 });
