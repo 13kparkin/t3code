@@ -48,15 +48,18 @@ import type { ValidBoard } from "../store/boardFiles";
 import { attachmentInputs } from "./attachments";
 import { ModelPicker } from "./ModelPicker";
 import {
-  buildSlashItems,
-  rankSlashItems,
+  detectSlashTrigger,
+  itemsForTrigger,
+  replaceTrigger,
   type SlashAction,
   type SlashItem,
+  type SlashTrigger,
   slashMessage,
-  slashQuery,
 } from "./slash";
 import { MARK_SLASH, SlashMenu, slashOptionId } from "./SlashMenu";
 import type { PendingSend } from "./timeline";
+import { useTriggerLookup } from "./triggerLookup";
+import { emptyText } from "./triggerLookup.logic";
 import { useWorkspaceSnapshot } from "./workspaceSnapshot";
 
 const SWITCH_BLOCKED =
@@ -68,7 +71,7 @@ const markShown = (chip: HTMLElement | null) => {
 
 /**
  * The box that sends a message to the orchestrator or stops its turn, with the model picker for the
- * next turn and the slash menu that opens when the message starts with `/`.
+ * next turn and the menu that opens on a `/`, `$`, `@`, or `#` word anywhere in the message.
  */
 export function Composer({
   project,
@@ -131,22 +134,25 @@ export function Composer({
       ? { reason: SWITCH_BLOCKED, stayOn: baseInstanceId(thread.modelSelection.instanceId) }
       : null;
 
-  const query = slashQuery(draft, cursor);
-  const onlyTheCommand = draft.slice(cursor).trim() === "";
-  const open = query !== null && closedFor !== draft;
-  const items = useMemo(
+  const trigger = useMemo(() => detectSlashTrigger(draft, cursor), [draft, cursor]);
+  const open = trigger !== null && closedFor !== draft;
+  const restIsBlank = draft.slice(cursor).trim() === "";
+  const found = useTriggerLookup(project, open ? trigger : null);
+  const ranked = useMemo(
     () =>
       open && provider !== undefined
-        ? buildSlashItems({
+        ? itemsForTrigger({
+            trigger,
+            restIsBlank,
             commands: resolveProviderSlashCommandsForCwd(provider, cwd),
             skills: resolveProviderSkillsForCwd(provider, cwd),
-            actions: ["model", ...(canFresh ? (["clear"] as const) : [])],
-            messageIsOnlyTheCommand: onlyTheCommand,
+            canClear: canFresh,
+            files: found.files,
+            pullRequests: found.pullRequests,
           })
         : [],
-    [open, provider, cwd, canFresh, onlyTheCommand],
+    [open, trigger, restIsBlank, provider, cwd, canFresh, found.files, found.pullRequests],
   );
-  const ranked = useMemo(() => rankSlashItems(items, query ?? ""), [items, query]);
   const highlighted = Math.min(active, Math.max(ranked.length - 1, 0));
 
   const addFiles = (added: File[]) => {
@@ -159,37 +165,35 @@ export function Composer({
   };
 
   const edit = (value: string, at: number) => {
-    if (MARK_SLASH && slashQuery(draft, cursor) === null && slashQuery(value, at) !== null) {
-      performance.mark("board:slash-open");
-    }
-    if (slashQuery(draft, cursor) === null && slashQuery(value, at) !== null) refresh();
+    const next = trigger === null ? detectSlashTrigger(value, at) : null;
+    if (MARK_SLASH && next !== null) performance.mark("board:slash-open");
+    if (next?.kind === "command" || next?.kind === "skill") refresh();
     setActive(0);
     setClosedFor(null);
     setDraft(value);
     setCursor(at);
   };
 
-  const runAction = (action: SlashAction) => {
-    setDraft(draft.slice(cursor));
-    setCursor(0);
+  const runAction = (action: SlashAction, at: SlashTrigger) => {
+    const next = replaceTrigger(draft, at, "");
+    setDraft(next.text);
+    setCursor(next.cursor);
     if (action === "model") setModelOpen(true);
     else setFresh(true);
   };
 
   const pick = (item: SlashItem) => {
+    if (trigger === null) return;
     if (item.action !== null) {
-      runAction(item.action);
+      runAction(item.action, trigger);
       return;
     }
-    const text = `${slashMessage(item, "")} `;
-    const rest = draft.slice(cursor);
-    // A space already after the cursor serves as the one that follows the pick.
-    const next = text + (rest.startsWith(" ") ? rest.slice(1) : rest);
+    const next = replaceTrigger(draft, trigger, `${slashMessage(item, "")} `);
     setActive(0);
     // The textarea must hold the text before the cursor can move past it.
-    flushSync(() => setDraft(next));
-    input.current?.setSelectionRange(text.length, text.length);
-    setCursor(text.length);
+    flushSync(() => setDraft(next.text));
+    input.current?.setSelectionRange(next.cursor, next.cursor);
+    setCursor(next.cursor);
   };
 
   const settle = (messageId: PendingSend["messageId"], state: PendingSend["state"]) =>
@@ -315,6 +319,10 @@ export function Composer({
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.nativeEvent.isComposing) return;
+    if (open && found.status === "pending" && event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      return;
+    }
     if (open && ranked.length > 0) {
       const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
       if (step !== 0) {
@@ -362,6 +370,7 @@ export function Composer({
         <SlashMenu
           id={menuId}
           items={ranked}
+          empty={emptyText(found.status, trigger?.kind)}
           active={highlighted}
           onPick={pick}
           onHover={setActive}

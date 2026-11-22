@@ -2,7 +2,14 @@ import { ServerProviderSkill, ServerProviderSlashCommand } from "@t3tools/contra
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
-import { buildSlashItems, rankSlashItems, slashMessage, slashQuery } from "./slash";
+import {
+  buildSlashItems,
+  detectSlashTrigger,
+  itemsForTrigger,
+  rankSlashItems,
+  replaceTrigger,
+  slashMessage,
+} from "./slash";
 
 const command = Schema.decodeUnknownSync(ServerProviderSlashCommand);
 const skill = Schema.decodeUnknownSync(ServerProviderSkill);
@@ -81,7 +88,7 @@ describe("the slash menu's items", () => {
 
 describe("ranking the slash menu", () => {
   it("Given the input /, when the items are ranked, then all of them are listed as commands, skills, and T3 actions in the engine's order", () => {
-    expect(labels(slashQuery("/", 1) ?? "")).toEqual([
+    expect(labels("")).toEqual([
       "/compact",
       "/code-review",
       "/debug",
@@ -96,7 +103,7 @@ describe("ranking the slash menu", () => {
   });
 
   it("Given the input /re, when the items are ranked, then prefix matches lead word matches, and each is grouped as commands, skills, and T3 actions", () => {
-    expect(labels(slashQuery("/re", 3) ?? "")).toEqual([
+    expect(labels("re")).toEqual([
       "/review",
       "$review-agent",
       "/code-review",
@@ -107,7 +114,7 @@ describe("ranking the slash menu", () => {
   });
 
   it("Given the input /rev, when the items are ranked, then the same items stay and nothing else joins them", () => {
-    expect(labels(slashQuery("/rev", 4) ?? "")).toEqual([
+    expect(labels("rev")).toEqual([
       "/review",
       "$review-agent",
       "/code-review",
@@ -134,16 +141,171 @@ describe("ranking the slash menu", () => {
   });
 });
 
-describe("when the menu opens", () => {
+describe("the trigger at the cursor", () => {
   it.each([
-    ["/", 1, ""],
-    ["/rev", 4, "rev"],
-    ["/rev and more", 4, "rev"],
-    ["/rev and more", 13, null],
-    ["hello /rev", 10, null],
-    ["", 0, null],
-  ])("Given the draft %j with the cursor at %i, then the query is %j", (draft, cursor, query) => {
-    expect(slashQuery(draft, cursor)).toBe(query);
+    ["Run /tmp/build.sh", "Run /tmp/build.sh".length],
+    ["/etc/hosts", "/etc/hosts".length],
+    ["Use /etc/hosts now", "Use /et".length],
+    ["Use/review", "Use/review".length],
+    ["https://example.com/review", "https://example.com/review".length],
+    ["Use /review ", "Use /review ".length],
+    ["/model spark", "/model spark".length],
+    ["", 0],
+  ])("Given %j with the cursor at %i, then no menu opens", (text, cursor) => {
+    expect(detectSlashTrigger(text, cursor)).toBeNull();
+  });
+
+  it.each(["", "Use ", "Use\t\n  "])(
+    "Given /skill:review after %j, then it opens the command menu on that word",
+    (prefix) => {
+      const text = `${prefix}/skill:review later`;
+      const cursor = `${prefix}/skill:review`.length;
+      expect(detectSlashTrigger(text, cursor)).toEqual({
+        kind: "command",
+        query: "skill:review",
+        rangeStart: prefix.length,
+        rangeEnd: cursor,
+      });
+    },
+  );
+
+  it.each(["It costs $5", "budget $9.99", "raise $10k."])(
+    "Given the amount in %j, then no skill menu opens",
+    (text) => expect(detectSlashTrigger(text, text.length)).toBeNull(),
+  );
+
+  it("Given a $ word mid-message, then the skill menu opens on it", () => {
+    expect(detectSlashTrigger("Please use $rev now", "Please use $rev".length)).toEqual({
+      kind: "skill",
+      query: "rev",
+      rangeStart: "Please use ".length,
+      rangeEnd: "Please use $rev".length,
+    });
+    expect(detectSlashTrigger("$", 1)).toEqual({
+      kind: "skill",
+      query: "",
+      rangeStart: 0,
+      rangeEnd: 1,
+    });
+  });
+
+  it("Given a pull request number at a token boundary, then the pull request menu opens on it", () => {
+    const text = "Compare this with #8737";
+    expect(detectSlashTrigger(text, text.length)).toEqual({
+      kind: "pull-request",
+      query: "8737",
+      rangeStart: "Compare this with ".length,
+      rangeEnd: text.length,
+    });
+  });
+
+  it("Given an @ word in the middle of text, then the file menu opens on it", () => {
+    expect(
+      detectSlashTrigger("Please inspect @in this sentence", "Please inspect @".length),
+    ).toEqual({
+      kind: "file",
+      query: "",
+      rangeStart: "Please inspect ".length,
+      rangeEnd: "Please inspect @".length,
+    });
+  });
+
+  it.each(["# Heading", "issue#123", "mail a@b"])("Given %j, then no menu opens", (text) =>
+    expect(detectSlashTrigger(text, text.length)).toBeNull(),
+  );
+});
+
+describe("the items a trigger lists", () => {
+  const entry = (path: string) => ({ path, kind: "file" as const });
+  const pullRequest = (number: number, updatedAt: string) => ({
+    number,
+    title: `PR ${number}`,
+    url: `https://github.com/o/r/pull/${number}`,
+    updatedAt,
+  });
+  const forTrigger = (text: string, cursor: number) => {
+    const trigger = detectSlashTrigger(text, cursor);
+    if (trigger === null) throw new Error("no trigger");
+    return itemsForTrigger({
+      trigger,
+      restIsBlank: text.slice(cursor).trim() === "",
+      commands,
+      skills,
+      canClear: true,
+      files: [entry("src/chat/slash.ts")],
+      pullRequests: [
+        pullRequest(12, "2026-01-01T00:00:00Z"),
+        pullRequest(123, "2026-03-01T00:00:00Z"),
+        pullRequest(7, "2026-02-01T00:00:00Z"),
+      ],
+    }).map((item) => item.id);
+  };
+
+  it("Given each trigger kind, then it lists only its own kind and start-only items go mid-message", () => {
+    expect(forTrigger("$rev", 4)).toEqual(["skill:review-agent", "skill:pr-description"]);
+    expect(forTrigger("Use /rev", 8)).toEqual(["skill:review-agent", "skill:pr-description"]);
+    expect(forTrigger("Use /", 5)).toEqual([
+      "skill:review-agent",
+      "skill:pr-description",
+      "skill:security-audit",
+      "action:model",
+    ]);
+    expect(forTrigger("/", 1)).toContain("command:debug");
+    expect(forTrigger("/", 1)).toContain("action:clear");
+    expect(forTrigger("see @sl", 7)).toEqual(["file:src/chat/slash.ts"]);
+    expect(forTrigger("see #12", 7)).toEqual([
+      "pull-request:https://github.com/o/r/pull/12",
+      "pull-request:https://github.com/o/r/pull/123",
+    ]);
+  });
+
+  it("Given a picked file or pull request, then it types a file link or the pull request URL", () => {
+    const lists = (kind: "file" | "pull-request") =>
+      itemsForTrigger({
+        trigger: { kind, query: "", rangeStart: 0, rangeEnd: 1 },
+        restIsBlank: true,
+        commands: [],
+        skills: [],
+        canClear: false,
+        files: [entry("src/chat/slash.ts")],
+        pullRequests: [pullRequest(7, "2026-02-01T00:00:00Z")],
+      });
+    expect(lists("file").map((item) => item.insert)).toEqual(["[slash.ts](src/chat/slash.ts)"]);
+    expect(lists("pull-request").map((item) => item.insert)).toEqual([
+      "https://github.com/o/r/pull/7",
+    ]);
+  });
+});
+
+describe("a pick replaces the typed word", () => {
+  it("Given a / word mid-message, then the pick takes its place and the rest stays", () => {
+    const text = "Please run /rev on this";
+    const trigger = detectSlashTrigger(text, "Please run /rev".length);
+    if (trigger === null) throw new Error("no trigger");
+    expect(replaceTrigger(text, trigger, "$review-agent ")).toEqual({
+      text: "Please run $review-agent on this",
+      cursor: "Please run $review-agent ".length,
+    });
+  });
+
+  it("Given /model mid-message, then removing it leaves one space between its neighbors", () => {
+    const text = "Please run /model now";
+    const trigger = detectSlashTrigger(text, "Please run /model".length);
+    if (trigger === null) throw new Error("no trigger");
+    expect(replaceTrigger(text, trigger, "")).toEqual({
+      text: "Please run now",
+      cursor: "Please run ".length,
+    });
+  });
+
+  it("Given a $ word at the end, then the pick keeps the text before it", () => {
+    const text = "Use $rev";
+    const trigger = detectSlashTrigger(text, text.length);
+    if (trigger === null) throw new Error("no trigger");
+    expect(replaceTrigger(text, trigger, "$review-agent ")).toEqual({
+      text: "Use $review-agent ",
+      cursor: "Use $review-agent ".length,
+    });
   });
 });
 

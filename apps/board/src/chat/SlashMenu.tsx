@@ -11,12 +11,14 @@ export const slashOptionId = (listId: string, item: SlashItem) => `${listId}-${i
 export function SlashMenu({
   id,
   items,
+  empty,
   active,
   onPick,
   onHover,
 }: {
   id: string;
   items: ReadonlyArray<SlashItem>;
+  empty: string;
   active: number;
   onPick: (item: SlashItem) => void;
   onHover: (index: number) => void;
@@ -33,7 +35,7 @@ export function SlashMenu({
   return (
     <div className="absolute inset-x-2 bottom-full z-20 mb-1 max-h-[min(20rem,45vh)] overflow-y-auto rounded-xl border border-line bg-panel py-1 shadow-panel">
       {items.length === 0 ? (
-        <p className="px-3 py-2 text-muted">No matching command.</p>
+        <p className="px-3 py-2 text-muted">{empty}</p>
       ) : (
         <ul id={id} role="listbox" aria-label="Commands and skills">
           {items.map((item, index) => {
