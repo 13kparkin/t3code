@@ -160,6 +160,14 @@ export function TicketFrame({
               {branchText}
             </button>
           )}
+          {kept !== undefined && (
+            <span
+              data-testid="worktree-kept"
+              className="ml-auto max-w-[60%] shrink-0 truncate text-amber-300"
+            >
+              Kept: {kept}
+            </span>
+          )}
         </p>
         {hasPrRow(ticket) && (
           <div className="mt-1.5 flex h-[20px] items-center gap-1.5">
@@ -170,16 +178,6 @@ export function TicketFrame({
             />
             {ticket.stage === "merged" && ticket.worktreePath != null && (
               <RemoveWorktree view={view} />
-            )}
-            {kept !== undefined && (
-              <Tooltip text={`Worktree kept: ${kept}`}>
-                <span
-                  data-testid="worktree-kept"
-                  className="min-w-0 truncate text-[10px] text-amber-300"
-                >
-                  Kept: {kept}
-                </span>
-              </Tooltip>
             )}
           </div>
         )}
