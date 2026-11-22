@@ -87,7 +87,7 @@ describe("the slash menu's items", () => {
 
 describe("ranking the slash menu", () => {
   it("Given the input /, when the items are ranked, then all of them are listed as commands, skills, and T3 actions in the engine's order", () => {
-    expect(labels("/".slice(1))).toEqual([
+    expect(labels("")).toEqual([
       "/compact",
       "/code-review",
       "/debug",
@@ -102,7 +102,7 @@ describe("ranking the slash menu", () => {
   });
 
   it("Given the input /re, when the items are ranked, then prefix matches lead word matches, and each is grouped as commands, skills, and T3 actions", () => {
-    expect(labels("/re".slice(1))).toEqual([
+    expect(labels("re")).toEqual([
       "/review",
       "$review-agent",
       "/code-review",
@@ -113,7 +113,7 @@ describe("ranking the slash menu", () => {
   });
 
   it("Given the input /rev, when the items are ranked, then the same items stay and nothing else joins them", () => {
-    expect(labels("/rev".slice(1))).toEqual([
+    expect(labels("rev")).toEqual([
       "/review",
       "$review-agent",
       "/code-review",

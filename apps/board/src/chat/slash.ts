@@ -125,11 +125,7 @@ export interface SlashTrigger {
 
 const isBlank = (char: string) => char === " " || char === "\n" || char === "\t" || char === "\r";
 
-/**
- * The trigger at the cursor, as in T3's `detectComposerTrigger`: a `/` word is a command unless it
- * is a path, and a currency symbol starts a skill unless an amount follows. `@` and `#` words open
- * nothing, since the board has no file or pull request list to offer.
- */
+/** Mirrors T3's `detectComposerTrigger`. `@` and `#` words open nothing, since the board has no file or pull request list. */
 export function detectSlashTrigger(text: string, cursor: number): SlashTrigger | null {
   const rangeEnd = cursor;
   let rangeStart = rangeEnd;
@@ -146,7 +142,7 @@ export function detectSlashTrigger(text: string, cursor: number): SlashTrigger |
   return isCurrencyAmountQuery(query) ? null : { kind: "skill", query, rangeStart, rangeEnd };
 }
 
-/** The text after a pick replaces the trigger's word, and where the cursor lands. A space already after the word serves as the one that follows the pick. */
+/** A space already after the word serves as the one that follows a replacement ending in a space. */
 export function replaceTrigger(text: string, trigger: SlashTrigger, replacement: string) {
   const after = text.slice(trigger.rangeEnd);
   const rest = replacement.endsWith(" ") && after.startsWith(" ") ? after.slice(1) : after;

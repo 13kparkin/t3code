@@ -138,7 +138,7 @@ export function Composer({
   const kind = trigger?.kind;
   const atStart = trigger?.rangeStart === 0;
   const onlyTheCommand = atStart && draft.slice(cursor).trim() === "";
-  // Provider commands and /clear run only as the start of a message. `$` lists skills alone.
+  // Provider commands and /clear run only at the start of a message. `$` lists skills only.
   const items = useMemo(
     () =>
       open && provider !== undefined
