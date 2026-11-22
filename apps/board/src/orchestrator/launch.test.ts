@@ -96,6 +96,18 @@ describe("launching an orchestrator", () => {
     expect(launched[0]?.firstMessage).not.toContain("delegate_task");
   });
 
+  it("Given a board whose role copy the user edited, when the orchestrator launches, then the edit is kept and the other roles are written", async () => {
+    const { ports, store } = harness([
+      { ...PENDING, messages: [{ role: "assistant", text: "Ready." }] },
+    ]);
+    const edited = ".agentboard/claude-connector/roles/reviewer.md";
+    store.set(edited, "my reviewer edits");
+    store.set(".agentboard/claude-connector/roles/.app-written.json", "{}");
+    await launchOrchestrator(ports, target, SELECTION);
+    expect(store.get(edited)).toBe("my reviewer edits");
+    expect(store.has(".agentboard/claude-connector/roles/task.md")).toBe(true);
+  });
+
   it("Given a model the instance does not offer, when the first run fails, then the engine's reason is thrown and the board has no orchestrator", async () => {
     const { ports, store, discarded } = harness([
       PENDING,

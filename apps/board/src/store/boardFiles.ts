@@ -1,4 +1,6 @@
+import * as Option from "effect/Option";
 import * as Result from "effect/Result";
+import * as Schema from "effect/Schema";
 
 import {
   type Board,
@@ -63,6 +65,9 @@ async function seedStoreFiles(files: ProjectFiles, cwd: string, folder: string) 
 }
 
 const ROLES_MANIFEST = "roles/.app-written.json";
+const decodeManifest = Schema.decodeUnknownOption(
+  Schema.fromJsonString(Schema.Record(Schema.String, Schema.String)),
+);
 
 export const sha256 = async (text: string) =>
   Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))))
@@ -77,13 +82,7 @@ export const sha256 = async (text: string) =>
 export async function refreshRoles(files: ProjectFiles, cwd: string, folder: string) {
   const dir = `${BOARDS_DIR}/${folder}`;
   const raw = await files.read(cwd, `${dir}/${ROLES_MANIFEST}`);
-  const written: Record<string, string> = (() => {
-    try {
-      return raw === null ? {} : JSON.parse(raw);
-    } catch {
-      return {};
-    }
-  })();
+  const written = raw === null ? {} : Option.getOrElse(decodeManifest(raw), () => ({}));
   const next = { ...written };
   const kept: string[] = [];
   for (const role of ROLES) {

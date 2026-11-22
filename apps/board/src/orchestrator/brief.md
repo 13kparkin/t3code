@@ -142,7 +142,7 @@ Every brief you write follows these rules:
 Start an agent with `delegate_task`:
 
 - `role`: the role's `t3Role`.
-- `isolation`: the role's isolation. An agent that changes files gets `worktree`, so two agents never share a checkout.
+- `isolation`: the role's isolation. A ticket's builder gets `worktree`, so two builders never share a checkout. An agent that works in an existing builder worktree gets `shared`.
 - `target`: the role's target, copied as written. A target with no `model` runs the agent on your model.
 - `title`: `[<ticket key>] <role name>`, for example `[T-2] scout`. The title names the registry role, never the `role` argument, so a `task` agent is `[T-2] task`, not `[T-2] implementation`. For an agent that serves no ticket, use `[board] <role name>`.
 - `task`: starts with `Read <board folder>/roles/<role>.md and act as that role.` Then give the goal, the files and branches it needs, what to return, and the instruction that it never asks the user. Tell every agent that changes or checks files to leave its evidence in the ticket's evidence folder, `<its worktree>/.omp/artifacts/<ticket key>/`, or `<board folder>/artifacts/<ticket key>/` when it has no worktree, with a `README.txt` that lists each file and what it proves. The board reads both folders, and finds the README check and the smoke evidence by those file names in either. Record the worktree path of a ticket's builder in the ticket's `worktreePath`, because the board finds a worktree's evidence only there.

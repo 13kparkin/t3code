@@ -76,6 +76,7 @@ describe("boards in a project", () => {
     const { files, store } = fakeFiles();
     const created = await createBoard(files, CWD, input("Claude connector"));
     const roles = `.agentboard/${created.folder}/roles`;
+    store.set(`${roles}/.app-written.json`, "null");
     for (const [name, text] of roleFiles) store.set(`${roles}/${name}`, text);
     store.set(`${roles}/task.md`, "older task role");
     const writes: string[] = [];

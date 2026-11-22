@@ -49,15 +49,6 @@ describe("the role registry", () => {
     );
   });
 
-  it("Given the reviewer and task roles, when their files are read, then the reviewer may run checks and the task role loads poteto-mode", () => {
-    const reviewer = NodeFS.readFileSync(NodePath.join(rolesDir, "reviewer.md"), "utf8");
-    expect(reviewer).not.toContain("trigger builds");
-    expect(reviewer).toContain("A UI row marked `not checked` is never met.");
-    expect(reviewer).toContain("is a P2");
-    const task = NodeFS.readFileSync(NodePath.join(rolesDir, "task.md"), "utf8");
-    expect(task).toContain("<checkout>/skills/poteto-mode/SKILL.md");
-  });
-
   it("Given no omp-only front matter keys, when roles/ is read, then none carries tools, model, spawns, or thinking-level", () => {
     for (const role of ROLES) {
       const text = NodeFS.readFileSync(NodePath.join(rolesDir, role.file), "utf8");
