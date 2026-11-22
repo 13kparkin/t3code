@@ -11,16 +11,20 @@ import { setupLine } from "./worktreeSetup";
 
 export const vcsEnvironment = createVcsEnvironmentAtoms(connectionAtomRuntime);
 
-/** T3's manual worktree delete. Resolves to the failure text, or null once it is gone. */
+/**
+ * T3's worktree delete. Resolves to the failure text, or null once it is gone. Without `force`,
+ * git refuses a worktree with changes or untracked files.
+ */
 export async function deleteWorktree(
   registry: AtomRegistry.AtomRegistry,
   target: { readonly environmentId: EnvironmentId; readonly cwd: string },
   path: string,
+  { force = true } = {},
 ): Promise<string | null> {
   const result = await runAtomCommand(
     registry,
     vcsEnvironment.removeWorktree,
-    { environmentId: target.environmentId, input: { cwd: target.cwd, path, force: true } },
+    { environmentId: target.environmentId, input: { cwd: target.cwd, path, force } },
     { reportFailure: false },
   );
   return result._tag === "Failure" ? failureText(result) : null;

@@ -58,6 +58,9 @@ describe("the orchestrator's standing rules and board facts", () => {
     expect(rules).toContain("Open each pull request against the base the user named.");
     expect(rules).toContain("<its worktree>/.omp/artifacts/<ticket key>/");
     expect(rules).toContain("<board folder>/artifacts/<ticket key>/");
+    expect(rules).toContain(
+      "Copy every key folder under `<worktree>/.omp/artifacts/`, not only this ticket's",
+    );
     expect(rules).toContain("`met`, `evidence`, and `note` are all required");
     expect(rules).toContain("- `todo`: captured, no plan yet.");
     expect(rules).toContain(
