@@ -131,6 +131,9 @@ export function selectionWarning(
 ): string | null {
   const provider = providers.find((entry) => entry.instanceId === selection.instanceId);
   if (provider === undefined) return `${selection.instanceId} is not an instance this engine runs.`;
+  if (provider.availability === "unavailable") {
+    return `${selection.instanceId}: ${provider.unavailableReason ?? provider.message ?? "the engine cannot start it."}`;
+  }
   if (!provider.enabled) return `${selection.instanceId} is turned off.`;
   if (!provider.installed)
     return `${selection.instanceId} is not installed on the machine that runs T3.`;

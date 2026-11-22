@@ -280,10 +280,18 @@ describe("the text model settings", () => {
     ],
     ["is off", [{ ...claude, enabled: false }], haiku, "claudeAgent is turned off."],
     [
-      "is off and not installed",
-      [{ ...claude, enabled: false, installed: false }],
+      "cannot start",
+      [
+        {
+          ...claude,
+          enabled: false,
+          installed: false,
+          availability: "unavailable",
+          unavailableReason: "Driver 'omp' is not registered in this build.",
+        },
+      ],
       haiku,
-      "claudeAgent is turned off.",
+      "claudeAgent: Driver 'omp' is not registered in this build.",
     ],
     [
       "is not installed",
