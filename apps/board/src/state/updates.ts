@@ -1,6 +1,9 @@
 import type { OrchestrationV2ThreadShell, ServerProvider } from "@t3tools/contracts";
 
+import type { AppUpdateState } from "../connection/engineState";
+
 export const ENGINE_KEY = "engine";
+const APP_KEY = "app";
 
 /** A release the app could install, and whether it can do that itself or only name the command. */
 export interface UpdateOffer {
@@ -80,7 +83,7 @@ export interface UpdateNote {
 /** The engine or one provider instance, as the Updates page lists it. */
 export interface UpdateItem {
   readonly key: string;
-  readonly kind: "engine" | "provider";
+  readonly kind: "engine" | "provider" | "app";
   readonly name: string;
   readonly driver: string | null;
   readonly installed: string | null;
@@ -171,10 +174,74 @@ function statusOf(status: "unknown" | "current" | "behind_latest"): VersionStatu
   return status === "behind_latest" ? "behind" : status;
 }
 
-/** Providers before the engine, because the engine restarts and would cut a provider update short. */
+/** What the app's update button does: restart only once downloaded and no run is active. */
+export function appUpdateStep(
+  state: AppUpdateState,
+  activeRuns: number | null,
+): "download" | "restart" | "wait" | null {
+  switch (state.status) {
+    case "available":
+      return "download";
+    case "error":
+      return state.version === null ? null : "download";
+    case "downloaded":
+      return activeRuns === 0 ? "restart" : "wait";
+    default:
+      return null;
+  }
+}
+
+const turns = (count: number) => `${count} running ${count === 1 ? "turn" : "turns"}`;
+
+function appNote(state: AppUpdateState, activeRuns: number | null): UpdateNote | null {
+  switch (state.status) {
+    case "downloading":
+      return { text: `Downloading ${state.percent}%`, tone: "progress" };
+    case "downloaded":
+      return {
+        text:
+          activeRuns === 0
+            ? "Downloaded. Restart the app to install it."
+            : activeRuns === null
+              ? "Downloaded. Restart waits until the engine lists its threads."
+              : `Downloaded. Restart waits for ${turns(activeRuns)} to finish.`,
+        tone: "progress",
+      };
+    case "error":
+      return { text: state.message, tone: "problem" };
+    default:
+      return null;
+  }
+}
+
+/** The app as an update item, or null in a build that cannot update itself. Null runs are unknown. */
+export function appItem(state: AppUpdateState, activeRuns: number | null): UpdateItem | null {
+  if (state.status === "disabled") return null;
+  const version = "version" in state ? state.version : null;
+  return {
+    key: APP_KEY,
+    kind: "app",
+    name: "Agent Board",
+    driver: null,
+    installed: state.current,
+    missing: false,
+    latest: version,
+    status: version !== null ? "behind" : state.status === "current" ? "current" : "unknown",
+    offer: version === null ? null : { version, canUpdate: true },
+    command: null,
+    running: state.status === "downloading",
+    note: appNote(state, activeRuns),
+    activeRuns: activeRuns ?? 0,
+  };
+}
+
+/**
+ * Providers before the engine, because the engine restarts and would cut a provider update short.
+ * The app restarts only on the operator's go, so it is never part of the batch.
+ */
 export function updateEverythingQueue(rows: ReadonlyArray<UpdateRow>): ReadonlyArray<UpdateRow> {
   return rows
-    .filter((row) => row.offer?.canUpdate === true && !row.running)
+    .filter((row) => row.kind !== "app" && row.offer?.canUpdate === true && !row.running)
     .toSorted((left, right) => Number(left.kind === "engine") - Number(right.kind === "engine"));
 }
 

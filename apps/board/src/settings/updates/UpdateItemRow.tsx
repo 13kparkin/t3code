@@ -23,11 +23,15 @@ export function UpdateItemRow({
   prefs,
   busy,
   onUpdate,
+  updateLabel = row.kind === "engine" ? "Update now" : "Update",
+  updateDisabled = false,
 }: {
   row: UpdateRow;
   prefs: UpdatePrefs | null;
   busy: boolean;
   onUpdate: () => void;
+  updateLabel?: string;
+  updateDisabled?: boolean;
 }) {
   const offer = row.offer;
   const automatic = prefs?.automatic[row.key];
@@ -47,8 +51,13 @@ export function UpdateItemRow({
             </span>
           )}
           {!updating && offer?.canUpdate === true && (
-            <button type="button" onClick={onUpdate} className={buttonClass}>
-              {row.kind === "engine" ? "Update now" : "Update"}
+            <button
+              type="button"
+              disabled={updateDisabled}
+              onClick={onUpdate}
+              className={buttonClass}
+            >
+              {updateLabel}
             </button>
           )}
         </div>

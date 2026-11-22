@@ -7,6 +7,8 @@ import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  appItem,
+  appUpdateStep,
   countActiveRuns,
   decideUpdate,
   providerItem,
@@ -255,11 +257,7 @@ describe("a provider's progress line", () => {
   });
 });
 
-const row = (
-  key: string,
-  kind: "engine" | "provider",
-  fields: Partial<UpdateRow> = {},
-): UpdateRow => ({
+const row = (key: string, kind: UpdateRow["kind"], fields: Partial<UpdateRow> = {}): UpdateRow => ({
   key,
   kind,
   name: key,
@@ -283,6 +281,7 @@ describe("update everything", () => {
       row("engine", "engine"),
       row("claudeAgent", "provider"),
       row("claudeAlt", "provider"),
+      row("app", "app"),
     ]);
     expect(queue.map((entry) => entry.key)).toEqual(["claudeAgent", "claudeAlt", "engine"]);
   });
@@ -304,10 +303,85 @@ describe("announcing offers", () => {
       row("claudeAgent", "provider", { offer: { version: "2.1.312", canUpdate: true } }),
       row("claudeAlt", "provider", { offer: { version: "2.1.313", canUpdate: true } }),
       row("engine", "engine", { action: "start" }),
+      row("app", "app", { offer: { version: "0.3.0", canUpdate: true } }),
     ];
     expect(
-      unannounced(rows, { claudeAgent: "2.1.312", claudeAlt: "2.1.312" }).map((entry) => entry.key),
+      unannounced(rows, { claudeAgent: "2.1.312", claudeAlt: "2.1.312", app: "0.3.0" }).map(
+        (entry) => entry.key,
+      ),
     ).toEqual(["claudeAlt"]);
+  });
+});
+
+describe("the app's own update", () => {
+  const current = "0.2.1";
+
+  it("Given a newer release, when listed, then the row shows both versions and offers it", () => {
+    const item = appItem({ current, status: "available", version: "0.3.0" }, 0);
+    expect(item).toMatchObject({
+      key: "app",
+      installed: "0.2.1",
+      latest: "0.3.0",
+      status: "behind",
+      offer: { version: "0.3.0", canUpdate: true },
+      note: null,
+    });
+  });
+
+  it("Given no newer release, when listed, then nothing is offered", () => {
+    expect(appItem({ current, status: "current" }, 0)).toMatchObject({
+      status: "current",
+      offer: null,
+    });
+  });
+
+  it("Given a build that cannot update itself, when listed, then there is no row", () => {
+    expect(appItem({ current, status: "disabled" }, 0)).toBeNull();
+  });
+
+  it("Given a downloaded update and an active run, when listed, then the row says restart waits", () => {
+    expect(appItem({ current, status: "downloaded", version: "0.3.0" }, 1)?.note).toEqual({
+      text: "Downloaded. Restart waits for 1 running turn to finish.",
+      tone: "progress",
+    });
+  });
+
+  it.each([
+    ["an offered release", "download", { current, status: "available", version: "0.3.0" }, 0],
+    [
+      "a failed download",
+      "download",
+      { current, status: "error", message: "x", version: "0.3.0" },
+      0,
+    ],
+    ["a failed check", null, { current, status: "error", message: "x", version: null }, 0],
+    [
+      "a running download",
+      null,
+      { current, status: "downloading", version: "0.3.0", percent: 40 },
+      0,
+    ],
+    [
+      "a download and no active run",
+      "restart",
+      { current, status: "downloaded", version: "0.3.0" },
+      0,
+    ],
+    [
+      "a download and runs not yet known",
+      "wait",
+      { current, status: "downloaded", version: "0.3.0" },
+      null,
+    ],
+    [
+      "a download and an active run",
+      "wait",
+      { current, status: "downloaded", version: "0.3.0" },
+      2,
+    ],
+    ["no newer release", null, { current, status: "current" }, 0],
+  ] as const)("Given %s, when the button is read, then it does %s", (_case, step, state, runs) => {
+    expect(appUpdateStep(state, runs)).toBe(step);
   });
 });
 

@@ -4,6 +4,7 @@ import * as NodeURL from "node:url";
 
 import { app, BrowserWindow, Menu, nativeTheme, net, protocol, shell } from "electron";
 
+import { registerAppUpdater } from "./appUpdater";
 import { registerBrowserViews } from "./browserView";
 import { registerEngineIpc } from "./ipc";
 
@@ -91,6 +92,7 @@ void app.whenReady().then(() => {
   if (platform !== "darwin") Menu.setApplicationMenu(null);
   protocol.handle(SCHEME, serveRenderer);
   registerBrowserViews();
+  registerAppUpdater();
   engine.start();
   openWindow();
 });

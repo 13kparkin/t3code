@@ -4,14 +4,17 @@ import { useContext, useState } from "react";
 
 import { offeredRelease } from "../state/engineUpdate";
 import {
+  appRestartRunsAtom,
+  appUpdateStateAtom,
   changeUpdatePrefs,
   engineReleaseAtom,
+  installAppUpdate,
   runUpdates,
   type UpdatePrefs,
   updatePrefsAtom,
   updateRowsAtom,
 } from "../state/updatesAtoms";
-import { ENGINE_KEY, updateEverythingQueue, type UpdateRow } from "../state/updates";
+import { appUpdateStep, ENGINE_KEY, updateEverythingQueue, type UpdateRow } from "../state/updates";
 import { buttonClass } from "./controls/buttonClass";
 import { Switch } from "./controls/Switch";
 import { SettingsRow } from "./SettingsRow";
@@ -37,6 +40,8 @@ export function UpdatesPage({
   const rows = useAtomValue(updateRowsAtom);
   const prefs = useAtomValue(updatePrefsAtom);
   const release = useAtomValue(engineReleaseAtom);
+  const appState = useAtomValue(appUpdateStateAtom);
+  const appRuns = useAtomValue(appRestartRunsAtom);
   const [pending, setPending] = useState<ReadonlySet<string>>(new Set());
 
   const run = async (targets: ReadonlyArray<UpdateRow>) => {
@@ -62,6 +67,8 @@ export function UpdatesPage({
                 : "current",
         };
   const providers = rows.filter((row) => row.kind === "provider");
+  const app = rows.find((row) => row.kind === "app");
+  const appStep = appState === null || app === undefined ? null : appUpdateStep(appState, appRuns);
   const queue = updateEverythingQueue(rows);
   const setAutomatic = (key: keyof UpdatePrefs["autoUpdate"], enabled: boolean) =>
     void changeUpdatePrefs(registry, (current) => ({
@@ -156,6 +163,38 @@ export function UpdatesPage({
           }
         />
       </SettingsSection>
+      {app !== undefined && (
+        <SettingsSection
+          title="App"
+          note="Restart installs a downloaded update. It stays off while a thread has an active run."
+        >
+          <UpdateItemRow
+            row={app}
+            prefs={prefs}
+            busy={false}
+            updateLabel={appStep === "download" ? "Download" : "Restart"}
+            updateDisabled={appStep === "wait"}
+            onUpdate={() => installAppUpdate(registry)}
+          />
+          <SettingsRow
+            title="Offer test releases"
+            description="Also offers pre-releases of Agent Board."
+            control={
+              <Switch
+                label="Offer test releases"
+                checked={prefs?.appPrereleases ?? false}
+                disabled={prefs === null}
+                onChange={(enabled) =>
+                  void changeUpdatePrefs(registry, (current) => ({
+                    ...current,
+                    appPrereleases: enabled,
+                  }))
+                }
+              />
+            }
+          />
+        </SettingsSection>
+      )}
     </div>
   );
 }

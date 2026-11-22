@@ -36,6 +36,25 @@ export interface BoardBridge {
   /** Clones or refreshes the pstack-t3 checkout the board's Claude instances load, and returns its folder. */
   readonly ensurePstack: () => Promise<PstackResult>;
   readonly browser: BrowserHost;
+  readonly appUpdate: AppUpdateHost;
+}
+
+/** The app's own release, which only the packaged app checks for and installs. */
+export type AppUpdateState = { readonly current: string } & (
+  | { readonly status: "disabled" | "unchecked" | "current" }
+  | { readonly status: "available" | "downloaded"; readonly version: string }
+  | { readonly status: "downloading"; readonly version: string; readonly percent: number }
+  /** Null when the check failed, otherwise the release whose download failed, so it can be retried. */
+  | { readonly status: "error"; readonly message: string; readonly version: string | null }
+);
+
+export interface AppUpdateHost {
+  readonly state: () => Promise<AppUpdateState>;
+  readonly onState: (listener: (state: AppUpdateState) => void) => () => void;
+  readonly download: () => void;
+  /** `activeRuns` is the renderer's count. The main process refuses unless it is 0 and the update is downloaded. */
+  readonly restart: (activeRuns: number) => void;
+  readonly setPrereleases: (enabled: boolean) => void;
 }
 
 export type PstackResult =
