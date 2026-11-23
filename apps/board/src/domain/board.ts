@@ -26,6 +26,8 @@ export const Board = Schema.Struct({
   reviewTemplate: Schema.optionalKey(Text),
   /** The files the user has sent the orchestrator as the board's docs, oldest first. */
   docs: Schema.optionalKey(Schema.Array(Doc)),
+  /** The `additions.json` item ids the user hid. Only the app writes this. */
+  hiddenAdditions: Schema.optionalKey(Schema.Array(Text)),
 });
 export type Board = typeof Board.Type;
 

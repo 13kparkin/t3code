@@ -42,6 +42,7 @@ const STORE_FILES = {
   "tickets.json": "[]",
   "foryou.jsonl": "",
   "decisions.tsv": "",
+  "additions.json": "[]",
   "preferences.md": "",
   "gates.md": "",
   "smoke.md": "",

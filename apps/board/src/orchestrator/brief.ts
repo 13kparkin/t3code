@@ -69,6 +69,7 @@ export interface StoreFiles {
   readonly tickets: string | null;
   readonly forYou: string | null;
   readonly decisions: string | null;
+  readonly additions: string | null;
 }
 
 export interface OrchestratorStats {
@@ -78,7 +79,7 @@ export interface OrchestratorStats {
   readonly builderCap: number;
   /** The newest line of `decisions.tsv`: its time and its decision. */
   readonly latestDecision: { readonly time: string; readonly decision: string } | null;
-  /** Why `tickets.json` could not be read in full. A bad `foryou.jsonl` line shows in the board's banner. */
+  /** Why `tickets.json` or an `additions.json` item could not be read. A bad `foryou.jsonl` line shows in the board's banner. */
   readonly problems: ReadonlyArray<string>;
 }
 
@@ -86,7 +87,10 @@ export interface OrchestratorStats {
  * What the orchestrator card shows. A building agent is one ticket in `building`, and an item is
  * open while its latest line says so, because the orchestrator resolves an item by appending a line.
  */
-export function orchestratorStats(files: StoreFiles, builderCap: number): OrchestratorStats {
+export function orchestratorStats(
+  files: Omit<StoreFiles, "additions">,
+  builderCap: number,
+): OrchestratorStats {
   const problems: string[] = [];
   const stages = {
     todo: 0,
