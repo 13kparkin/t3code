@@ -153,6 +153,8 @@ export interface PrContextValue {
   readonly mergeOrderNotes: ReadonlyMap<string, string>;
   /** Why a merged ticket's worktree was kept, by ticket key. */
   readonly keptWorktrees: ReadonlyMap<string, string>;
+  /** The text of the board's `decisions.tsv`, or null before it is read. */
+  readonly decisions: string | null;
 }
 
 const PrContext = createContext<PrContextValue | null>(null);
@@ -204,13 +206,28 @@ export function useCiLocal(file: Artifact | undefined, head: string | null): CiL
   );
 }
 
+/** The ticket's `smoke.txt`, or null with none. */
+export function useTicketSmoke(view: TicketView | null): Smoke | null {
+  const { groups, files } = useArtifacts();
+  const smokeFile =
+    view === null
+      ? undefined
+      : groups.byTicket.get(view.ticket.key)?.find((artifact) => artifact.name === "smoke.txt");
+  const smokeAt = smokeFile === undefined ? null : locate(files.roots, smokeFile.absolutePath);
+  return useAtomValue(
+    smokeAt === null
+      ? NO_SMOKE
+      : smokeAtom(artifactContentsKey(files.environmentId, smokeAt.root.cwd, smokeAt.path)),
+  );
+}
+
 /**
  * The six merge-ready conditions for a ticket, computed from the board's files and the host's
  * checks. A null view has none.
  */
 export function useTicketReadiness(view: TicketView | null): ReadonlyArray<ConditionState> | null {
   const { tickets, mergeOrderNotes } = usePrContext();
-  const { groups, files } = useArtifacts();
+  const { groups } = useArtifacts();
   const { live, now } = useTicketPr(view);
   const evidence = view === null ? undefined : groups.byTicket.get(view.ticket.key);
   // Only a pull request whose host reports no checks reads the file, so no other card polls it.
@@ -219,13 +236,7 @@ export function useTicketReadiness(view: TicketView | null): ReadonlyArray<Condi
       ? evidence?.find((artifact) => artifact.name === "ci-local.txt")
       : undefined;
   const ciLocal = useCiLocal(ciFile, live?.headSha ?? view?.ticket.headSha ?? null);
-  const smokeFile = evidence?.find((artifact) => artifact.name === "smoke.txt");
-  const smokeAt = smokeFile === undefined ? null : locate(files.roots, smokeFile.absolutePath);
-  const smoke = useAtomValue(
-    smokeAt === null
-      ? NO_SMOKE
-      : smokeAtom(artifactContentsKey(files.environmentId, smokeAt.root.cwd, smokeAt.path)),
-  );
+  const smoke = useTicketSmoke(view);
   return useMemo(
     () =>
       view === null

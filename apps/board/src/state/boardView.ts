@@ -19,6 +19,7 @@ export interface BoardView {
   readonly issue: TicketsIssue | null;
   /** The orchestrator card's numbers. Its ticket counts come from the same tickets the lanes show. */
   readonly stats: OrchestratorStats;
+  readonly decisions: string | null;
 }
 
 /** The board's tickets joined with its orchestrator's agents. */
@@ -60,5 +61,6 @@ export function useBoardView(project: EnvironmentProject, listed: ValidBoard): B
       { ...files, tickets: Result.isSuccess(parsed) ? files.tickets : lastValid.text },
       board.builderCap,
     ),
+    decisions: files.decisions,
   };
 }

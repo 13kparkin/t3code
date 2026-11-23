@@ -6,6 +6,7 @@ import type { SectionProps } from "./sectionProps";
 import { TicketActivity } from "./TicketActivity";
 import { TicketAgents } from "./TicketAgents";
 import { TicketFiles } from "./TicketFiles";
+import { TicketGlance } from "./TicketGlance";
 import { TicketReadiness } from "./TicketReadiness";
 import { TicketSource } from "./TicketSource";
 import { TicketSteps } from "./TicketSteps";
@@ -31,6 +32,7 @@ export const TICKET_SECTIONS: ReadonlyArray<TicketSection> = [
     Body: TicketSummary,
   },
   { id: "why", title: "Why", shows: () => true, Body: TicketWhy },
+  { id: "glance", title: "At a glance", shows: () => true, Body: TicketGlance },
   {
     id: "steps",
     title: "Steps",

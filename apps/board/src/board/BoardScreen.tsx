@@ -39,7 +39,7 @@ export function BoardScreen({
   const registry = useContext(RegistryContext);
   const [dropError, setDropError] = useState<string | null>(null);
   const { board } = listed;
-  const { model, issue, stats } = useBoardView(project, listed);
+  const { model, issue, stats, decisions } = useBoardView(project, listed);
   const order = useAtomValue(frameOrderAtom)[board.id] ?? NO_ORDER;
   const forYou = useBoardForYou(project, listed);
   const artifacts = useBoardArtifacts(project, listed, model);
@@ -73,8 +73,17 @@ export function BoardScreen({
       tickets,
       mergeOrderNotes,
       keptWorktrees,
+      decisions,
     };
-  }, [project, board.orchestratorThreadId, family, tickets, forYou.views, keptWorktrees]);
+  }, [
+    project,
+    board.orchestratorThreadId,
+    family,
+    tickets,
+    forYou.views,
+    keptWorktrees,
+    decisions,
+  ]);
   const chatSlot = useAtomValue(chatSlotAtom);
   const ticketSlot = useAtomValue(ticketSlotAtom);
   const choice = useAtomValue(ticketChoiceAtom);
