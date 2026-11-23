@@ -12,7 +12,7 @@ import {
   ticketTabShownAtom,
 } from "../browser/panel";
 import { iconButton } from "../browser/styles";
-import { openTicketPage } from "../state/filesView";
+import { filesViewAtom, openTicketPage } from "../state/filesView";
 import { Tooltip } from "../ui/Tooltip";
 import { EmptyFiles } from "../files/EmptyFiles";
 import { NO_ARTIFACTS } from "../state/artifacts";
@@ -48,12 +48,20 @@ export function TicketPanel({
   const { groups } = useArtifacts();
   const folded = useAtomValue(foldedAtom);
   const shown = useAtomValue(ticketTabShownAtom);
+  const onPage = useAtomValue(filesViewAtom).surface === "ticket";
   const toggle = (id: string) => void toggleFolded(registry, sectionKey(id));
   // A new function each render, so the frame after every render marks a pending open as painted.
   const markPainted = (element: HTMLElement | null) => {
     if (element !== null) requestAnimationFrame(() => markTicketPainted());
   };
   if (!page && !shown) return null;
+  if (!page && onPage) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <EmptyFiles>Open on the page</EmptyFiles>
+      </div>
+    );
+  }
   const view =
     choice === null
       ? undefined
