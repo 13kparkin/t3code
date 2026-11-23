@@ -143,17 +143,19 @@ export function OrchestratorCard({
             <dt className="text-[10px] leading-tight text-faint">{STAGE_LABEL[stage]}</dt>
             <dd className={stats.stages[stage] === 0 ? "text-faint" : "text-fg"}>
               {stage === "off_path" && offPath.length > 0 ? (
-                <PopMenu
-                  label="Off path tickets"
-                  align="start"
-                  triggerClass="text-fg underline decoration-dotted hover:text-accent"
-                  trigger={stats.stages[stage]}
-                  items={offPath.map((ticket) => ({
-                    label: `${ticket.key} ${ticket.title}`,
-                    onSelect: () =>
-                      chooseTicket(registry, { threadId: null, ticketKey: ticket.key }),
-                  }))}
-                />
+                <span onPointerDown={(event) => event.stopPropagation()}>
+                  <PopMenu
+                    label="Off path tickets"
+                    align="start"
+                    triggerClass="text-fg underline decoration-dotted hover:text-accent"
+                    trigger={stats.stages[stage]}
+                    items={offPath.map((ticket) => ({
+                      label: `${ticket.key} ${ticket.title}`,
+                      onSelect: () =>
+                        chooseTicket(registry, { threadId: null, ticketKey: ticket.key }),
+                    }))}
+                  />
+                </span>
               ) : (
                 stats.stages[stage]
               )}
