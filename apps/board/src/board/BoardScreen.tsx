@@ -9,6 +9,7 @@ import { useBoardArtifacts } from "../artifacts/useBoardArtifacts";
 import { chatSlotAtom, chooseTicket, ticketChoiceAtom, ticketSlotAtom } from "../browser/panel";
 import { OrchestratorPanel } from "../chat/OrchestratorPanel";
 import { MainTabs } from "../files/MainTabs";
+import { visibleAdditions } from "../domain/additions";
 import { mergeTicketKey } from "../domain/readiness";
 import { frameOrderAtom, hiddenLanesAtom } from "../state/boardUi";
 import { useThreadFamily } from "../state/family";
@@ -18,15 +19,17 @@ import { addDocs } from "../state/attachmentUploads";
 import { countImplementationAgents } from "../state/boardModel";
 import { useBoardView } from "../state/boardView";
 import { keptWorktreesAtom } from "../state/mergeCleanup";
+import { setHiddenAdditions } from "../state/reviews";
 import type { ValidBoard } from "../store/boardFiles";
 import { ForYouLane } from "./ForYouLane";
 import { Lanes } from "./Lanes";
-import { forYouHeight, LANE_IDS, layoutBoard } from "./layout";
+import { additionLaneId, forYouHeight, LANE_IDS, layoutBoard } from "./layout";
 import { OrchestratorCard } from "./OrchestratorCard";
 import { TicketPanel } from "./TicketPanel";
 import { Viewport } from "./Viewport";
 
 const NO_ORDER = {};
+const NO_IDS: ReadonlyArray<string> = [];
 
 /** A board's orchestrator card and lanes on the canvas, the ticket tab and the orchestrator's chat, which draw in the side panel. Open files are tabs over the canvas. */
 export function BoardScreen({
@@ -38,19 +41,37 @@ export function BoardScreen({
 }) {
   const registry = useContext(RegistryContext);
   const [dropError, setDropError] = useState<string | null>(null);
+  const [hideError, setHideError] = useState<string | null>(null);
   const { board } = listed;
-  const { model, issue, stats, decisions } = useBoardView(project, listed);
+  const { model, issue, stats, decisions, additions } = useBoardView(project, listed);
+  const hiddenAdditions = board.hiddenAdditions ?? NO_IDS;
+  const visible = useMemo(
+    () => visibleAdditions(additions, hiddenAdditions),
+    [additions, hiddenAdditions],
+  );
+  // Only ids still in the file are written, so the list cannot grow past the file.
+  const saveHidden = (ids: ReadonlyArray<string>) =>
+    void setHiddenAdditions(
+      registry,
+      project,
+      listed,
+      ids.filter((id) => additions.some((item) => item.id === id)),
+    ).then(setHideError);
   const order = useAtomValue(frameOrderAtom)[board.id] ?? NO_ORDER;
   const forYou = useBoardForYou(project, listed);
   const artifacts = useBoardArtifacts(project, listed, model);
   const hiddenIds = useAtomValue(hiddenLanesAtom(board.id));
-  const hidden = useMemo(
-    () => new Set(LANE_IDS.filter((id) => hiddenIds.split(",").includes(id))),
-    [hiddenIds],
-  );
+  const hidden = useMemo(() => {
+    const folded = hiddenIds.split(",");
+    const lanes = [
+      ...LANE_IDS,
+      ...visible.flatMap((item) => (item.place === "canvas" ? [additionLaneId(item.id)] : [])),
+    ];
+    return new Set<string>(lanes.filter((id) => folded.includes(id)));
+  }, [hiddenIds, visible]);
   const layout = useMemo(
-    () => layoutBoard(model, order, forYouHeight(forYou.views), hidden),
-    [model, order, forYou.views, hidden],
+    () => layoutBoard(model, order, forYouHeight(forYou.views), hidden, visible),
+    [model, order, forYou.views, hidden, visible],
   );
   const family = useThreadFamily(project.environmentId, board.orchestratorThreadId);
   const builders = useMemo(() => countImplementationAgents(model), [model]);
@@ -74,6 +95,7 @@ export function BoardScreen({
       mergeOrderNotes,
       keptWorktrees,
       decisions,
+      additions: visible,
     };
   }, [
     project,
@@ -83,6 +105,7 @@ export function BoardScreen({
     forYou.views,
     keptWorktrees,
     decisions,
+    visible,
   ]);
   const chatSlot = useAtomValue(chatSlotAtom);
   const ticketSlot = useAtomValue(ticketSlotAtom);
@@ -113,6 +136,9 @@ export function BoardScreen({
                 builders={builders}
                 offPath={model.lanes.off_path.map((view) => view.ticket)}
                 hidden={hidden}
+                additions={additions}
+                hiddenAdditions={hiddenAdditions}
+                onHideAdditions={saveHidden}
               />
               <Lanes
                 layout={layout}
@@ -130,6 +156,7 @@ export function BoardScreen({
                 }
                 choice={choice}
                 onChoose={(next) => chooseTicket(registry, next)}
+                onRemoveAddition={(id) => saveHidden([...hiddenAdditions, id])}
               />
             </Viewport>
             <div className="absolute bottom-3.5 left-3.5 z-10 flex max-w-[60%] flex-col gap-2">
@@ -140,6 +167,15 @@ export function BoardScreen({
                   className="rounded-lg border border-red-400/40 bg-panel px-3 py-2 break-words text-red-300 shadow-panel"
                 >
                   {dropError}
+                </p>
+              )}
+              {hideError !== null && (
+                <p
+                  role="alert"
+                  data-testid="additions-error"
+                  className="rounded-lg border border-red-400/40 bg-panel px-3 py-2 break-words text-red-300 shadow-panel"
+                >
+                  {hideError}
                 </p>
               )}
               {issue !== null && (

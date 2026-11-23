@@ -2,13 +2,14 @@ import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { ThreadId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
-import { Eye, ListChecks, Paperclip, Plus } from "lucide-react";
+import { Eye, Layers, ListChecks, Paperclip, Plus } from "lucide-react";
 import { useContext, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { chooseTicket } from "../browser/panel";
 import { useArtifacts } from "../artifacts/ArtifactsContext";
 import { isRunLive } from "../chat/timeline";
+import { type Addition, lineText, visibleAdditions } from "../domain/additions";
 import { pickTemplate, SYSTEM_TEMPLATE } from "../domain/reviewTemplate";
 import { STAGE_LABEL, TICKET_STAGES, type Ticket } from "../domain/ticket";
 import { AddFromIssue } from "../issues/AddFromIssue";
@@ -16,11 +17,12 @@ import type { OrchestratorStats } from "../orchestrator/brief";
 import { baseInstanceId } from "../orchestrator/orchestratorInstance";
 import { laneKey, toggleFolded } from "../state/boardUi";
 import { reviewTemplatesAtom, setBoardReviewTemplate, usageNoticeAtom } from "../state/reviews";
+import { usePrContext } from "../state/prStatus";
 import { useEnvironmentThread } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
 import { PopMenu } from "../ui/PopMenu";
 import { BuilderCap } from "./BuilderCap";
-import { LANE_IDS, LANE_LABEL, type LaneId, ORCHESTRATOR_BOX } from "./layout";
+import { additionLaneId, LANE_IDS, LANE_LABEL, ORCHESTRATOR_BOX } from "./layout";
 
 /** Mounts the board's usage watch, which messages the orchestrator when a usage window passes a level. */
 function UsageWatch({ instanceId, threadId }: { instanceId: string; threadId: string }) {
@@ -36,6 +38,9 @@ export function OrchestratorCard({
   builders,
   offPath,
   hidden,
+  additions,
+  hiddenAdditions,
+  onHideAdditions,
 }: {
   project: EnvironmentProject;
   listed: ValidBoard;
@@ -43,7 +48,12 @@ export function OrchestratorCard({
   builders: number;
   /** Tickets with no lane on the canvas. */
   offPath: ReadonlyArray<Ticket>;
-  hidden: ReadonlySet<LaneId>;
+  /** Stage lanes and `canvas` addition lanes the user folded away. */
+  hidden: ReadonlySet<string>;
+  /** Every `additions.json` item, hidden ones too, so the menu can show them again. */
+  additions: ReadonlyArray<Addition>;
+  hiddenAdditions: ReadonlyArray<string>;
+  onHideAdditions: (ids: ReadonlyArray<string>) => void;
 }) {
   const { board } = listed;
   // The panel holds the same thread open, so this adds no second subscription.
@@ -60,6 +70,15 @@ export function OrchestratorCard({
   const [pickError, setPickError] = useState<string | null>(null);
   const picked = pickTemplate(board.reviewTemplate, custom);
   const docs = board.docs ?? [];
+  const tickets = usePrContext().tickets.map((view) => view.ticket);
+  const shown = visibleAdditions(additions, hiddenAdditions);
+  const lines = shown.filter((item) => item.place === "orchestrator");
+  const laneLabels = new Map<string, string>([
+    ...LANE_IDS.map((id) => [id, LANE_LABEL[id]] as const),
+    ...shown.flatMap((item) =>
+      item.place === "canvas" ? [[additionLaneId(item.id), item.title] as const] : [],
+    ),
+  ]);
   const status =
     board.orchestratorThreadId === null
       ? "Not started"
@@ -125,13 +144,48 @@ export function OrchestratorCard({
                 {hidden.size > 0 ? `${hidden.size} hidden` : "Lanes"}
               </>
             }
-            items={LANE_IDS.map((id) => ({
-              label: LANE_LABEL[id],
+            items={[...laneLabels].map(([id, label]) => ({
+              label,
               hint: hidden.has(id) ? "Hidden" : "Shown",
               onSelect: () => void toggleFolded(registry, laneKey(board.id, id)),
             }))}
           />
         </div>
+        {additions.length > 0 && (
+          <div onPointerDown={(event) => event.stopPropagation()}>
+            <PopMenu
+              label="Additions"
+              align="start"
+              triggerClass="inline-flex shrink-0 items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-5 text-muted hover:bg-hover hover:text-fg"
+              trigger={
+                <>
+                  <Layers className="size-3" aria-hidden />
+                  {hiddenAdditions.length > 0 ? `${hiddenAdditions.length} hidden` : "Added"}
+                </>
+              }
+              items={[
+                ...additions.map((item) => {
+                  const isHidden = hiddenAdditions.includes(item.id);
+                  return {
+                    label: `${item.title} · ${item.place}`,
+                    hint: isHidden ? "Hidden" : "Shown",
+                    onSelect: () =>
+                      onHideAdditions(
+                        isHidden
+                          ? hiddenAdditions.filter((id) => id !== item.id)
+                          : [...hiddenAdditions, item.id],
+                      ),
+                  };
+                }),
+                {
+                  label: "Reset to default",
+                  onSelect: () => onHideAdditions(additions.map((item) => item.id)),
+                },
+                { label: "Show all", onSelect: () => onHideAdditions([]) },
+              ]}
+            />
+          </div>
+        )}
         <span data-testid="card-status" className="text-[11px] text-muted">
           {status}
         </span>
@@ -221,6 +275,21 @@ export function OrchestratorCard({
           ? "No decisions yet"
           : `${stats.latestDecision.time}  ${stats.latestDecision.decision}`}
       </p>
+      {lines.length > 0 && (
+        <dl>
+          {lines.map((item) => (
+            <div
+              key={item.id}
+              data-testid="addition-line"
+              data-addition={item.id}
+              className="flex gap-2 text-[11px] leading-[18px]"
+            >
+              <dt className="shrink-0 text-faint">{item.title}</dt>
+              <dd className="min-w-0 truncate text-fg">{lineText(item, tickets)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
       {pickError !== null && (
         <p role="alert" className="mt-1 text-[11px] break-words text-red-400">
           {pickError}

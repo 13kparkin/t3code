@@ -61,6 +61,28 @@ export async function setBoardReviewTemplate(
   );
 }
 
+/** Saves the `additions.json` ids the user hid in `board.json`. Resolves to the failure text, or null once saved. */
+export async function setHiddenAdditions(
+  registry: AtomRegistry.AtomRegistry,
+  project: Pick<EnvironmentProject, "id" | "environmentId" | "workspaceRoot">,
+  listed: ValidBoard,
+  ids: ReadonlyArray<string>,
+): Promise<string | null> {
+  try {
+    await updateBoard(
+      boardEngine(registry, project.environmentId).files,
+      project.workspaceRoot,
+      listed.folder,
+      { hiddenAdditions: ids },
+    );
+    return null;
+  } catch (failure) {
+    return failure instanceof Error ? failure.message : String(failure);
+  } finally {
+    registry.refresh(projectBoardsAtom(project.id));
+  }
+}
+
 /**
  * The usage windows of one orchestrator's provider, by `<instance id>/<thread id>`. While a card
  * shows it, each window that passes 50, 80, or 95 percent sends the orchestrator one message.
