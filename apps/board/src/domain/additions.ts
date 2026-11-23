@@ -55,7 +55,7 @@ const LinkBlock = Schema.Struct({
   type: Schema.Literal("link"),
   label: Str(40),
   href: Str(500).check(
-    Schema.makeFilter((href) => /^https?:\/\//i.test(href), {
+    Schema.makeFilter((href) => /^https?:\/\//i.test(href) && URL.canParse(href), {
       message: "must be an http or https link",
     }),
   ),

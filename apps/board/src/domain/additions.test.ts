@@ -146,6 +146,11 @@ describe("additions.json", () => {
       { ids: [], problems: ['additions.json "a" blocks.0.href must be an http or https link'] },
     ],
     [
+      "a link with no host, which no URL parses",
+      json([canvas("a", [{ type: "link", label: "x", href: "https://" }])]),
+      { ids: [], problems: ['additions.json "a" blocks.0.href must be an http or https link'] },
+    ],
+    [
       "a relative link",
       json([canvas("a", [{ type: "link", label: "x", href: "/tickets" }])]),
       { ids: [], problems: ['additions.json "a" blocks.0.href must be an http or https link'] },
