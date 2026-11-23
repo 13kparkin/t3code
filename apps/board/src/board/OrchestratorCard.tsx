@@ -294,7 +294,7 @@ export function OrchestratorCard({
         </p>
       )}
       {stats.problems.map((problem) => (
-        <p key={problem} role="alert" className="mt-1 text-[11px] break-words text-red-400">
+        <p key={problem} role="alert" className="truncate text-[11px] leading-[18px] text-red-400">
           {problem}
         </p>
       ))}

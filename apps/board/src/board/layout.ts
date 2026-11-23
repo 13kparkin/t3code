@@ -25,7 +25,7 @@ export const UNASSIGNED_KEY = "__unassigned";
 export const ADDITION_KEY = "__add:";
 /** The hide key of a `canvas` addition's own lane, which folds like a stage lane. */
 export const additionLaneId = (id: string) => `add:${id}`;
-/** Each orchestrator line is one 18px row on the orchestrator card, so the lanes start that much lower. */
+/** Each orchestrator line and problem line is one 18px row on the orchestrator card, so the lanes start that much lower. */
 export const ADDITION_LINE = 18;
 const ADDITION_FRAME = 140;
 const ADDITION_LANE = 280;
@@ -118,9 +118,10 @@ export function layoutBoard(
   forYouRows = 0,
   hidden: ReadonlySet<string> = NO_HIDDEN,
   additions: ReadonlyArray<Addition> = [],
+  problemLines = 0,
 ): Layout {
-  const top =
-    LANES_TOP + additions.filter((item) => item.place === "orchestrator").length * ADDITION_LINE;
+  const lines = additions.filter((item) => item.place === "orchestrator").length + problemLines;
+  const top = LANES_TOP + lines * ADDITION_LINE;
   const lanes: LaneBox[] = [];
   const edges: Edge[] = [];
   const known = new Set(

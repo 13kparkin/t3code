@@ -67,8 +67,9 @@ export function BoardScreen({
     return new Set<string>(lanes.filter((id) => folded.includes(id)));
   }, [hiddenIds, visible]);
   const layout = useMemo(
-    () => layoutBoard(model, order, forYouHeight(forYou.views), hidden, visible),
-    [model, order, forYou.views, hidden, visible],
+    () =>
+      layoutBoard(model, order, forYouHeight(forYou.views), hidden, visible, stats.problems.length),
+    [model, order, forYou.views, hidden, visible, stats.problems.length],
   );
   const family = useThreadFamily(project.environmentId, board.orchestratorThreadId);
   const builders = useMemo(() => countImplementationAgents(model), [model]);

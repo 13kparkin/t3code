@@ -8,7 +8,10 @@ import { STAGE_LABEL, TICKET_STAGES, type Ticket, type TicketStage } from "./tic
 
 const Str = (max: number) => Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(max));
 const Stage = Schema.Literals(TICKET_STAGES);
-const Stages = Schema.Array(Stage).check(Schema.isMinLength(1));
+const Stages = Schema.Array(Stage).check(
+  Schema.isMinLength(1),
+  Schema.isMaxLength(TICKET_STAGES.length),
+);
 const LIST_ROWS = 20;
 
 const TextBlock = Schema.Struct({ type: Schema.Literal("text"), text: Str(500) });
@@ -94,6 +97,7 @@ const Addition = Schema.Union([
 export type Addition = typeof Addition.Type;
 
 const MAX_ITEMS = 12;
+const MAX_PROBLEMS = 5;
 const PLACE_CAP = {
   canvas: 4,
   lane: MAX_ITEMS,
@@ -123,12 +127,16 @@ export function parseAdditions(text: string): ParsedAdditions {
   }
   const items: Addition[] = [];
   const problems: string[] = [];
+  let skipped = 0;
   file.success.forEach((entry, index) => {
     const id = Option.match(decodeId(entry), {
       onNone: () => `#${index}`,
-      onSome: (named) => named.id,
+      onSome: (named) => (named.id.length > 40 ? `${named.id.slice(0, 40)}…` : named.id),
     });
-    const skip = (why: string) => problems.push(`additions.json "${id}" ${why}`);
+    const skip = (why: string) => {
+      skipped += 1;
+      if (problems.length < MAX_PROBLEMS) problems.push(`additions.json "${id}" ${why}`);
+    };
     const decoded = decodeItem(entry, { errors: "all" });
     if (Result.isFailure(decoded)) {
       skip(
@@ -152,6 +160,7 @@ export function parseAdditions(text: string): ParsedAdditions {
       skip(`title is a built-in At a glance line: ${item.title}`);
     } else items.push(item);
   });
+  if (skipped > MAX_PROBLEMS) problems.push(`additions.json: …and ${skipped - MAX_PROBLEMS} more`);
   return { items, problems };
 }
 

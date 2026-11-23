@@ -139,6 +139,11 @@ describe("laying out additions", () => {
     expect([moved?.y, moved?.frames[0]?.y]).toEqual([396, 430]);
   });
 
+  it("Given one orchestrator line and two problem lines, when laid out, then the lanes start 54px lower", () => {
+    const moved = building(layoutBoard(model, {}, 0, new Set(), [line("a")], 2));
+    expect([moved?.y, moved?.frames[0]?.y]).toEqual([414, 448]);
+  });
+
   it("Given a lane card, when laid out, then it is the lane's first frame and the tickets follow it", () => {
     const lane = building(layoutBoard(model, {}, 0, new Set(), [ci]));
     expect(lane?.frames.map((frame) => [frame.key, frame.y, frame.height])).toEqual([

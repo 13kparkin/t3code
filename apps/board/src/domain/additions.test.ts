@@ -217,6 +217,41 @@ describe("additions.json", () => {
       },
     ],
     [
+      "8 bad items, past the problem cap",
+      json(Array.from({ length: 8 }, (_, at) => item(`b${at}`, "lane"))),
+      {
+        ids: [],
+        problems: [
+          'additions.json "b0" lane Missing key',
+          'additions.json "b1" lane Missing key',
+          'additions.json "b2" lane Missing key',
+          'additions.json "b3" lane Missing key',
+          'additions.json "b4" lane Missing key',
+          "additions.json: …and 3 more",
+        ],
+      },
+    ],
+    [
+      "a bad item with a long id",
+      json([item("x".repeat(50), "canvas")]),
+      {
+        ids: [],
+        problems: [
+          `additions.json "${"x".repeat(40)}…" id Expected a string matching the RegExp ^[a-z0-9-]{1,40}$`,
+        ],
+      },
+    ],
+    [
+      "stages listed past the number of stages",
+      json([canvas("a", [{ type: "list", stages: Array.from({ length: 10 }, () => "pr") }])]),
+      {
+        ids: [],
+        problems: [
+          'additions.json "a" blocks.0.stages Expected a value with a length of at most 9',
+        ],
+      },
+    ],
+    [
       "7 table columns",
       json([
         canvas("a", [{ type: "table", columns: ["1", "2", "3", "4", "5", "6", "7"], rows: [] }]),
