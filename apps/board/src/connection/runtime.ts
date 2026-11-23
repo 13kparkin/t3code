@@ -16,6 +16,7 @@ import * as Layer from "effect/Layer";
 import { Atom } from "effect/reactivity";
 import * as Socket from "effect/socket/Socket";
 
+import * as ActivityReporter from "./activity";
 import * as ConnectionPlatform from "./platform";
 
 // T3 Connect is out of scope, but the connection layer is built with its relay client. The signer
@@ -54,7 +55,8 @@ const layerSnapshotLoader = Layer.mergeAll(
 );
 
 // Project commands mint their ids from it.
-const layerConnection = layerSnapshotLoader.pipe(
+const layerConnection = ActivityReporter.layer.pipe(
+  Layer.provideMerge(layerSnapshotLoader),
   Layer.provideMerge(Connection.layer),
   Layer.provideMerge(Layer.mergeAll(layerRuntime, ConnectionPlatform.layer)),
   Layer.provideMerge(SecureRandom.layerWebCrypto),
