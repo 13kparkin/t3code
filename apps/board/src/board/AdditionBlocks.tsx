@@ -3,7 +3,6 @@ import { usePrContext } from "../state/prStatus";
 import { ago } from "../ui/ago";
 import { DrawnBlockView } from "./DrawnBlockView";
 
-/** An addition's blocks, drawn by the board from the current tickets. */
 export function AdditionBlocks({ item }: { item: Addition }) {
   const tickets = usePrContext().tickets.map((view) => view.ticket);
   return (

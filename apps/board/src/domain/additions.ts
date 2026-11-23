@@ -78,7 +78,7 @@ const Base = {
 const Blocks = Schema.Array(Block).check(Schema.isMinLength(1), Schema.isMaxLength(8));
 const OneLine = Schema.Array(LineBlock).check(Schema.isMinLength(1), Schema.isMaxLength(1));
 
-/** Where an addition draws. `canvas` is a lane of its own after the stage lanes. */
+/** `canvas` is a lane of its own after the stage lanes. */
 const Addition = Schema.Union([
   Schema.Struct({ ...Base, place: Schema.Literal("canvas"), blocks: Blocks }),
   Schema.Struct({

@@ -6,7 +6,7 @@ import { openInBrowser } from "../browser/browserTabs";
 import { chooseTicket } from "../browser/panel";
 import type { DrawnBlock } from "../domain/additions";
 
-/** One block as the board draws it. Every value is a React text node, never markup. */
+/** Every value is a React text node, never markup. */
 export function DrawnBlockView({ block }: { block: DrawnBlock }) {
   const registry = useContext(RegistryContext);
   switch (block.type) {
