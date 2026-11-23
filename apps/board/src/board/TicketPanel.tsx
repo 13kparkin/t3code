@@ -1,12 +1,13 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentId } from "@t3tools/contracts";
-import { useContext, useState } from "react";
+import { useContext } from "react";
 
 import { useArtifacts } from "../artifacts/ArtifactsContext";
 import { chooseTicket, markTicketPainted, ticketChoiceAtom } from "../browser/panel";
 import { EmptyFiles } from "../files/EmptyFiles";
 import { NO_ARTIFACTS } from "../state/artifacts";
 import type { BoardModel } from "../state/boardModel";
+import { foldedAtom, sectionKey, toggleFolded } from "../state/boardUi";
 import { AgentLog } from "./AgentLog";
 import { SectionBar } from "./SectionBar";
 import { TicketMeta } from "./TicketMeta";
@@ -32,12 +33,8 @@ export function TicketPanel({
   const registry = useContext(RegistryContext);
   const choice = useAtomValue(ticketChoiceAtom);
   const { groups } = useArtifacts();
-  const [folded, setFolded] = useState<ReadonlySet<string>>(new Set());
-  const toggle = (id: string) => {
-    const next = new Set(folded);
-    if (!next.delete(id)) next.add(id);
-    setFolded(next);
-  };
+  const folded = useAtomValue(foldedAtom);
+  const toggle = (id: string) => void toggleFolded(registry, sectionKey(id));
   // A new function each render, so the frame after every render marks a pending open as painted.
   const markPainted = (element: HTMLElement | null) => {
     if (element !== null) requestAnimationFrame(() => markTicketPainted());
@@ -75,8 +72,8 @@ export function TicketPanel({
           artifacts: groups.byTicket.get(view.ticket.key) ?? NO_ARTIFACTS,
         };
   const sections = props === null ? [] : TICKET_SECTIONS.filter((section) => section.shows(props));
-  const open = sections.filter((section) => !folded.has(section.id));
-  const bars = sections.filter((section) => folded.has(section.id));
+  const open = sections.filter((section) => !folded.has(sectionKey(section.id)));
+  const bars = sections.filter((section) => folded.has(sectionKey(section.id)));
   const filler = open.find((section) => section.fill === true);
   return (
     <div ref={markPainted} className="flex min-h-0 flex-1 flex-col">

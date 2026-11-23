@@ -75,8 +75,10 @@ describe("local state", () => {
         ...state,
         frameOrder: { ...state.frameOrder, b1: { building: ["T-2", "T-1"] } },
       })),
+      local.update((state) => ({ ...state, folded: [...state.folded, "sec:steps"] })),
     ]);
     const state = await local.read();
+    expect(state.folded).toEqual(["sec:steps"]);
     expect(state.lastOpenedBoard?.folder).toBe("a");
     expect(state.frameOrder["b1"]?.["building"]).toEqual(["T-2", "T-1"]);
   });
