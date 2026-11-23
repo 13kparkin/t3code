@@ -1,6 +1,5 @@
 import type { CardStatus } from "./ticketStatus";
 
-/** A card's two lines: status dot, key, title and status word, then who works on it and when. */
 export function CardLine({
   tag,
   title,

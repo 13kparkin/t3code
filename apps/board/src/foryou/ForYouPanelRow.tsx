@@ -5,7 +5,7 @@ import type { BoardOpenItems } from "../domain/forYou";
 import { forYouOpenAtom } from "../state/forYou";
 import { showForYouCard } from "../sidebar/ForYouRow";
 
-/** One open item: where it waits, what it asks, and its card. A press opens its board, marks the card, and closes the slide-out. */
+/** A press opens its board, marks the card, and closes the slide-out. */
 export function ForYouPanelRow({
   board,
   item,

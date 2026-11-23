@@ -5,7 +5,7 @@ import { chooseTicket } from "../browser/panel";
 import { AgentCard } from "./AgentCard";
 import type { SectionProps } from "./sectionProps";
 
-/** The ticket's agents. Choosing one shows its log in the Activity section. */
+/** Choosing an agent shows its log in the Activity section. */
 export function TicketAgents({ view, agent }: SectionProps) {
   const registry = useContext(RegistryContext);
   return (

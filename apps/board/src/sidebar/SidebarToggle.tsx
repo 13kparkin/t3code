@@ -9,7 +9,6 @@ import { Tooltip } from "../ui/Tooltip";
 // The macOS window buttons sit inset at the top bar's left edge, so the button starts past them.
 const TRAFFIC_LIGHTS = window.board !== undefined && navigator.userAgent.includes("Mac");
 
-/** The top bar's button for the left sidebar, the mirror of the right sidebar's. */
 export function SidebarToggle() {
   const registry = useContext(RegistryContext);
   const open = useAtomValue(sidebarOpenAtom);

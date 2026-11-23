@@ -3,7 +3,6 @@ import { trimSlashes } from "../files/target";
 import { usePrContext } from "../state/prStatus";
 import type { SectionProps } from "./sectionProps";
 
-/** The ticket worktree's changes and commits. */
 export function TicketSource({ environmentId, view }: SectionProps) {
   const { orchestratorThreadId } = usePrContext();
   const { ticket } = view;

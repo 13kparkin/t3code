@@ -1,6 +1,6 @@
 import { ChevronRight } from "lucide-react";
 
-/** A collapsed section of a ticket's details, stacked at the bottom of the panel. Pressing it opens the section. */
+/** A collapsed section. Pressing it opens the section. */
 export function SectionBar({ title, onExpand }: { title: string; onExpand: () => void }) {
   return (
     <button

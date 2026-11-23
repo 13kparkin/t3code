@@ -1,7 +1,6 @@
 import { ChevronDown } from "lucide-react";
 import type { ReactNode } from "react";
 
-/** An open section of a ticket's details: a header that collapses it, then its body. */
 export function TicketSection({
   title,
   fill,

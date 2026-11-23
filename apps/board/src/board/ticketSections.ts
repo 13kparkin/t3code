@@ -21,7 +21,7 @@ export interface TicketSection {
   readonly fill?: true;
 }
 
-/** A ticket's details, top to bottom. Collapsed sections stack as bars in this order too. A new section is one entry here. */
+/** Top to bottom. Collapsed bars stack in this order too. */
 export const TICKET_SECTIONS: ReadonlyArray<TicketSection> = [
   {
     id: "summary",
@@ -43,7 +43,6 @@ export const TICKET_SECTIONS: ReadonlyArray<TicketSection> = [
     shows: ({ view }) => view.agents.length > 0,
     Body: TicketAgents,
   },
-  // These three always show, with a one-line note when the ticket has no worktree or pull request yet.
   { id: "source", title: "Source control", shows: () => true, Body: TicketSource },
   { id: "checks", title: "Checks", shows: () => true, Body: TicketChecks },
   { id: "files", title: "Files", shows: () => true, Body: TicketFiles },

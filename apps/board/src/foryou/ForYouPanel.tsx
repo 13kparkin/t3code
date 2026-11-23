@@ -6,7 +6,6 @@ import { iconButton } from "../browser/styles";
 import { forYouBoardsAtom, forYouOpenAtom } from "../state/forYou";
 import { ForYouPanelRow } from "./ForYouPanelRow";
 
-/** What waits on the user across every board, slid out beside the left sidebar. */
 export function ForYouPanel() {
   const registry = useContext(RegistryContext);
   const open = useAtomValue(forYouOpenAtom);

@@ -7,7 +7,6 @@ import { PrChip } from "./PrChip";
 import { RemoveWorktree } from "./RemoveWorktree";
 import { ReviewChanges } from "./ReviewChanges";
 
-/** Where a ticket's work lives: its branch, its pull request, and its tracker issue. */
 export function TicketMeta({
   view,
   onOpenThread,

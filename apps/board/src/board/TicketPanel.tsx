@@ -96,7 +96,7 @@ export function TicketPanel({
                 aria-label="Open full page"
                 onClick={() => {
                   openTicketPage(registry);
-                  // The page shows the details, so the panel goes back to the chat rather than draw them twice.
+                  // The page already shows the details.
                   setPanelTab(registry, "chat");
                 }}
                 className={iconButton}

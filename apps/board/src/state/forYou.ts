@@ -112,7 +112,6 @@ export const forYouToastsAtom = Atom.writable(
   (context, next: ToastState) => context.setSelf(next),
 ).pipe(Atom.keepAlive, Atom.withLabel("foryou-toasts"));
 
-/** Whether the For you slide-out shows beside the left sidebar. */
 export const forYouOpenAtom = Atom.make(false).pipe(Atom.keepAlive, Atom.withLabel("foryou-open"));
 
 /** The card a toast or the sidebar row sent the user to, which its lane marks and brings into view. */

@@ -11,7 +11,6 @@ import { ChangesHeader } from "./ChangesHeader";
 import { CommitBox } from "./CommitBox";
 import { CommitList } from "./CommitList";
 
-/** One worktree's source control: its branch and base, a commit box, its changes, and its commits. */
 export function RootChanges({
   environmentId,
   root,

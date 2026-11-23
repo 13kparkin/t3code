@@ -82,11 +82,10 @@ export const showFile = (registry: AtomRegistry.AtomRegistry, file: FileRef) =>
 export const showSurface = (registry: AtomRegistry.AtomRegistry, surface: Surface) =>
   change(registry, (state) => ({ ...state, active: null, surface }));
 
-/** Opens the chosen ticket's details as a tab over the canvas. */
 export const openTicketPage = (registry: AtomRegistry.AtomRegistry) =>
   change(registry, (state) => ({ ...state, ticket: true, active: null, surface: "ticket" }));
 
-/** Closes the ticket's tab. Closing it while it shows returns to the canvas. */
+/** Closing it while it shows returns to the canvas. */
 export const closeTicketPage = (registry: AtomRegistry.AtomRegistry) =>
   change(registry, (state) =>
     state.surface === "ticket"
