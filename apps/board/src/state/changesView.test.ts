@@ -1,7 +1,7 @@
 import { AtomRegistry } from "effect/reactivity";
 import { describe, expect, it } from "vite-plus/test";
 
-import { panelAtom, ticketChoiceAtom } from "../browser/panel";
+import { chooseTicket, panelAtom, ticketChoiceAtom } from "../browser/panel";
 import { openTicketChanges, previewInput } from "./changesView";
 import { filesViewAtom } from "./filesView";
 
@@ -16,6 +16,17 @@ describe("openTicketChanges", () => {
     expect(registry.get(filesViewAtom)).toMatchObject({
       active: { cwd: "/work/trees/t-1", path: "", diff: { kind: "branch-range", baseRef: "main" } },
     });
+  });
+
+  it("Given an agent chosen on a ticket, when that ticket's changes open, then the agent stays chosen, and another ticket's clears it", () => {
+    const registry = AtomRegistry.make();
+    chooseTicket(registry, { threadId: "th-1", ticketKey: "T-1" });
+
+    openTicketChanges(registry, { key: "T-1", worktreePath: "/w/t-1", base: "main" });
+    expect(registry.get(ticketChoiceAtom)).toEqual({ threadId: "th-1", ticketKey: "T-1" });
+
+    openTicketChanges(registry, { key: "T-2", worktreePath: "/w/t-2", base: "main" });
+    expect(registry.get(ticketChoiceAtom)).toEqual({ threadId: null, ticketKey: "T-2" });
   });
 
   it("Given a ticket with no worktree, when its changes open, then nothing changes", () => {

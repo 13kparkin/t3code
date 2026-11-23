@@ -29,6 +29,7 @@ describe("a card's status", () => {
     [[], null],
     [[agent("a", "idle"), agent("b", "stopped")], "Idle"],
     [[agent("a", "idle"), agent("b", "working")], "Working"],
+    [[agent("a", "idle"), agent("b", "waiting")], "Working"],
     [[agent("a", "working"), agent("b", "failed")], "Failed"],
     [[agent("a", "failed"), agent("b", "idle", { pendingRequest: true })], "Waiting on you"],
   ])("Given agents %#, when read, then the most urgent state wins", (agents, word) => {

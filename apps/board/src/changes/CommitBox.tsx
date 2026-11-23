@@ -39,7 +39,7 @@ export function CommitBox({
   environmentId: EnvironmentId;
   cwd: string;
   status: VcsStatusResult | null;
-  tell: TellTarget | null;
+  tell: TellTarget;
 }) {
   const registry = useContext(RegistryContext);
   const run = useAtomValue(vcsActionManager.stateAtom({ environmentId, cwd }));
@@ -173,28 +173,26 @@ export function CommitBox({
                 Open PR
               </button>
             )}
-            {tell !== null && (
-              <button
-                type="button"
-                disabled={told === "sending" || told === "sent"}
-                onClick={() => {
-                  setTold("sending");
-                  setTellFailure(null);
-                  void tellOrchestrator(
-                    registry,
-                    environmentId,
-                    tell.orchestratorThreadId,
-                    commitSummary(tell.worktree, outcome.result),
-                  ).then((failure) => {
-                    setTold(failure === null ? "sent" : "idle");
-                    setTellFailure(failure);
-                  });
-                }}
-                className="rounded-md border border-line px-2 py-0.5 text-fg hover:bg-hover disabled:text-muted"
-              >
-                {told === "sent" ? "Orchestrator told" : "Tell the orchestrator"}
-              </button>
-            )}
+            <button
+              type="button"
+              disabled={told === "sending" || told === "sent"}
+              onClick={() => {
+                setTold("sending");
+                setTellFailure(null);
+                void tellOrchestrator(
+                  registry,
+                  environmentId,
+                  tell.orchestratorThreadId,
+                  commitSummary(tell.worktree, outcome.result),
+                ).then((failure) => {
+                  setTold(failure === null ? "sent" : "idle");
+                  setTellFailure(failure);
+                });
+              }}
+              className="rounded-md border border-line px-2 py-0.5 text-fg hover:bg-hover disabled:text-muted"
+            >
+              {told === "sent" ? "Orchestrator told" : "Tell the orchestrator"}
+            </button>
           </div>
           {tellFailure !== null && (
             <p role="alert" className="text-red-300">

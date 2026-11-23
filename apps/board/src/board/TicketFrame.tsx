@@ -1,4 +1,4 @@
-import { type PointerEvent, useRef } from "react";
+import { useRef } from "react";
 
 import type { TicketView } from "../state/boardModel";
 import { ago } from "../ui/ago";
@@ -33,15 +33,12 @@ export function TicketFrame({
   const press = useRef<{ startY: number; dragging: boolean } | null>(null);
   const dragged = useRef(false);
   const newest = newestAgent(agents);
-  const end = (event: PointerEvent<HTMLButtonElement>) => {
+  const end = () => {
     if (press.current?.dragging) {
       dragged.current = true;
       onDrop();
     }
     press.current = null;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
   };
 
   return (

@@ -14,13 +14,13 @@ import { STAGE_LABEL, TICKET_STAGES, type Ticket } from "../domain/ticket";
 import { AddFromIssue } from "../issues/AddFromIssue";
 import type { OrchestratorStats } from "../orchestrator/brief";
 import { baseInstanceId } from "../orchestrator/orchestratorInstance";
-import { foldedAtom, laneKey, toggleFolded } from "../state/boardUi";
+import { laneKey, toggleFolded } from "../state/boardUi";
 import { reviewTemplatesAtom, setBoardReviewTemplate, usageNoticeAtom } from "../state/reviews";
 import { useEnvironmentThread } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
 import { PopMenu } from "../ui/PopMenu";
 import { BuilderCap } from "./BuilderCap";
-import { LANE_IDS, LANE_LABEL, ORCHESTRATOR_BOX } from "./layout";
+import { LANE_IDS, LANE_LABEL, type LaneId, ORCHESTRATOR_BOX } from "./layout";
 
 /** Mounts the board's usage watch, which messages the orchestrator when a usage window passes a level. */
 function UsageWatch({ instanceId, threadId }: { instanceId: string; threadId: string }) {
@@ -35,6 +35,7 @@ export function OrchestratorCard({
   stats,
   builders,
   offPath,
+  hidden,
 }: {
   project: EnvironmentProject;
   listed: ValidBoard;
@@ -42,6 +43,7 @@ export function OrchestratorCard({
   builders: number;
   /** Tickets with no lane on the canvas. */
   offPath: ReadonlyArray<Ticket>;
+  hidden: ReadonlySet<LaneId>;
 }) {
   const { board } = listed;
   // The panel holds the same thread open, so this adds no second subscription.
@@ -55,8 +57,6 @@ export function OrchestratorCard({
   const [adding, setAdding] = useState(false);
   const registry = useContext(RegistryContext);
   const custom = useAtomValue(reviewTemplatesAtom);
-  const folded = useAtomValue(foldedAtom);
-  const hiddenLanes = LANE_IDS.filter((id) => folded.has(laneKey(board.id, id))).length;
   const [pickError, setPickError] = useState<string | null>(null);
   const picked = pickTemplate(board.reviewTemplate, custom);
   const docs = board.docs ?? [];
@@ -122,12 +122,12 @@ export function OrchestratorCard({
             trigger={
               <>
                 <Eye className="size-3" aria-hidden />
-                {hiddenLanes > 0 ? `${hiddenLanes} hidden` : "Lanes"}
+                {hidden.size > 0 ? `${hidden.size} hidden` : "Lanes"}
               </>
             }
             items={LANE_IDS.map((id) => ({
               label: LANE_LABEL[id],
-              hint: folded.has(laneKey(board.id, id)) ? "Hidden" : "Shown",
+              hint: hidden.has(id) ? "Hidden" : "Shown",
               onSelect: () => void toggleFolded(registry, laneKey(board.id, id)),
             }))}
           />
@@ -187,22 +187,28 @@ export function OrchestratorCard({
         </span>
         <span className="inline-flex items-center gap-1 text-muted">
           Artifacts{" "}
-          <span onPointerDown={(event) => event.stopPropagation()}>
-            <PopMenu
-              label={`${groups.board.length} board artifacts`}
-              triggerClass="inline-flex items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-[18px] text-muted hover:bg-hover hover:text-fg disabled:opacity-60"
-              trigger={
-                <>
-                  <Paperclip className="size-3" aria-hidden />
-                  {groups.board.length}
-                </>
-              }
-              items={groups.board.map((artifact) => ({
-                label: artifact.name,
-                onSelect: () => open(artifact),
-              }))}
-            />
-          </span>
+          {groups.board.length === 0 ? (
+            <span className="inline-flex items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-[18px] text-muted opacity-60">
+              <Paperclip className="size-3" aria-hidden />0
+            </span>
+          ) : (
+            <span onPointerDown={(event) => event.stopPropagation()}>
+              <PopMenu
+                label={`${groups.board.length} board artifacts`}
+                triggerClass="inline-flex items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-[18px] text-muted hover:bg-hover hover:text-fg"
+                trigger={
+                  <>
+                    <Paperclip className="size-3" aria-hidden />
+                    {groups.board.length}
+                  </>
+                }
+                items={groups.board.map((artifact) => ({
+                  label: artifact.name,
+                  onSelect: () => open(artifact),
+                }))}
+              />
+            </span>
+          )}
         </span>
         <span className="text-muted">
           Builders <BuilderCap project={project} listed={listed} builders={builders} />

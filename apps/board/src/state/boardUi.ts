@@ -54,3 +54,15 @@ export function setFolded(registry: AtomRegistry.AtomRegistry, key: FoldKey, fol
 
 export const toggleFolded = (registry: AtomRegistry.AtomRegistry, key: FoldKey) =>
   setFolded(registry, key, !registry.get(foldedAtom).has(key));
+
+/** One board's hidden lane ids, joined, so a section fold does not reach the canvas. */
+export const hiddenLanesAtom = Atom.family((boardId: string) =>
+  Atom.make((get) => {
+    const prefix = `lane:${boardId}:`;
+    return [...get(foldedAtom)]
+      .filter((key) => key.startsWith(prefix))
+      .map((key) => key.slice(prefix.length))
+      .sort()
+      .join(",");
+  }).pipe(Atom.withLabel(`hidden-lanes:${boardId}`)),
+);

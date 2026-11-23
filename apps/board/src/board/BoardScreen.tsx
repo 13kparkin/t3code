@@ -10,7 +10,7 @@ import { chatSlotAtom, chooseTicket, ticketChoiceAtom, ticketSlotAtom } from "..
 import { OrchestratorPanel } from "../chat/OrchestratorPanel";
 import { MainTabs } from "../files/MainTabs";
 import { mergeTicketKey } from "../domain/readiness";
-import { foldedAtom, frameOrderAtom, laneKey } from "../state/boardUi";
+import { frameOrderAtom, hiddenLanesAtom } from "../state/boardUi";
 import { useThreadFamily } from "../state/family";
 import { PrProvider } from "../state/prStatus";
 import { focusedCardAtom, useBoardForYou } from "../state/forYou";
@@ -43,10 +43,10 @@ export function BoardScreen({
   const order = useAtomValue(frameOrderAtom)[board.id] ?? NO_ORDER;
   const forYou = useBoardForYou(project, listed);
   const artifacts = useBoardArtifacts(project, listed, model);
-  const folded = useAtomValue(foldedAtom);
+  const hiddenIds = useAtomValue(hiddenLanesAtom(board.id));
   const hidden = useMemo(
-    () => new Set(LANE_IDS.filter((id) => folded.has(laneKey(board.id, id)))),
-    [folded, board.id],
+    () => new Set(LANE_IDS.filter((id) => hiddenIds.split(",").includes(id))),
+    [hiddenIds],
   );
   const layout = useMemo(
     () => layoutBoard(model, order, forYouHeight(forYou.views), hidden),
@@ -103,6 +103,7 @@ export function BoardScreen({
                 stats={{ ...stats, forYouOpen: forYou.open }}
                 builders={builders}
                 offPath={model.lanes.off_path.map((view) => view.ticket)}
+                hidden={hidden}
               />
               <Lanes
                 layout={layout}

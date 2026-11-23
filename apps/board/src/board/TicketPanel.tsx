@@ -4,7 +4,13 @@ import { Maximize2 } from "lucide-react";
 import { useContext } from "react";
 
 import { useArtifacts } from "../artifacts/ArtifactsContext";
-import { chooseTicket, markTicketPainted, setPanelTab, ticketChoiceAtom } from "../browser/panel";
+import {
+  chooseTicket,
+  markTicketPainted,
+  setPanelTab,
+  ticketChoiceAtom,
+  ticketTabShownAtom,
+} from "../browser/panel";
 import { iconButton } from "../browser/styles";
 import { openTicketPage } from "../state/filesView";
 import { Tooltip } from "../ui/Tooltip";
@@ -41,11 +47,13 @@ export function TicketPanel({
   const choice = useAtomValue(ticketChoiceAtom);
   const { groups } = useArtifacts();
   const folded = useAtomValue(foldedAtom);
+  const shown = useAtomValue(ticketTabShownAtom);
   const toggle = (id: string) => void toggleFolded(registry, sectionKey(id));
   // A new function each render, so the frame after every render marks a pending open as painted.
   const markPainted = (element: HTMLElement | null) => {
     if (element !== null) requestAnimationFrame(() => markTicketPainted());
   };
+  if (!page && !shown) return null;
   const view =
     choice === null
       ? undefined

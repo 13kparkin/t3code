@@ -23,6 +23,12 @@ export const panelAtom = Atom.make<PanelState>({
   width: PANEL_DEFAULT_WIDTH,
 }).pipe(Atom.keepAlive, Atom.withLabel("side-panel"));
 
+/** Whether the panel shows the Ticket tab, so its hidden copy of the details reads nothing. */
+export const ticketTabShownAtom = Atom.make((get) => {
+  const { open, tab } = get(panelAtom);
+  return open && tab === "ticket";
+}).pipe(Atom.withLabel("ticket-tab-shown"));
+
 const change = (registry: AtomRegistry.AtomRegistry, next: (state: PanelState) => PanelState) =>
   registry.set(panelAtom, next(registry.get(panelAtom)));
 
