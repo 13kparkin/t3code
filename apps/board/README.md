@@ -62,11 +62,11 @@ It needs a clean checkout. It fetches upstream, runs `vp run check:changed` and 
 
 ## omp rules for Claude Code
 
-The `omp-kit` plugin in `plugins/` gives every Claude Code session the rules in `~/.omp/agent/rules`, the sticky `~/.omp/agent/RULES.md`, a TypeScript language server for the `LSP` tool, and `vp` on the Bash path. Rules are read at hook time, so editing a rule file takes effect in the next session. `OMP_KIT_RULES_DIR` points the engine at another rules folder, and `RULES.md` is read from that folder's parent. A session whose first prompt starts `Read <board>/roles/<role>.md and act as that role.` for a read-only role skips every rule, so a Stop hook cannot replace the agent's report.
+The `board-rules` plugin in `plugins/` gives every Claude Code session the rules in `~/.omp/agent/rules`, the sticky `~/.omp/agent/RULES.md`, a TypeScript language server for the `LSP` tool, and `vp` on the Bash path. Rules are read at hook time, so editing a rule file takes effect in the next session. `OMP_KIT_RULES_DIR` points the engine at another rules folder, and `RULES.md` is read from that folder's parent. A session whose first prompt starts `Read <board>/roles/<role>.md and act as that role.` for a read-only role skips every rule, so a Stop hook cannot replace the agent's report.
 
 ```sh
-node apps/board/scripts/install-omp-kit.mjs                      # user scope, ~/.claude
-node apps/board/scripts/install-omp-kit.mjs --config-dir /tmp/x  # an isolated Claude config
+node apps/board/scripts/install-board-rules.mjs                      # user scope, ~/.claude
+node apps/board/scripts/install-board-rules.mjs --config-dir /tmp/x  # an isolated Claude config
 ```
 
 A rule with `approval: ask` in its frontmatter makes the plugin answer a matching MCP tool call with Claude Code's `ask` decision, so the operator approves in place with the rule's text, on every call. omp ignores the field. MCP calls match by tool name only, never by their arguments, and a scope token may spell the tool the omp way (`tool:mcp__linear_save_issue`) or the Claude way (`tool:mcp__t3-code__set_issue_state`). Other tools, Bash included, keep the draft-first deny.
@@ -249,7 +249,7 @@ When a board starts its orchestrator on a project with no setup script and no sc
 vp run --filter @agent-board/app typecheck
 cd apps/board && vp test run
 node --test apps/board/scripts/*.test.mjs
-node --test apps/board/plugins/omp-kit/engine/
+node --test apps/board/plugins/board-rules/engine/
 ```
 
 ## Plan

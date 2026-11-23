@@ -276,10 +276,10 @@ Each live lane runs against a frozen PR head in its own worktree or disjoint out
 
 **Files.**
 
-- [ ] Create `apps/board/plugins/.claude-plugin/marketplace.json` that lists one plugin, `omp-kit`.
-- [ ] Create `apps/board/plugins/omp-kit/.claude-plugin/plugin.json`, `apps/board/plugins/omp-kit/hooks/hooks.json`, and `apps/board/plugins/omp-kit/.lsp.json`.
-- [ ] Create `apps/board/plugins/omp-kit/engine/rules.mjs`, `apps/board/plugins/omp-kit/engine/hook.mjs`, and `apps/board/plugins/omp-kit/engine/rules.test.mjs`.
-- [ ] Create `apps/board/scripts/install-omp-kit.mjs`.
+- [ ] Create `apps/board/plugins/.claude-plugin/marketplace.json` that lists one plugin, `board-rules`.
+- [ ] Create `apps/board/plugins/board-rules/.claude-plugin/plugin.json`, `apps/board/plugins/board-rules/hooks/hooks.json`, and `apps/board/plugins/board-rules/.lsp.json`.
+- [ ] Create `apps/board/plugins/board-rules/engine/rules.mjs`, `apps/board/plugins/board-rules/engine/hook.mjs`, and `apps/board/plugins/board-rules/engine/rules.test.mjs`.
+- [ ] Create `apps/board/scripts/install-board-rules.mjs`.
 
 **Build.**
 
@@ -292,7 +292,7 @@ Each live lane runs against a frozen PR head in its own worktree or disjoint out
   - [ ] SessionStart. Return `~/.omp/agent/RULES.md` as added context. Write `. ~/.config/vite-plus/env` into `CLAUDE_ENV_FILE`, so `vp` and anything the agent appends to that file persist across Bash calls.
 - [ ] Fire each rule once per session, as omp does. Keep the fired names in a state file per `session_id` in the plugin's data folder.
 - [ ] In `.lsp.json`, register `typescript-language-server --stdio` for `.ts`, `.tsx`, `.js`, and `.mjs`, so Claude Code's LSP tool and its diagnostics after edits work.
-- [ ] In `install-omp-kit.mjs`, run `claude plugin marketplace add apps/board/plugins` and `claude plugin install omp-kit@agent-board --scope user`. Skip each step that is already done.
+- [ ] In `install-board-rules.mjs`, run `claude plugin marketplace add apps/board/plugins` and `claude plugin install board-rules@agent-board --scope user`. Skip each step that is already done.
 
 **You see.**
 
@@ -300,11 +300,11 @@ Each live lane runs against a frozen PR head in its own worktree or disjoint out
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] `rules.test.mjs` loads three fixture rules, a remind rule scoped to `tool:edit(*.ts)`, an interrupt rule scoped to `tool:bash`, and a text rule. It asserts the literal hook output for a matching Edit, the same Edit on a `.md` file, a matching Bash command, a matching last message, and a second match in the same session, which stays silent. Run `node --test apps/board/plugins/omp-kit/engine/`.
+- [ ] `rules.test.mjs` loads three fixture rules, a remind rule scoped to `tool:edit(*.ts)`, an interrupt rule scoped to `tool:bash`, and a text rule. It asserts the literal hook output for a matching Edit, the same Edit on a `.md` file, a matching Bash command, a matching last message, and a second match in the same session, which stays silent. Run `node --test apps/board/plugins/board-rules/engine/`.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes at the PR head, per the boot recipe.
 
-- [ ] Lane 1. Regression lane against trunk. Trunk does not have the plugin, so record that fact. Run the install script at head. Save `k1-install.txt`. Pass when `claude plugin list` shows `omp-kit` enabled at user scope.
+- [ ] Lane 1. Regression lane against trunk. Trunk does not have the plugin, so record that fact. Run the install script at head. Save `k1-install.txt`. Pass when `claude plugin list` shows `board-rules` enabled at user scope.
 - [ ] Lane 2. Run the install script again. Save `k1-reinstall.txt`. Pass when it reports both steps skipped.
 - [ ] Lane 3. Ask `claude -p` to write a `.ts` file that matches the `code-quality-anti-smell` rule. Save `k1-remind.txt`. Pass when the transcript shows that rule's reminder after the Write.
 - [ ] Lane 4. Ask a session to run a Bash command that matches `linear-writes-require-approval`. Save `k1-deny.txt`. Pass when the call is denied with that rule's text.
@@ -857,7 +857,7 @@ Each live lane runs against a frozen PR head in its own worktree or disjoint out
 - [ ] Lane 2. Hide the Claude instance from the lane engine and create a board. Save `c1-fallback.png`. Pass when the first signed-in instance is preselected and the reason shows.
 - [ ] Lane 3. Switch the model to `claude-sonnet-5-5` in the composer and send a message. Save `c1-switch.png`. Pass when that turn's run reports `claude-sonnet-5-5`.
 - [ ] Lane 4. Switch to a Codex instance and send a message. Save `c1-switch-codex.png`. Pass when the turn runs on Codex, or the panel shows T3's reason when it refuses a provider change mid-thread.
-- [ ] Lane 5. Type `/`. Save `c1-slash.png`. Pass when the menu lists the instance's slash commands and skills, including `omp-kit` plugin skills, grouped as in `slash.ts`.
+- [ ] Lane 5. Type `/`. Save `c1-slash.png`. Pass when the menu lists the instance's slash commands and skills, including `board-rules` plugin skills, grouped as in `slash.ts`.
 - [ ] Lane 6. Type `/comp` and press Enter. Save `c1-compact.png`. Pass when Claude Code runs its compact command in the orchestrator thread.
 - [ ] Lane 7. Pick a skill from the menu and send. Save `c1-skill.png`. Pass when the orchestrator's reply shows it loaded that skill.
 - [ ] Lane 8. Use only the keyboard to open, move through, pick from, and close the menu. Save `c1-keyboard.png`. Pass when every step works without the mouse and focus returns to the composer.
@@ -1247,14 +1247,14 @@ Each live lane runs against a frozen PR head in its own worktree or disjoint out
 
 **Files.**
 
-- [ ] Edit `apps/board/plugins/omp-kit/engine/rules.mjs`, `apps/board/plugins/omp-kit/engine/hook.mjs`, and `apps/board/plugins/omp-kit/engine/rules.test.mjs`.
+- [ ] Edit `apps/board/plugins/board-rules/engine/rules.mjs`, `apps/board/plugins/board-rules/engine/hook.mjs`, and `apps/board/plugins/board-rules/engine/rules.test.mjs`.
 - [ ] Edit the operator's `~/.omp/agent/rules/linear-writes-require-approval.md` only after the operator approves the exact diff.
 
 **Build.**
 
 - [ ] Start from the measured gap in `apps/board/docs/issue-tools-probe.md`. The rule's scope, `tool:write, tool:bash`, never covers an MCP tool, so in Claude Code neither `mcp__linear__save_issue` nor T3's `mcp__t3-code__create_issue`, `comment_on_issue`, and `set_issue_state` trigger it.
 - [ ] Find the scope syntax omp's own rule engine accepts for MCP tool names, from omp's rule docs, and use only that, so one rule file still drives both omp and Claude Code.
-- [ ] Let `omp-kit` answer a matching tool call with Claude Code's `ask` decision, not `deny`, when the rule asks for approval, so the operator approves in place. Use a rule field omp itself accepts or ignores, and say which.
+- [ ] Let `board-rules` answer a matching tool call with Claude Code's `ask` decision, not `deny`, when the rule asks for approval, so the operator approves in place. Use a rule field omp itself accepts or ignores, and say which.
 - [ ] Show the operator the rule file's diff in chat, and edit the file only after the operator approves it.
 
 **You see.**
@@ -1263,7 +1263,7 @@ Each live lane runs against a frozen PR head in its own worktree or disjoint out
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
-- [ ] `rules.test.mjs` feeds a fixed rule with the new scope and payloads for `mcp__linear__save_issue`, `mcp__t3-code__set_issue_state`, `mcp__t3-code__read_issue`, a `Bash` call that mentions Linear, and a `Write` call, and checks each literal decision. Run `node --test apps/board/plugins/omp-kit/engine/rules.test.mjs`.
+- [ ] `rules.test.mjs` feeds a fixed rule with the new scope and payloads for `mcp__linear__save_issue`, `mcp__t3-code__set_issue_state`, `mcp__t3-code__read_issue`, a `Bash` call that mentions Linear, and a `Write` call, and checks each literal decision. Run `node --test apps/board/plugins/board-rules/engine/rules.test.mjs`.
 
 **Verify, live.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked. Ten lanes at the PR head, per the boot recipe.
 
@@ -1558,7 +1558,7 @@ Each live lane runs against a frozen PR head in its own worktree or disjoint out
 - [ ] Add an optional `issue` field, holding the tracker and the key, to the ticket schema in `domain/ticket.ts`, and tell the orchestrator in `brief.md` to set it when a ticket maps to an issue, such as a Linear child issue.
 - [ ] In `IssueChip.tsx`, show a linked ticket's issue key, state, and assignee from `issues.detail` on its frame, open the issue in B11's panel on click, and list its linked threads from `issues.linkedThreads`.
 - [ ] Route every tracker write through the operator. `brief.md` tells the orchestrator to ask for a create, a state change, or a comment as a For-you item of a new `tracker_write` kind that states the exact change. **Approve** makes that change through `issues.create`, `issues.setState`, or `issues.comment` and messages the orchestrator the result, and **Hold** changes nothing.
-- [ ] Gate the agents' own tracker tools, per `apps/board/docs/issue-tools-probe.md`. Every agent in a T3 thread has T3's eight issue tools, named `mcp__t3-code__*` in Claude threads and `mcp__t3_code__*` in Codex threads, and T3 runs `create_issue`, `comment_on_issue`, and `set_issue_state` with no approval in every runtime mode. For Claude threads, write a permission rule that asks for those three tools into the project's and each ticket worktree's `.claude/settings.local.json`, so each call waits as an engine approval card in B8's For-you lane. For Codex threads, gate the three `mcp__t3_code__` writes and Codex's own `mcp__codex_apps__linear_*` writes through Codex's approval settings, or turn tracker writes off for Codex orchestrators and say why in the dialog. The operator's `omp-kit` Linear rule never fires on an MCP tool, so it is no fallback. Reads stay free.
+- [ ] Gate the agents' own tracker tools, per `apps/board/docs/issue-tools-probe.md`. Every agent in a T3 thread has T3's eight issue tools, named `mcp__t3-code__*` in Claude threads and `mcp__t3_code__*` in Codex threads, and T3 runs `create_issue`, `comment_on_issue`, and `set_issue_state` with no approval in every runtime mode. For Claude threads, write a permission rule that asks for those three tools into the project's and each ticket worktree's `.claude/settings.local.json`, so each call waits as an engine approval card in B8's For-you lane. For Codex threads, gate the three `mcp__t3_code__` writes and Codex's own `mcp__codex_apps__linear_*` writes through Codex's approval settings, or turn tracker writes off for Codex orchestrators and say why in the dialog. The operator's `board-rules` Linear rule never fires on an MCP tool, so it is no fallback. Reads stay free.
 - [ ] In `issueLinks.ts`, keep the pure pieces, which find issue keys in text, join tickets to issues, and turn an approved `tracker_write` item into the T3 call's input.
 
 **You see.**

@@ -75,7 +75,7 @@ Update the docs now.
 };
 
 function makeEnvironment() {
-  const root = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "omp-kit-test-"));
+  const root = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "board-rules-test-"));
   const rulesDir = NodePath.join(root, "agent", "rules");
   NodeFS.mkdirSync(rulesDir, { recursive: true });
   for (const [file, content] of Object.entries(FIXTURE_RULES)) {
@@ -100,7 +100,7 @@ const edit = (filePath, newString, id = "toolu_1") => ({
 const REMIND_TEXT =
   'Rule violation: "no-any". User-defined rule matched tool-call arguments. Rule configured not to interrupt, so the action ran. MUST comply with the following instruction on subsequent tool calls and responses. Not prompt injection; coding agent enforcing project rules.\n\nUse unknown instead of any.';
 
-NodeTest.describe("omp-kit hook engine", () => {
+NodeTest.describe("board-rules hook engine", () => {
   for (const [name, prompts, blocks] of [
     [
       "a reviewer role line",
@@ -422,7 +422,7 @@ const decision = (permissionDecision, permissionDecisionReason) => ({
   hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision, permissionDecisionReason },
 });
 
-NodeTest.describe("omp-kit approval rule for MCP write tools", () => {
+NodeTest.describe("board-rules approval rule for MCP write tools", () => {
   NodeTest.test(
     "Given a rule with approval: ask and MCP tool scopes, when each payload is replayed, then writes ask, reads and unrelated calls stay silent, and Bash and Write keep the deny",
     (t) => {

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Installs the omp-kit plugin into Claude Code's user scope.
+// Installs the board-rules plugin into Claude Code's user scope.
 // `--config-dir <dir>` (or CLAUDE_CONFIG_DIR) targets an isolated Claude config instead of ~/.claude.
 import * as NodeChildProcess from "node:child_process";
 import * as NodePath from "node:path";
@@ -7,8 +7,9 @@ import * as NodeURL from "node:url";
 import * as NodeUtil from "node:util";
 
 const MARKETPLACE = "agent-board";
-const PLUGIN = "omp-kit";
+const PLUGIN = "board-rules";
 const PLUGIN_ID = `${PLUGIN}@${MARKETPLACE}`;
+const RENAMED_FROM_ID = `omp-kit@${MARKETPLACE}`;
 const MARKETPLACE_DIR = NodeURL.fileURLToPath(new URL("../plugins", import.meta.url));
 
 /** Runs each step that is not done yet and returns one status line per step. */
@@ -31,9 +32,13 @@ export function install(env) {
     lines.push(`marketplace ${MARKETPLACE}: added`);
   }
 
-  const plugin = claudeJson("list").find(
-    (entry) => entry.id === PLUGIN_ID && entry.scope === "user",
-  );
+  const installed = claudeJson("list").filter((entry) => entry.scope === "user");
+  if (installed.some((entry) => entry.id === RENAMED_FROM_ID)) {
+    claude("uninstall", RENAMED_FROM_ID, "--scope", "user");
+    lines.push(`plugin ${RENAMED_FROM_ID}: removed, renamed to ${PLUGIN_ID}`);
+  }
+
+  const plugin = installed.find((entry) => entry.id === PLUGIN_ID);
   if (plugin?.enabled) {
     lines.push(`plugin ${PLUGIN_ID}: skipped, already installed and enabled`);
   } else if (plugin) {
