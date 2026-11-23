@@ -12,6 +12,9 @@ export interface PanelState {
   readonly width: number;
 }
 
+/** Whether the left sidebar shows. */
+export const sidebarOpenAtom = Atom.make(true).pipe(Atom.keepAlive, Atom.withLabel("left-sidebar"));
+
 export const PANEL_MIN_WIDTH = 320;
 export const PANEL_DEFAULT_WIDTH = 420;
 

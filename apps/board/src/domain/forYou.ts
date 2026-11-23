@@ -340,6 +340,7 @@ export const cardTitle = (card: ForYouCard): string => {
 
 export interface BoardOpenItems {
   readonly projectId: string;
+  readonly projectName: string;
   readonly folder: string;
   readonly boardId: string;
   readonly boardName: string;

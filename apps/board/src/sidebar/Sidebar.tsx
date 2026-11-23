@@ -7,7 +7,6 @@ import { Tooltip } from "../ui/Tooltip";
 import { AddProject } from "./AddProject";
 import { BrowserRow } from "./BrowserRow";
 import { ForYouRow } from "./ForYouRow";
-import { ForYouToasts } from "./ForYouToasts";
 import { ProjectList } from "./ProjectList";
 import { Section } from "./Section";
 
@@ -37,7 +36,6 @@ export function Sidebar({
       </div>
       <ForYouRow />
       <BrowserRow />
-      <ForYouToasts />
       <Section
         title="Projects"
         className="min-h-0 shrink"

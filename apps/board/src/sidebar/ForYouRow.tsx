@@ -3,7 +3,7 @@ import { Inbox } from "lucide-react";
 import { useContext } from "react";
 
 import type { BoardOpenItems } from "../domain/forYou";
-import { focusedCardAtom, forYouBoardsAtom } from "../state/forYou";
+import { focusedCardAtom, forYouBoardsAtom, forYouOpenAtom } from "../state/forYou";
 import { openBoard } from "../state/boards";
 import { laneKey, setFolded } from "../state/boardUi";
 import { SidebarRow } from "./SidebarRow";
@@ -19,21 +19,19 @@ export function showForYouCard(
   registry.set(focusedCardAtom, { boardId: board.boardId, cardId });
 }
 
-/** What waits on the user across every board. A press opens the board with the oldest open item. */
+/** What waits on the user across every board. A press opens or closes the For you slide-out. */
 export function ForYouRow() {
   const registry = useContext(RegistryContext);
   const boards = useAtomValue(forYouBoardsAtom);
   const total = boards.reduce((sum, board) => sum + board.open.length, 0);
-  const first = boards.find((board) => board.open.length > 0);
+  const open = useAtomValue(forYouOpenAtom);
   return (
     <SidebarRow
       icon={<Inbox className="size-3.5" />}
       title="For you"
       label={`For you, ${total} open`}
-      onClick={() => {
-        const item = first?.open[0];
-        if (first !== undefined && item !== undefined) showForYouCard(registry, first, item.id);
-      }}
+      selected={open}
+      onClick={() => registry.set(forYouOpenAtom, !open)}
       trailing={
         <span
           data-testid="sidebar-foryou-count"

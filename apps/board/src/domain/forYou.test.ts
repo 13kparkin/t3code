@@ -266,6 +266,7 @@ describe("answering a card", () => {
 describe("toasts", () => {
   const board = (boardId: string, loaded: boolean, ids: ReadonlyArray<string>): BoardOpenItems => ({
     projectId: `p-${boardId}`,
+    projectName: `Project ${boardId}`,
     folder: boardId,
     boardId,
     boardName: `Board ${boardId}`,
