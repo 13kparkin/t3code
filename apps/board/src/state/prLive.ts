@@ -58,6 +58,16 @@ export function ticketPrRef(
       url: text,
     });
     if (target !== null) return target.input;
+    // A fork checkout's project names the upstream, so T3 matches no project to a fork URL.
+    const parsed = sourceControlClients.parseChangeRequestUrl(text)?.link;
+    if (parsed !== undefined) {
+      return {
+        projectId: project.id,
+        host: parsed.authority ?? parsed.host,
+        repository: parsed.repository,
+        number: parsed.number,
+      };
+    }
   }
   const link =
     usable.find((entry) => entry.snapshot?.headBranch === ticket.branch) ?? usable.at(-1);

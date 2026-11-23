@@ -2,6 +2,7 @@ import {
   EnvironmentId,
   ProjectId,
   type PullRequestChecks,
+  SourceControlProviderKind,
   type ThreadPullRequestLink,
 } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
@@ -77,6 +78,30 @@ describe("a ticket's pull request", () => {
       link(11),
     ];
     expect(ticketPrRef(ticket({ branch: "feat/login" }), own, project)?.number).toBe(9);
+  });
+
+  it("Given a fork checkout whose project names the upstream, when the pr is a fork URL, then the fork's pull request is used", () => {
+    const fork: PrProject = {
+      ...project,
+      repositoryIdentity: {
+        canonicalKey: "github.com/upstream/app",
+        locator: {
+          source: "git-remote",
+          remoteName: "upstream",
+          remoteUrl: "https://github.com/upstream/app.git",
+        },
+        provider: SourceControlProviderKind.make("github"),
+        owner: "upstream",
+        name: "app",
+      },
+    };
+    const pr = "https://github.com/acme/app/pull/81";
+    expect(ticketPrRef(ticket({ pr }), [], fork)).toEqual({
+      projectId: "project-1",
+      host: "github.com",
+      repository: "acme/app",
+      number: 81,
+    });
   });
 
   it("Given a link that was dismissed from a stack, when no pr is set, then it is not the ticket's", () => {

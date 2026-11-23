@@ -35,7 +35,7 @@ const READ_ONLY_ROLES = new Set([
 const safeName = (value) => String(value).replace(/[^\w.-]/g, "_");
 
 function stateRoot(input, env) {
-  const dataDir = env.CLAUDE_PLUGIN_DATA || NodePath.join(NodeOS.tmpdir(), "omp-kit");
+  const dataDir = env.CLAUDE_PLUGIN_DATA || NodePath.join(NodeOS.tmpdir(), "board-rules");
   return NodePath.join(dataDir, "state", safeName(input.session_id));
 }
 

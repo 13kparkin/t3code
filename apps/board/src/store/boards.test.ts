@@ -7,6 +7,7 @@ import {
   createBoard,
   listBoards,
   type ProjectFiles,
+  refreshRoles,
   setBuilderCap,
   sha256,
   updateBoard,
@@ -78,6 +79,19 @@ describe("boards in a project", () => {
     const writes: string[] = [];
     await listBoards({ ...files, write: async (_c, p) => void writes.push(p) }, CWD, true);
     expect(writes).toEqual([]);
+  });
+
+  it("Given a new board whose orchestrator is launching, when the boards are listed at the same time, then each role file is written once", async () => {
+    const { files } = fakeFiles();
+    const created = await createBoard(files, CWD, input("Claude connector"));
+    const writes: string[] = [];
+    const counted = {
+      ...files,
+      write: async (c: string, p: string, t: string) => (writes.push(p), files.write(c, p, t)),
+    };
+    await Promise.all([refreshRoles(counted, CWD, created.folder), listBoards(counted, CWD, true)]);
+    const roleWrites = writes.filter((path) => path.endsWith(".md"));
+    expect(roleWrites).toHaveLength(roleFiles.size);
   });
 
   it("Given a dev build, when a board in a project outside the dev state is listed, then nothing is written into its .agentboard", async () => {

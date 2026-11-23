@@ -1,5 +1,5 @@
 {
-  "name": "omp-kit",
+  "name": "board-rules",
   "version": "0.1.0",
   "description": "Applies the omp rules in ~/.omp/agent/rules, a TypeScript language server, and the vp environment to Claude Code sessions",
   "author": {
