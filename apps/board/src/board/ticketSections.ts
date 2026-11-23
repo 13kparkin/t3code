@@ -3,8 +3,10 @@ import type { ComponentType } from "react";
 import type { SectionProps } from "./sectionProps";
 import { TicketActivity } from "./TicketActivity";
 import { TicketAgents } from "./TicketAgents";
-import { TicketEvidence } from "./TicketEvidence";
+import { TicketChecksSection } from "./TicketChecksSection";
+import { TicketFiles } from "./TicketFiles";
 import { TicketReadiness } from "./TicketReadiness";
+import { TicketSource } from "./TicketSource";
 import { TicketSteps } from "./TicketSteps";
 import { TicketSummary } from "./TicketSummary";
 import { TicketWhy } from "./TicketWhy";
@@ -41,12 +43,10 @@ export const TICKET_SECTIONS: ReadonlyArray<TicketSection> = [
     shows: ({ view }) => view.agents.length > 0,
     Body: TicketAgents,
   },
-  {
-    id: "evidence",
-    title: "Evidence",
-    shows: ({ artifacts }) => artifacts.length > 0,
-    Body: TicketEvidence,
-  },
+  // These three always show, with a one-line note when the ticket has no worktree or pull request yet.
+  { id: "source", title: "Source control", shows: () => true, Body: TicketSource },
+  { id: "checks", title: "Checks", shows: () => true, Body: TicketChecksSection },
+  { id: "files", title: "Files", shows: () => true, Body: TicketFiles },
   {
     id: "activity",
     title: "Activity",

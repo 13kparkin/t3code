@@ -3,10 +3,11 @@ import { GitCompareArrows } from "lucide-react";
 import { useContext } from "react";
 
 import type { Ticket } from "../domain/ticket";
+import { setFolded, sectionKey } from "../state/boardUi";
 import { openTicketChanges } from "../state/changesView";
 import { Tooltip } from "../ui/Tooltip";
 
-/** Opens a ticket's branch diff in the main view and its worktree in the Source Control tab. Draws nothing for a ticket with no worktree. */
+/** Opens a ticket's branch diff in the main view and its details with Source control open. Draws nothing for a ticket with no worktree. */
 export function ReviewChanges({ ticket, className }: { ticket: Ticket; className: string }) {
   const registry = useContext(RegistryContext);
   if (ticket.worktreePath == null) return null;
@@ -18,7 +19,10 @@ export function ReviewChanges({ ticket, className }: { ticket: Ticket; className
         aria-label={`Review ${ticket.key} changes`}
         // A press here is a click, not the start of a ticket drag or a pan.
         onPointerDown={(event) => event.stopPropagation()}
-        onClick={() => openTicketChanges(registry, ticket)}
+        onClick={() => {
+          void setFolded(registry, sectionKey("source"), false);
+          openTicketChanges(registry, ticket);
+        }}
         className={className}
       >
         <GitCompareArrows className="size-3" aria-hidden />

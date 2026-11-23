@@ -1,9 +1,9 @@
 import { Atom, type AtomRegistry } from "effect/reactivity";
 import type { ReviewDiffPreviewInput } from "@t3tools/contracts";
 
-import { showPanelTab } from "../browser/panel";
+import { chooseTicket, ticketChoiceAtom } from "../browser/panel";
 import { trimSlashes } from "../files/target";
-import { chooseRoot, type DiffSource, openFile } from "./filesView";
+import { type DiffSource, openFile } from "./filesView";
 
 export interface ChangesPrefs {
   readonly layout: "unified" | "split";
@@ -39,22 +39,24 @@ export function previewInput(
   }
 }
 
-/** Shows a checkout's changes: the Source Control tab on its root, and its branch diff as a tab in the main view. */
-export function openChanges(
-  registry: AtomRegistry.AtomRegistry,
-  root: { readonly cwd: string; readonly base: string | null },
-): void {
-  const cwd = trimSlashes(root.cwd);
-  showPanelTab(registry, "changes");
-  chooseRoot(registry, cwd);
-  openFile(registry, { cwd, path: "", diff: { kind: "branch-range", baseRef: root.base } });
-}
-
-/** Opens a ticket's branch diff, which a ticket without a worktree has none of. */
+/** Opens a ticket's details and its branch diff in the main view. A ticket without a worktree has no diff. */
 export function openTicketChanges(
   registry: AtomRegistry.AtomRegistry,
-  ticket: { readonly worktreePath?: string | null; readonly base?: string | null },
+  ticket: {
+    readonly key: string;
+    readonly worktreePath?: string | null;
+    readonly base?: string | null;
+  },
 ): void {
   if (ticket.worktreePath == null) return;
-  openChanges(registry, { cwd: ticket.worktreePath, base: ticket.base ?? null });
+  const choice = registry.get(ticketChoiceAtom);
+  chooseTicket(registry, {
+    threadId: choice?.ticketKey === ticket.key ? choice.threadId : null,
+    ticketKey: ticket.key,
+  });
+  openFile(registry, {
+    cwd: trimSlashes(ticket.worktreePath),
+    path: "",
+    diff: { kind: "branch-range", baseRef: ticket.base ?? null },
+  });
 }

@@ -1,18 +1,14 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
-import { Files, GitBranch, ListChecks, type LucideIcon, MessageSquare, Ticket } from "lucide-react";
+import { Files, type LucideIcon, MessageSquare, Ticket } from "lucide-react";
 import { useContext } from "react";
 
-import { CiDot } from "../checks/CiDot";
-import { checksDotAtom } from "../state/checksView";
 import { Tooltip } from "../ui/Tooltip";
 import { type PanelTab, panelAtom, setPanelTab } from "./panel";
 
 const TABS = [
-  { id: "chat", label: "Orchestrator", hint: "Orchestrator", icon: MessageSquare },
+  { id: "chat", label: "Chat", hint: "Chat with the orchestrator", icon: MessageSquare },
   { id: "ticket", label: "Ticket", hint: "Ticket", icon: Ticket },
-  { id: "explorer", label: "Explorer", hint: "Explorer (Ctrl+⇧+E)", icon: Files },
-  { id: "changes", label: "Source Control", hint: "Source Control (Ctrl+⇧+G)", icon: GitBranch },
-  { id: "checks", label: "Checks", hint: "Checks", icon: ListChecks },
+  { id: "explorer", label: "Files", hint: "Files (Ctrl+⇧+E)", icon: Files },
 ] as const satisfies ReadonlyArray<{
   id: PanelTab;
   label: string;
@@ -27,7 +23,6 @@ const TABS = [
 export function PanelTabs() {
   const registry = useContext(RegistryContext);
   const active = useAtomValue(panelAtom).tab;
-  const reading = useAtomValue(checksDotAtom);
   return (
     <div
       role="tablist"
@@ -47,7 +42,6 @@ export function PanelTabs() {
             className={`relative grid h-9 w-9 place-items-center ${id === active ? "text-fg after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:bg-fg" : "text-faint hover:text-muted"}`}
           >
             <Icon className="size-4" aria-hidden />
-            {id === "checks" && <CiDot reading={reading} className="absolute top-1.5 right-1.5" />}
           </button>
         </Tooltip>
       ))}

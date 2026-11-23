@@ -9,7 +9,7 @@ import { ChangeRows } from "./ChangeRows";
 import { changeSetOf } from "./changeSet";
 import { useDiffPreview } from "./useDiffPreview";
 
-/** One group of changed files in the Source Control tab: a header with its count and View all, and the files. */
+/** One group of changed files in a ticket's Source control section: a header with its count and View all, and the files. */
 export function ChangeSection({
   environmentId,
   cwd,

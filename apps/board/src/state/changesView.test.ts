@@ -1,19 +1,19 @@
 import { AtomRegistry } from "effect/reactivity";
 import { describe, expect, it } from "vite-plus/test";
 
-import { panelAtom } from "../browser/panel";
+import { panelAtom, ticketChoiceAtom } from "../browser/panel";
 import { openTicketChanges, previewInput } from "./changesView";
 import { filesViewAtom } from "./filesView";
 
 describe("openTicketChanges", () => {
-  it("Given a ticket with a worktree, when its changes open, then the Source Control tab shows that root and its branch diff opens in the main view", () => {
+  it("Given a ticket with a worktree, when its changes open, then its details show and its branch diff opens in the main view", () => {
     const registry = AtomRegistry.make();
 
-    openTicketChanges(registry, { worktreePath: "/work/trees/t-1/", base: "main" });
+    openTicketChanges(registry, { key: "T-1", worktreePath: "/work/trees/t-1/", base: "main" });
 
-    expect(registry.get(panelAtom)).toMatchObject({ open: true, tab: "changes" });
+    expect(registry.get(panelAtom)).toMatchObject({ open: true, tab: "ticket" });
+    expect(registry.get(ticketChoiceAtom)).toEqual({ threadId: null, ticketKey: "T-1" });
     expect(registry.get(filesViewAtom)).toMatchObject({
-      root: "/work/trees/t-1",
       active: { cwd: "/work/trees/t-1", path: "", diff: { kind: "branch-range", baseRef: "main" } },
     });
   });
@@ -21,7 +21,7 @@ describe("openTicketChanges", () => {
   it("Given a ticket with no worktree, when its changes open, then nothing changes", () => {
     const registry = AtomRegistry.make();
 
-    openTicketChanges(registry, { worktreePath: null, base: "main" });
+    openTicketChanges(registry, { key: "T-1", worktreePath: null, base: "main" });
 
     expect(registry.get(filesViewAtom).tabs).toEqual([]);
     expect(registry.get(panelAtom).tab).toBe("chat");

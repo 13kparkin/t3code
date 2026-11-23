@@ -6,15 +6,8 @@ import { createPortal } from "react-dom";
 
 import { ArtifactsProvider } from "../artifacts/ArtifactsContext";
 import { useBoardArtifacts } from "../artifacts/useBoardArtifacts";
-import {
-  chatSlotAtom,
-  checksSlotAtom,
-  chooseTicket,
-  ticketChoiceAtom,
-  ticketSlotAtom,
-} from "../browser/panel";
+import { chatSlotAtom, chooseTicket, ticketChoiceAtom, ticketSlotAtom } from "../browser/panel";
 import { OrchestratorPanel } from "../chat/OrchestratorPanel";
-import { ChecksPanel } from "../checks/ChecksPanel";
 import { MainTabs } from "../files/MainTabs";
 import { mergeTicketKey } from "../domain/readiness";
 import { foldedAtom, frameOrderAtom, laneKey } from "../state/boardUi";
@@ -83,7 +76,6 @@ export function BoardScreen({
     };
   }, [project, board.orchestratorThreadId, family, tickets, forYou.views, keptWorktrees]);
   const chatSlot = useAtomValue(chatSlotAtom);
-  const checksSlot = useAtomValue(checksSlotAtom);
   const ticketSlot = useAtomValue(ticketSlotAtom);
   const choice = useAtomValue(ticketChoiceAtom);
   const focused = useAtomValue(focusedCardAtom);
@@ -184,7 +176,6 @@ export function BoardScreen({
               <TicketPanel environmentId={project.environmentId} model={model} />,
               ticketSlot,
             )}
-          {checksSlot !== null && createPortal(<ChecksPanel />, checksSlot)}
         </div>
       </PrProvider>
     </ArtifactsProvider>
