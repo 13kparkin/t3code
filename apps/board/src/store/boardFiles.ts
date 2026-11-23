@@ -212,7 +212,7 @@ export function changeHiddenAdditions(
     const board = await readBoard(files, cwd, folder);
     await writeBoard(files, cwd, folder, {
       ...board,
-      hiddenAdditions: change(board.hiddenAdditions ?? []),
+      hiddenAdditions: [...new Set(change(board.hiddenAdditions ?? []))],
     });
   });
   hiding = run.catch(() => undefined);

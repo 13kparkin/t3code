@@ -328,4 +328,11 @@ describe("hiding additions", () => {
     ]);
     expect(savedBoard(store)).toMatchObject({ hiddenAdditions: ["a", "b"] });
   });
+
+  it("Given the same id hidden twice, when both are saved, then it is listed once", async () => {
+    const { files, store, target } = await boardWith("orchestrator");
+    await changeHiddenAdditions(files, CWD, target.folder, (ids) => [...ids, "a"]);
+    await changeHiddenAdditions(files, CWD, target.folder, (ids) => [...ids, "a"]);
+    expect(savedBoard(store)).toMatchObject({ hiddenAdditions: ["a"] });
+  });
 });

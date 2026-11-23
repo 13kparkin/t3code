@@ -293,8 +293,9 @@ export function OrchestratorCard({
           {pickError}
         </p>
       )}
-      {stats.problems.map((problem) => (
-        <p key={problem} role="alert" className="truncate text-[11px] leading-[18px] text-red-400">
+      {stats.problems.map((problem, at) => (
+        // oxlint-disable-next-line react/no-array-index-key -- two problem lines can read the same once ids are shortened
+        <p key={at} role="alert" className="truncate text-[11px] leading-[18px] text-red-400">
           {problem}
         </p>
       ))}
