@@ -2,12 +2,12 @@ import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { ThreadId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
-import { ListChecks, Plus } from "lucide-react";
+import { ListChecks, Paperclip, Plus } from "lucide-react";
 import { useContext, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { chooseTicket } from "../browser/panel";
-import { BOARD_KEY, useArtifacts } from "../artifacts/ArtifactsContext";
+import { useArtifacts } from "../artifacts/ArtifactsContext";
 import { isRunLive } from "../chat/timeline";
 import { pickTemplate, SYSTEM_TEMPLATE } from "../domain/reviewTemplate";
 import { STAGE_LABEL, TICKET_STAGES, type Ticket } from "../domain/ticket";
@@ -18,13 +18,8 @@ import { reviewTemplatesAtom, setBoardReviewTemplate, usageNoticeAtom } from "..
 import { useEnvironmentThread } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
 import { PopMenu } from "../ui/PopMenu";
-import { ArtifactCards } from "./ArtifactCards";
-import { ArtifactCount } from "./ArtifactCount";
 import { BuilderCap } from "./BuilderCap";
 import { ORCHESTRATOR_BOX } from "./layout";
-
-/** Cards stack in columns this tall, which is as many as fit beside the card. */
-const ARTIFACT_ROWS = 5;
 
 /** Mounts the board's usage watch, which messages the orchestrator when a usage window passes a level. */
 function UsageWatch({ instanceId, threadId }: { instanceId: string; threadId: string }) {
@@ -55,7 +50,7 @@ export function OrchestratorCard({
       board.orchestratorThreadId === null ? null : ThreadId.make(board.orchestratorThreadId),
     ).data,
   );
-  const { groups, expanded } = useArtifacts();
+  const { groups, open } = useArtifacts();
   const [adding, setAdding] = useState(false);
   const registry = useContext(RegistryContext);
   const custom = useAtomValue(reviewTemplatesAtom);
@@ -170,7 +165,23 @@ export function OrchestratorCard({
           </span>
         </span>
         <span className="inline-flex items-center gap-1 text-muted">
-          Artifacts <ArtifactCount id={BOARD_KEY} count={groups.board.length} />
+          Artifacts{" "}
+          <span onPointerDown={(event) => event.stopPropagation()}>
+            <PopMenu
+              label={`${groups.board.length} board artifacts`}
+              triggerClass="inline-flex items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-[18px] text-muted hover:bg-hover hover:text-fg disabled:opacity-60"
+              trigger={
+                <>
+                  <Paperclip className="size-3" aria-hidden />
+                  {groups.board.length}
+                </>
+              }
+              items={groups.board.map((artifact) => ({
+                label: artifact.name,
+                onSelect: () => open(artifact),
+              }))}
+            />
+          </span>
         </span>
         <span className="text-muted">
           Builders <BuilderCap project={project} listed={listed} builders={builders} />
@@ -191,11 +202,6 @@ export function OrchestratorCard({
           {problem}
         </p>
       ))}
-      {expanded.has(BOARD_KEY) && groups.board.length > 0 && (
-        <div className="absolute top-0" style={{ left: "calc(100% + 16px)" }}>
-          <ArtifactCards artifacts={groups.board} rows={ARTIFACT_ROWS} />
-        </div>
-      )}
       {board.orchestratorThreadId !== null && projection !== null && (
         <UsageWatch
           instanceId={projection.thread.modelSelection.instanceId}

@@ -1,5 +1,5 @@
 import type { CardView } from "../domain/forYou";
-import { missingPlan, TICKET_STAGES, type Ticket, type TicketStage } from "../domain/ticket";
+import { TICKET_STAGES, type TicketStage } from "../domain/ticket";
 import type { BoardModel } from "../state/boardModel";
 import type { FrameOrder } from "../state/boardUi";
 import type { Rect } from "./viewport";
@@ -22,9 +22,7 @@ export const LANE_PAD = 12;
 export const LANE_MIN_HEIGHT = 160;
 export const FRAME_WIDTH = LANE_WIDTH - LANE_PAD * 2;
 export const FRAME_GAP = 12;
-const FRAME_HEAD = 100;
-const CHIPS_HEIGHT = 48;
-export const PR_ROW = 26;
+export const FRAME_HEAD = 100;
 export const UNASSIGNED_HEAD = 34;
 export const FRAME_PAD = 8;
 export const CARD_HEIGHT = 62;
@@ -70,38 +68,10 @@ export interface Layout {
   readonly content: Rect;
 }
 
-/** Whether a ticket has anything to show in the row of chips under its branch. */
-export const hasChips = (ticket: Ticket): boolean =>
-  ticket.issue != null ||
-  ticket.headSha != null ||
-  (ticket.fixRounds ?? 0) > 0 ||
-  (ticket.dependsOn ?? []).length > 0 ||
-  (ticket.verdicts ?? []).length > 0 ||
-  (ticket.flags ?? []).length > 0 ||
-  (ticket.steps ?? []).length > 0 ||
-  missingPlan(ticket);
-
-const PR_STAGES: ReadonlySet<TicketStage> = new Set(["pr", "awaiting_approval", "merged"]);
-
-/**
- * Whether a frame holds the row for its pull request. A ticket past review has one, even when
- * only its agents' threads name it, so the row is there before the orchestrator writes `pr`.
- */
-export const hasPrRow = (ticket: Ticket): boolean =>
-  ticket.pr != null || PR_STAGES.has(ticket.stage);
-
-export const headHeight = (ticket: Ticket): number =>
-  FRAME_HEAD + (hasPrRow(ticket) ? PR_ROW : 0) + (hasChips(ticket) ? CHIPS_HEIGHT : 0);
-
-/** The height of a frame's expanded artifact cards: a rule above, and the cards in the frame's padding. */
-export const artifactsHeight = (cards: number): number =>
-  cards === 0 ? 0 : 1 + FRAME_PAD * 2 + cards * ARTIFACT_HEIGHT + (cards - 1) * ARTIFACT_GAP;
-
-export const frameHeight = (head: number, agents: number, artifactCards = 0): number =>
+export const frameHeight = (head: number, agents: number): number =>
   head +
   FRAME_PAD * 2 +
-  (agents === 0 ? EMPTY_HEIGHT : agents * CARD_HEIGHT + (agents - 1) * CARD_GAP) +
-  artifactsHeight(artifactCards);
+  (agents === 0 ? EMPTY_HEIGHT : agents * CARD_HEIGHT + (agents - 1) * CARD_GAP);
 
 /** Frames in the order the user dragged them to, and any the saved order lacks after them, in file order. */
 export function orderedKeys(keys: ReadonlyArray<string>, saved: ReadonlyArray<string> = []) {
@@ -126,16 +96,8 @@ export function forYouHeight(views: ReadonlyArray<CardView>): number {
   return views.reduce((sum, view) => sum + height(view) + CARD_GAP, FOR_YOU_NOTE);
 }
 
-/**
- * Stacks each lane's frames in its column, and adds one edge for each `dependsOn` between two
- * tickets. `expanded` holds the card count of each ticket whose artifacts are open.
- */
-export function layoutBoard(
-  model: BoardModel,
-  order: FrameOrder,
-  forYouRows = 0,
-  expanded: Readonly<Record<string, number>> = {},
-): Layout {
+/** Stacks each lane's frames in its column, and adds one edge for each `dependsOn` between two tickets. */
+export function layoutBoard(model: BoardModel, order: FrameOrder, forYouRows = 0): Layout {
   const lanes: LaneBox[] = [];
   const edges: Edge[] = [];
   const known = new Set(
@@ -159,12 +121,7 @@ export function layoutBoard(
       )) {
         const view = views.find((entry) => entry.ticket.key === key);
         if (view === undefined) continue;
-        const head = headHeight(view.ticket);
-        items.push({
-          key,
-          head,
-          height: frameHeight(head, view.agents.length, expanded[key] ?? 0),
-        });
+        items.push({ key, head: FRAME_HEAD, height: frameHeight(FRAME_HEAD, view.agents.length) });
         for (const dependency of view.ticket.dependsOn ?? []) {
           if (known.has(dependency)) edges.push({ from: dependency, to: key });
         }

@@ -51,8 +51,8 @@ export function BoardScreen({
   const forYou = useBoardForYou(project, listed);
   const artifacts = useBoardArtifacts(project, listed, model);
   const layout = useMemo(
-    () => layoutBoard(model, order, forYouHeight(forYou.views), artifacts.cards),
-    [model, order, forYou.views, artifacts.cards],
+    () => layoutBoard(model, order, forYouHeight(forYou.views)),
+    [model, order, forYou.views],
   );
   const family = useThreadFamily(project.environmentId, board.orchestratorThreadId);
   const builders = useMemo(() => countImplementationAgents(model), [model]);
@@ -87,10 +87,10 @@ export function BoardScreen({
       ? focused.cardId
       : null;
   return (
-    <ArtifactsProvider value={artifacts.value}>
+    <ArtifactsProvider value={artifacts}>
       <PrProvider value={prContext}>
         <div className="flex h-full min-h-0">
-          <MainTabs files={artifacts.value.files}>
+          <MainTabs files={artifacts.files}>
             <Viewport
               content={layout.content}
               onDropFiles={(files) =>

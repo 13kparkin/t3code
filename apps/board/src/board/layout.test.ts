@@ -3,12 +3,11 @@ import { describe, expect, it } from "vite-plus/test";
 import type { Ticket } from "../domain/ticket";
 import type { AgentView, BoardModel, TicketView } from "../state/boardModel";
 import {
-  artifactsHeight,
   clampDrag,
   edgePath,
   FRAME_WIDTH,
+  FRAME_HEAD,
   frameHeight,
-  headHeight,
   LANE_GAP,
   LANE_HEAD,
   LANE_PAD,
@@ -83,33 +82,9 @@ describe("laying out the lanes", () => {
     expect(building?.x).toBe(40 + 3 * (LANE_WIDTH + LANE_GAP));
     expect(building?.frames.map((frame) => [frame.key, frame.x, frame.y])).toEqual([
       ["T-1", building!.x + LANE_PAD, LANES_TOP + LANE_HEAD],
-      [
-        "T-2",
-        building!.x + LANE_PAD,
-        LANES_TOP + LANE_HEAD + frameHeight(headHeight(model.lanes.building[0]!.ticket), 2) + 12,
-      ],
+      ["T-2", building!.x + LANE_PAD, LANES_TOP + LANE_HEAD + frameHeight(FRAME_HEAD, 2) + 12],
     ]);
     expect(building?.frames[0]?.width).toBe(FRAME_WIDTH);
-  });
-
-  it("Given a ticket with open artifact cards, when laid out, then its frame grows by the cards and the frame below moves down", () => {
-    const open = layoutBoard(model, {}, 0, { "T-1": 3 });
-    const frame = (laid: typeof layout, key: string) =>
-      laid.lanes.flatMap((entry) => entry.frames).find((box) => box.key === key);
-    const grown = artifactsHeight(3);
-    expect(frame(open, "T-1")?.height).toBe((frame(layout, "T-1")?.height ?? 0) + grown);
-    expect(frame(open, "T-2")?.y).toBe((frame(layout, "T-2")?.y ?? 0) + grown);
-  });
-
-  it("Given bare tickets, when their heads are measured, then steps or a missing plan add the chip row", () => {
-    const bare = headHeight({ key: "T-9", title: "a", stage: "todo" });
-    const unplanned = headHeight({ key: "T-9", title: "a", stage: "planned" });
-    const stepped = { key: "T-9", title: "a", playbook: "feature.md" } as const;
-    expect(unplanned).toBeGreaterThan(bare);
-    expect(
-      headHeight({ ...stepped, stage: "todo", steps: [{ text: "x", state: "pending" }] }),
-    ).toBe(unplanned);
-    expect(headHeight({ ...stepped, stage: "off_path" })).toBe(bare);
   });
 
   it("Given a dependency on a ticket that exists and one that does not, when laid out, then only the first has an edge", () => {

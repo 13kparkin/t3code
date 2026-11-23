@@ -1,11 +1,16 @@
-import { useAtomValue } from "@effect/atom-react";
+import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentId } from "@t3tools/contracts";
+import { useContext } from "react";
 
-import { markTicketPainted, ticketChoiceAtom } from "../browser/panel";
+import { chooseTicket, markTicketPainted, ticketChoiceAtom } from "../browser/panel";
+import { useArtifacts } from "../artifacts/ArtifactsContext";
 import { EmptyFiles } from "../files/EmptyFiles";
+import { NO_ARTIFACTS } from "../state/artifacts";
 import type { BoardModel } from "../state/boardModel";
 import { AgentLog } from "./AgentLog";
+import { ArtifactCards } from "./ArtifactCards";
 import { PrChecks } from "./PrChecks";
+import { TicketMeta } from "./TicketMeta";
 import { TicketReadiness } from "./TicketReadiness";
 import { TicketSteps } from "./TicketSteps";
 
@@ -25,7 +30,9 @@ export function TicketPanel({
   environmentId: EnvironmentId;
   model: BoardModel;
 }) {
+  const registry = useContext(RegistryContext);
   const choice = useAtomValue(ticketChoiceAtom);
+  const { groups } = useArtifacts();
   // A new function each render, so the frame after every render marks a pending open as painted.
   const markPainted = (element: HTMLElement | null) => {
     if (element !== null) requestAnimationFrame(() => markTicketPainted());
@@ -60,6 +67,14 @@ export function TicketPanel({
         <h3 className="truncate font-semibold">
           {ticket === undefined ? "Unassigned" : `${ticket.key} ${ticket.title}`}
         </h3>
+        {view !== undefined && (
+          <TicketMeta
+            view={view}
+            onOpenThread={(threadId) =>
+              chooseTicket(registry, { threadId, ticketKey: view.ticket.key })
+            }
+          />
+        )}
         {agent !== null && (
           <p className="text-[11px] text-muted">
             {agent.role} · {STATE_LABEL[agent.runState]}
@@ -87,6 +102,11 @@ export function TicketPanel({
           <TicketSteps view={view} />
           <PrChecks view={view} />
           <TicketReadiness view={view} />
+          {(groups.byTicket.get(view.ticket.key) ?? NO_ARTIFACTS).length > 0 && (
+            <div className="border-b border-line px-3 py-2">
+              <ArtifactCards artifacts={groups.byTicket.get(view.ticket.key) ?? NO_ARTIFACTS} />
+            </div>
+          )}
         </div>
       )}
       {agent === null ? (
