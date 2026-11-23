@@ -160,7 +160,7 @@ export function OrchestratorCard({
               trigger={
                 <>
                   <Layers className="size-3" aria-hidden />
-                  {hiddenAdditions.length > 0 ? `${hiddenAdditions.length} hidden` : "Added"}
+                  {hiddenAdditions.length > 0 && `${hiddenAdditions.length} hidden`}
                 </>
               }
               items={[
