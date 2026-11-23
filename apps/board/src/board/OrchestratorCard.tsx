@@ -19,6 +19,7 @@ import type { ValidBoard } from "../store/boardFiles";
 import { PopMenu } from "../ui/PopMenu";
 import { ArtifactCards } from "./ArtifactCards";
 import { ArtifactCount } from "./ArtifactCount";
+import { BuilderCap } from "./BuilderCap";
 import { ORCHESTRATOR_BOX } from "./layout";
 
 /** Cards stack in columns this tall, which is as many as fit beside the card. */
@@ -154,10 +155,7 @@ export function OrchestratorCard({
           Artifacts <ArtifactCount id={BOARD_KEY} count={groups.board.length} />
         </span>
         <span className="text-muted">
-          Builders{" "}
-          <span data-testid="builders" className="text-fg">
-            {builders} of {stats.builderCap}
-          </span>
+          Builders <BuilderCap project={project} listed={listed} builders={builders} />
         </span>
       </div>
       <p className="mt-2 line-clamp-2 text-[11px] text-muted" data-testid="latest-decision">

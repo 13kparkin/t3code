@@ -4,7 +4,7 @@ import * as Option from "effect/Option";
 
 import { pickTemplate, type ReviewTemplate, templateFacts } from "../domain/reviewTemplate";
 import { messageOrchestrator } from "../foryou/actions";
-import { type ValidBoard, writeBoard } from "../store/boardFiles";
+import { updateBoard, type ValidBoard } from "../store/boardFiles";
 import { readingsFor, type UsageReading, usageCrossings } from "../usage/usageNotice";
 import { boardEngine, localState, projectBoardsAtom } from "./boards";
 import { engineEnvironmentIdAtom } from "./projects";
@@ -37,14 +37,13 @@ export async function setBoardReviewTemplate(
   listed: ValidBoard,
   name: string | undefined,
 ): Promise<string | null> {
-  const { reviewTemplate: _previous, ...rest } = listed.board;
-  const board = name === undefined ? rest : { ...rest, reviewTemplate: name };
+  let board;
   try {
-    await writeBoard(
+    board = await updateBoard(
       boardEngine(registry, project.environmentId).files,
       project.workspaceRoot,
       listed.folder,
-      board,
+      { reviewTemplate: name },
     );
   } catch (failure) {
     return failure instanceof Error ? failure.message : String(failure);

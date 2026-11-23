@@ -3,7 +3,15 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { parseBoard } from "../domain/board";
 import { archiveBoard, type BoardThreads, type FamilyThread, restoreBoard } from "./boardArchive";
-import { createBoard, listBoards, type ProjectFiles, refreshRoles, sha256 } from "./boardFiles";
+import {
+  createBoard,
+  listBoards,
+  type ProjectFiles,
+  refreshRoles,
+  setBuilderCap,
+  sha256,
+  updateBoard,
+} from "./boardFiles";
 import { roleFiles } from "../orchestrator/roles";
 
 const CWD = "/work/project";
@@ -211,6 +219,50 @@ const archivedFlag = (store: Map<string, string>) => {
 };
 
 const noSleep = { sleep: async () => undefined };
+
+const savedBoard = (store: Map<string, string>) => {
+  const parsed = parseBoard(store.get(".agentboard/claude-connector/board.json") ?? "");
+  return Result.isSuccess(parsed) ? parsed.success : undefined;
+};
+
+describe("saving the builder cap", () => {
+  it("Given a board with docs and an orchestrator, when the cap is saved, then only the cap changes", async () => {
+    const { files, store, target } = await boardWith("orchestrator");
+    const docs = [{ name: "spec.md", sentAt: "2026-11-20T06:00:00.000Z" }];
+    store.set(".agentboard/claude-connector/board.json", JSON.stringify({ ...target.board, docs }));
+    await setBuilderCap(files, CWD, target.folder, 5);
+    expect(savedBoard(store)).toMatchObject({
+      builderCap: 5,
+      orchestratorThreadId: "orchestrator",
+      docs,
+    });
+  });
+
+  it("Given a saved cap, when a review template is set and then cleared, then the cap stays and the key is removed", async () => {
+    const { files, store, target } = await boardWith("orchestrator");
+    await setBuilderCap(files, CWD, target.folder, 5);
+    await updateBoard(files, CWD, target.folder, { reviewTemplate: "Strict" });
+    expect(savedBoard(store)).toMatchObject({ builderCap: 5, reviewTemplate: "Strict" });
+    await updateBoard(files, CWD, target.folder, { reviewTemplate: undefined });
+    expect(savedBoard(store)).toMatchObject({
+      builderCap: 5,
+      orchestratorThreadId: "orchestrator",
+    });
+    expect(store.get(".agentboard/claude-connector/board.json")).not.toContain("reviewTemplate");
+  });
+
+  it("Given a cap saved after the board was listed, when the stale board is archived and restored, then the cap stays", async () => {
+    const { files, store, target } = await boardWith("orchestrator");
+    const { threadsApi } = fakeThreads([
+      { id: "orchestrator", working: false, isRoot: true, archived: false },
+    ]);
+    await setBuilderCap(files, CWD, target.folder, 5);
+    await archiveBoard(files, threadsApi, target, noSleep);
+    expect(savedBoard(store)).toMatchObject({ archived: true, builderCap: 5 });
+    await restoreBoard(files, threadsApi, target);
+    expect(savedBoard(store)).toMatchObject({ archived: false, builderCap: 5 });
+  });
+});
 
 describe("archiving a board", () => {
   it("Given a board with no orchestrator, when archived and restored, then only the board file changes", async () => {
