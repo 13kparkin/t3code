@@ -1,13 +1,28 @@
-import { useAtomValue } from "@effect/atom-react";
+import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentId } from "@t3tools/contracts";
+import { Maximize2 } from "lucide-react";
+import { useContext } from "react";
 
-import { markTicketPainted, ticketChoiceAtom } from "../browser/panel";
+import { useArtifacts } from "../artifacts/ArtifactsContext";
+import {
+  chooseTicket,
+  markTicketPainted,
+  setPanelTab,
+  ticketChoiceAtom,
+  ticketTabShownAtom,
+} from "../browser/panel";
+import { iconButton } from "../browser/styles";
+import { filesViewAtom, openTicketPage } from "../state/filesView";
+import { Tooltip } from "../ui/Tooltip";
 import { EmptyFiles } from "../files/EmptyFiles";
+import { NO_ARTIFACTS } from "../state/artifacts";
 import type { BoardModel } from "../state/boardModel";
+import { foldedAtom, sectionKey, toggleFolded } from "../state/boardUi";
 import { AgentLog } from "./AgentLog";
-import { PrChecks } from "./PrChecks";
-import { TicketReadiness } from "./TicketReadiness";
-import { TicketSteps } from "./TicketSteps";
+import { SectionBar } from "./SectionBar";
+import { TicketMeta } from "./TicketMeta";
+import { TicketSection } from "./TicketSection";
+import { TICKET_SECTIONS } from "./ticketSections";
 
 const STATE_LABEL = {
   working: "Working",
@@ -17,19 +32,36 @@ const STATE_LABEL = {
   stopped: "Stopped",
 } as const;
 
-/** The Ticket tab: a ticket's summary and why, and the log of the agent chosen on its frame or in the sidebar. The board's screen draws it into the panel. */
+/** The Ticket tab: a ticket's details as collapsible sections, or the log of an agent no ticket claims. The board's screen draws it into the panel. */
 export function TicketPanel({
   environmentId,
   model,
+  page = false,
 }: {
   environmentId: EnvironmentId;
   model: BoardModel;
+  /** Drawn as the main view's full-page tab, not in the side panel. */
+  page?: boolean;
 }) {
+  const registry = useContext(RegistryContext);
   const choice = useAtomValue(ticketChoiceAtom);
+  const { groups } = useArtifacts();
+  const folded = useAtomValue(foldedAtom);
+  const shown = useAtomValue(ticketTabShownAtom);
+  const onPage = useAtomValue(filesViewAtom).surface === "ticket";
+  const toggle = (id: string) => void toggleFolded(registry, sectionKey(id));
   // A new function each render, so the frame after every render marks a pending open as painted.
   const markPainted = (element: HTMLElement | null) => {
     if (element !== null) requestAnimationFrame(() => markTicketPainted());
   };
+  if (!page && !shown) return null;
+  if (!page && onPage) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <EmptyFiles>Open on the page</EmptyFiles>
+      </div>
+    );
+  }
   const view =
     choice === null
       ? undefined
@@ -53,46 +85,87 @@ export function TicketPanel({
       </div>
     );
   }
-  const ticket = view?.ticket;
+  const props =
+    view === undefined
+      ? null
+      : {
+          environmentId,
+          view,
+          agent,
+          artifacts: groups.byTicket.get(view.ticket.key) ?? NO_ARTIFACTS,
+        };
+  const sections = props === null ? [] : TICKET_SECTIONS.filter((section) => section.shows(props));
+  const open = sections.filter((section) => !folded.has(sectionKey(section.id)));
+  const bars = sections.filter((section) => folded.has(sectionKey(section.id)));
+  const filler = open.find((section) => section.fill === true);
   return (
     <div ref={markPainted} className="flex min-h-0 flex-1 flex-col">
-      <header className="border-b border-line px-3 py-2.5">
-        <h3 className="truncate font-semibold">
-          {ticket === undefined ? "Unassigned" : `${ticket.key} ${ticket.title}`}
-        </h3>
+      <header className="shrink-0 border-b border-line px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          <h3 className="min-w-0 flex-1 truncate font-semibold">
+            {view === undefined ? "Unassigned" : `${view.ticket.key} ${view.ticket.title}`}
+          </h3>
+          {!page && (
+            <Tooltip text="Open full page" side="bottom" align="end">
+              <button
+                type="button"
+                aria-label="Open full page"
+                onClick={() => {
+                  openTicketPage(registry);
+                  // The page already shows the details.
+                  setPanelTab(registry, "chat");
+                }}
+                className={iconButton}
+              >
+                <Maximize2 className="size-3.5" aria-hidden />
+              </button>
+            </Tooltip>
+          )}
+        </div>
+        {view !== undefined && (
+          <TicketMeta
+            view={view}
+            onOpenThread={(threadId) =>
+              chooseTicket(registry, { threadId, ticketKey: view.ticket.key })
+            }
+          />
+        )}
         {agent !== null && (
           <p className="text-[11px] text-muted">
             {agent.role} · {STATE_LABEL[agent.runState]}
           </p>
         )}
       </header>
-      {ticket !== undefined && (
-        <dl className="space-y-1 border-b border-line px-3 py-2 text-[12px]">
-          <div>
-            <dt className="text-[10px] text-faint uppercase">Summary</dt>
-            <dd data-testid="ticket-summary" className="break-words text-fg">
-              {ticket.summary ?? "No summary yet"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-[10px] text-faint uppercase">Why</dt>
-            <dd data-testid="ticket-why" className="break-words text-fg">
-              {ticket.why ?? "No reason yet"}
-            </dd>
-          </div>
-        </dl>
-      )}
-      {view !== undefined && (
-        <div className="max-h-[50%] shrink-0 overflow-y-auto">
-          <TicketSteps view={view} />
-          <PrChecks view={view} />
-          <TicketReadiness view={view} />
-        </div>
-      )}
-      {agent === null ? (
-        <p className="px-3 py-3 text-faint">Select an agent card to read its thread.</p>
+      {props === null ? (
+        agent !== null && (
+          <AgentLog key={agent.threadId} environmentId={environmentId} agent={agent} />
+        )
       ) : (
-        <AgentLog key={agent.threadId} environmentId={environmentId} agent={agent} />
+        <>
+          <div
+            className={`overflow-y-auto ${filler === undefined ? "min-h-0 flex-1" : "max-h-[50%] shrink-0"}`}
+          >
+            {open
+              .filter((section) => section !== filler)
+              .map(({ id, title, Body }) => (
+                <TicketSection key={id} title={title} fill={false} onCollapse={() => toggle(id)}>
+                  <Body {...props} />
+                </TicketSection>
+              ))}
+          </div>
+          {filler !== undefined && (
+            <TicketSection title={filler.title} fill onCollapse={() => toggle(filler.id)}>
+              <filler.Body {...props} />
+            </TicketSection>
+          )}
+        </>
+      )}
+      {bars.length > 0 && (
+        <footer className="shrink-0">
+          {bars.map(({ id, title }) => (
+            <SectionBar key={id} title={title} onExpand={() => toggle(id)} />
+          ))}
+        </footer>
       )}
     </div>
   );

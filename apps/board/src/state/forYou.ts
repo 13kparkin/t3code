@@ -87,6 +87,7 @@ export const forYouBoardsAtom = Atom.make((get): ReadonlyArray<BoardOpenItems> =
         return [
           {
             projectId: project.id,
+            projectName: project.title,
             folder: listed.folder,
             boardId: listed.board.id,
             boardName: listed.board.name,
@@ -110,6 +111,8 @@ export const forYouToastsAtom = Atom.writable(
     ),
   (context, next: ToastState) => context.setSelf(next),
 ).pipe(Atom.keepAlive, Atom.withLabel("foryou-toasts"));
+
+export const forYouOpenAtom = Atom.make(false).pipe(Atom.keepAlive, Atom.withLabel("foryou-open"));
 
 /** The card a toast or the sidebar row sent the user to, which its lane marks and brings into view. */
 export const focusedCardAtom = Atom.make<{

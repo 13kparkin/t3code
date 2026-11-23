@@ -6,18 +6,11 @@ import { createPortal } from "react-dom";
 
 import { ArtifactsProvider } from "../artifacts/ArtifactsContext";
 import { useBoardArtifacts } from "../artifacts/useBoardArtifacts";
-import {
-  chatSlotAtom,
-  checksSlotAtom,
-  chooseTicket,
-  ticketChoiceAtom,
-  ticketSlotAtom,
-} from "../browser/panel";
+import { chatSlotAtom, chooseTicket, ticketChoiceAtom, ticketSlotAtom } from "../browser/panel";
 import { OrchestratorPanel } from "../chat/OrchestratorPanel";
-import { ChecksPanel } from "../checks/ChecksPanel";
 import { MainTabs } from "../files/MainTabs";
 import { mergeTicketKey } from "../domain/readiness";
-import { frameOrderAtom } from "../state/boardUi";
+import { frameOrderAtom, hiddenLanesAtom } from "../state/boardUi";
 import { useThreadFamily } from "../state/family";
 import { PrProvider } from "../state/prStatus";
 import { focusedCardAtom, useBoardForYou } from "../state/forYou";
@@ -28,7 +21,7 @@ import { keptWorktreesAtom } from "../state/mergeCleanup";
 import type { ValidBoard } from "../store/boardFiles";
 import { ForYouLane } from "./ForYouLane";
 import { Lanes } from "./Lanes";
-import { forYouHeight, layoutBoard } from "./layout";
+import { forYouHeight, LANE_IDS, layoutBoard } from "./layout";
 import { OrchestratorCard } from "./OrchestratorCard";
 import { TicketPanel } from "./TicketPanel";
 import { Viewport } from "./Viewport";
@@ -50,9 +43,14 @@ export function BoardScreen({
   const order = useAtomValue(frameOrderAtom)[board.id] ?? NO_ORDER;
   const forYou = useBoardForYou(project, listed);
   const artifacts = useBoardArtifacts(project, listed, model);
+  const hiddenIds = useAtomValue(hiddenLanesAtom(board.id));
+  const hidden = useMemo(
+    () => new Set(LANE_IDS.filter((id) => hiddenIds.split(",").includes(id))),
+    [hiddenIds],
+  );
   const layout = useMemo(
-    () => layoutBoard(model, order, forYouHeight(forYou.views), artifacts.cards),
-    [model, order, forYou.views, artifacts.cards],
+    () => layoutBoard(model, order, forYouHeight(forYou.views), hidden),
+    [model, order, forYou.views, hidden],
   );
   const family = useThreadFamily(project.environmentId, board.orchestratorThreadId);
   const builders = useMemo(() => countImplementationAgents(model), [model]);
@@ -78,7 +76,6 @@ export function BoardScreen({
     };
   }, [project, board.orchestratorThreadId, family, tickets, forYou.views, keptWorktrees]);
   const chatSlot = useAtomValue(chatSlotAtom);
-  const checksSlot = useAtomValue(checksSlotAtom);
   const ticketSlot = useAtomValue(ticketSlotAtom);
   const choice = useAtomValue(ticketChoiceAtom);
   const focused = useAtomValue(focusedCardAtom);
@@ -87,10 +84,13 @@ export function BoardScreen({
       ? focused.cardId
       : null;
   return (
-    <ArtifactsProvider value={artifacts.value}>
+    <ArtifactsProvider value={artifacts}>
       <PrProvider value={prContext}>
         <div className="flex h-full min-h-0">
-          <MainTabs files={artifacts.value.files}>
+          <MainTabs
+            files={artifacts.files}
+            ticketPage={<TicketPanel environmentId={project.environmentId} model={model} page />}
+          >
             <Viewport
               content={layout.content}
               onDropFiles={(files) =>
@@ -102,6 +102,8 @@ export function BoardScreen({
                 listed={listed}
                 stats={{ ...stats, forYouOpen: forYou.open }}
                 builders={builders}
+                offPath={model.lanes.off_path.map((view) => view.ticket)}
+                hidden={hidden}
               />
               <Lanes
                 layout={layout}
@@ -178,7 +180,6 @@ export function BoardScreen({
               <TicketPanel environmentId={project.environmentId} model={model} />,
               ticketSlot,
             )}
-          {checksSlot !== null && createPortal(<ChecksPanel />, checksSlot)}
         </div>
       </PrProvider>
     </ArtifactsProvider>

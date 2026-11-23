@@ -1,11 +1,22 @@
 import type { CardView } from "../domain/forYou";
-import { missingPlan, TICKET_STAGES, type Ticket, type TicketStage } from "../domain/ticket";
+import { STAGE_LABEL, TICKET_STAGES, type TicketStage } from "../domain/ticket";
 import type { BoardModel } from "../state/boardModel";
 import type { FrameOrder } from "../state/boardUi";
 import type { Rect } from "./viewport";
 
-export type LaneId = "for_you" | TicketStage | "unassigned";
-export const LANE_IDS: ReadonlyArray<LaneId> = ["for_you", ...TICKET_STAGES, "unassigned"];
+export type LaneId = "for_you" | Exclude<TicketStage, "off_path"> | "unassigned";
+/** Off-path tickets have no lane. The orchestrator card lists them. */
+export const LANE_IDS: ReadonlyArray<LaneId> = [
+  "for_you",
+  ...TICKET_STAGES.filter((stage) => stage !== "off_path"),
+  "unassigned",
+];
+
+export const LANE_LABEL = {
+  for_you: "For you",
+  ...STAGE_LABEL,
+  unassigned: "Unassigned",
+} as const satisfies Record<LaneId, string>;
 
 /** The key of the one frame that holds the agents no ticket claims. */
 export const UNASSIGNED_KEY = "__unassigned";
@@ -16,15 +27,12 @@ export const LANE_HEAD = 34;
 export const LANE_PAD = 12;
 export const LANE_MIN_HEIGHT = 160;
 export const FRAME_WIDTH = LANE_WIDTH - LANE_PAD * 2;
-export const FRAME_GAP = 12;
-const FRAME_HEAD = 100;
-const CHIPS_HEIGHT = 48;
-export const PR_ROW = 26;
-export const UNASSIGNED_HEAD = 34;
-export const FRAME_PAD = 8;
-export const CARD_HEIGHT = 62;
+export const FRAME_GAP = 8;
+/** Every ticket card, and every unassigned agent row, is two lines this tall. */
+export const CARD_HEIGHT = 52;
+export const UNASSIGNED_HEAD = 30;
+export const FRAME_PAD = 6;
 export const CARD_GAP = 6;
-export const EMPTY_HEIGHT = 30;
 export const ARTIFACT_HEIGHT = 36;
 export const ARTIFACT_GAP = 4;
 const FOR_YOU_NOTE = 20;
@@ -39,13 +47,11 @@ const LEFT = 40;
 export const ORCHESTRATOR_BOX: Rect = { x: LEFT, y: LEFT, width: 340, height: 280 };
 /** Where the lanes start, below the orchestrator card. */
 export const LANES_TOP = ORCHESTRATOR_BOX.y + ORCHESTRATOR_BOX.height + LEFT;
-const EDGE_ATTACH_Y = 24;
+const EDGE_ATTACH_Y = CARD_HEIGHT / 2;
 const EDGE_CURVE = 40;
 
 export interface FrameBox extends Rect {
   readonly key: string;
-  /** The height of the part above the agent cards. */
-  readonly head: number;
 }
 
 export interface LaneBox extends Rect {
@@ -65,38 +71,9 @@ export interface Layout {
   readonly content: Rect;
 }
 
-/** Whether a ticket has anything to show in the row of chips under its branch. */
-export const hasChips = (ticket: Ticket): boolean =>
-  ticket.issue != null ||
-  ticket.headSha != null ||
-  (ticket.fixRounds ?? 0) > 0 ||
-  (ticket.dependsOn ?? []).length > 0 ||
-  (ticket.verdicts ?? []).length > 0 ||
-  (ticket.flags ?? []).length > 0 ||
-  (ticket.steps ?? []).length > 0 ||
-  missingPlan(ticket);
-
-const PR_STAGES: ReadonlySet<TicketStage> = new Set(["pr", "awaiting_approval", "merged"]);
-
-/**
- * Whether a frame holds the row for its pull request. A ticket past review has one, even when
- * only its agents' threads name it, so the row is there before the orchestrator writes `pr`.
- */
-export const hasPrRow = (ticket: Ticket): boolean =>
-  ticket.pr != null || PR_STAGES.has(ticket.stage);
-
-export const headHeight = (ticket: Ticket): number =>
-  FRAME_HEAD + (hasPrRow(ticket) ? PR_ROW : 0) + (hasChips(ticket) ? CHIPS_HEIGHT : 0);
-
-/** The height of a frame's expanded artifact cards: a rule above, and the cards in the frame's padding. */
-export const artifactsHeight = (cards: number): number =>
-  cards === 0 ? 0 : 1 + FRAME_PAD * 2 + cards * ARTIFACT_HEIGHT + (cards - 1) * ARTIFACT_GAP;
-
-export const frameHeight = (head: number, agents: number, artifactCards = 0): number =>
-  head +
-  FRAME_PAD * 2 +
-  (agents === 0 ? EMPTY_HEIGHT : agents * CARD_HEIGHT + (agents - 1) * CARD_GAP) +
-  artifactsHeight(artifactCards);
+/** The frame of agents no ticket claims: a note, then one row per agent. */
+export const unassignedHeight = (agents: number): number =>
+  UNASSIGNED_HEAD + FRAME_PAD + agents * CARD_HEIGHT + (agents - 1) * CARD_GAP;
 
 /** Frames in the order the user dragged them to, and any the saved order lacks after them, in file order. */
 export function orderedKeys(keys: ReadonlyArray<string>, saved: ReadonlyArray<string> = []) {
@@ -121,15 +98,14 @@ export function forYouHeight(views: ReadonlyArray<CardView>): number {
   return views.reduce((sum, view) => sum + height(view) + CARD_GAP, FOR_YOU_NOTE);
 }
 
-/**
- * Stacks each lane's frames in its column, and adds one edge for each `dependsOn` between two
- * tickets. `expanded` holds the card count of each ticket whose artifacts are open.
- */
+const NO_HIDDEN: ReadonlySet<LaneId> = new Set();
+
+/** Stacks each shown lane's frames in its column, and adds one edge for each `dependsOn` between two tickets. Later lanes pack left over hidden ones. */
 export function layoutBoard(
   model: BoardModel,
   order: FrameOrder,
   forYouRows = 0,
-  expanded: Readonly<Record<string, number>> = {},
+  hidden: ReadonlySet<LaneId> = NO_HIDDEN,
 ): Layout {
   const lanes: LaneBox[] = [];
   const edges: Edge[] = [];
@@ -137,15 +113,12 @@ export function layoutBoard(
     Object.values(model.lanes).flatMap((lane) => lane.map((v) => v.ticket.key)),
   );
   LANE_IDS.forEach((id) => {
+    if (hidden.has(id)) return;
     const x = LEFT + lanes.length * (LANE_WIDTH + LANE_GAP);
-    const items: Array<{ key: string; head: number; height: number }> = [];
+    const items: Array<{ key: string; height: number }> = [];
     if (id === "unassigned") {
       if (model.unassigned.length === 0) return;
-      items.push({
-        key: UNASSIGNED_KEY,
-        head: UNASSIGNED_HEAD,
-        height: frameHeight(UNASSIGNED_HEAD, model.unassigned.length),
-      });
+      items.push({ key: UNASSIGNED_KEY, height: unassignedHeight(model.unassigned.length) });
     } else if (id !== "for_you") {
       const views = model.lanes[id];
       for (const key of orderedKeys(
@@ -154,20 +127,15 @@ export function layoutBoard(
       )) {
         const view = views.find((entry) => entry.ticket.key === key);
         if (view === undefined) continue;
-        const head = headHeight(view.ticket);
-        items.push({
-          key,
-          head,
-          height: frameHeight(head, view.agents.length, expanded[key] ?? 0),
-        });
+        items.push({ key, height: CARD_HEIGHT });
         for (const dependency of view.ticket.dependsOn ?? []) {
           if (known.has(dependency)) edges.push({ from: dependency, to: key });
         }
       }
     }
     let y = LANES_TOP + LANE_HEAD;
-    const frames = items.map(({ key, head, height }): FrameBox => {
-      const box = { key, head, x: x + LANE_PAD, y, width: FRAME_WIDTH, height };
+    const frames = items.map(({ key, height }): FrameBox => {
+      const box = { key, x: x + LANE_PAD, y, width: FRAME_WIDTH, height };
       y += height + FRAME_GAP;
       return box;
     });

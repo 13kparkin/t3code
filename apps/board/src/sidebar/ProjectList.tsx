@@ -1,20 +1,17 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import { runAtomCommand } from "@t3tools/client-runtime/state/runtime";
-import { Archive, ArchiveRestore, Folder } from "lucide-react";
+import { Archive, ArchiveRestore } from "lucide-react";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { useContext, useState } from "react";
 
 import { CreateBoard } from "../board/CreateBoard";
-import { environmentProjects, projectEnvironment, threadCountsAtom } from "../state/projects";
+import { environmentProjects, projectEnvironment } from "../state/projects";
 import { BoardList } from "./BoardList";
-import { CountChip } from "./CountChip";
 import { ProjectHeader } from "./ProjectHeader";
 import { PillRow } from "./PillRow";
 import { SidebarRow } from "./SidebarRow";
 
-// Lines the chip up with the title of a depth-1 row.
-const CHIP_INDENT_PX = 8 + 14;
 const COLLAPSED_KEY = "board:sidebar:collapsed-projects";
 
 const decodeCollapsed = Schema.decodeUnknownOption(
@@ -29,7 +26,6 @@ function readCollapsed(): ReadonlySet<string> {
 export function ProjectList() {
   const registry = useContext(RegistryContext);
   const projects = useAtomValue(environmentProjects.projectsAtom);
-  const threadCounts = useAtomValue(threadCountsAtom);
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [showHidden, setShowHidden] = useState(false);
@@ -61,7 +57,6 @@ export function ProjectList() {
       {visible.map((project) => {
         const key = `${project.environmentId}:${project.id}`;
         const open = !collapsed.has(key);
-        const counts = threadCounts.get(project.id);
         return (
           <li key={key}>
             <ProjectHeader
@@ -74,15 +69,6 @@ export function ProjectList() {
                 if (!open) toggle(key);
               }}
             />
-            {counts && (
-              <div className="py-0.5" style={{ paddingLeft: CHIP_INDENT_PX }}>
-                <CountChip
-                  label={`${counts.total} ${counts.total === 1 ? "thread" : "threads"}`}
-                  active={counts.active}
-                  open={open}
-                />
-              </div>
-            )}
             {menuFor === key && (
               <SidebarRow
                 depth={1}
@@ -93,11 +79,6 @@ export function ProjectList() {
             )}
             {open && (
               <>
-                <SidebarRow
-                  depth={1}
-                  icon={<Folder className="size-3.5" />}
-                  title={project.workspaceRoot}
-                />
                 {creatingFor === key && (
                   <CreateBoard project={project} onDone={() => setCreatingFor(null)} />
                 )}

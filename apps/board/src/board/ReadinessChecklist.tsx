@@ -8,7 +8,7 @@ import { ClaimEvidence } from "./ClaimEvidence";
 /**
  * Each merge-ready condition as the board computes it from the ticket and its checks. A card
  * passes the orchestrator's claims too, and a row says so when the claim and the live result
- * disagree. Given the checks, the CI condition lists them in the Checks tab's rows.
+ * disagree. Given the checks, the CI condition lists them in the Checks section's rows.
  */
 export function ReadinessChecklist({
   conditions,

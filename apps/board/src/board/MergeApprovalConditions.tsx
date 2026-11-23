@@ -6,7 +6,7 @@ import { ReadinessChecklist } from "./ReadinessChecklist";
 
 type MergeItem = Extract<ForYouItem, { readonly kind: "merge_approval" }>;
 
-/** A merge approval's conditions, with the live result beside the orchestrator's claims and the checks in the Checks tab's rows when the board knows the ticket. */
+/** A merge approval's conditions, with the live result beside the orchestrator's claims and the checks in the Checks section's rows when the board knows the ticket. */
 export function MergeApprovalConditions({ item }: { item: MergeItem }) {
   const { tickets } = usePrContext();
   const key = mergeTicketKey(

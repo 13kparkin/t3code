@@ -4,7 +4,6 @@ import {
   ArrowDown,
   ArrowRight,
   ArrowUp,
-  ChevronDown,
   ExternalLink,
   GitBranch,
   GitCompareArrows,
@@ -26,27 +25,22 @@ const ICON =
 const focusOnOpen = (node: HTMLInputElement | null) => node?.focus();
 
 /**
- * The top of Orca's source control view: the pull request with search and more, the branch with
- * the root picker, and the base with its ahead and behind counts and a link to the pull request.
+ * The top of Orca's source control view: the pull request with search and more, the branch, and the base with its ahead and behind counts and a link to the pull request.
  */
 export function ChangesHeader({
-  roots,
   root,
   base,
   status,
   filter,
   onFilter,
-  onRoot,
   onRefresh,
 }: {
-  roots: ReadonlyArray<FilesRoot>;
   root: FilesRoot;
   base: string | null;
   status: VcsStatusResult | null;
   /** The text the file lists are filtered by, or null while the filter box is closed. */
   filter: string | null;
   onFilter: (filter: string | null) => void;
-  onRoot: (cwd: string) => void;
   onRefresh: () => void;
 }) {
   const registry = useContext(RegistryContext);
@@ -104,7 +98,7 @@ export function ChangesHeader({
           className="rounded-md border border-line bg-panel px-2 py-1 text-[12px] text-fg placeholder:text-faint"
         />
       )}
-      <div className="relative flex h-5 items-center gap-1.5 text-[12px]">
+      <div className="flex h-5 items-center gap-1.5 text-[12px]">
         <GitBranch className="size-3.5 shrink-0 text-fg" aria-hidden />
         <span
           data-testid="branch-name"
@@ -112,20 +106,6 @@ export function ChangesHeader({
         >
           {status?.refName ?? root.label}
         </span>
-        <ChevronDown className="size-3.5 shrink-0 text-muted" aria-hidden />
-        {/* The picker is the whole row, drawn over it, so the branch reads as Orca's branch button. */}
-        <select
-          aria-label="Root"
-          value={root.cwd}
-          onChange={(event) => onRoot(event.target.value)}
-          className="absolute inset-0 cursor-pointer opacity-0"
-        >
-          {roots.map((entry) => (
-            <option key={entry.cwd} value={entry.cwd} className="bg-panel">
-              {entry.label}
-            </option>
-          ))}
-        </select>
       </div>
       <div className="flex h-5 items-center gap-1.5 text-[12px] text-muted">
         <ArrowRight className="size-3.5 shrink-0" aria-hidden />

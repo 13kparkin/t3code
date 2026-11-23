@@ -1,54 +1,21 @@
-import { RegistryContext } from "@effect/atom-react";
-import { ArrowRight, GitBranch, RotateCcw } from "lucide-react";
-import { useContext, useRef } from "react";
+import { useRef } from "react";
 
-import { useArtifacts } from "../artifacts/ArtifactsContext";
-import { missingPlan, STAGE_LABEL, stepProgress, type Ticket } from "../domain/ticket";
-import { NO_ARTIFACTS } from "../state/artifacts";
-import { openTicketChanges } from "../state/changesView";
+import { missingPlan } from "../domain/ticket";
 import type { TicketView } from "../state/boardModel";
-import { usePrContext } from "../state/prStatus";
-import { AgentCard } from "./AgentCard";
-import { ArtifactCards } from "./ArtifactCards";
-import { ArtifactCount } from "./ArtifactCount";
-import { artifactsHeight, CARD_GAP, FRAME_PAD, type FrameBox, hasChips, hasPrRow } from "./layout";
-import { IssueChip } from "../issues/IssueChip";
-import { Tooltip } from "../ui/Tooltip";
-import { PrChip } from "./PrChip";
-import { RemoveWorktree } from "./RemoveWorktree";
-import { ReviewChanges } from "./ReviewChanges";
+import { ago } from "../ui/ago";
+import { CardLine } from "./CardLine";
+import type { FrameBox } from "./layout";
+import { newestAgent, ticketStatus } from "./ticketStatus";
 import { useViewScale } from "./Viewport";
 
 const DRAG_THRESHOLD_PX = 4;
 
-const chip =
-  "inline-flex max-w-full items-center gap-1 rounded border border-line px-1.5 text-[10px] leading-4 text-muted";
-
-type Verdict = NonNullable<Ticket["verdicts"]>[number];
-
-/** The review's findings, worst first. A review with none is clean. */
-function verdictText(verdict: Verdict) {
-  const counts = (["p0", "p1", "p2", "p3"] as const).flatMap((level) => {
-    const count = verdict[level] ?? 0;
-    return count > 0 ? [`${level.toUpperCase()} ${count}`] : [];
-  });
-  const tone =
-    (verdict.p0 ?? 0) + (verdict.p1 ?? 0) > 0
-      ? "border-red-400/50 text-red-300"
-      : (verdict.p2 ?? 0) > 0
-        ? "border-amber-400/50 text-amber-300"
-        : counts.length > 0
-          ? "text-muted"
-          : "border-emerald-400/40 text-emerald-300";
-  return { text: `${verdict.role} ${counts.length === 0 ? "clean" : counts.join(" ")}`, tone };
-}
-
-/** A ticket on its lane: what it is, where its work lives, its reviews, and the agents on it. */
+/** A ticket on its lane as two lines. The whole card drags; a press that did not drag opens the ticket. */
 export function TicketFrame({
   view,
   box,
   offset,
-  selectedThreadId,
+  selected,
   onDrag,
   onDrop,
   onOpen,
@@ -57,39 +24,32 @@ export function TicketFrame({
   box: FrameBox;
   /** How far the frame is dragged from its place, in canvas px. */
   offset: number;
-  selectedThreadId: string | null;
+  selected: boolean;
   onDrag: (dy: number) => void;
   onDrop: () => void;
-  onOpen: (threadId: string | null) => void;
+  onOpen: () => void;
 }) {
   const { ticket, agents } = view;
-  const registry = useContext(RegistryContext);
   const scale = useViewScale();
-  const { groups, expanded } = useArtifacts();
-  const artifacts = groups.byTicket.get(ticket.key) ?? NO_ARTIFACTS;
-  const kept = usePrContext().keptWorktrees.get(ticket.key);
-  const branchText =
-    ticket.branch == null
-      ? "No branch yet"
-      : ticket.base == null
-        ? ticket.branch
-        : `${ticket.branch} → ${ticket.base}`;
   const press = useRef<{ startY: number; dragging: boolean } | null>(null);
-  const seen = new Map<string, number>();
-  const progress = stepProgress(ticket);
-  const verdicts = (ticket.verdicts ?? []).map((verdict) => {
-    const chipText = verdictText(verdict);
-    const earlier = seen.get(chipText.text) ?? 0;
-    seen.set(chipText.text, earlier + 1);
-    return { ...chipText, id: `${chipText.text}#${earlier}` };
-  });
+  const dragged = useRef(false);
+  const newest = newestAgent(agents);
+  const end = () => {
+    if (press.current?.dragging) {
+      dragged.current = true;
+      onDrop();
+    }
+    press.current = null;
+  };
 
   return (
-    <article
+    <button
+      type="button"
       data-testid="ticket-frame"
       data-ticket={ticket.key}
       aria-label={`${ticket.key} ${ticket.title}`}
-      className={`absolute rounded-lg border border-line bg-panel shadow-panel ${offset === 0 ? "" : "z-10 opacity-95"}`}
+      aria-pressed={selected}
+      className={`absolute flex cursor-grab touch-none flex-col justify-center gap-1 rounded-lg border bg-panel px-2.5 text-left shadow-panel select-none hover:bg-hover ${selected ? "border-focus" : "border-line"} ${offset === 0 ? "" : "z-10 opacity-95"}`}
       style={{
         left: box.x,
         top: box.y,
@@ -97,162 +57,42 @@ export function TicketFrame({
         height: box.height,
         transform: offset === 0 ? undefined : `translateY(${offset}px)`,
       }}
+      // The card drags on its own, so a press here never pans the canvas.
+      onPointerDown={(event) => {
+        if (event.button !== 0) return;
+        event.stopPropagation();
+        dragged.current = false;
+        press.current = { startY: event.clientY, dragging: false };
+      }}
+      onPointerMove={(event) => {
+        const active = press.current;
+        if (active === null) return;
+        const moved = event.clientY - active.startY;
+        if (!active.dragging && Math.abs(moved) < DRAG_THRESHOLD_PX) return;
+        if (!active.dragging) {
+          active.dragging = true;
+          event.currentTarget.setPointerCapture(event.pointerId);
+        }
+        onDrag(moved / scale);
+      }}
+      onPointerUp={end}
+      onPointerCancel={end}
+      onClick={() => {
+        if (!dragged.current) onOpen();
+        dragged.current = false;
+      }}
     >
-      <header
-        data-testid="frame-handle"
-        className="cursor-grab touch-none px-2.5 pt-2.5 select-none"
-        style={{ height: box.head }}
-        // The frame drags on its own, so a press here never pans the canvas.
-        onPointerDown={(event) => {
-          if (event.button !== 0) return;
-          event.stopPropagation();
-          press.current = { startY: event.clientY, dragging: false };
-        }}
-        onPointerMove={(event) => {
-          const active = press.current;
-          if (active === null) return;
-          const moved = event.clientY - active.startY;
-          if (!active.dragging && Math.abs(moved) < DRAG_THRESHOLD_PX) return;
-          if (!active.dragging) {
-            active.dragging = true;
-            event.currentTarget.setPointerCapture(event.pointerId);
-          }
-          onDrag(moved / scale);
-        }}
-        onPointerUp={() => {
-          if (press.current?.dragging) onDrop();
-          press.current = null;
-        }}
-        onPointerCancel={() => {
-          if (press.current?.dragging) onDrop();
-          press.current = null;
-        }}
-      >
-        <div className="flex items-center gap-1.5">
-          <span className="rounded bg-hover px-1.5 font-mono text-[11px] leading-[18px] font-semibold text-fg">
-            {ticket.key}
-          </span>
-          {ticket.track != null && (
-            <span className="min-w-0 truncate text-[11px] text-faint">{ticket.track}</span>
-          )}
-          <span className="flex-1" />
-          <ArtifactCount id={ticket.key} count={artifacts.length} />
-        </div>
-        <button
-          type="button"
-          onClick={() => onOpen(agents[0]?.threadId ?? null)}
-          className="mt-1.5 line-clamp-2 h-[38px] w-full text-left text-[13px] leading-[19px] font-semibold text-fg"
-        >
-          {ticket.title}
-        </button>
-        <p className="mt-1 flex min-w-0 items-center gap-1 text-[11px] text-faint">
-          <GitBranch className="size-3 shrink-0" aria-hidden />
-          {ticket.worktreePath == null ? (
-            <span className="truncate">{branchText}</span>
-          ) : (
-            <button
-              type="button"
-              data-testid="frame-changes"
-              aria-label={`Review ${ticket.key} changes`}
-              onClick={() => openTicketChanges(registry, ticket)}
-              className="min-w-0 truncate hover:text-fg hover:underline"
-            >
-              {branchText}
-            </button>
-          )}
-          {kept !== undefined && (
-            <span
-              data-testid="worktree-kept"
-              className="ml-auto max-w-[60%] shrink-0 truncate text-amber-300"
-            >
-              Kept: {kept}
-            </span>
-          )}
-        </p>
-        {hasPrRow(ticket) && (
-          <div className="mt-1.5 flex h-[20px] items-center gap-1.5">
-            <PrChip view={view} />
-            <ReviewChanges
-              ticket={ticket}
-              className="grid size-5 place-items-center rounded text-faint hover:bg-hover hover:text-fg"
-            />
-            {ticket.stage === "merged" && ticket.worktreePath != null && (
-              <RemoveWorktree view={view} />
-            )}
-          </div>
-        )}
-        {hasChips(ticket) && (
-          <div className="mt-1.5 flex h-[44px] flex-wrap content-start gap-1 overflow-hidden">
-            {missingPlan(ticket) && (
-              <Tooltip text={`In ${STAGE_LABEL[ticket.stage]} without a playbook and steps`}>
-                <span
-                  data-testid="plan-missing"
-                  className={`${chip} border-amber-400/50 text-amber-300`}
-                >
-                  No plan
-                </span>
-              </Tooltip>
-            )}
-            {ticket.issue != null && (
-              <IssueChip ticket={ticket} onOpenThread={(threadId) => onOpen(threadId)} />
-            )}
-            {ticket.headSha != null && (
-              <span className={`${chip} font-mono`}>{ticket.headSha.slice(0, 7)}</span>
-            )}
-            {(ticket.fixRounds ?? 0) > 0 && (
-              <span className={chip}>
-                <RotateCcw className="size-3" aria-hidden />
-                Fix round {ticket.fixRounds}
-              </span>
-            )}
-            {(ticket.dependsOn ?? []).length > 0 && (
-              <span className={chip}>
-                <ArrowRight className="size-3" aria-hidden />
-                After {(ticket.dependsOn ?? []).join(", ")}
-              </span>
-            )}
-            {verdicts.map(({ id, text, tone }) => (
-              <span key={id} data-testid="verdict-chip" className={`${chip} ${tone}`}>
-                <span className="truncate">{text}</span>
-              </span>
-            ))}
-            {progress !== null && (
-              <span data-testid="step-progress" className={chip}>
-                {progress.done}/{progress.total} steps
-                {progress.skipped > 0 && ` · ${progress.skipped} skipped`}
-              </span>
-            )}
-            {(ticket.flags ?? []).map((flag) => (
-              <span key={flag} className={`${chip} border-amber-400/50 text-amber-300`}>
-                {flag}
-              </span>
-            ))}
-          </div>
-        )}
-      </header>
-      <div className="flex flex-col" style={{ gap: CARD_GAP, padding: FRAME_PAD }}>
-        {agents.length === 0 ? (
-          <p className="px-1 text-[11px] text-faint">No agents yet</p>
-        ) : (
-          agents.map((agent) => (
-            <AgentCard
-              key={agent.threadId}
-              agent={agent}
-              ticket={ticket}
-              selected={agent.threadId === selectedThreadId}
-              onOpen={() => onOpen(agent.threadId)}
-            />
-          ))
-        )}
-      </div>
-      {expanded.has(ticket.key) && artifacts.length > 0 && (
-        <div
-          className="border-t border-line"
-          style={{ height: artifactsHeight(artifacts.length), padding: FRAME_PAD }}
-        >
-          <ArtifactCards artifacts={artifacts} />
-        </div>
-      )}
-    </article>
+      <CardLine
+        tag={ticket.key}
+        title={ticket.title}
+        status={ticketStatus(agents)}
+        detail={
+          <>
+            {missingPlan(ticket) && <span className="text-amber-300">No plan · </span>}
+            {newest === undefined ? "No agents" : `${newest.role} · ${ago(newest.updatedAt)}`}
+          </>
+        }
+      />
+    </button>
   );
 }

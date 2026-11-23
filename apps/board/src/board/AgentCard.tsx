@@ -5,9 +5,10 @@ import type { AgentView, RunState } from "../state/boardModel";
 import { usePrContext } from "../state/prStatus";
 import { Tooltip } from "../ui/Tooltip";
 import { ProviderGlyph } from "../usage/ProviderGlyph";
-import { CARD_HEIGHT } from "./layout";
 import { SetupFailure, useSetupLine } from "./SetupLine";
 import { ReviewChanges } from "./ReviewChanges";
+
+const CARD_HEIGHT = 62;
 
 const STATE = {
   working: { label: "Working", chip: "bg-sky-500/15 text-sky-300", accent: "bg-sky-400" },
@@ -25,8 +26,7 @@ export function AgentCard({
   onOpen,
 }: {
   agent: AgentView;
-  /** The ticket the agent works on, or undefined for an agent no ticket claims. */
-  ticket?: Ticket;
+  ticket: Ticket;
   selected: boolean;
   onOpen: () => void;
 }) {
@@ -98,14 +98,12 @@ export function AgentCard({
           </span>
         )}
       </button>
-      {ticket !== undefined && (
-        <span className="absolute right-1.5 bottom-1.5">
-          <ReviewChanges
-            ticket={ticket}
-            className="grid size-5 place-items-center rounded text-faint hover:bg-hover hover:text-fg"
-          />
-        </span>
-      )}
+      <span className="absolute right-1.5 bottom-1.5">
+        <ReviewChanges
+          ticket={ticket}
+          className="grid size-5 place-items-center rounded text-faint hover:bg-hover hover:text-fg"
+        />
+      </span>
       {selected && setup?.kind === "failed" && (
         <SetupFailure environmentId={environmentId} threadId={agent.threadId} line={setup} />
       )}

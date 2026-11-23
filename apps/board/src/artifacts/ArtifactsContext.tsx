@@ -4,17 +4,11 @@ import type { ArtifactGroups } from "../domain/artifact";
 import type { FilesBoard } from "../files/target";
 import type { Artifact } from "../store/artifacts";
 
-/** The key the board-level artifacts expand under, beside the ticket keys. */
-export const BOARD_KEY = "__board";
-
 export interface ArtifactsValue {
   /** The roots a file is opened under, and the threads it is served and reported under. */
   readonly files: FilesBoard;
   readonly all: ReadonlyArray<Artifact>;
   readonly groups: ArtifactGroups<Artifact>;
-  /** The ticket keys, and `BOARD_KEY`, whose cards are open. */
-  readonly expanded: ReadonlySet<string>;
-  readonly toggle: (key: string) => void;
   readonly open: (artifact: Artifact) => void;
 }
 

@@ -21,6 +21,7 @@ import {
 import { connectionAtomRuntime } from "../connection/runtime";
 import { locate } from "../files/target";
 import { ROLES } from "../orchestrator/roles";
+import type { Artifact } from "../store/artifacts";
 import type { FamilyRow, TicketView } from "./boardModel";
 import { artifactContentsKey, ciLocalAtom, ciLocalKey, smokeAtom } from "./artifacts";
 import { threadFamilies } from "./family";
@@ -192,6 +193,17 @@ const REVIEW_ROLES: ReadonlySet<string> = new Set(
   ROLES.filter((role) => role.t3Role === "review").map((role) => role.name),
 );
 
+/** A `ci-local.txt` evidence file read for `head`, or null with no file. */
+export function useCiLocal(file: Artifact | undefined, head: string | null): CiLocal | null {
+  const { files } = useArtifacts();
+  const located = file === undefined ? null : locate(files.roots, file.absolutePath);
+  return useAtomValue(
+    located === null
+      ? NO_CI_LOCAL
+      : ciLocalAtom(ciLocalKey(files.environmentId, located.root.cwd, located.path, head)),
+  );
+}
+
 /**
  * The six merge-ready conditions for a ticket, computed from the board's files and the host's
  * checks. A null view has none.
@@ -206,13 +218,7 @@ export function useTicketReadiness(view: TicketView | null): ReadonlyArray<Condi
     live?.checksState === null && live.checks.length === 0
       ? evidence?.find((artifact) => artifact.name === "ci-local.txt")
       : undefined;
-  const head = live?.headSha ?? view?.ticket.headSha ?? null;
-  const located = ciFile === undefined ? null : locate(files.roots, ciFile.absolutePath);
-  const ciLocal = useAtomValue(
-    located === null
-      ? NO_CI_LOCAL
-      : ciLocalAtom(ciLocalKey(files.environmentId, located.root.cwd, located.path, head)),
-  );
+  const ciLocal = useCiLocal(ciFile, live?.headSha ?? view?.ticket.headSha ?? null);
   const smokeFile = evidence?.find((artifact) => artifact.name === "smoke.txt");
   const smokeAt = smokeFile === undefined ? null : locate(files.roots, smokeFile.absolutePath);
   const smoke = useAtomValue(

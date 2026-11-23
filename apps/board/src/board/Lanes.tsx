@@ -1,11 +1,13 @@
 import { RegistryContext } from "@effect/atom-react";
+import { EyeOff } from "lucide-react";
 import { type ReactNode, useContext, useState } from "react";
 
-import { STAGE_LABEL } from "../domain/ticket";
 import type { BoardModel } from "../state/boardModel";
 import type { TicketChoice } from "../browser/panel";
-import { saveFrameOrder } from "../state/boardUi";
-import { AgentCard } from "./AgentCard";
+import { laneKey, saveFrameOrder, toggleFolded } from "../state/boardUi";
+import { Tooltip } from "../ui/Tooltip";
+import { ago } from "../ui/ago";
+import { CardLine } from "./CardLine";
 import {
   clampDrag,
   edgePath,
@@ -14,19 +16,16 @@ import {
   type LaneId,
   type Layout,
   LANE_HEAD,
+  LANE_LABEL,
   reorderByDrag,
   UNASSIGNED_HEAD,
   UNASSIGNED_KEY,
   CARD_GAP,
+  CARD_HEIGHT,
   FRAME_PAD,
 } from "./layout";
 import { TicketFrame } from "./TicketFrame";
-
-const LABEL = {
-  for_you: "For you",
-  ...STAGE_LABEL,
-  unassigned: "Unassigned",
-} as const satisfies Record<LaneId, string>;
+import { ticketStatus } from "./ticketStatus";
 
 const LANE_TONE = {
   for_you: "bg-amber-500 text-black",
@@ -38,7 +37,6 @@ const LANE_TONE = {
   pr: "bg-indigo-600 text-white",
   awaiting_approval: "bg-orange-600 text-white",
   merged: "bg-emerald-600 text-white",
-  off_path: "bg-zinc-500 text-white",
   unassigned: "bg-red-600 text-white",
 } as const satisfies Record<LaneId, string>;
 
@@ -122,7 +120,7 @@ export function Lanes({
       {layout.lanes.map((lane) => (
         <section
           key={lane.id}
-          aria-label={`${LABEL[lane.id]} lane`}
+          aria-label={`${LANE_LABEL[lane.id]} lane`}
           data-testid="lane"
           data-lane={lane.id}
           className="absolute rounded-xl border border-dashed border-line"
@@ -138,10 +136,23 @@ export function Lanes({
             <span
               className={`rounded-md px-2 text-[11px] leading-5 font-semibold ${LANE_TONE[lane.id]}`}
             >
-              {LABEL[lane.id]}
+              {LANE_LABEL[lane.id]}
               {lane.id === "planned" && queued ? " · queued" : ""}
             </span>
             <span className="text-[11px] text-faint">{laneCount(lane, model, forYouOpen)}</span>
+            <span className="flex-1" />
+            <Tooltip text="Hide lane" side="bottom" align="end">
+              <button
+                type="button"
+                aria-label={`Hide the ${LANE_LABEL[lane.id]} lane`}
+                // A press here is a click, not the start of a pan.
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => void toggleFolded(registry, laneKey(boardId, lane.id))}
+                className="grid size-5 place-items-center rounded text-faint hover:bg-hover hover:text-fg"
+              >
+                <EyeOff className="size-3" aria-hidden />
+              </button>
+            </Tooltip>
           </header>
           {lane.id === "for_you" && forYouLane}
         </section>
@@ -163,14 +174,28 @@ export function Lanes({
                 >
                   Started with no ticket
                 </p>
-                <div className="flex flex-col" style={{ gap: CARD_GAP, padding: FRAME_PAD }}>
+                <div
+                  className="flex flex-col"
+                  style={{ gap: CARD_GAP, padding: `0 ${FRAME_PAD}px ${FRAME_PAD}px` }}
+                >
                   {model.unassigned.map((agent) => (
-                    <AgentCard
+                    <button
                       key={agent.threadId}
-                      agent={agent}
-                      selected={agent.threadId === choice?.threadId}
-                      onOpen={() => onChoose({ threadId: agent.threadId, ticketKey: null })}
-                    />
+                      type="button"
+                      aria-pressed={agent.threadId === choice?.threadId}
+                      // A press that starts on a row is a click, not the start of a pan.
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={() => onChoose({ threadId: agent.threadId, ticketKey: null })}
+                      style={{ height: CARD_HEIGHT }}
+                      className={`flex shrink-0 flex-col justify-center gap-1 rounded-md border bg-bg px-2.5 text-left hover:bg-hover ${agent.threadId === choice?.threadId ? "border-focus" : "border-line"}`}
+                    >
+                      <CardLine
+                        tag={null}
+                        title={agent.title}
+                        status={ticketStatus([agent])}
+                        detail={`${agent.role} · ${ago(agent.updatedAt)}`}
+                      />
+                    </button>
                   ))}
                 </div>
               </section>
@@ -184,10 +209,12 @@ export function Lanes({
               view={view}
               box={box}
               offset={drag?.key === box.key ? drag.dy : 0}
-              selectedThreadId={choice?.threadId ?? null}
+              selected={choice?.ticketKey === box.key}
               onDrag={(dy) => setDrag({ key: box.key, dy: clampDrag(lane, box, dy) })}
               onDrop={() => drop(lane)}
-              onOpen={(threadId) => onChoose({ threadId, ticketKey: box.key })}
+              onOpen={() =>
+                onChoose({ threadId: view.agents[0]?.threadId ?? null, ticketKey: box.key })
+              }
             />
           );
         }),

@@ -2,6 +2,7 @@ import {
   isProviderNativeSubagentThread,
   type OrchestrationV2ThreadShell,
 } from "@t3tools/contracts";
+import * as DateTime from "effect/DateTime";
 
 import type { Ticket, TicketStage } from "../domain/ticket";
 import { ROLES } from "../orchestrator/roles";
@@ -20,6 +21,7 @@ export type FamilyRow = Pick<
   | "pendingBackgroundTasks"
   | "pendingRuntimeRequest"
   | "pullRequests"
+  | "updatedAt"
 >;
 
 export type RunState = "working" | "waiting" | "idle" | "failed" | "stopped";
@@ -41,6 +43,8 @@ export interface AgentView {
   readonly branch: string | null;
   readonly parentThreadId: string | null;
   readonly round: number | null;
+  /** When the thread last changed, as ISO text. */
+  readonly updatedAt: string;
 }
 
 export interface TicketView {
@@ -52,13 +56,6 @@ export interface BoardModel {
   readonly lanes: Readonly<Record<TicketStage, ReadonlyArray<TicketView>>>;
   /** Agents no ticket claims. */
   readonly unassigned: ReadonlyArray<AgentView>;
-}
-
-export interface AgentNode {
-  readonly agent: AgentView;
-  readonly children: ReadonlyArray<AgentNode>;
-  /** Direct children that are working now. */
-  readonly working: number;
 }
 
 const ROLE_NAMES: ReadonlySet<string> = new Set(ROLES.map((role) => role.name));
@@ -109,6 +106,7 @@ function agentOf(
     branch: row.branch,
     parentThreadId: row.lineage.parentThreadId,
     round: entry?.round ?? null,
+    updatedAt: DateTime.formatIso(row.updatedAt),
   };
 }
 
@@ -183,33 +181,4 @@ export function countImplementationAgents(model: BoardModel): number {
       IMPLEMENTATION_ROLES.has(agent.role) &&
       (agent.runState === "working" || agent.runState === "waiting"),
   ).length;
-}
-
-/** The family as a tree by `lineage.parentThreadId`. A thread whose parent is missing from the family hangs off the root. */
-export function agentTree(input: {
-  readonly family: ReadonlyArray<FamilyRow>;
-  readonly orchestratorThreadId: string;
-  readonly driverOf: (instanceId: string) => string | null;
-}): ReadonlyArray<AgentNode> {
-  const rows = input.family.filter((row) => row.id !== input.orchestratorThreadId);
-  const present = new Set<string>(rows.map((row) => row.id));
-  const childrenOf = new Map<string, FamilyRow[]>();
-  for (const row of rows) {
-    const parent = row.lineage.parentThreadId;
-    const key = parent !== null && present.has(parent) ? parent : input.orchestratorThreadId;
-    childrenOf.set(key, [...(childrenOf.get(key) ?? []), row]);
-  }
-  const build = (row: FamilyRow, seen: ReadonlySet<string>): AgentNode => {
-    const children = (childrenOf.get(row.id) ?? [])
-      .filter((child) => !seen.has(child.id))
-      .map((child) => build(child, new Set(seen).add(child.id)));
-    return {
-      agent: agentOf(row, input.driverOf, null),
-      children,
-      working: children.filter((child) => child.agent.runState === "working").length,
-    };
-  };
-  return (childrenOf.get(input.orchestratorThreadId) ?? []).map((row) =>
-    build(row, new Set([row.id])),
-  );
 }

@@ -11,7 +11,6 @@ import {
 } from "../state/boards";
 import type { ValidBoard } from "../store/boardFiles";
 import { Tooltip } from "../ui/Tooltip";
-import { BoardAgents } from "./AgentTree";
 import { PillRow } from "./PillRow";
 import { SidebarRow } from "./SidebarRow";
 
@@ -110,9 +109,6 @@ export function BoardList({ project }: { project: EnvironmentProject }) {
                 </Tooltip>
               }
             />
-            {listed.board.orchestratorThreadId !== null && (
-              <BoardAgents project={project} listed={listed} depth={1} />
-            )}
           </div>
         );
       })}

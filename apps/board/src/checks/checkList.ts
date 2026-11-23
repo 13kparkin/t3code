@@ -10,7 +10,7 @@ const TIER = {
   neutral: 2,
 } satisfies Record<CheckStatus, number>;
 
-/** The list as the Checks tab shows it. A required check leads its group, and the placeholder for checks the host could not list goes last. */
+/** The list as the Checks section shows it. A required check leads its group, and the placeholder for checks the host could not list goes last. */
 export function sortChecks(checks: ReadonlyArray<CheckRun>): ReadonlyArray<CheckRun> {
   const rank = (check: CheckRun) =>
     check.placeholder ? 99 : TIER[check.status] * 2 + (check.required ? 0 : 1);

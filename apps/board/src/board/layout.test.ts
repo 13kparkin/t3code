@@ -3,12 +3,11 @@ import { describe, expect, it } from "vite-plus/test";
 import type { Ticket } from "../domain/ticket";
 import type { AgentView, BoardModel, TicketView } from "../state/boardModel";
 import {
-  artifactsHeight,
   clampDrag,
   edgePath,
   FRAME_WIDTH,
-  frameHeight,
-  headHeight,
+  CARD_HEIGHT,
+  FRAME_GAP,
   LANE_GAP,
   LANE_HEAD,
   LANE_PAD,
@@ -33,6 +32,7 @@ const agent = (threadId: string): AgentView => ({
   branch: null,
   parentThreadId: null,
   round: null,
+  updatedAt: "2026-11-20T10:00:00.000Z",
 });
 
 const view = (ticket: Ticket, agents = 0): TicketView => ({
@@ -78,39 +78,22 @@ describe("laying out the lanes", () => {
       "pr",
       "awaiting_approval",
       "merged",
-      "off_path",
     ]);
     const building = lane("building");
     expect(building?.x).toBe(40 + 3 * (LANE_WIDTH + LANE_GAP));
     expect(building?.frames.map((frame) => [frame.key, frame.x, frame.y])).toEqual([
       ["T-1", building!.x + LANE_PAD, LANES_TOP + LANE_HEAD],
-      [
-        "T-2",
-        building!.x + LANE_PAD,
-        LANES_TOP + LANE_HEAD + frameHeight(headHeight(model.lanes.building[0]!.ticket), 2) + 12,
-      ],
+      ["T-2", building!.x + LANE_PAD, LANES_TOP + LANE_HEAD + CARD_HEIGHT + FRAME_GAP],
     ]);
     expect(building?.frames[0]?.width).toBe(FRAME_WIDTH);
   });
 
-  it("Given a ticket with open artifact cards, when laid out, then its frame grows by the cards and the frame below moves down", () => {
-    const open = layoutBoard(model, {}, 0, { "T-1": 3 });
-    const frame = (laid: typeof layout, key: string) =>
-      laid.lanes.flatMap((entry) => entry.frames).find((box) => box.key === key);
-    const grown = artifactsHeight(3);
-    expect(frame(open, "T-1")?.height).toBe((frame(layout, "T-1")?.height ?? 0) + grown);
-    expect(frame(open, "T-2")?.y).toBe((frame(layout, "T-2")?.y ?? 0) + grown);
-  });
-
-  it("Given bare tickets, when their heads are measured, then steps or a missing plan add the chip row", () => {
-    const bare = headHeight({ key: "T-9", title: "a", stage: "todo" });
-    const unplanned = headHeight({ key: "T-9", title: "a", stage: "planned" });
-    const stepped = { key: "T-9", title: "a", playbook: "feature.md" } as const;
-    expect(unplanned).toBeGreaterThan(bare);
-    expect(
-      headHeight({ ...stepped, stage: "todo", steps: [{ text: "x", state: "pending" }] }),
-    ).toBe(unplanned);
-    expect(headHeight({ ...stepped, stage: "off_path" })).toBe(bare);
+  it("Given a hidden lane, when laid out, then it is left out and the lanes after it pack left", () => {
+    const hidden = layoutBoard(model, {}, 0, new Set(["todo", "planned"]));
+    expect(hidden.lanes.map((entry) => entry.id)).not.toContain("planned");
+    expect(hidden.lanes.find((entry) => entry.id === "building")?.x).toBe(
+      40 + 1 * (LANE_WIDTH + LANE_GAP),
+    );
   });
 
   it("Given a dependency on a ticket that exists and one that does not, when laid out, then only the first has an edge", () => {
@@ -147,8 +130,8 @@ describe("dragging a frame", () => {
   if (first === undefined) throw new Error("the building lane has no frame");
 
   it("Given a frame dragged past its neighbor's center, when dropped, then it takes the neighbor's place", () => {
-    expect(reorderByDrag(building, "T-1", first.height)).toEqual(["T-2", "T-1"]);
-    expect(reorderByDrag(building, "T-2", -first.height)).toEqual(["T-2", "T-1"]);
+    expect(reorderByDrag(building, "T-1", first.height + FRAME_GAP + 1)).toEqual(["T-2", "T-1"]);
+    expect(reorderByDrag(building, "T-2", -first.height - FRAME_GAP - 1)).toEqual(["T-2", "T-1"]);
   });
 
   it("Given a short drag, when dropped, then the order stays", () => {
@@ -164,7 +147,7 @@ describe("dragging a frame", () => {
 });
 
 describe("dependency edges", () => {
-  const box = (x: number, y: number) => ({ key: "k", head: 100, x, y, width: 264, height: 100 });
+  const box = (x: number, y: number) => ({ key: "k", x, y, width: 264, height: CARD_HEIGHT });
 
   const endpoints = (path: string) => {
     const numbers = path.match(/-?\d+(\.\d+)?/g)?.map(Number) ?? [];
@@ -173,19 +156,19 @@ describe("dependency edges", () => {
 
   it("Given a dependent in a later lane, when drawn, then the curve runs from the right edge to the left edge", () => {
     expect(endpoints(edgePath(box(0, 0), box(300, 200)))).toEqual({
-      from: [264, 24],
-      to: [300, 224],
+      from: [264, 26],
+      to: [300, 226],
     });
   });
 
   it("Given a dependent in an earlier lane, when drawn, then it runs from the left edge to the right edge", () => {
     expect(endpoints(edgePath(box(300, 0), box(0, 200)))).toEqual({
-      from: [300, 24],
-      to: [264, 224],
+      from: [300, 26],
+      to: [264, 226],
     });
   });
 
   it("Given two frames in one lane, when drawn, then the curve joins their left edges", () => {
-    expect(endpoints(edgePath(box(0, 0), box(0, 200)))).toEqual({ from: [0, 24], to: [0, 224] });
+    expect(endpoints(edgePath(box(0, 0), box(0, 200)))).toEqual({ from: [0, 26], to: [0, 226] });
   });
 });

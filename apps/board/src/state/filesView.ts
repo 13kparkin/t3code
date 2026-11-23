@@ -1,7 +1,5 @@
 import { Atom, type AtomRegistry } from "effect/reactivity";
 
-import { checksPickAtom } from "./checksView";
-
 /** What a diff tab compares: the working tree against HEAD, the branch against its base, or one commit. */
 export type DiffSource =
   | { readonly kind: "working-tree" }
@@ -20,8 +18,8 @@ export interface FileRef {
   readonly diff?: DiffSource;
 }
 
-/** Which browser tab the main view shows: a page, or the agents' tabs. */
-export type Surface = "page" | "agents";
+/** Which tab other than a file covers the canvas: a browser page, the agents' tabs, or the chosen ticket's details. */
+export type Surface = "page" | "agents" | "ticket";
 
 /** The explorer's root, the files open as tabs beside the board, and which tab the main view shows. */
 export interface FilesViewState {
@@ -30,8 +28,10 @@ export interface FilesViewState {
   readonly tabs: ReadonlyArray<FileRef>;
   /** The file tab shown in place of the board's canvas, or null while the canvas or a browser tab shows. */
   readonly active: FileRef | null;
-  /** The browser tab shown in place of the canvas, or null while the canvas or a file shows. */
+  /** The tab shown in place of the canvas, or null while the canvas or a file shows. */
   readonly surface: Surface | null;
+  /** Whether the ticket's full-page tab is open. */
+  readonly ticket: boolean;
 }
 
 export const filesViewAtom = Atom.make<FilesViewState>({
@@ -39,6 +39,7 @@ export const filesViewAtom = Atom.make<FilesViewState>({
   tabs: [],
   active: null,
   surface: null,
+  ticket: false,
 }).pipe(Atom.keepAlive, Atom.withLabel("files-view"));
 
 /** The identity of a tab: a line request does not make a second tab, and a diff is not the file it shows. */
@@ -52,11 +53,9 @@ const change = (
   next: (state: FilesViewState) => FilesViewState,
 ) => registry.set(filesViewAtom, next(registry.get(filesViewAtom)));
 
-/** Browses another root. The Checks tab follows the root, so a ticket picked there no longer applies. */
-export function chooseRoot(registry: AtomRegistry.AtomRegistry, root: string) {
-  registry.set(checksPickAtom, null);
+/** Browses another root in the explorer. */
+export const chooseRoot = (registry: AtomRegistry.AtomRegistry, root: string) =>
   change(registry, (state) => ({ ...state, root }));
-}
 
 /** Opens a file or a diff as a tab, or shows the tab it already has, at the line it names. */
 export function openFile(registry: AtomRegistry.AtomRegistry, file: FileRef) {
@@ -82,6 +81,17 @@ export const showFile = (registry: AtomRegistry.AtomRegistry, file: FileRef) =>
 
 export const showSurface = (registry: AtomRegistry.AtomRegistry, surface: Surface) =>
   change(registry, (state) => ({ ...state, active: null, surface }));
+
+export const openTicketPage = (registry: AtomRegistry.AtomRegistry) =>
+  change(registry, (state) => ({ ...state, ticket: true, active: null, surface: "ticket" }));
+
+/** Closing it while it shows returns to the canvas. */
+export const closeTicketPage = (registry: AtomRegistry.AtomRegistry) =>
+  change(registry, (state) =>
+    state.surface === "ticket"
+      ? { ...state, ticket: false, active: null, surface: null }
+      : { ...state, ticket: false },
+  );
 
 /** Closes a tab. Closing the one shown moves to the tab before it, or back to the canvas. */
 export const closeFile = (registry: AtomRegistry.AtomRegistry, file: FileRef) =>

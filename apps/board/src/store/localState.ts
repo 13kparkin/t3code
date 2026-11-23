@@ -13,6 +13,8 @@ const LocalState = Schema.Struct({
     Schema.String,
     Schema.Record(Schema.String, Schema.Array(Schema.String)),
   ).pipe(Schema.withDecodingDefaultKey(Effect.succeed({}))),
+  /** The lanes the user hid, `lane:<board id>:<lane>`, and the ticket sections they collapsed, `sec:<id>`. */
+  folded: Schema.Array(Schema.String).pipe(Schema.withDecodingDefaultKey(Effect.succeed([]))),
   /** Whether the app installs engine and provider updates itself. Both start off. */
   autoUpdate: Schema.Struct({ engine: Schema.Boolean, providers: Schema.Boolean }).pipe(
     Schema.withDecodingDefaultKey(Effect.succeed({ engine: false, providers: false })),
@@ -42,6 +44,7 @@ export type LocalState = typeof LocalState.Type;
 export const EMPTY_LOCAL_STATE: LocalState = {
   lastOpenedBoard: null,
   frameOrder: {},
+  folded: [],
   autoUpdate: { engine: false, providers: false },
   appPrereleases: false,
   announcedUpdates: {},

@@ -2,28 +2,25 @@ import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { ThreadId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
-import { ListChecks, Plus } from "lucide-react";
+import { Eye, ListChecks, Paperclip, Plus } from "lucide-react";
 import { useContext, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { BOARD_KEY, useArtifacts } from "../artifacts/ArtifactsContext";
+import { chooseTicket } from "../browser/panel";
+import { useArtifacts } from "../artifacts/ArtifactsContext";
 import { isRunLive } from "../chat/timeline";
 import { pickTemplate, SYSTEM_TEMPLATE } from "../domain/reviewTemplate";
-import { STAGE_LABEL, TICKET_STAGES } from "../domain/ticket";
+import { STAGE_LABEL, TICKET_STAGES, type Ticket } from "../domain/ticket";
 import { AddFromIssue } from "../issues/AddFromIssue";
 import type { OrchestratorStats } from "../orchestrator/brief";
 import { baseInstanceId } from "../orchestrator/orchestratorInstance";
+import { laneKey, toggleFolded } from "../state/boardUi";
 import { reviewTemplatesAtom, setBoardReviewTemplate, usageNoticeAtom } from "../state/reviews";
 import { useEnvironmentThread } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
 import { PopMenu } from "../ui/PopMenu";
-import { ArtifactCards } from "./ArtifactCards";
-import { ArtifactCount } from "./ArtifactCount";
 import { BuilderCap } from "./BuilderCap";
-import { ORCHESTRATOR_BOX } from "./layout";
-
-/** Cards stack in columns this tall, which is as many as fit beside the card. */
-const ARTIFACT_ROWS = 5;
+import { LANE_IDS, LANE_LABEL, type LaneId, ORCHESTRATOR_BOX } from "./layout";
 
 /** Mounts the board's usage watch, which messages the orchestrator when a usage window passes a level. */
 function UsageWatch({ instanceId, threadId }: { instanceId: string; threadId: string }) {
@@ -37,11 +34,16 @@ export function OrchestratorCard({
   listed,
   stats,
   builders,
+  offPath,
+  hidden,
 }: {
   project: EnvironmentProject;
   listed: ValidBoard;
   stats: OrchestratorStats;
   builders: number;
+  /** Tickets with no lane on the canvas. */
+  offPath: ReadonlyArray<Ticket>;
+  hidden: ReadonlySet<LaneId>;
 }) {
   const { board } = listed;
   // The panel holds the same thread open, so this adds no second subscription.
@@ -51,7 +53,7 @@ export function OrchestratorCard({
       board.orchestratorThreadId === null ? null : ThreadId.make(board.orchestratorThreadId),
     ).data,
   );
-  const { groups, expanded } = useArtifacts();
+  const { groups, open } = useArtifacts();
   const [adding, setAdding] = useState(false);
   const registry = useContext(RegistryContext);
   const custom = useAtomValue(reviewTemplatesAtom);
@@ -112,6 +114,24 @@ export function OrchestratorCard({
             }))}
           />
         </div>
+        <div onPointerDown={(event) => event.stopPropagation()}>
+          <PopMenu
+            label="Lanes"
+            align="start"
+            triggerClass="inline-flex shrink-0 items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-5 text-muted hover:bg-hover hover:text-fg"
+            trigger={
+              <>
+                <Eye className="size-3" aria-hidden />
+                {hidden.size > 0 ? `${hidden.size} hidden` : "Lanes"}
+              </>
+            }
+            items={LANE_IDS.map((id) => ({
+              label: LANE_LABEL[id],
+              hint: hidden.has(id) ? "Hidden" : "Shown",
+              onSelect: () => void toggleFolded(registry, laneKey(board.id, id)),
+            }))}
+          />
+        </div>
         <span data-testid="card-status" className="text-[11px] text-muted">
           {status}
         </span>
@@ -122,7 +142,23 @@ export function OrchestratorCard({
           <div key={stage} className="min-w-0">
             <dt className="text-[10px] leading-tight text-faint">{STAGE_LABEL[stage]}</dt>
             <dd className={stats.stages[stage] === 0 ? "text-faint" : "text-fg"}>
-              {stats.stages[stage]}
+              {stage === "off_path" && offPath.length > 0 ? (
+                <span onPointerDown={(event) => event.stopPropagation()}>
+                  <PopMenu
+                    label="Off path tickets"
+                    align="start"
+                    triggerClass="text-fg underline decoration-dotted hover:text-accent"
+                    trigger={stats.stages[stage]}
+                    items={offPath.map((ticket) => ({
+                      label: `${ticket.key} ${ticket.title}`,
+                      onSelect: () =>
+                        chooseTicket(registry, { threadId: null, ticketKey: ticket.key }),
+                    }))}
+                  />
+                </span>
+              ) : (
+                stats.stages[stage]
+              )}
             </dd>
           </div>
         ))}
@@ -152,7 +188,29 @@ export function OrchestratorCard({
           </span>
         </span>
         <span className="inline-flex items-center gap-1 text-muted">
-          Artifacts <ArtifactCount id={BOARD_KEY} count={groups.board.length} />
+          Artifacts{" "}
+          {groups.board.length === 0 ? (
+            <span className="inline-flex items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-[18px] text-muted opacity-60">
+              <Paperclip className="size-3" aria-hidden />0
+            </span>
+          ) : (
+            <span onPointerDown={(event) => event.stopPropagation()}>
+              <PopMenu
+                label={`${groups.board.length} board artifacts`}
+                triggerClass="inline-flex items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-[18px] text-muted hover:bg-hover hover:text-fg"
+                trigger={
+                  <>
+                    <Paperclip className="size-3" aria-hidden />
+                    {groups.board.length}
+                  </>
+                }
+                items={groups.board.map((artifact) => ({
+                  label: artifact.name,
+                  onSelect: () => open(artifact),
+                }))}
+              />
+            </span>
+          )}
         </span>
         <span className="text-muted">
           Builders <BuilderCap project={project} listed={listed} builders={builders} />
@@ -173,11 +231,6 @@ export function OrchestratorCard({
           {problem}
         </p>
       ))}
-      {expanded.has(BOARD_KEY) && groups.board.length > 0 && (
-        <div className="absolute top-0" style={{ left: "calc(100% + 16px)" }}>
-          <ArtifactCards artifacts={groups.board} rows={ARTIFACT_ROWS} />
-        </div>
-      )}
       {board.orchestratorThreadId !== null && projection !== null && (
         <UsageWatch
           instanceId={projection.thread.modelSelection.instanceId}
