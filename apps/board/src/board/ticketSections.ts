@@ -26,10 +26,10 @@ export const TICKET_SECTIONS: ReadonlyArray<TicketSection> = [
   {
     id: "summary",
     title: "Summary",
-    shows: ({ view }) => view.ticket.summary != null,
+    shows: () => true,
     Body: TicketSummary,
   },
-  { id: "why", title: "Why", shows: ({ view }) => view.ticket.why != null, Body: TicketWhy },
+  { id: "why", title: "Why", shows: () => true, Body: TicketWhy },
   {
     id: "steps",
     title: "Steps",
