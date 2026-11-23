@@ -45,7 +45,8 @@ import { engineProvidersAtom, serverEnvironment } from "../state/server";
 import { recordDocs, uploadAttachments } from "../state/attachmentUploads";
 import { interruptTurn, startTurn } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
-import { attachmentInputs } from "./attachments";
+import { attachmentInputs, pastedFiles } from "./attachments";
+import { AttachmentThumb } from "./AttachmentThumb";
 import { ModelPicker } from "./ModelPicker";
 import {
   detectSlashTrigger,
@@ -417,6 +418,7 @@ export function Composer({
                 ref={markShown}
                 className="flex max-w-full items-center gap-1 rounded-md border border-line bg-hover px-1.5 text-[11px] leading-5 text-fg"
               >
+                <AttachmentThumb file={file} />
                 <span className="min-w-0 truncate">{file.name}</span>
                 <button
                   type="button"
@@ -437,6 +439,15 @@ export function Composer({
             onChange={(event) => edit(event.target.value, event.target.selectionStart)}
             onSelect={(event) => setCursor(event.currentTarget.selectionStart)}
             onKeyDown={onKeyDown}
+            onPaste={(event) => {
+              const pasted = pastedFiles(
+                Array.from(event.clipboardData.files),
+                event.clipboardData.getData("text/plain"),
+              );
+              if (pasted.length === 0) return;
+              event.preventDefault();
+              addFiles(pasted);
+            }}
             rows={2}
             placeholder="Message the orchestrator"
             aria-label="Message the orchestrator"
