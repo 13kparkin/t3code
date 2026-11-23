@@ -1,10 +1,11 @@
 import { RegistryContext } from "@effect/atom-react";
+import { EyeOff } from "lucide-react";
 import { type ReactNode, useContext, useState } from "react";
 
-import { STAGE_LABEL } from "../domain/ticket";
 import type { BoardModel } from "../state/boardModel";
 import type { TicketChoice } from "../browser/panel";
-import { saveFrameOrder } from "../state/boardUi";
+import { laneKey, saveFrameOrder, toggleFolded } from "../state/boardUi";
+import { Tooltip } from "../ui/Tooltip";
 import { ago } from "../ui/ago";
 import { CardLine } from "./CardLine";
 import {
@@ -15,6 +16,7 @@ import {
   type LaneId,
   type Layout,
   LANE_HEAD,
+  LANE_LABEL,
   reorderByDrag,
   UNASSIGNED_HEAD,
   UNASSIGNED_KEY,
@@ -24,12 +26,6 @@ import {
 } from "./layout";
 import { TicketFrame } from "./TicketFrame";
 import { ticketStatus } from "./ticketStatus";
-
-const LABEL = {
-  for_you: "For you",
-  ...STAGE_LABEL,
-  unassigned: "Unassigned",
-} as const satisfies Record<LaneId, string>;
 
 const LANE_TONE = {
   for_you: "bg-amber-500 text-black",
@@ -124,7 +120,7 @@ export function Lanes({
       {layout.lanes.map((lane) => (
         <section
           key={lane.id}
-          aria-label={`${LABEL[lane.id]} lane`}
+          aria-label={`${LANE_LABEL[lane.id]} lane`}
           data-testid="lane"
           data-lane={lane.id}
           className="absolute rounded-xl border border-dashed border-line"
@@ -140,10 +136,23 @@ export function Lanes({
             <span
               className={`rounded-md px-2 text-[11px] leading-5 font-semibold ${LANE_TONE[lane.id]}`}
             >
-              {LABEL[lane.id]}
+              {LANE_LABEL[lane.id]}
               {lane.id === "planned" && queued ? " · queued" : ""}
             </span>
             <span className="text-[11px] text-faint">{laneCount(lane, model, forYouOpen)}</span>
+            <span className="flex-1" />
+            <Tooltip text="Hide lane" side="bottom" align="end">
+              <button
+                type="button"
+                aria-label={`Hide the ${LANE_LABEL[lane.id]} lane`}
+                // A press here is a click, not the start of a pan.
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => void toggleFolded(registry, laneKey(boardId, lane.id))}
+                className="grid size-5 place-items-center rounded text-faint hover:bg-hover hover:text-fg"
+              >
+                <EyeOff className="size-3" aria-hidden />
+              </button>
+            </Tooltip>
           </header>
           {lane.id === "for_you" && forYouLane}
         </section>

@@ -2,7 +2,7 @@ import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { ThreadId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
-import { ListChecks, Paperclip, Plus } from "lucide-react";
+import { Eye, ListChecks, Paperclip, Plus } from "lucide-react";
 import { useContext, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -14,12 +14,13 @@ import { STAGE_LABEL, TICKET_STAGES, type Ticket } from "../domain/ticket";
 import { AddFromIssue } from "../issues/AddFromIssue";
 import type { OrchestratorStats } from "../orchestrator/brief";
 import { baseInstanceId } from "../orchestrator/orchestratorInstance";
+import { foldedAtom, laneKey, toggleFolded } from "../state/boardUi";
 import { reviewTemplatesAtom, setBoardReviewTemplate, usageNoticeAtom } from "../state/reviews";
 import { useEnvironmentThread } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
 import { PopMenu } from "../ui/PopMenu";
 import { BuilderCap } from "./BuilderCap";
-import { ORCHESTRATOR_BOX } from "./layout";
+import { LANE_IDS, LANE_LABEL, ORCHESTRATOR_BOX } from "./layout";
 
 /** Mounts the board's usage watch, which messages the orchestrator when a usage window passes a level. */
 function UsageWatch({ instanceId, threadId }: { instanceId: string; threadId: string }) {
@@ -54,6 +55,8 @@ export function OrchestratorCard({
   const [adding, setAdding] = useState(false);
   const registry = useContext(RegistryContext);
   const custom = useAtomValue(reviewTemplatesAtom);
+  const folded = useAtomValue(foldedAtom);
+  const hiddenLanes = LANE_IDS.filter((id) => folded.has(laneKey(board.id, id))).length;
   const [pickError, setPickError] = useState<string | null>(null);
   const picked = pickTemplate(board.reviewTemplate, custom);
   const docs = board.docs ?? [];
@@ -108,6 +111,24 @@ export function OrchestratorCard({
                   template === SYSTEM_TEMPLATE ? undefined : template.name,
                 ).then(setPickError);
               },
+            }))}
+          />
+        </div>
+        <div onPointerDown={(event) => event.stopPropagation()}>
+          <PopMenu
+            label="Lanes"
+            align="start"
+            triggerClass="inline-flex shrink-0 items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-5 text-muted hover:bg-hover hover:text-fg"
+            trigger={
+              <>
+                <Eye className="size-3" aria-hidden />
+                {hiddenLanes > 0 ? `${hiddenLanes} hidden` : "Lanes"}
+              </>
+            }
+            items={LANE_IDS.map((id) => ({
+              label: LANE_LABEL[id],
+              hint: folded.has(laneKey(board.id, id)) ? "Hidden" : "Shown",
+              onSelect: () => void toggleFolded(registry, laneKey(board.id, id)),
             }))}
           />
         </div>

@@ -1,5 +1,5 @@
 import type { CardView } from "../domain/forYou";
-import { TICKET_STAGES, type TicketStage } from "../domain/ticket";
+import { STAGE_LABEL, TICKET_STAGES, type TicketStage } from "../domain/ticket";
 import type { BoardModel } from "../state/boardModel";
 import type { FrameOrder } from "../state/boardUi";
 import type { Rect } from "./viewport";
@@ -11,6 +11,12 @@ export const LANE_IDS: ReadonlyArray<LaneId> = [
   ...TICKET_STAGES.filter((stage) => stage !== "off_path"),
   "unassigned",
 ];
+
+export const LANE_LABEL = {
+  for_you: "For you",
+  ...STAGE_LABEL,
+  unassigned: "Unassigned",
+} as const satisfies Record<LaneId, string>;
 
 /** The key of the one frame that holds the agents no ticket claims. */
 export const UNASSIGNED_KEY = "__unassigned";
@@ -92,14 +98,22 @@ export function forYouHeight(views: ReadonlyArray<CardView>): number {
   return views.reduce((sum, view) => sum + height(view) + CARD_GAP, FOR_YOU_NOTE);
 }
 
-/** Stacks each lane's frames in its column, and adds one edge for each `dependsOn` between two tickets. */
-export function layoutBoard(model: BoardModel, order: FrameOrder, forYouRows = 0): Layout {
+const NO_HIDDEN: ReadonlySet<LaneId> = new Set();
+
+/** Stacks each shown lane's frames in its column, and adds one edge for each `dependsOn` between two tickets. Later lanes pack left over hidden ones. */
+export function layoutBoard(
+  model: BoardModel,
+  order: FrameOrder,
+  forYouRows = 0,
+  hidden: ReadonlySet<LaneId> = NO_HIDDEN,
+): Layout {
   const lanes: LaneBox[] = [];
   const edges: Edge[] = [];
   const known = new Set(
     Object.values(model.lanes).flatMap((lane) => lane.map((v) => v.ticket.key)),
   );
   LANE_IDS.forEach((id) => {
+    if (hidden.has(id)) return;
     const x = LEFT + lanes.length * (LANE_WIDTH + LANE_GAP);
     const items: Array<{ key: string; height: number }> = [];
     if (id === "unassigned") {

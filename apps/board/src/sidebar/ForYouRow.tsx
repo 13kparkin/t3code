@@ -5,6 +5,7 @@ import { useContext } from "react";
 import type { BoardOpenItems } from "../domain/forYou";
 import { focusedCardAtom, forYouBoardsAtom } from "../state/forYou";
 import { openBoard } from "../state/boards";
+import { laneKey, setFolded } from "../state/boardUi";
 import { SidebarRow } from "./SidebarRow";
 
 /** Opens the board that holds the item and marks the item's card there. */
@@ -14,6 +15,7 @@ export function showForYouCard(
   cardId: string,
 ) {
   void openBoard(registry, { projectId: board.projectId, folder: board.folder });
+  void setFolded(registry, laneKey(board.boardId, "for_you"), false);
   registry.set(focusedCardAtom, { boardId: board.boardId, cardId });
 }
 

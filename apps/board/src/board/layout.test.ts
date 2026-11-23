@@ -88,6 +88,14 @@ describe("laying out the lanes", () => {
     expect(building?.frames[0]?.width).toBe(FRAME_WIDTH);
   });
 
+  it("Given a hidden lane, when laid out, then it is left out and the lanes after it pack left", () => {
+    const hidden = layoutBoard(model, {}, 0, new Set(["todo", "planned"]));
+    expect(hidden.lanes.map((entry) => entry.id)).not.toContain("planned");
+    expect(hidden.lanes.find((entry) => entry.id === "building")?.x).toBe(
+      40 + 1 * (LANE_WIDTH + LANE_GAP),
+    );
+  });
+
   it("Given a dependency on a ticket that exists and one that does not, when laid out, then only the first has an edge", () => {
     expect(layout.edges).toEqual([
       { from: "T-1", to: "T-3" },

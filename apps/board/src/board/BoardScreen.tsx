@@ -17,7 +17,7 @@ import { OrchestratorPanel } from "../chat/OrchestratorPanel";
 import { ChecksPanel } from "../checks/ChecksPanel";
 import { MainTabs } from "../files/MainTabs";
 import { mergeTicketKey } from "../domain/readiness";
-import { frameOrderAtom } from "../state/boardUi";
+import { foldedAtom, frameOrderAtom, laneKey } from "../state/boardUi";
 import { useThreadFamily } from "../state/family";
 import { PrProvider } from "../state/prStatus";
 import { focusedCardAtom, useBoardForYou } from "../state/forYou";
@@ -28,7 +28,7 @@ import { keptWorktreesAtom } from "../state/mergeCleanup";
 import type { ValidBoard } from "../store/boardFiles";
 import { ForYouLane } from "./ForYouLane";
 import { Lanes } from "./Lanes";
-import { forYouHeight, layoutBoard } from "./layout";
+import { forYouHeight, LANE_IDS, layoutBoard } from "./layout";
 import { OrchestratorCard } from "./OrchestratorCard";
 import { TicketPanel } from "./TicketPanel";
 import { Viewport } from "./Viewport";
@@ -50,9 +50,14 @@ export function BoardScreen({
   const order = useAtomValue(frameOrderAtom)[board.id] ?? NO_ORDER;
   const forYou = useBoardForYou(project, listed);
   const artifacts = useBoardArtifacts(project, listed, model);
+  const folded = useAtomValue(foldedAtom);
+  const hidden = useMemo(
+    () => new Set(LANE_IDS.filter((id) => folded.has(laneKey(board.id, id)))),
+    [folded, board.id],
+  );
   const layout = useMemo(
-    () => layoutBoard(model, order, forYouHeight(forYou.views)),
-    [model, order, forYou.views],
+    () => layoutBoard(model, order, forYouHeight(forYou.views), hidden),
+    [model, order, forYou.views, hidden],
   );
   const family = useThreadFamily(project.environmentId, board.orchestratorThreadId);
   const builders = useMemo(() => countImplementationAgents(model), [model]);
