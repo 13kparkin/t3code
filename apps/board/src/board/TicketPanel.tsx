@@ -1,19 +1,17 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentId } from "@t3tools/contracts";
-import { useContext } from "react";
+import { useContext, useState } from "react";
 
-import { chooseTicket, markTicketPainted, ticketChoiceAtom } from "../browser/panel";
 import { useArtifacts } from "../artifacts/ArtifactsContext";
+import { chooseTicket, markTicketPainted, ticketChoiceAtom } from "../browser/panel";
 import { EmptyFiles } from "../files/EmptyFiles";
 import { NO_ARTIFACTS } from "../state/artifacts";
 import type { BoardModel } from "../state/boardModel";
-import { AgentCard } from "./AgentCard";
 import { AgentLog } from "./AgentLog";
-import { ArtifactCards } from "./ArtifactCards";
-import { PrChecks } from "./PrChecks";
+import { SectionBar } from "./SectionBar";
 import { TicketMeta } from "./TicketMeta";
-import { TicketReadiness } from "./TicketReadiness";
-import { TicketSteps } from "./TicketSteps";
+import { TicketSection } from "./TicketSection";
+import { TICKET_SECTIONS } from "./ticketSections";
 
 const STATE_LABEL = {
   working: "Working",
@@ -23,7 +21,7 @@ const STATE_LABEL = {
   stopped: "Stopped",
 } as const;
 
-/** The Ticket tab: a ticket's summary and why, and the log of the agent chosen on its frame or in the sidebar. The board's screen draws it into the panel. */
+/** The Ticket tab: a ticket's details as collapsible sections, or the log of an agent no ticket claims. The board's screen draws it into the panel. */
 export function TicketPanel({
   environmentId,
   model,
@@ -34,6 +32,12 @@ export function TicketPanel({
   const registry = useContext(RegistryContext);
   const choice = useAtomValue(ticketChoiceAtom);
   const { groups } = useArtifacts();
+  const [folded, setFolded] = useState<ReadonlySet<string>>(new Set());
+  const toggle = (id: string) => {
+    const next = new Set(folded);
+    if (!next.delete(id)) next.add(id);
+    setFolded(next);
+  };
   // A new function each render, so the frame after every render marks a pending open as painted.
   const markPainted = (element: HTMLElement | null) => {
     if (element !== null) requestAnimationFrame(() => markTicketPainted());
@@ -61,12 +65,24 @@ export function TicketPanel({
       </div>
     );
   }
-  const ticket = view?.ticket;
+  const props =
+    view === undefined
+      ? null
+      : {
+          environmentId,
+          view,
+          agent,
+          artifacts: groups.byTicket.get(view.ticket.key) ?? NO_ARTIFACTS,
+        };
+  const sections = props === null ? [] : TICKET_SECTIONS.filter((section) => section.shows(props));
+  const open = sections.filter((section) => !folded.has(section.id));
+  const bars = sections.filter((section) => folded.has(section.id));
+  const filler = open.find((section) => section.fill === true);
   return (
     <div ref={markPainted} className="flex min-h-0 flex-1 flex-col">
-      <header className="border-b border-line px-3 py-2.5">
+      <header className="shrink-0 border-b border-line px-3 py-2.5">
         <h3 className="truncate font-semibold">
-          {ticket === undefined ? "Unassigned" : `${ticket.key} ${ticket.title}`}
+          {view === undefined ? "Unassigned" : `${view.ticket.key} ${view.ticket.title}`}
         </h3>
         {view !== undefined && (
           <TicketMeta
@@ -82,53 +98,36 @@ export function TicketPanel({
           </p>
         )}
       </header>
-      {ticket !== undefined && (
-        <dl className="space-y-1 border-b border-line px-3 py-2 text-[12px]">
-          <div>
-            <dt className="text-[10px] text-faint uppercase">Summary</dt>
-            <dd data-testid="ticket-summary" className="break-words text-fg">
-              {ticket.summary ?? "No summary yet"}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-[10px] text-faint uppercase">Why</dt>
-            <dd data-testid="ticket-why" className="break-words text-fg">
-              {ticket.why ?? "No reason yet"}
-            </dd>
-          </div>
-        </dl>
-      )}
-      {view !== undefined && (
-        <div className="max-h-[50%] shrink-0 overflow-y-auto">
-          <TicketSteps view={view} />
-          <PrChecks view={view} />
-          <TicketReadiness view={view} />
-          {view.agents.length > 0 && (
-            <div className="flex flex-col gap-1.5 border-b border-line px-3 py-2">
-              {view.agents.map((entry) => (
-                <AgentCard
-                  key={entry.threadId}
-                  agent={entry}
-                  ticket={view.ticket}
-                  selected={entry.threadId === choice?.threadId}
-                  onOpen={() =>
-                    chooseTicket(registry, { threadId: entry.threadId, ticketKey: view.ticket.key })
-                  }
-                />
-              ))}
-            </div>
-          )}
-          {(groups.byTicket.get(view.ticket.key) ?? NO_ARTIFACTS).length > 0 && (
-            <div className="border-b border-line px-3 py-2">
-              <ArtifactCards artifacts={groups.byTicket.get(view.ticket.key) ?? NO_ARTIFACTS} />
-            </div>
-          )}
-        </div>
-      )}
-      {agent === null ? (
-        <p className="px-3 py-3 text-faint">Select an agent card to read its thread.</p>
+      {props === null ? (
+        agent !== null && (
+          <AgentLog key={agent.threadId} environmentId={environmentId} agent={agent} />
+        )
       ) : (
-        <AgentLog key={agent.threadId} environmentId={environmentId} agent={agent} />
+        <>
+          <div
+            className={`overflow-y-auto ${filler === undefined ? "min-h-0 flex-1" : "max-h-[50%] shrink-0"}`}
+          >
+            {open
+              .filter((section) => section !== filler)
+              .map(({ id, title, Body }) => (
+                <TicketSection key={id} title={title} fill={false} onCollapse={() => toggle(id)}>
+                  <Body {...props} />
+                </TicketSection>
+              ))}
+          </div>
+          {filler !== undefined && (
+            <TicketSection title={filler.title} fill onCollapse={() => toggle(filler.id)}>
+              <filler.Body {...props} />
+            </TicketSection>
+          )}
+        </>
+      )}
+      {bars.length > 0 && (
+        <footer className="shrink-0">
+          {bars.map(({ id, title }) => (
+            <SectionBar key={id} title={title} onExpand={() => toggle(id)} />
+          ))}
+        </footer>
       )}
     </div>
   );

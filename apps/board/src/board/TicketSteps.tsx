@@ -1,7 +1,7 @@
 import { Check, Circle, type LucideIcon, SkipForward } from "lucide-react";
 
 import { stepProgress, type TicketStep } from "../domain/ticket";
-import type { TicketView } from "../state/boardModel";
+import type { SectionProps } from "./sectionProps";
 
 const STEP_ICON = {
   done: { Icon: Check, tone: "text-emerald-400", label: "Done" },
@@ -9,15 +9,14 @@ const STEP_ICON = {
   skipped: { Icon: SkipForward, tone: "text-amber-400", label: "Skipped" },
 } as const satisfies Record<TicketStep["state"], { Icon: LucideIcon; tone: string; label: string }>;
 
-export function TicketSteps({ view }: { view: TicketView }) {
+export function TicketSteps({ view }: SectionProps) {
   const { ticket } = view;
   const steps = ticket.steps ?? [];
-  if (steps.length === 0 && ticket.playbook == null) return null;
   const progress = stepProgress(ticket);
   return (
-    <section className="border-b border-line px-3 py-2 text-[12px]">
-      <p className="mb-1 text-[10px] text-faint uppercase">
-        Playbook · {ticket.playbook ?? "none"}
+    <div>
+      <p className="mb-1 text-[11px] text-muted">
+        Playbook {ticket.playbook ?? "none"}
         {progress !== null && ` · ${progress.done} of ${progress.total} done`}
       </p>
       <ul aria-label="Playbook steps" data-testid="ticket-steps" className="flex flex-col gap-2">
@@ -37,6 +36,6 @@ export function TicketSteps({ view }: { view: TicketView }) {
           );
         })}
       </ul>
-    </section>
+    </div>
   );
 }
