@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { CardStatus } from "./ticketStatus";
 
 export function CardLine({
@@ -9,7 +11,7 @@ export function CardLine({
   tag: string | null;
   title: string;
   status: CardStatus | null;
-  detail: string;
+  detail: ReactNode;
 }) {
   return (
     <>

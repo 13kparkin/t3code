@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 
 import { TicketChecks } from "../checks/TicketChecks";
+import { missingPlan } from "../domain/ticket";
 import type { SectionProps } from "./sectionProps";
 import { TicketActivity } from "./TicketActivity";
 import { TicketAgents } from "./TicketAgents";
@@ -33,7 +34,10 @@ export const TICKET_SECTIONS: ReadonlyArray<TicketSection> = [
   {
     id: "steps",
     title: "Steps",
-    shows: ({ view }) => (view.ticket.steps ?? []).length > 0 || view.ticket.playbook != null,
+    shows: ({ view }) =>
+      (view.ticket.steps ?? []).length > 0 ||
+      view.ticket.playbook != null ||
+      missingPlan(view.ticket),
     Body: TicketSteps,
   },
   { id: "readiness", title: "Readiness", shows: () => true, Body: TicketReadiness },

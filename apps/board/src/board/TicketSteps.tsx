@@ -1,6 +1,6 @@
 import { Check, Circle, type LucideIcon, SkipForward } from "lucide-react";
 
-import { stepProgress, type TicketStep } from "../domain/ticket";
+import { missingPlan, STAGE_LABEL, stepProgress, type TicketStep } from "../domain/ticket";
 import type { SectionProps } from "./sectionProps";
 
 const STEP_ICON = {
@@ -15,6 +15,11 @@ export function TicketSteps({ view }: SectionProps) {
   const progress = stepProgress(ticket);
   return (
     <div>
+      {missingPlan(ticket) && (
+        <p data-testid="plan-missing" className="mb-1 text-amber-300">
+          No plan. In {STAGE_LABEL[ticket.stage]} without a playbook and steps.
+        </p>
+      )}
       <p className="mb-1 text-[11px] text-muted">
         Playbook {ticket.playbook ?? "none"}
         {progress !== null && ` · ${progress.done} of ${progress.total} done`}

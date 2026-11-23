@@ -1,5 +1,6 @@
 import { useRef } from "react";
 
+import { missingPlan } from "../domain/ticket";
 import type { TicketView } from "../state/boardModel";
 import { ago } from "../ui/ago";
 import { CardLine } from "./CardLine";
@@ -85,7 +86,12 @@ export function TicketFrame({
         tag={ticket.key}
         title={ticket.title}
         status={ticketStatus(agents)}
-        detail={newest === undefined ? "No agents" : `${newest.role} · ${ago(newest.updatedAt)}`}
+        detail={
+          <>
+            {missingPlan(ticket) && <span className="text-amber-300">No plan · </span>}
+            {newest === undefined ? "No agents" : `${newest.role} · ${ago(newest.updatedAt)}`}
+          </>
+        }
       />
     </button>
   );
