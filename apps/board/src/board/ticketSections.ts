@@ -1,9 +1,9 @@
 import type { ComponentType } from "react";
 
+import { TicketChecks } from "../checks/TicketChecks";
 import type { SectionProps } from "./sectionProps";
 import { TicketActivity } from "./TicketActivity";
 import { TicketAgents } from "./TicketAgents";
-import { TicketChecksSection } from "./TicketChecksSection";
 import { TicketFiles } from "./TicketFiles";
 import { TicketReadiness } from "./TicketReadiness";
 import { TicketSource } from "./TicketSource";
@@ -45,7 +45,7 @@ export const TICKET_SECTIONS: ReadonlyArray<TicketSection> = [
   },
   // These three always show, with a one-line note when the ticket has no worktree or pull request yet.
   { id: "source", title: "Source control", shows: () => true, Body: TicketSource },
-  { id: "checks", title: "Checks", shows: () => true, Body: TicketChecksSection },
+  { id: "checks", title: "Checks", shows: () => true, Body: TicketChecks },
   { id: "files", title: "Files", shows: () => true, Body: TicketFiles },
   {
     id: "activity",
