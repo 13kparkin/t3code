@@ -4,7 +4,7 @@ import * as Option from "effect/Option";
 
 import { pickTemplate, type ReviewTemplate, templateFacts } from "../domain/reviewTemplate";
 import { messageOrchestrator } from "../foryou/actions";
-import { updateBoard, type ValidBoard } from "../store/boardFiles";
+import { changeHiddenAdditions, updateBoard, type ValidBoard } from "../store/boardFiles";
 import { readingsFor, type UsageReading, usageCrossings } from "../usage/usageNotice";
 import { boardEngine, localState, projectBoardsAtom } from "./boards";
 import { engineEnvironmentIdAtom } from "./projects";
@@ -61,19 +61,19 @@ export async function setBoardReviewTemplate(
   );
 }
 
-/** Saves the `additions.json` ids the user hid in `board.json`. Resolves to the failure text, or null once saved. */
+/** Changes the `additions.json` ids the user hid in `board.json`. Resolves to the failure text, or null once saved. */
 export async function setHiddenAdditions(
   registry: AtomRegistry.AtomRegistry,
   project: Pick<EnvironmentProject, "id" | "environmentId" | "workspaceRoot">,
   listed: ValidBoard,
-  ids: ReadonlyArray<string>,
+  change: (ids: ReadonlyArray<string>) => ReadonlyArray<string>,
 ): Promise<string | null> {
   try {
-    await updateBoard(
+    await changeHiddenAdditions(
       boardEngine(registry, project.environmentId).files,
       project.workspaceRoot,
       listed.folder,
-      { hiddenAdditions: ids },
+      change,
     );
     return null;
   } catch (failure) {

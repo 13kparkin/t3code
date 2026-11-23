@@ -50,12 +50,9 @@ export function BoardScreen({
     [additions, hiddenAdditions],
   );
   // Only ids still in the file are written, so the list cannot grow past the file.
-  const saveHidden = (ids: ReadonlyArray<string>) =>
-    void setHiddenAdditions(
-      registry,
-      project,
-      listed,
-      ids.filter((id) => additions.some((item) => item.id === id)),
+  const changeHidden = (change: (ids: ReadonlyArray<string>) => ReadonlyArray<string>) =>
+    void setHiddenAdditions(registry, project, listed, (ids) =>
+      change(ids).filter((id) => additions.some((item) => item.id === id)),
     ).then(setHideError);
   const order = useAtomValue(frameOrderAtom)[board.id] ?? NO_ORDER;
   const forYou = useBoardForYou(project, listed);
@@ -137,7 +134,7 @@ export function BoardScreen({
                 offPath={model.lanes.off_path.map((view) => view.ticket)}
                 hidden={hidden}
                 additions={additions}
-                onHideAdditions={saveHidden}
+                onChangeHidden={changeHidden}
               />
               <Lanes
                 layout={layout}
@@ -155,7 +152,7 @@ export function BoardScreen({
                 }
                 choice={choice}
                 onChoose={(next) => chooseTicket(registry, next)}
-                onRemoveAddition={(id) => saveHidden([...hiddenAdditions, id])}
+                onRemoveAddition={(id) => changeHidden((ids) => [...ids, id])}
               />
             </Viewport>
             <div className="absolute bottom-3.5 left-3.5 z-10 flex max-w-[60%] flex-col gap-2">

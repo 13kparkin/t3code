@@ -39,7 +39,7 @@ export function OrchestratorCard({
   offPath,
   hidden,
   additions,
-  onHideAdditions,
+  onChangeHidden,
 }: {
   project: EnvironmentProject;
   listed: ValidBoard;
@@ -51,7 +51,7 @@ export function OrchestratorCard({
   hidden: ReadonlySet<string>;
   /** Every `additions.json` item, hidden ones too, so the menu can show them again. */
   additions: ReadonlyArray<Addition>;
-  onHideAdditions: (ids: ReadonlyArray<string>) => void;
+  onChangeHidden: (change: (ids: ReadonlyArray<string>) => ReadonlyArray<string>) => void;
 }) {
   const { board } = listed;
   // The panel holds the same thread open, so this adds no second subscription.
@@ -170,18 +170,16 @@ export function OrchestratorCard({
                     label: `${item.title} · ${item.place}`,
                     hint: isHidden ? "Hidden" : "Shown",
                     onSelect: () =>
-                      onHideAdditions(
-                        isHidden
-                          ? hiddenAdditions.filter((id) => id !== item.id)
-                          : [...hiddenAdditions, item.id],
+                      onChangeHidden((ids) =>
+                        isHidden ? ids.filter((id) => id !== item.id) : [...ids, item.id],
                       ),
                   };
                 }),
                 {
                   label: "Reset to default",
-                  onSelect: () => onHideAdditions(additions.map((item) => item.id)),
+                  onSelect: () => onChangeHidden(() => additions.map((item) => item.id)),
                 },
-                { label: "Show all", onSelect: () => onHideAdditions([]) },
+                { label: "Show all", onSelect: () => onChangeHidden(() => []) },
               ]}
             />
           </div>

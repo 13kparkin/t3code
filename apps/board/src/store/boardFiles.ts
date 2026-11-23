@@ -199,6 +199,26 @@ export async function updateBoard(
   return board;
 }
 
+let hiding: Promise<unknown> = Promise.resolve();
+
+/** Applies `change` to the hidden addition ids read fresh from the board's own file. Calls run one at a time, so two quick hides both count. */
+export function changeHiddenAdditions(
+  files: ProjectFiles,
+  cwd: string,
+  folder: string,
+  change: (ids: ReadonlyArray<string>) => ReadonlyArray<string>,
+): Promise<void> {
+  const run = hiding.then(async () => {
+    const board = await readBoard(files, cwd, folder);
+    await writeBoard(files, cwd, folder, {
+      ...board,
+      hiddenAdditions: change(board.hiddenAdditions ?? []),
+    });
+  });
+  hiding = run.catch(() => undefined);
+  return run;
+}
+
 export const setBuilderCap = (files: ProjectFiles, cwd: string, folder: string, cap: number) =>
   updateBoard(files, cwd, folder, { builderCap: cap });
 
