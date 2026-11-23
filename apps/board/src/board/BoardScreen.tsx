@@ -87,7 +87,10 @@ export function BoardScreen({
     <ArtifactsProvider value={artifacts}>
       <PrProvider value={prContext}>
         <div className="flex h-full min-h-0">
-          <MainTabs files={artifacts.files}>
+          <MainTabs
+            files={artifacts.files}
+            ticketPage={<TicketPanel environmentId={project.environmentId} model={model} page />}
+          >
             <Viewport
               content={layout.content}
               onDropFiles={(files) =>

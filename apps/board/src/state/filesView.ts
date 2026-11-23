@@ -18,8 +18,8 @@ export interface FileRef {
   readonly diff?: DiffSource;
 }
 
-/** Which browser tab the main view shows: a page, or the agents' tabs. */
-export type Surface = "page" | "agents";
+/** Which tab other than a file covers the canvas: a browser page, the agents' tabs, or the chosen ticket's details. */
+export type Surface = "page" | "agents" | "ticket";
 
 /** The explorer's root, the files open as tabs beside the board, and which tab the main view shows. */
 export interface FilesViewState {
@@ -28,8 +28,10 @@ export interface FilesViewState {
   readonly tabs: ReadonlyArray<FileRef>;
   /** The file tab shown in place of the board's canvas, or null while the canvas or a browser tab shows. */
   readonly active: FileRef | null;
-  /** The browser tab shown in place of the canvas, or null while the canvas or a file shows. */
+  /** The tab shown in place of the canvas, or null while the canvas or a file shows. */
   readonly surface: Surface | null;
+  /** Whether the ticket's full-page tab is open. */
+  readonly ticket: boolean;
 }
 
 export const filesViewAtom = Atom.make<FilesViewState>({
@@ -37,6 +39,7 @@ export const filesViewAtom = Atom.make<FilesViewState>({
   tabs: [],
   active: null,
   surface: null,
+  ticket: false,
 }).pipe(Atom.keepAlive, Atom.withLabel("files-view"));
 
 /** The identity of a tab: a line request does not make a second tab, and a diff is not the file it shows. */
@@ -78,6 +81,18 @@ export const showFile = (registry: AtomRegistry.AtomRegistry, file: FileRef) =>
 
 export const showSurface = (registry: AtomRegistry.AtomRegistry, surface: Surface) =>
   change(registry, (state) => ({ ...state, active: null, surface }));
+
+/** Opens the chosen ticket's details as a tab over the canvas. */
+export const openTicketPage = (registry: AtomRegistry.AtomRegistry) =>
+  change(registry, (state) => ({ ...state, ticket: true, active: null, surface: "ticket" }));
+
+/** Closes the ticket's tab. Closing it while it shows returns to the canvas. */
+export const closeTicketPage = (registry: AtomRegistry.AtomRegistry) =>
+  change(registry, (state) =>
+    state.surface === "ticket"
+      ? { ...state, ticket: false, active: null, surface: null }
+      : { ...state, ticket: false },
+  );
 
 /** Closes a tab. Closing the one shown moves to the tab before it, or back to the canvas. */
 export const closeFile = (registry: AtomRegistry.AtomRegistry, file: FileRef) =>

@@ -1,5 +1,5 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
-import { Bot, FileDiff, FileText, Globe, LayoutDashboard, Plus } from "lucide-react";
+import { Bot, FileDiff, FileText, Globe, LayoutDashboard, Plus, Ticket } from "lucide-react";
 import { useContext } from "react";
 
 import {
@@ -11,16 +11,19 @@ import {
   showAgents,
 } from "../browser/browserTabs";
 import { browserHost } from "../browser/host";
+import { ticketChoiceAtom } from "../browser/panel";
 import { iconButton } from "../browser/styles";
 import type { Tab } from "../browser/tabs";
 import {
   closeFile,
+  closeTicketPage,
   type FileRef,
   fileKey,
   filesViewAtom,
   sameFile,
   showBoard,
   showFile,
+  showSurface,
 } from "../state/filesView";
 import { Tooltip } from "../ui/Tooltip";
 import { ClosableTab, DIM, LIT, TAB } from "./ClosableTab";
@@ -44,13 +47,14 @@ function tabLabel(file: FileRef): string {
 }
 
 /**
- * The tabs of the main view, the way Orca's draw them: the board first, then each open file, each
+ * The tabs of the main view, the way Orca's draw them: the board first, then the ticket and each open file, each
  * browser page with a globe, and the agents' tabs, each with a close button. The active tab is lit
  * and underlined, and a plus opens a blank page.
  */
 export function MainTabStrip({ files }: { files: ReadonlyArray<FileRef> }) {
   const registry = useContext(RegistryContext);
-  const { active, surface } = useAtomValue(filesViewAtom);
+  const { active, surface, ticket } = useAtomValue(filesViewAtom);
+  const ticketKey = useAtomValue(ticketChoiceAtom)?.ticketKey ?? null;
   const { tabs, agents } = useAtomValue(browserAtom);
   const onBoard = active === null && surface === null;
   return (
@@ -69,6 +73,15 @@ export function MainTabStrip({ files }: { files: ReadonlyArray<FileRef> }) {
         <LayoutDashboard className="size-3.5 shrink-0" aria-hidden />
         Board
       </button>
+      {ticket && (
+        <ClosableTab
+          shown={surface === "ticket"}
+          icon={<Ticket className="size-3.5 shrink-0" aria-hidden />}
+          label={ticketKey ?? "Ticket"}
+          onSelect={() => showSurface(registry, "ticket")}
+          onClose={() => closeTicketPage(registry)}
+        />
+      )}
       {files.map((file) => (
         <ClosableTab
           key={fileKey(file)}

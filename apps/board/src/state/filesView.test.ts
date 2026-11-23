@@ -1,7 +1,16 @@
 import { AtomRegistry } from "effect/reactivity";
 import { describe, expect, it } from "vite-plus/test";
 
-import { closeFile, filesViewAtom, openFile, showBoard, showFile, showSurface } from "./filesView";
+import {
+  closeFile,
+  closeTicketPage,
+  filesViewAtom,
+  openFile,
+  openTicketPage,
+  showBoard,
+  showFile,
+  showSurface,
+} from "./filesView";
 
 const readme = { cwd: "/p", path: "README.md" };
 const index = { cwd: "/p", path: "src/index.ts" };
@@ -37,5 +46,22 @@ describe("the main view's shown tab", () => {
       active: null,
       surface: null,
     });
+  });
+
+  it("Given the ticket's tab, when it closes while shown, then the canvas returns, and closing it from behind a file leaves the file shown", () => {
+    const registry = AtomRegistry.make();
+    openTicketPage(registry);
+    expect(registry.get(filesViewAtom)).toMatchObject({ ticket: true, surface: "ticket" });
+    closeTicketPage(registry);
+    expect(registry.get(filesViewAtom)).toMatchObject({
+      ticket: false,
+      surface: null,
+      active: null,
+    });
+
+    openTicketPage(registry);
+    openFile(registry, readme);
+    closeTicketPage(registry);
+    expect(registry.get(filesViewAtom)).toMatchObject({ ticket: false, active: readme });
   });
 });
