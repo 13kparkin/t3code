@@ -9,7 +9,8 @@ import { SidebarRow } from "./SidebarRow";
 /** Shows the browser as a tab of the main view, beside the board. */
 export function BrowserRow() {
   const registry = useContext(RegistryContext);
-  const showing = useAtomValue(filesViewAtom).surface !== null;
+  const { surface } = useAtomValue(filesViewAtom);
+  const showing = surface === "page" || surface === "agents";
   return (
     <SidebarRow
       icon={<Globe className="size-3.5" />}
