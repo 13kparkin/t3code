@@ -9,7 +9,7 @@ import { createPortal } from "react-dom";
 import { chooseTicket } from "../browser/panel";
 import { useArtifacts } from "../artifacts/ArtifactsContext";
 import { isRunLive } from "../chat/timeline";
-import { type Addition, lineText, visibleAdditions } from "../domain/additions";
+import { type Addition, lineText } from "../domain/additions";
 import { pickTemplate, SYSTEM_TEMPLATE } from "../domain/reviewTemplate";
 import { STAGE_LABEL, TICKET_STAGES, type Ticket } from "../domain/ticket";
 import { AddFromIssue } from "../issues/AddFromIssue";
@@ -39,7 +39,6 @@ export function OrchestratorCard({
   offPath,
   hidden,
   additions,
-  hiddenAdditions,
   onHideAdditions,
 }: {
   project: EnvironmentProject;
@@ -52,7 +51,6 @@ export function OrchestratorCard({
   hidden: ReadonlySet<string>;
   /** Every `additions.json` item, hidden ones too, so the menu can show them again. */
   additions: ReadonlyArray<Addition>;
-  hiddenAdditions: ReadonlyArray<string>;
   onHideAdditions: (ids: ReadonlyArray<string>) => void;
 }) {
   const { board } = listed;
@@ -70,8 +68,10 @@ export function OrchestratorCard({
   const [pickError, setPickError] = useState<string | null>(null);
   const picked = pickTemplate(board.reviewTemplate, custom);
   const docs = board.docs ?? [];
-  const tickets = usePrContext().tickets.map((view) => view.ticket);
-  const shown = visibleAdditions(additions, hiddenAdditions);
+  const hiddenAdditions = board.hiddenAdditions ?? [];
+  const context = usePrContext();
+  const tickets = context.tickets.map((view) => view.ticket);
+  const shown = context.additions;
   const lines = shown.filter((item) => item.place === "orchestrator");
   const laneLabels = new Map<string, string>([
     ...LANE_IDS.map((id) => [id, LANE_LABEL[id]] as const),

@@ -137,7 +137,6 @@ export function BoardScreen({
                 offPath={model.lanes.off_path.map((view) => view.ticket)}
                 hidden={hidden}
                 additions={additions}
-                hiddenAdditions={hiddenAdditions}
                 onHideAdditions={saveHidden}
               />
               <Lanes

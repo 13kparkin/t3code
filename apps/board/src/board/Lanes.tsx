@@ -198,7 +198,7 @@ export function Lanes({
                   <EyeOff className="size-3" aria-hidden />
                 </button>
               </Tooltip>
-              <RemoveAddition item={item} onRemove={() => onRemoveAddition(item.id)} />
+              <RemoveAddition title={item.title} onRemove={() => onRemoveAddition(item.id)} />
             </header>
             <div
               data-testid="addition-card"
@@ -229,7 +229,7 @@ export function Lanes({
                   <h4 className="min-w-0 flex-1 truncate text-[12px] font-semibold">
                     {added.title}
                   </h4>
-                  <RemoveAddition item={added} onRemove={() => onRemoveAddition(added.id)} />
+                  <RemoveAddition title={added.title} onRemove={() => onRemoveAddition(added.id)} />
                 </header>
                 <div
                   data-scroll

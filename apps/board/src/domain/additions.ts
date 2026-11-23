@@ -157,7 +157,7 @@ export function parseAdditions(text: string): ParsedAdditions {
 
 export const visibleAdditions = (
   items: ReadonlyArray<Addition>,
-  hidden: ReadonlyArray<string> = [],
+  hidden: ReadonlyArray<string>,
 ): ReadonlyArray<Addition> => items.filter((item) => !hidden.includes(item.id));
 
 const isLive = (block: Block) =>
