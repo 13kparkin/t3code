@@ -1,6 +1,7 @@
 import { AtomRegistry } from "effect/reactivity";
 import { describe, expect, it } from "vite-plus/test";
 
+import { chooseTicket, setPanelTab, ticketTabShownAtom } from "../browser/panel";
 import {
   closeFile,
   closeTicketPage,
@@ -63,5 +64,21 @@ describe("the main view's shown tab", () => {
     openFile(registry, readme);
     closeTicketPage(registry);
     expect(registry.get(filesViewAtom)).toMatchObject({ ticket: false, active: readme });
+  });
+});
+
+describe("the ticket's details", () => {
+  it("Given the ticket page shows, when an agent on it is chosen, then the details render once", () => {
+    const registry = AtomRegistry.make();
+    chooseTicket(registry, { threadId: null, ticketKey: "T-1" });
+    openTicketPage(registry);
+    setPanelTab(registry, "chat");
+
+    chooseTicket(registry, { threadId: "th-1", ticketKey: "T-1" });
+
+    const copies =
+      Number(registry.get(filesViewAtom).surface === "ticket") +
+      Number(registry.get(ticketTabShownAtom));
+    expect(copies).toBe(1);
   });
 });

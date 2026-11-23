@@ -1,5 +1,6 @@
 import { Atom, type AtomRegistry } from "effect/reactivity";
 
+import { filesViewAtom } from "../state/filesView";
 import { appAtomRegistry } from "../state/registry";
 
 /** The panel's tabs. Later tabs join this list and the strip, and this one does not move. */
@@ -50,7 +51,8 @@ export function chooseTicket(registry: AtomRegistry.AtomRegistry, choice: Ticket
   performance.mark("board:ticket-open");
   awaitingTicketPaint = true;
   registry.set(ticketChoiceAtom, choice);
-  showPanelTab(registry, "ticket");
+  // The ticket page already draws the choice, so the panel would read everything twice.
+  if (registry.get(filesViewAtom).surface !== "ticket") showPanelTab(registry, "ticket");
 }
 
 /** Marks the frame that drew the Ticket tab after a card was chosen, once for each choice. */
