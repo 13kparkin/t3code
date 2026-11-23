@@ -104,7 +104,6 @@ export const GLANCE_LINES: ReadonlyArray<GlanceLine> = [
   { label: "Flags", derive: ({ ticket }) => (ticket.flags ?? []).join(", ") || null },
 ];
 
-/** The lines the ticket has data for, in order. */
 export const glanceLines = (input: GlanceInput) =>
   GLANCE_LINES.flatMap(({ label, derive }) => {
     const line = derive(input);

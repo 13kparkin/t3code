@@ -4,7 +4,6 @@ import { glanceLines } from "../domain/glance";
 import { usePrContext, useTicketPr, useTicketSmoke } from "../state/prStatus";
 import type { SectionProps } from "./sectionProps";
 
-/** The ticket in plain one-liners: what it fixes, how big it is, how we know it works, and what it waits on. */
 export function TicketGlance({ view }: SectionProps) {
   const { tickets, decisions } = usePrContext();
   const size = useTicketPr(view).live?.size ?? null;

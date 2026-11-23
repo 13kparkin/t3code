@@ -206,7 +206,6 @@ export function useCiLocal(file: Artifact | undefined, head: string | null): CiL
   );
 }
 
-/** The ticket's `smoke.txt`, or null with none. */
 export function useTicketSmoke(view: TicketView | null): Smoke | null {
   const { groups, files } = useArtifacts();
   const smokeFile =
