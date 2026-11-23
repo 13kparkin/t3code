@@ -41,6 +41,8 @@ A JSON array. Write the whole file each time, and keep it valid JSON, because th
 - `stage`: one of the stages below.
 - `flags`: a list of short strings.
 - `branch`, `base`, `worktreePath`, `headSha`, `summary`, and `why` (one line each for the last two), all text.
+- `cause`: for a bug ticket, the root cause in one line. Set it at verify.
+- `impact`: who notices the change, in one line.
 - `pr`: the pull request's number, or its link.
 - `threads`: the agents on this ticket, each `{ "threadId": "...", "role": "<role name>", "round": 1 }`.
 - `verdicts`: one entry per review, `{ "role": "reviewer", "p0": 0, "p1": 1, "p2": 0, "p3": 2 }`, with the P0 to P3 finding counts.
@@ -92,7 +94,7 @@ The six conditions, with these exact keys in `conditions`:
 - `delta_rereviewed`: the fix-round delta was reviewed again.
 - `readmes_pass`: the READMEs the change touched pass their check. Leave the check's output in the ticket's evidence folder, in a file whose name has `readme-check`, such as `readme-check.txt`.
 - `parent_ready`: the parent ticket is merged or ready, and `note` says the merge order.
-- `smoke_named`: a verifier's `smoke.txt` in the ticket's evidence folder has a `Surface:` line that is not `none`. The board reads the file and shows its PROXY and NOT RUN items on the card. Name the surface in `note`, such as `UI: T3 browser, 3 of 4 items`, or `no UI: ran <command>`, and list each PROXY and NOT RUN item. A builder's unit-test output goes in `tests.txt`, never in a file named `smoke`.
+- `smoke_named`: a verifier's `smoke.txt` in the ticket's evidence folder has a `Surface:` line that is not `none`. The board reads the file and shows its PARTIAL, PROXY and NOT RUN items on the card. Name the surface in `note`, such as `UI: T3 browser, 3 of 4 items`, or `no UI: ran <command>`, and list each PARTIAL, PROXY and NOT RUN item. A builder's unit-test output goes in `tests.txt`, never in a file named `smoke`.
 
 `status` is `open`, `held`, or `resolved`. To change an item, append a line with the same `id`, the new `status`, and a `resolution` of a few words. That line needs no other field. The latest line for an `id` wins. The board counts items whose latest status is `open`. A line the board cannot read is skipped, and the board names its line number to the user, so keep every line valid JSON with these fields.
 

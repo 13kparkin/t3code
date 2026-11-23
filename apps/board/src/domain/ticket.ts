@@ -75,6 +75,10 @@ export const Ticket = Schema.Struct({
   headSha: optional(Schema.String),
   summary: optional(Schema.String),
   why: optional(Schema.String),
+  /** For a bug, the root cause in one line, set at verify. */
+  cause: optional(Schema.String),
+  /** Who notices the change, in one line. */
+  impact: optional(Schema.String),
   threads: optional(Schema.Array(TicketThread)),
   verdicts: optional(Schema.Array(Verdict)),
   fixRounds: optional(Count),

@@ -43,6 +43,15 @@ export interface PrLive {
   readonly checks: ReadonlyArray<CheckRun>;
   /** The pull request's page, which the chip opens. */
   readonly url: string | null;
+  /** How much the pull request changes, or null when the host has not said. */
+  readonly size: PrSize | null;
+}
+
+export interface PrSize {
+  /** Null when the host gives line counts but no file count. */
+  readonly files: number | null;
+  readonly additions: number;
+  readonly deletions: number;
 }
 
 /** One `<step>-exit=<code>` line of a local CI run, with the line's label, such as `engine-exit`. */
@@ -77,7 +86,7 @@ export type Smoke =
       readonly kind: "read";
       /** The text after `Surface:`, or null when the file has no such line. */
       readonly surface: string | null;
-      /** The `PROXY` and `NOT RUN` item lines, as written. */
+      /** The `PARTIAL`, `PROXY` and `NOT RUN` item lines, as written. */
       readonly flagged: ReadonlyArray<string>;
     }
   | { readonly kind: "unreadable"; readonly reason: string };
@@ -85,7 +94,7 @@ export type Smoke =
 /** Reads a verifier's `smoke.txt`, which has a `Surface:` line and then one `PASS`, `PARTIAL`, `PROXY`, `FAIL`, or `NOT RUN` line per acceptance item. */
 export function parseSmoke(text: string): Smoke {
   const surface = /^Surface:(.*)$/im.exec(text)?.[1]?.trim() || null;
-  const flagged = [...text.matchAll(/^(?:PROXY|NOT RUN):.*\S.*$/gm)].map((match) =>
+  const flagged = [...text.matchAll(/^(?:PARTIAL|PROXY|NOT RUN)\b.*\S.*$/gm)].map((match) =>
     match[0].trim(),
   );
   return { kind: "read", surface, flagged };
@@ -146,7 +155,7 @@ export function rollupChecks(checks: ReadonlyArray<CheckRun>): ChecksState | nul
   return real.some(isWaiting) ? "pending" : "passing";
 }
 
-const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
+export const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
 const sameCommit = (left: string, right: string) =>
   left.startsWith(right) || right.startsWith(left);
 
@@ -193,7 +202,7 @@ function ciState(input: ReadinessInput): string | null {
 }
 
 /** The latest verdict of each role, so a clean re-review replaces the findings it covers. */
-function latestVerdicts(verdicts: NonNullable<Ticket["verdicts"]>) {
+export function latestVerdicts(verdicts: NonNullable<Ticket["verdicts"]>) {
   const byRole = new Map<string, (typeof verdicts)[number]>();
   for (const verdict of verdicts) byRole.set(verdict.role, verdict);
   return [...byRole.values()];
@@ -265,6 +274,10 @@ export const missingKeys = (
 
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+/** Whether the key stands alone in the text, so `T-9` does not match `T-93`. */
+export const namesKey = (text: string, key: string) =>
+  new RegExp(`(^|[^\\w-])${escapeRegExp(key)}($|[^\\w-])`).test(text);
+
 /**
  * The ticket a merge approval is about: the one it names, or else the one whose key stands alone
  * in its title or id, where a longer key wins over one it contains.
@@ -276,10 +289,6 @@ export function mergeTicketKey(
   if (item.ticket != null && keys.includes(item.ticket)) return item.ticket;
   const found = keys
     .toSorted((a, b) => b.length - a.length)
-    .find((key) =>
-      [item.title, item.id].some((text) =>
-        new RegExp(`(^|[^\\w-])${escapeRegExp(key)}($|[^\\w-])`).test(text),
-      ),
-    );
+    .find((key) => [item.title, item.id].some((text) => namesKey(text, key)));
   return found ?? null;
 }

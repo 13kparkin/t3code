@@ -136,6 +136,8 @@ export function buildLive(input: {
   const snapshotAt = snapshot === null ? 0 : Date.parse(snapshot.syncedAt) || 0;
   const hostRolledUp = rollupChecks(runs) ?? summary?.checksState ?? null;
   const pushed = snapshot !== null && snapshotAt >= hostAnsweredAt;
+  const additions = summary?.additions ?? snapshot?.additions;
+  const deletions = summary?.deletions ?? snapshot?.deletions;
   return {
     // A pull request that merged or closed stays so, whichever source is behind.
     state: states.includes("merged") ? "merged" : states.includes("closed") ? "closed" : "open",
@@ -148,5 +150,9 @@ export function buildLive(input: {
     headSha: summary?.headSha ?? link?.watch?.headSha ?? null,
     checks: runs,
     url: summary?.url ?? link?.url ?? null,
+    size:
+      additions === undefined || deletions === undefined
+        ? null
+        : { files: summary?.changedFiles ?? snapshot?.changedFiles ?? null, additions, deletions },
   };
 }
