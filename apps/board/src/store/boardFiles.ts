@@ -75,12 +75,23 @@ export const sha256 = async (text: string) =>
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
 
+const refreshing = new Map<string, Promise<void>>();
+
 /**
  * Writes the app's role files into the board, replacing a copy only when it still matches the
  * hash the app recorded when it last wrote it. A copy the user edited, or one with no record, is
- * kept.
+ * kept. A second call for the same board joins the running one, because the engine fails a read
+ * that races a write creating the same file.
  */
-export async function refreshRoles(files: ProjectFiles, cwd: string, folder: string) {
+export function refreshRoles(files: ProjectFiles, cwd: string, folder: string): Promise<void> {
+  const key = `${cwd}/${BOARDS_DIR}/${folder}`;
+  const running =
+    refreshing.get(key) ?? writeRoles(files, cwd, folder).finally(() => refreshing.delete(key));
+  refreshing.set(key, running);
+  return running;
+}
+
+async function writeRoles(files: ProjectFiles, cwd: string, folder: string) {
   const dir = `${BOARDS_DIR}/${folder}`;
   const raw = await files.read(cwd, `${dir}/${ROLES_MANIFEST}`);
   const written = raw === null ? {} : Option.getOrElse(decodeManifest(raw), () => ({}));
