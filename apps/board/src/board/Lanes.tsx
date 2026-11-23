@@ -3,12 +3,16 @@ import { EyeOff } from "lucide-react";
 import { type ReactNode, useContext, useState } from "react";
 
 import type { BoardModel } from "../state/boardModel";
+import { usePrContext } from "../state/prStatus";
 import type { TicketChoice } from "../browser/panel";
 import { laneKey, saveFrameOrder, toggleFolded } from "../state/boardUi";
 import { Tooltip } from "../ui/Tooltip";
 import { ago } from "../ui/ago";
+import { AdditionBlocks } from "./AdditionBlocks";
 import { CardLine } from "./CardLine";
 import {
+  ADDITION_KEY,
+  additionLaneId,
   clampDrag,
   edgePath,
   type FrameBox,
@@ -24,6 +28,7 @@ import {
   CARD_HEIGHT,
   FRAME_PAD,
 } from "./layout";
+import { RemoveAddition } from "./RemoveAddition";
 import { TicketFrame } from "./TicketFrame";
 import { ticketStatus } from "./ticketStatus";
 
@@ -50,6 +55,7 @@ export function Lanes({
   forYouLane,
   choice,
   onChoose,
+  onRemoveAddition,
 }: {
   layout: Layout;
   model: BoardModel;
@@ -59,8 +65,10 @@ export function Lanes({
   forYouLane: ReactNode;
   choice: TicketChoice | null;
   onChoose: (choice: TicketChoice) => void;
+  onRemoveAddition: (id: string) => void;
 }) {
   const registry = useContext(RegistryContext);
+  const additions = new Map(usePrContext().additions.map((item) => [item.id, item]));
   const [drag, setDrag] = useState<{ key: string; dy: number } | null>(null);
   const views = new Map(
     Object.values(model.lanes)
@@ -157,8 +165,82 @@ export function Lanes({
           {lane.id === "for_you" && forYouLane}
         </section>
       ))}
+      {layout.additionLanes.map((box) => {
+        const item = additions.get(box.key);
+        if (item === undefined) return null;
+        return (
+          <section
+            key={box.key}
+            aria-label={`${item.title} lane`}
+            data-testid="lane"
+            data-lane={additionLaneId(item.id)}
+            className="absolute flex flex-col rounded-xl border border-dashed border-line"
+            style={{ left: box.x, top: box.y, width: box.width, minHeight: box.height }}
+          >
+            <header
+              className="flex shrink-0 items-center gap-1.5 px-3"
+              style={{ height: LANE_HEAD }}
+            >
+              <span className="min-w-0 truncate rounded-md bg-zinc-800 px-2 text-[11px] leading-5 font-semibold text-white">
+                {item.title}
+              </span>
+              <span className="flex-1" />
+              <Tooltip text="Hide lane" side="bottom" align="end">
+                <button
+                  type="button"
+                  aria-label={`Hide the ${item.title} lane`}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={() =>
+                    void toggleFolded(registry, laneKey(boardId, additionLaneId(item.id)))
+                  }
+                  className="grid size-5 place-items-center rounded text-faint hover:bg-hover hover:text-fg"
+                >
+                  <EyeOff className="size-3" aria-hidden />
+                </button>
+              </Tooltip>
+              <RemoveAddition title={item.title} onRemove={() => onRemoveAddition(item.id)} />
+            </header>
+            <div
+              data-testid="addition-card"
+              data-scroll
+              onPointerDown={(event) => event.stopPropagation()}
+              className="min-h-0 overflow-y-auto px-3 pb-3 text-[12px]"
+            >
+              <AdditionBlocks item={item} />
+            </div>
+          </section>
+        );
+      })}
       {layout.lanes.flatMap((lane) =>
         lane.frames.map((box) => {
+          const added = box.key.startsWith(ADDITION_KEY)
+            ? additions.get(box.key.slice(ADDITION_KEY.length))
+            : undefined;
+          if (added !== undefined) {
+            return (
+              <section
+                key={box.key}
+                aria-label={added.title}
+                data-testid="addition-card"
+                className="absolute flex flex-col rounded-lg border border-line bg-panel shadow-panel"
+                style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
+              >
+                <header className="flex shrink-0 items-center gap-1.5 px-2.5 pt-1.5">
+                  <h4 className="min-w-0 flex-1 truncate text-[12px] font-semibold">
+                    {added.title}
+                  </h4>
+                  <RemoveAddition title={added.title} onRemove={() => onRemoveAddition(added.id)} />
+                </header>
+                <div
+                  data-scroll
+                  onPointerDown={(event) => event.stopPropagation()}
+                  className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-2 text-[12px]"
+                >
+                  <AdditionBlocks item={added} />
+                </div>
+              </section>
+            );
+          }
           if (box.key === UNASSIGNED_KEY) {
             return (
               <section

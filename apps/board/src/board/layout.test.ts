@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
+import type { Addition } from "../domain/additions";
 import type { Ticket } from "../domain/ticket";
 import type { AgentView, BoardModel, TicketView } from "../state/boardModel";
 import {
@@ -121,6 +122,48 @@ describe("laying out the lanes", () => {
       "T-2",
       "T-1",
     ]);
+  });
+});
+
+describe("laying out additions", () => {
+  const base = { title: "t", asOf: "2026-11-23T09:40:00Z" };
+  const blocks = [{ type: "text" as const, text: "x" }];
+  const line = (id: string): Addition => ({ ...base, id, place: "orchestrator", blocks });
+  const ci: Addition = { ...base, id: "ci", place: "lane", lane: "building", blocks };
+  const wait: Addition = { ...base, id: "wait", place: "canvas", blocks };
+  const building = (layout: ReturnType<typeof layoutBoard>) =>
+    layout.lanes.find((entry) => entry.id === "building");
+
+  it("Given two orchestrator lines, when laid out, then the lanes start 36px lower", () => {
+    const moved = building(layoutBoard(model, {}, 0, new Set(), [line("a"), line("b")]));
+    expect([moved?.y, moved?.frames[0]?.y]).toEqual([396, 430]);
+  });
+
+  it("Given one orchestrator line and two problem lines, when laid out, then the lanes start 54px lower", () => {
+    const moved = building(layoutBoard(model, {}, 0, new Set(), [line("a")], 2));
+    expect([moved?.y, moved?.frames[0]?.y]).toEqual([414, 448]);
+  });
+
+  it("Given a lane card, when laid out, then it is the lane's first frame and the tickets follow it", () => {
+    const lane = building(layoutBoard(model, {}, 0, new Set(), [ci]));
+    expect(lane?.frames.map((frame) => [frame.key, frame.y, frame.height])).toEqual([
+      ["__add:ci", 394, 140],
+      ["T-1", 542, 52],
+      ["T-2", 602, 52],
+    ]);
+  });
+
+  it("Given a canvas addition, when laid out, then it is a lane after the stage lanes and widens the canvas", () => {
+    const layout = layoutBoard(model, {}, 0, new Set(), [wait]);
+    expect([layout.additionLanes, layout.content.width]).toEqual([
+      [{ key: "wait", x: 2776, y: 360, width: 288, height: 314 }],
+      3104,
+    ]);
+  });
+
+  it("Given a hidden canvas addition lane, when laid out, then it is left out", () => {
+    const layout = layoutBoard(model, {}, 0, new Set(["add:wait"]), [wait]);
+    expect([layout.additionLanes, layout.content.width]).toEqual([[], 2800]);
   });
 });
 

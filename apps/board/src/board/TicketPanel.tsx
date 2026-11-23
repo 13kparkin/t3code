@@ -1,7 +1,7 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentId } from "@t3tools/contracts";
 import { Maximize2 } from "lucide-react";
-import { useContext } from "react";
+import { useContext, useMemo } from "react";
 
 import { useArtifacts } from "../artifacts/ArtifactsContext";
 import {
@@ -18,11 +18,12 @@ import { EmptyFiles } from "../files/EmptyFiles";
 import { NO_ARTIFACTS } from "../state/artifacts";
 import type { BoardModel } from "../state/boardModel";
 import { foldedAtom, sectionKey, toggleFolded } from "../state/boardUi";
+import { usePrContext } from "../state/prStatus";
 import { AgentLog } from "./AgentLog";
 import { SectionBar } from "./SectionBar";
 import { TicketMeta } from "./TicketMeta";
 import { TicketSection } from "./TicketSection";
-import { TICKET_SECTIONS } from "./ticketSections";
+import { ticketSectionsFor } from "./ticketSections";
 
 const STATE_LABEL = {
   working: "Working",
@@ -49,6 +50,8 @@ export function TicketPanel({
   const folded = useAtomValue(foldedAtom);
   const shown = useAtomValue(ticketTabShownAtom);
   const onPage = useAtomValue(filesViewAtom).surface === "ticket";
+  const { additions } = usePrContext();
+  const allSections = useMemo(() => ticketSectionsFor(additions), [additions]);
   const toggle = (id: string) => void toggleFolded(registry, sectionKey(id));
   // A new function each render, so the frame after every render marks a pending open as painted.
   const markPainted = (element: HTMLElement | null) => {
@@ -94,7 +97,7 @@ export function TicketPanel({
           agent,
           artifacts: groups.byTicket.get(view.ticket.key) ?? NO_ARTIFACTS,
         };
-  const sections = props === null ? [] : TICKET_SECTIONS.filter((section) => section.shows(props));
+  const sections = props === null ? [] : allSections.filter((section) => section.shows(props));
   const open = sections.filter((section) => !folded.has(sectionKey(section.id)));
   const bars = sections.filter((section) => folded.has(sectionKey(section.id)));
   const filler = open.find((section) => section.fill === true);

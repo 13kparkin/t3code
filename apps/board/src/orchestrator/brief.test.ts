@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
+import { parseAdditions } from "../domain/additions";
 import { SYSTEM_TEMPLATE } from "../domain/reviewTemplate";
 import { orchestratorStats, renderFacts, renderRules } from "./brief";
 import { resolveRoles, ROLES } from "./roles";
@@ -31,6 +32,21 @@ describe("the orchestrator's standing rules and board facts", () => {
     expect(rules).toContain("`printenv T3CODE_THREAD_ID`");
     expect(rules).toContain("`.agentboard/*/board.json`");
     expect(rules).toContain("`orchestratorThreadId`");
+  });
+
+  it("Given the rules, when their additions.json block examples are parsed, then each of the five types is a valid block", () => {
+    const examples = [...renderRules().matchAll(/`(\{ "type": .*? \})`/g)].map((match) => match[1]);
+    const file = `[${examples
+      .map(
+        (block, at) =>
+          `{"id":"b${at}","title":"t","asOf":"2026-11-23T09:40:00Z","place":"ticket","ticket":"T-1","blocks":[${block}]}`,
+      )
+      .join(",")}]`;
+    const parsed = parseAdditions(file);
+    expect([parsed.problems, parsed.items?.map((item) => item.blocks[0]?.type)]).toEqual([
+      [],
+      ["text", "stat", "list", "table", "link"],
+    ]);
   });
 
   it("Given the registry, when the rules render, then every role is listed with its delegate_task arguments", () => {

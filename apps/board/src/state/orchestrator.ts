@@ -207,7 +207,8 @@ const sameFiles = (left: StoreFiles | null, right: StoreFiles) =>
   left !== null &&
   left.tickets === right.tickets &&
   left.forYou === right.forYou &&
-  left.decisions === right.decisions;
+  left.decisions === right.decisions &&
+  left.additions === right.additions;
 
 /**
  * The orchestrator's store files for one board, by `<projectId>/<folder>`. The orchestrator writes
@@ -231,9 +232,14 @@ export const boardStoreAtom = Atom.family((key: string) =>
       const read = (name: string) =>
         files.read(project.workspaceRoot, `${BOARDS_DIR}/${folder}/${name}`);
       const refresh = () =>
-        Promise.all([read("tickets.json"), read("foryou.jsonl"), read("decisions.tsv")]).then(
-          ([tickets, forYou, decisions]) => {
-            const next = { tickets, forYou, decisions };
+        Promise.all([
+          read("tickets.json"),
+          read("foryou.jsonl"),
+          read("decisions.tsv"),
+          read("additions.json"),
+        ]).then(
+          ([tickets, forYou, decisions, additions]) => {
+            const next = { tickets, forYou, decisions, additions };
             const last = Option.getOrNull(get.self<StoreFiles | null>()) ?? null;
             if (!sameFiles(last, next)) {
               if (last !== null && last.tickets !== next.tickets) {

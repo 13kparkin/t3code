@@ -19,6 +19,7 @@ import {
   type Smoke,
 } from "../domain/readiness";
 import { connectionAtomRuntime } from "../connection/runtime";
+import type { Addition } from "../domain/additions";
 import { locate } from "../files/target";
 import { ROLES } from "../orchestrator/roles";
 import type { Artifact } from "../store/artifacts";
@@ -155,6 +156,8 @@ export interface PrContextValue {
   readonly keptWorktrees: ReadonlyMap<string, string>;
   /** The text of the board's `decisions.tsv`, or null before it is read. */
   readonly decisions: string | null;
+  /** The `additions.json` items the user has not hidden. */
+  readonly additions: ReadonlyArray<Addition>;
 }
 
 const PrContext = createContext<PrContextValue | null>(null);

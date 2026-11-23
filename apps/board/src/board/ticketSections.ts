@@ -1,7 +1,9 @@
-import type { ComponentType } from "react";
+import { type ComponentType, createElement } from "react";
 
 import { TicketChecks } from "../checks/TicketChecks";
+import type { Addition } from "../domain/additions";
 import { missingPlan } from "../domain/ticket";
+import { AdditionBlocks } from "./AdditionBlocks";
 import type { SectionProps } from "./sectionProps";
 import { TicketActivity } from "./TicketActivity";
 import { TicketAgents } from "./TicketAgents";
@@ -60,3 +62,21 @@ export const TICKET_SECTIONS: ReadonlyArray<TicketSection> = [
     fill: true,
   },
 ];
+
+/** The sections with each `ticket` addition after Readiness, shown on its own ticket only. */
+export function ticketSectionsFor(items: ReadonlyArray<Addition>): ReadonlyArray<TicketSection> {
+  const added = items.flatMap((item): TicketSection[] =>
+    item.place === "ticket"
+      ? [
+          {
+            id: `add:${item.id}`,
+            title: item.title,
+            shows: ({ view }) => view.ticket.key === item.ticket,
+            Body: () => createElement(AdditionBlocks, { item }),
+          },
+        ]
+      : [],
+  );
+  const at = TICKET_SECTIONS.findIndex((section) => section.id === "readiness") + 1;
+  return [...TICKET_SECTIONS.slice(0, at), ...added, ...TICKET_SECTIONS.slice(at)];
+}

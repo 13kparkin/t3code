@@ -4,6 +4,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { parseBoard } from "../domain/board";
 import { archiveBoard, type BoardThreads, type FamilyThread, restoreBoard } from "./boardArchive";
 import {
+  changeHiddenAdditions,
   createBoard,
   listBoards,
   type ProjectFiles,
@@ -315,5 +316,23 @@ describe("archiving a board", () => {
     for (const thread of threads) thread.archived = true;
     await archiveBoard(files, threadsApi, target, noSleep);
     expect(archivedFlag(store)).toBe(true);
+  });
+});
+
+describe("hiding additions", () => {
+  it("Given two hides started together, when both are saved, then both ids stay hidden", async () => {
+    const { files, store, target } = await boardWith("orchestrator");
+    await Promise.all([
+      changeHiddenAdditions(files, CWD, target.folder, (ids) => [...ids, "a"]),
+      changeHiddenAdditions(files, CWD, target.folder, (ids) => [...ids, "b"]),
+    ]);
+    expect(savedBoard(store)).toMatchObject({ hiddenAdditions: ["a", "b"] });
+  });
+
+  it("Given the same id hidden twice, when both are saved, then it is listed once", async () => {
+    const { files, store, target } = await boardWith("orchestrator");
+    await changeHiddenAdditions(files, CWD, target.folder, (ids) => [...ids, "a"]);
+    await changeHiddenAdditions(files, CWD, target.folder, (ids) => [...ids, "a"]);
+    expect(savedBoard(store)).toMatchObject({ hiddenAdditions: ["a"] });
   });
 });

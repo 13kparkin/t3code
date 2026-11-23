@@ -3,6 +3,7 @@ import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import * as Result from "effect/Result";
 import { useMemo, useState } from "react";
 
+import { type Addition, type ParsedAdditions, parseAdditions } from "../domain/additions";
 import { parseTickets, type Ticket, type TicketsIssue } from "../domain/ticket";
 import { type OrchestratorStats, orchestratorStats } from "../orchestrator/brief";
 import type { ValidBoard } from "../store/boardFiles";
@@ -10,8 +11,10 @@ import { type BoardModel, joinBoard } from "./boardModel";
 import { useDriverOf, useThreadFamily } from "./family";
 import { boardStoreAtom } from "./orchestrator";
 
-const NO_FILES = { tickets: null, forYou: null, decisions: null };
+const NO_FILES = { tickets: null, forYou: null, decisions: null, additions: null };
 const NO_TICKETS: ReadonlyArray<Ticket> = [];
+const NO_ITEMS: ReadonlyArray<Addition> = [];
+const NO_ADDITIONS: ParsedAdditions = { items: NO_ITEMS, problems: [] };
 
 export interface BoardView {
   readonly model: BoardModel;
@@ -20,6 +23,8 @@ export interface BoardView {
   /** The orchestrator card's numbers. Its ticket counts come from the same tickets the lanes show. */
   readonly stats: OrchestratorStats;
   readonly decisions: string | null;
+  /** Every readable `additions.json` item, hidden ones too. A file that stops parsing keeps the last items. */
+  readonly additions: ReadonlyArray<Addition>;
 }
 
 /** The board's tickets joined with its orchestrator's agents. */
@@ -42,6 +47,19 @@ export function useBoardView(project: EnvironmentProject, listed: ValidBoard): B
   }
   const tickets = Result.isSuccess(parsed) ? parsed.success : lastValid.tickets;
 
+  const parsedAdditions = useMemo(
+    () => (files.additions === null ? NO_ADDITIONS : parseAdditions(files.additions)),
+    [files.additions],
+  );
+  const [lastAdditions, setLastAdditions] = useState(NO_ITEMS);
+  if (parsedAdditions.items !== null && parsedAdditions.items !== lastAdditions) {
+    setLastAdditions(parsedAdditions.items);
+  }
+  const stats = orchestratorStats(
+    { ...files, tickets: Result.isSuccess(parsed) ? files.tickets : lastValid.text },
+    board.builderCap,
+  );
+
   const family = useThreadFamily(project.environmentId, board.orchestratorThreadId);
   const driverOf = useDriverOf();
   const model = useMemo(
@@ -57,10 +75,8 @@ export function useBoardView(project: EnvironmentProject, listed: ValidBoard): B
   return {
     model,
     issue: Result.isFailure(parsed) ? parsed.failure : null,
-    stats: orchestratorStats(
-      { ...files, tickets: Result.isSuccess(parsed) ? files.tickets : lastValid.text },
-      board.builderCap,
-    ),
+    stats: { ...stats, problems: [...stats.problems, ...parsedAdditions.problems] },
     decisions: files.decisions,
+    additions: parsedAdditions.items ?? lastAdditions,
   };
 }

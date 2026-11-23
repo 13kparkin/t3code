@@ -1,3 +1,4 @@
+import type { Addition } from "../domain/additions";
 import type { CardView } from "../domain/forYou";
 import { STAGE_LABEL, TICKET_STAGES, type TicketStage } from "../domain/ticket";
 import type { BoardModel } from "../state/boardModel";
@@ -20,6 +21,14 @@ export const LANE_LABEL = {
 
 /** The key of the one frame that holds the agents no ticket claims. */
 export const UNASSIGNED_KEY = "__unassigned";
+/** A lane card's frame key is this and the addition's id. */
+export const ADDITION_KEY = "__add:";
+/** The hide key of a `canvas` addition's own lane, which folds like a stage lane. */
+export const additionLaneId = (id: string) => `add:${id}`;
+/** Each orchestrator line and problem line is one 18px row on the orchestrator card, so the lanes start that much lower. */
+export const ADDITION_LINE = 18;
+const ADDITION_FRAME = 140;
+const ADDITION_LANE = 280;
 
 export const LANE_WIDTH = 288;
 export const LANE_GAP = 16;
@@ -67,6 +76,8 @@ export interface Edge {
 
 export interface Layout {
   readonly lanes: ReadonlyArray<LaneBox>;
+  /** `canvas` additions, each a lane of its own after the stage lanes, keyed by the addition's id. */
+  readonly additionLanes: ReadonlyArray<FrameBox>;
   readonly edges: ReadonlyArray<Edge>;
   readonly content: Rect;
 }
@@ -98,15 +109,19 @@ export function forYouHeight(views: ReadonlyArray<CardView>): number {
   return views.reduce((sum, view) => sum + height(view) + CARD_GAP, FOR_YOU_NOTE);
 }
 
-const NO_HIDDEN: ReadonlySet<LaneId> = new Set();
+const NO_HIDDEN: ReadonlySet<string> = new Set();
 
 /** Stacks each shown lane's frames in its column, and adds one edge for each `dependsOn` between two tickets. Later lanes pack left over hidden ones. */
 export function layoutBoard(
   model: BoardModel,
   order: FrameOrder,
   forYouRows = 0,
-  hidden: ReadonlySet<LaneId> = NO_HIDDEN,
+  hidden: ReadonlySet<string> = NO_HIDDEN,
+  additions: ReadonlyArray<Addition> = [],
+  problemLines = 0,
 ): Layout {
+  const lines = additions.filter((item) => item.place === "orchestrator").length + problemLines;
+  const top = LANES_TOP + lines * ADDITION_LINE;
   const lanes: LaneBox[] = [];
   const edges: Edge[] = [];
   const known = new Set(
@@ -120,6 +135,8 @@ export function layoutBoard(
       if (model.unassigned.length === 0) return;
       items.push({ key: UNASSIGNED_KEY, height: unassignedHeight(model.unassigned.length) });
     } else if (id !== "for_you") {
+      const card = additions.find((item) => item.place === "lane" && item.lane === id);
+      if (card !== undefined) items.push({ key: ADDITION_KEY + card.id, height: ADDITION_FRAME });
       const views = model.lanes[id];
       for (const key of orderedKeys(
         views.map((view) => view.ticket.key),
@@ -133,26 +150,41 @@ export function layoutBoard(
         }
       }
     }
-    let y = LANES_TOP + LANE_HEAD;
+    let y = top + LANE_HEAD;
     const frames = items.map(({ key, height }): FrameBox => {
       const box = { key, x: x + LANE_PAD, y, width: FRAME_WIDTH, height };
       y += height + FRAME_GAP;
       return box;
     });
     const empty = id === "for_you" ? LANE_HEAD + forYouRows + LANE_PAD : LANE_MIN_HEIGHT;
-    const bottom = frames.length === 0 ? LANES_TOP + empty : y - FRAME_GAP + LANE_PAD;
+    const bottom = frames.length === 0 ? top + empty : y - FRAME_GAP + LANE_PAD;
     lanes.push({
       id,
       x,
-      y: LANES_TOP,
+      y: top,
       width: LANE_WIDTH,
-      height: Math.max(LANE_MIN_HEIGHT, bottom - LANES_TOP),
+      height: Math.max(LANE_MIN_HEIGHT, bottom - top),
       frames,
     });
   });
-  const right = LEFT + lanes.length * (LANE_WIDTH + LANE_GAP) - LANE_GAP;
-  const bottom = Math.max(...lanes.map((lane) => lane.y + lane.height));
-  return { lanes, edges, content: { x: 0, y: 0, width: right + LEFT, height: bottom + LEFT } };
+  const additionLanes = additions
+    .filter((item) => item.place === "canvas" && !hidden.has(additionLaneId(item.id)))
+    .map((item, at) => ({
+      key: item.id,
+      x: LEFT + (lanes.length + at) * (LANE_WIDTH + LANE_GAP),
+      y: top,
+      width: LANE_WIDTH,
+      height: LANE_HEAD + ADDITION_LANE,
+    }));
+  const columns = lanes.length + additionLanes.length;
+  const right = LEFT + columns * (LANE_WIDTH + LANE_GAP) - LANE_GAP;
+  const bottom = Math.max(...[...lanes, ...additionLanes].map((lane) => lane.y + lane.height));
+  return {
+    lanes,
+    additionLanes,
+    edges,
+    content: { x: 0, y: 0, width: right + LEFT, height: bottom + LEFT },
+  };
 }
 
 /** The lane's frame keys after `key` is dragged `dy` px, which place it by its center among the others. */
