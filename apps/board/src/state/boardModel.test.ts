@@ -1,3 +1,4 @@
+import * as DateTime from "effect/DateTime";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { Ticket } from "../domain/ticket";
@@ -27,6 +28,7 @@ const row = (
     activityRunStatus: null,
     pendingBackgroundTasks: [],
     pendingRuntimeRequest: null,
+    updatedAt: DateTime.makeUnsafe(0),
     ...rest,
   } as FamilyRow;
 };

@@ -6,8 +6,8 @@ import {
   clampDrag,
   edgePath,
   FRAME_WIDTH,
-  FRAME_HEAD,
-  frameHeight,
+  CARD_HEIGHT,
+  FRAME_GAP,
   LANE_GAP,
   LANE_HEAD,
   LANE_PAD,
@@ -32,6 +32,7 @@ const agent = (threadId: string): AgentView => ({
   branch: null,
   parentThreadId: null,
   round: null,
+  updatedAt: "2026-11-20T10:00:00.000Z",
 });
 
 const view = (ticket: Ticket, agents = 0): TicketView => ({
@@ -82,7 +83,7 @@ describe("laying out the lanes", () => {
     expect(building?.x).toBe(40 + 3 * (LANE_WIDTH + LANE_GAP));
     expect(building?.frames.map((frame) => [frame.key, frame.x, frame.y])).toEqual([
       ["T-1", building!.x + LANE_PAD, LANES_TOP + LANE_HEAD],
-      ["T-2", building!.x + LANE_PAD, LANES_TOP + LANE_HEAD + frameHeight(FRAME_HEAD, 2) + 12],
+      ["T-2", building!.x + LANE_PAD, LANES_TOP + LANE_HEAD + CARD_HEIGHT + FRAME_GAP],
     ]);
     expect(building?.frames[0]?.width).toBe(FRAME_WIDTH);
   });
@@ -121,8 +122,8 @@ describe("dragging a frame", () => {
   if (first === undefined) throw new Error("the building lane has no frame");
 
   it("Given a frame dragged past its neighbor's center, when dropped, then it takes the neighbor's place", () => {
-    expect(reorderByDrag(building, "T-1", first.height)).toEqual(["T-2", "T-1"]);
-    expect(reorderByDrag(building, "T-2", -first.height)).toEqual(["T-2", "T-1"]);
+    expect(reorderByDrag(building, "T-1", first.height + FRAME_GAP + 1)).toEqual(["T-2", "T-1"]);
+    expect(reorderByDrag(building, "T-2", -first.height - FRAME_GAP - 1)).toEqual(["T-2", "T-1"]);
   });
 
   it("Given a short drag, when dropped, then the order stays", () => {
@@ -138,7 +139,7 @@ describe("dragging a frame", () => {
 });
 
 describe("dependency edges", () => {
-  const box = (x: number, y: number) => ({ key: "k", head: 100, x, y, width: 264, height: 100 });
+  const box = (x: number, y: number) => ({ key: "k", x, y, width: 264, height: CARD_HEIGHT });
 
   const endpoints = (path: string) => {
     const numbers = path.match(/-?\d+(\.\d+)?/g)?.map(Number) ?? [];
@@ -147,19 +148,19 @@ describe("dependency edges", () => {
 
   it("Given a dependent in a later lane, when drawn, then the curve runs from the right edge to the left edge", () => {
     expect(endpoints(edgePath(box(0, 0), box(300, 200)))).toEqual({
-      from: [264, 24],
-      to: [300, 224],
+      from: [264, 26],
+      to: [300, 226],
     });
   });
 
   it("Given a dependent in an earlier lane, when drawn, then it runs from the left edge to the right edge", () => {
     expect(endpoints(edgePath(box(300, 0), box(0, 200)))).toEqual({
-      from: [300, 24],
-      to: [264, 224],
+      from: [300, 26],
+      to: [264, 226],
     });
   });
 
   it("Given two frames in one lane, when drawn, then the curve joins their left edges", () => {
-    expect(endpoints(edgePath(box(0, 0), box(0, 200)))).toEqual({ from: [0, 24], to: [0, 224] });
+    expect(endpoints(edgePath(box(0, 0), box(0, 200)))).toEqual({ from: [0, 26], to: [0, 226] });
   });
 });

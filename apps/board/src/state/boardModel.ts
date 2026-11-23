@@ -2,6 +2,7 @@ import {
   isProviderNativeSubagentThread,
   type OrchestrationV2ThreadShell,
 } from "@t3tools/contracts";
+import * as DateTime from "effect/DateTime";
 
 import type { Ticket, TicketStage } from "../domain/ticket";
 import { ROLES } from "../orchestrator/roles";
@@ -20,6 +21,7 @@ export type FamilyRow = Pick<
   | "pendingBackgroundTasks"
   | "pendingRuntimeRequest"
   | "pullRequests"
+  | "updatedAt"
 >;
 
 export type RunState = "working" | "waiting" | "idle" | "failed" | "stopped";
@@ -41,6 +43,8 @@ export interface AgentView {
   readonly branch: string | null;
   readonly parentThreadId: string | null;
   readonly round: number | null;
+  /** When the thread last changed, as ISO text. */
+  readonly updatedAt: string;
 }
 
 export interface TicketView {
@@ -102,6 +106,7 @@ function agentOf(
     branch: row.branch,
     parentThreadId: row.lineage.parentThreadId,
     round: entry?.round ?? null,
+    updatedAt: DateTime.formatIso(row.updatedAt),
   };
 }
 

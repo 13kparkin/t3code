@@ -5,9 +5,10 @@ import type { AgentView, RunState } from "../state/boardModel";
 import { usePrContext } from "../state/prStatus";
 import { Tooltip } from "../ui/Tooltip";
 import { ProviderGlyph } from "../usage/ProviderGlyph";
-import { CARD_HEIGHT } from "./layout";
 import { SetupFailure, useSetupLine } from "./SetupLine";
 import { ReviewChanges } from "./ReviewChanges";
+
+const CARD_HEIGHT = 62;
 
 const STATE = {
   working: { label: "Working", chip: "bg-sky-500/15 text-sky-300", accent: "bg-sky-400" },

@@ -5,7 +5,8 @@ import { STAGE_LABEL } from "../domain/ticket";
 import type { BoardModel } from "../state/boardModel";
 import type { TicketChoice } from "../browser/panel";
 import { saveFrameOrder } from "../state/boardUi";
-import { AgentCard } from "./AgentCard";
+import { ago } from "../ui/ago";
+import { CardLine } from "./CardLine";
 import {
   clampDrag,
   edgePath,
@@ -18,9 +19,11 @@ import {
   UNASSIGNED_HEAD,
   UNASSIGNED_KEY,
   CARD_GAP,
+  CARD_HEIGHT,
   FRAME_PAD,
 } from "./layout";
 import { TicketFrame } from "./TicketFrame";
+import { ticketStatus } from "./ticketStatus";
 
 const LABEL = {
   for_you: "For you",
@@ -162,14 +165,28 @@ export function Lanes({
                 >
                   Started with no ticket
                 </p>
-                <div className="flex flex-col" style={{ gap: CARD_GAP, padding: FRAME_PAD }}>
+                <div
+                  className="flex flex-col"
+                  style={{ gap: CARD_GAP, padding: `0 ${FRAME_PAD}px ${FRAME_PAD}px` }}
+                >
                   {model.unassigned.map((agent) => (
-                    <AgentCard
+                    <button
                       key={agent.threadId}
-                      agent={agent}
-                      selected={agent.threadId === choice?.threadId}
-                      onOpen={() => onChoose({ threadId: agent.threadId, ticketKey: null })}
-                    />
+                      type="button"
+                      aria-pressed={agent.threadId === choice?.threadId}
+                      // A press that starts on a row is a click, not the start of a pan.
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={() => onChoose({ threadId: agent.threadId, ticketKey: null })}
+                      style={{ height: CARD_HEIGHT }}
+                      className={`flex shrink-0 flex-col justify-center gap-1 rounded-md border bg-bg px-2.5 text-left hover:bg-hover ${agent.threadId === choice?.threadId ? "border-focus" : "border-line"}`}
+                    >
+                      <CardLine
+                        tag={null}
+                        title={agent.title}
+                        status={ticketStatus([agent])}
+                        detail={`${agent.role} · ${ago(agent.updatedAt)}`}
+                      />
+                    </button>
                   ))}
                 </div>
               </section>
@@ -183,10 +200,12 @@ export function Lanes({
               view={view}
               box={box}
               offset={drag?.key === box.key ? drag.dy : 0}
-              selectedThreadId={choice?.threadId ?? null}
+              selected={choice?.ticketKey === box.key}
               onDrag={(dy) => setDrag({ key: box.key, dy: clampDrag(lane, box, dy) })}
               onDrop={() => drop(lane)}
-              onOpen={(threadId) => onChoose({ threadId, ticketKey: box.key })}
+              onOpen={() =>
+                onChoose({ threadId: view.agents[0]?.threadId ?? null, ticketKey: box.key })
+              }
             />
           );
         }),

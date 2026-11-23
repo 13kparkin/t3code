@@ -7,6 +7,7 @@ import { useArtifacts } from "../artifacts/ArtifactsContext";
 import { EmptyFiles } from "../files/EmptyFiles";
 import { NO_ARTIFACTS } from "../state/artifacts";
 import type { BoardModel } from "../state/boardModel";
+import { AgentCard } from "./AgentCard";
 import { AgentLog } from "./AgentLog";
 import { ArtifactCards } from "./ArtifactCards";
 import { PrChecks } from "./PrChecks";
@@ -102,6 +103,21 @@ export function TicketPanel({
           <TicketSteps view={view} />
           <PrChecks view={view} />
           <TicketReadiness view={view} />
+          {view.agents.length > 0 && (
+            <div className="flex flex-col gap-1.5 border-b border-line px-3 py-2">
+              {view.agents.map((entry) => (
+                <AgentCard
+                  key={entry.threadId}
+                  agent={entry}
+                  ticket={view.ticket}
+                  selected={entry.threadId === choice?.threadId}
+                  onOpen={() =>
+                    chooseTicket(registry, { threadId: entry.threadId, ticketKey: view.ticket.key })
+                  }
+                />
+              ))}
+            </div>
+          )}
           {(groups.byTicket.get(view.ticket.key) ?? NO_ARTIFACTS).length > 0 && (
             <div className="border-b border-line px-3 py-2">
               <ArtifactCards artifacts={groups.byTicket.get(view.ticket.key) ?? NO_ARTIFACTS} />

@@ -21,13 +21,12 @@ export const LANE_HEAD = 34;
 export const LANE_PAD = 12;
 export const LANE_MIN_HEIGHT = 160;
 export const FRAME_WIDTH = LANE_WIDTH - LANE_PAD * 2;
-export const FRAME_GAP = 12;
-export const FRAME_HEAD = 100;
-export const UNASSIGNED_HEAD = 34;
-export const FRAME_PAD = 8;
-export const CARD_HEIGHT = 62;
+export const FRAME_GAP = 8;
+/** Every ticket card, and every unassigned agent row, is two lines this tall. */
+export const CARD_HEIGHT = 52;
+export const UNASSIGNED_HEAD = 30;
+export const FRAME_PAD = 6;
 export const CARD_GAP = 6;
-export const EMPTY_HEIGHT = 30;
 export const ARTIFACT_HEIGHT = 36;
 export const ARTIFACT_GAP = 4;
 const FOR_YOU_NOTE = 20;
@@ -42,13 +41,11 @@ const LEFT = 40;
 export const ORCHESTRATOR_BOX: Rect = { x: LEFT, y: LEFT, width: 340, height: 280 };
 /** Where the lanes start, below the orchestrator card. */
 export const LANES_TOP = ORCHESTRATOR_BOX.y + ORCHESTRATOR_BOX.height + LEFT;
-const EDGE_ATTACH_Y = 24;
+const EDGE_ATTACH_Y = CARD_HEIGHT / 2;
 const EDGE_CURVE = 40;
 
 export interface FrameBox extends Rect {
   readonly key: string;
-  /** The height of the part above the agent cards. */
-  readonly head: number;
 }
 
 export interface LaneBox extends Rect {
@@ -68,10 +65,9 @@ export interface Layout {
   readonly content: Rect;
 }
 
-export const frameHeight = (head: number, agents: number): number =>
-  head +
-  FRAME_PAD * 2 +
-  (agents === 0 ? EMPTY_HEIGHT : agents * CARD_HEIGHT + (agents - 1) * CARD_GAP);
+/** The frame of agents no ticket claims: a note, then one row per agent. */
+export const unassignedHeight = (agents: number): number =>
+  UNASSIGNED_HEAD + FRAME_PAD + agents * CARD_HEIGHT + (agents - 1) * CARD_GAP;
 
 /** Frames in the order the user dragged them to, and any the saved order lacks after them, in file order. */
 export function orderedKeys(keys: ReadonlyArray<string>, saved: ReadonlyArray<string> = []) {
@@ -105,14 +101,10 @@ export function layoutBoard(model: BoardModel, order: FrameOrder, forYouRows = 0
   );
   LANE_IDS.forEach((id) => {
     const x = LEFT + lanes.length * (LANE_WIDTH + LANE_GAP);
-    const items: Array<{ key: string; head: number; height: number }> = [];
+    const items: Array<{ key: string; height: number }> = [];
     if (id === "unassigned") {
       if (model.unassigned.length === 0) return;
-      items.push({
-        key: UNASSIGNED_KEY,
-        head: UNASSIGNED_HEAD,
-        height: frameHeight(UNASSIGNED_HEAD, model.unassigned.length),
-      });
+      items.push({ key: UNASSIGNED_KEY, height: unassignedHeight(model.unassigned.length) });
     } else if (id !== "for_you") {
       const views = model.lanes[id];
       for (const key of orderedKeys(
@@ -121,15 +113,15 @@ export function layoutBoard(model: BoardModel, order: FrameOrder, forYouRows = 0
       )) {
         const view = views.find((entry) => entry.ticket.key === key);
         if (view === undefined) continue;
-        items.push({ key, head: FRAME_HEAD, height: frameHeight(FRAME_HEAD, view.agents.length) });
+        items.push({ key, height: CARD_HEIGHT });
         for (const dependency of view.ticket.dependsOn ?? []) {
           if (known.has(dependency)) edges.push({ from: dependency, to: key });
         }
       }
     }
     let y = LANES_TOP + LANE_HEAD;
-    const frames = items.map(({ key, head, height }): FrameBox => {
-      const box = { key, head, x: x + LANE_PAD, y, width: FRAME_WIDTH, height };
+    const frames = items.map(({ key, height }): FrameBox => {
+      const box = { key, x: x + LANE_PAD, y, width: FRAME_WIDTH, height };
       y += height + FRAME_GAP;
       return box;
     });
