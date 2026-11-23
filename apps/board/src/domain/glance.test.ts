@@ -89,7 +89,7 @@ describe("ticket at a glance", () => {
         }),
       },
       "Reviews",
-      "2 lanes, 1 clean, ponytail-review 1 P2 · 2 fix rounds",
+      "2 lanes, 1 clean; ponytail-review 1 P2 · 2 fix rounds",
     ],
     ["fix rounds alone", { ticket: ticketOf({ fixRounds: 1 }) }, "Reviews", "1 fix round"],
     [

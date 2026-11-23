@@ -61,7 +61,7 @@ function reviews(ticket: Ticket): string | null {
     lanes.length === 0
       ? null
       : [`${plural(lanes.length, "lane")}, ${lanes.length - open.length} clean`, ...open].join(
-          ", ",
+          "; ",
         ),
     rounds === 0 ? null : plural(rounds, "fix round"),
   ].filter((part) => part !== null);
