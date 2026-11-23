@@ -215,4 +215,29 @@ describe("live pull request state", () => {
     });
     expect(live?.url).toBe("https://github.com/acme/app/pull/12");
   });
+
+  it.each([
+    [
+      "line and file counts",
+      { additions: 40, deletions: 2, changedFiles: 3 },
+      { files: 3, additions: 40, deletions: 2 },
+    ],
+    [
+      "line counts only",
+      { additions: 40, deletions: 2 },
+      { files: null, additions: 40, deletions: 2 },
+    ],
+    ["no counts", {}, null],
+  ])(
+    "Given a snapshot with %s and no summary, when it is built, then the size is %j",
+    (_name, counts, size) => {
+      const live = buildLive({
+        link: link(12, { snapshot: snapshot(counts) }),
+        summary: null,
+        checks: null,
+        runs: [],
+      });
+      expect(live?.size).toEqual(size);
+    },
+  );
 });

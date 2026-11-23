@@ -38,6 +38,7 @@ const live = (checks: ReadonlyArray<CheckRun>, headSha: string | null = "abc1234
   headSha,
   checks,
   url: "https://github.com/acme/app/pull/12",
+  size: null,
 });
 
 const green = live([check("lint", "success"), check("test", "success")]);
@@ -285,6 +286,8 @@ describe("smoke evidence", () => {
     "PASS: item one",
     "PROXY: item two, a stubbed window.board",
     "NOT RUN: item three",
+    "PARTIAL 4 item four, without a colon",
+    "NOT RUN 5 item five",
   ].join("\n");
 
   const unreadable: Smoke = { kind: "unreadable", reason: "smoke.txt is not text" };
@@ -313,7 +316,7 @@ describe("smoke evidence", () => {
     expect(smokeState(smoke)).toBe(missing);
   });
 
-  it("Given a smoke file with PROXY and NOT RUN items, when readiness is computed, then the smoke condition lists them", () => {
+  it("Given a smoke file with PARTIAL, PROXY and NOT RUN items, when readiness is computed, then the smoke condition lists them", () => {
     const ticket = ticketOf({ key: "T-1", pr: 12, verdicts: clean });
     const conditions = evaluateReadiness({
       ticket,
@@ -330,6 +333,8 @@ describe("smoke evidence", () => {
     expect(conditions.find((condition) => condition.key === "smoke_named")?.notes).toEqual([
       "PROXY: item two, a stubbed window.board",
       "NOT RUN: item three",
+      "PARTIAL 4 item four, without a colon",
+      "NOT RUN 5 item five",
     ]);
   });
 });
