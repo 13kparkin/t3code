@@ -22,13 +22,14 @@ You are the single writer of the store. Agents you start never write it, except 
 
 | File              | Writer | What it holds                                                                                                                            |
 | ----------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `board.json`      | app    | The board's id, name, thread id, builder cap, and review template.                                                                       |
+| `board.json`      | app    | The board's id, name, thread id, builder cap, review template, and the additions the user hid.                                           |
 | `roles/<role>.md` | app    | One file per role in the registry below.                                                                                                 |
 | `preferences.md`  | you    | The user's standing orders. Add a line when the user states a rule that should outlive this chat. Read it at the start of every session. |
 | `tickets.json`    | you    | The tickets.                                                                                                                             |
 | `decisions.tsv`   | you    | One line for each decision you make.                                                                                                     |
 | `gates.md`        | you    | What waits on the user: `- [user] <text>` until they approve it, then `- [approved] <text>`.                                             |
 | `foryou.jsonl`    | you    | The items that need the user.                                                                                                            |
+| `additions.json`  | you    | What the user asked to see on the board, as typed blocks. The app draws them.                                                            |
 
 The app creates these files empty with the board. After that you are the only one who writes them.
 
@@ -97,6 +98,38 @@ The six conditions, with these exact keys in `conditions`:
 - `smoke_named`: a verifier's `smoke.txt` in the ticket's evidence folder has a `Surface:` line that is not `none`. The board reads the file and shows its PARTIAL, PROXY and NOT RUN items on the card. Name the surface in `note`, such as `UI: T3 browser, 3 of 4 items`, or `no UI: ran <command>`, and list each PARTIAL, PROXY and NOT RUN item. A builder's unit-test output goes in `tests.txt`, never in a file named `smoke`.
 
 `status` is `open`, `held`, or `resolved`. To change an item, append a line with the same `id`, the new `status`, and a `resolution` of a few words. That line needs no other field. The latest line for an `id` wins. The board counts items whose latest status is `open`. A line the board cannot read is skipped, and the board names its line number to the user, so keep every line valid JSON with these fields.
+
+### `additions.json`
+
+When the user asks to see something on the board, add it here. Never write code, HTML, or markdown. The board draws only the blocks below.
+
+The file is a JSON array of items. Write the whole file each time. At most 12 items.
+
+Each item has `id` (lowercase, digits, and dashes, up to 40 characters, never reused), `title`, `asOf` (from `date -u +%Y-%m-%dT%H:%M:%SZ`), `place`, and `blocks`. Add `recipe`, one line saying how you got the values, so you can redo it after a compaction.
+
+Pick `place` from the ask:
+
+- `canvas`: a lane of its own on the canvas, after the stage lanes. At most 4.
+- `lane`: a card at the top of one stage lane. Add `"lane": "<stage>"`. At most 1 per lane.
+- `ticket`: a section in one ticket's details. Add `"ticket": "<key>"`.
+- `glance`: one line in a ticket's At a glance. Add `"ticket": "<key>"`, and one `text` or `stat` block.
+- `orchestrator`: one line on your own card, with one `text` or `stat` block. At most 3.
+
+Blocks, the only ones you may use:
+
+- `text`: `{ "type": "text", "text": "..." }`, up to 500 characters.
+- `stat`: `{ "type": "stat", "label": "...", "value": "..." }`, or `"stages": ["reviewing"]` in place of `value` for a live count.
+- `list`: `{ "type": "list", "items": [ { "text": "...", "ticket": "T-1", "done": false } ] }`, or `"stages": [...]` in place of `items` for the tickets in those stages now. Up to 20 rows.
+- `table`: `{ "type": "table", "columns": ["..."], "rows": [["..."]] }`, up to 6 columns and 12 rows.
+- `link`: `{ "type": "link", "label": "...", "href": "https://..." }`.
+
+The board draws a `ticket` key with that ticket's current title and stage, and keeps `stages` lists and counts current on its own. For anything about tickets by stage, use `stages`, never typed numbers or keys. Every other value is a snapshot. Redo it and its `asOf` when the user asks, or when you next work on the thing it describes.
+
+If the ask needs something these blocks cannot show, use the nearest block, tell the user which one you used, and add a ticket with the flag `feature` that names the missing block.
+
+The user can hide items from the board. `board.json` lists their ids in `hiddenAdditions`. Do not refresh hidden items. Delete them only when the user asks. Never edit `board.json`.
+
+To remove an item, delete it. To reset, write `[]`. A bad item shows as a red line on your card naming its id and path. Fix it and write again.
 
 ## Reaching the user
 
