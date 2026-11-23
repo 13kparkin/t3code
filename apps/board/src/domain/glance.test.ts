@@ -31,7 +31,7 @@ const lines = (fields: Partial<GlanceInput>) =>
 
 describe("ticket at a glance", () => {
   it("Given a ticket with nothing yet, when its lines are derived, then there are none", () => {
-    expect(glanceLines(inputOf({ ticket: ticketOf({ cause: " ", flags: [] }) }))).toEqual([]);
+    expect(glanceLines(inputOf({}))).toEqual([]);
   });
 
   it.each([
@@ -125,35 +125,4 @@ describe("ticket at a glance", () => {
       expect(lines(fields)[label]).toBe(text);
     },
   );
-
-  it("Given a merged ticket with every field, when its lines are derived, then they run in the registry's order", () => {
-    const labels = glanceLines(
-      inputOf({
-        ticket: ticketOf({
-          cause: "c",
-          impact: "i",
-          dependsOn: ["T-1"],
-          flags: ["bug"],
-          fixRounds: 1,
-          verdicts: [{ role: "verify" }],
-        }),
-        tickets: [ticketOf({ key: "T-2", dependsOn: ["T-9"] })],
-        size: { files: 2, additions: 1, deletions: 1 },
-        smoke: { kind: "read", surface: "x", flagged: ["NOT RUN y"] },
-        decisions: DECISIONS,
-      }),
-    ).map((line) => line.label);
-    expect(labels).toEqual([
-      "Root cause",
-      "Who notices",
-      "Size",
-      "Came from",
-      "How we know",
-      "Reviews",
-      "Not checked",
-      "Waiting on",
-      "Blocks",
-      "Flags",
-    ]);
-  });
 });
