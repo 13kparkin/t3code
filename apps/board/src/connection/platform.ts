@@ -31,16 +31,17 @@ import {
   setRoutesInCatalog,
 } from "@t3tools/client-runtime/platform";
 import * as Context from "effect/Context";
+import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
 import * as Ref from "effect/Ref";
-import * as Schedule from "effect/Schedule";
 import * as Stream from "effect/Stream";
 import { FetchHttpClient } from "effect/http";
 
 import { engineBridge } from "./bridge";
+import { REGISTRATION_RETRY } from "./registrationRetry";
 import type { EngineState } from "./engineState";
 
 const layerConnectivity = Connectivity.layer({
@@ -285,7 +286,16 @@ const loadRegistration = (httpBaseUrl: string) =>
           }),
         }),
     ),
-    Effect.retry({ schedule: Schedule.spaced("500 millis"), times: 20 }),
+    Effect.tapError((error) =>
+      DateTime.now.pipe(
+        Effect.map((now) =>
+          engineBridge.logConnection(
+            `${DateTime.formatIso(now)}\tdescribe-retry\t${error.message}`,
+          ),
+        ),
+      ),
+    ),
+    Effect.retry(REGISTRATION_RETRY),
     Effect.provide(FetchHttpClient.layer),
   );
 
