@@ -24,17 +24,24 @@ const agent = (
   ...extra,
 });
 
+const LATER = "2026-11-21T10:00:00.000Z";
+
 describe("a card's status", () => {
   it.each([
     [[], null],
     [[agent("a", "idle"), agent("b", "stopped")], "Idle"],
     [[agent("a", "idle"), agent("b", "working")], "Working"],
     [[agent("a", "idle"), agent("b", "waiting")], "Working"],
-    [[agent("a", "working"), agent("b", "failed")], "Failed"],
+    [[agent("a", "working"), agent("b", "failed")], "Working"],
+    [[agent("a", "failed"), agent("b", "idle", { updatedAt: LATER })], "Idle"],
+    [[agent("a", "idle"), agent("b", "failed", { updatedAt: LATER })], "Failed"],
     [[agent("a", "failed"), agent("b", "idle", { pendingRequest: true })], "Waiting on you"],
-  ])("Given agents %#, when read, then the most urgent state wins", (agents, word) => {
-    expect(ticketStatus(agents)?.word ?? null).toBe(word);
-  });
+  ])(
+    "Given agents %#, when read, then a live state wins, else the newest agent's",
+    (agents, word) => {
+      expect(ticketStatus(agents)?.word ?? null).toBe(word);
+    },
+  );
 
   it("Given agents updated at different times, when read, then the newest is named", () => {
     const later = agent("b", "idle", { updatedAt: "2026-11-21T10:00:00.000Z" });

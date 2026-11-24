@@ -6,17 +6,20 @@ export interface CardStatus {
   readonly tone: string;
 }
 
-/** What a card's agents are doing, the most urgent first. A ticket with no agents has no status. */
+/**
+ * What a card's agents are doing: a question for the user, then live work, then the newest agent's
+ * state, so a failed agent that another agent has since replaced does not mark the ticket.
+ */
 export function ticketStatus(agents: ReadonlyArray<AgentView>): CardStatus | null {
   if (agents.length === 0) return null;
   if (agents.some((agent) => agent.pendingRequest)) {
     return { word: "Waiting on you", tone: "bg-amber-400" };
   }
-  if (agents.some((agent) => agent.runState === "failed")) {
-    return { word: "Failed", tone: "bg-red-400" };
-  }
   if (agents.some((agent) => agent.runState === "working" || agent.runState === "waiting")) {
     return { word: "Working", tone: "bg-sky-400" };
+  }
+  if (newestAgent(agents)?.runState === "failed") {
+    return { word: "Failed", tone: "bg-red-400" };
   }
   return { word: "Idle", tone: "bg-faint" };
 }

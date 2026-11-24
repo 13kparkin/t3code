@@ -31,10 +31,17 @@ import { Lanes } from "./Lanes";
 import { forYouHeight, hiddenFilters, layoutBoard } from "./layout";
 import { OrchestratorCard } from "./OrchestratorCard";
 import { TicketPanel } from "./TicketPanel";
+import { useStoreErrorReports } from "./useStoreErrorReports";
 import { Viewport } from "./Viewport";
 
 const NO_ORDER = {};
 const NO_IDS: ReadonlyArray<string> = [];
+
+/** A leaf, so the orchestrator's streaming state re-renders only this and not the board. */
+function StoreErrorReports(props: Parameters<typeof useStoreErrorReports>[0]) {
+  useStoreErrorReports(props);
+  return null;
+}
 
 /** A board's orchestrator card and lanes on the canvas, the ticket tab and the orchestrator's chat, which draw in the side panel. Open files are tabs over the canvas. */
 export function BoardScreen({
@@ -122,6 +129,18 @@ export function BoardScreen({
     <ArtifactsProvider value={artifacts}>
       <PrProvider value={prContext}>
         <div className="relative flex h-full min-h-0">
+          <StoreErrorReports
+            environmentId={project.environmentId}
+            orchestratorThreadId={board.orchestratorThreadId}
+            boardId={board.id}
+            errors={[
+              ...(issue === null ? [] : [issue.message]),
+              ...stats.problems,
+              ...forYou.problems.map(
+                (problem) => `foryou.jsonl line ${problem.line}: ${problem.message}`,
+              ),
+            ]}
+          />
           <AgentPanel environmentId={project.environmentId} model={model} />
           <MainTabs
             files={artifacts.files}
