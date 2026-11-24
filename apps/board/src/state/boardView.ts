@@ -3,6 +3,7 @@ import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import * as Result from "effect/Result";
 import { useMemo, useState } from "react";
 
+import { applyOverlay, type Overlay, parseOverlay } from "../domain/ticketOverlay";
 import { type Addition, type ParsedAdditions, parseAdditions } from "../domain/additions";
 import { parseTickets, type Ticket, type TicketsIssue } from "../domain/ticket";
 import { type OrchestratorStats, orchestratorStats } from "../orchestrator/brief";
@@ -11,7 +12,8 @@ import { type BoardModel, joinBoard } from "./boardModel";
 import { useDriverOf, useThreadFamily } from "./family";
 import { boardStoreAtom } from "./orchestrator";
 
-const NO_FILES = { tickets: null, forYou: null, decisions: null, additions: null };
+const NO_FILES = { tickets: null, forYou: null, decisions: null, additions: null, details: null };
+const NO_OVERLAY: Overlay = {};
 const NO_TICKETS: ReadonlyArray<Ticket> = [];
 const NO_ITEMS: ReadonlyArray<Addition> = [];
 const NO_ADDITIONS: ParsedAdditions = { items: NO_ITEMS, problems: [] };
@@ -45,7 +47,18 @@ export function useBoardView(project: EnvironmentProject, listed: ValidBoard): B
   if (Result.isSuccess(parsed) && parsed.success !== lastValid.tickets) {
     setLastValid({ text: files.tickets, tickets: parsed.success });
   }
-  const tickets = Result.isSuccess(parsed) ? parsed.success : lastValid.tickets;
+  const rawTickets = Result.isSuccess(parsed) ? parsed.success : lastValid.tickets;
+
+  const parsedOverlay = useMemo(
+    () => (files.details === null ? Result.succeed(NO_OVERLAY) : parseOverlay(files.details)),
+    [files.details],
+  );
+  const [lastOverlay, setLastOverlay] = useState(NO_OVERLAY);
+  if (Result.isSuccess(parsedOverlay) && parsedOverlay.success !== lastOverlay) {
+    setLastOverlay(parsedOverlay.success);
+  }
+  const overlay = Result.isSuccess(parsedOverlay) ? parsedOverlay.success : lastOverlay;
+  const tickets = useMemo(() => applyOverlay(rawTickets, overlay), [rawTickets, overlay]);
 
   const parsedAdditions = useMemo(
     () => (files.additions === null ? NO_ADDITIONS : parseAdditions(files.additions)),
@@ -75,7 +88,14 @@ export function useBoardView(project: EnvironmentProject, listed: ValidBoard): B
   return {
     model,
     issue: Result.isFailure(parsed) ? parsed.failure : null,
-    stats: { ...stats, problems: [...stats.problems, ...parsedAdditions.problems] },
+    stats: {
+      ...stats,
+      problems: [
+        ...stats.problems,
+        ...parsedAdditions.problems,
+        ...(Result.isFailure(parsedOverlay) ? [parsedOverlay.failure.message] : []),
+      ],
+    },
     decisions: files.decisions,
     additions: parsedAdditions.items ?? lastAdditions,
   };

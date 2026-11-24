@@ -39,12 +39,12 @@ const briefOf = (detail: IssueDetail, comments: IssueDetail["comments"]): IssueB
   })),
 });
 
-/** The issue's description and its comments, oldest first. A thread longer than MAX_COMMENT_PAGES pages past the detail loses its oldest comments. */
-export async function readIssueBrief(
+/** One uncached read of an issue, which the ticket pull uses so a change shows within its own interval. */
+export async function readIssueDetail(
   registry: AtomRegistry.AtomRegistry,
   environmentId: EnvironmentId,
   ref: IssueRef,
-): Promise<IssueBrief> {
+): Promise<IssueDetail> {
   const detail = await runAtomCommand(
     registry,
     readDetail,
@@ -52,8 +52,18 @@ export async function readIssueBrief(
     { reportFailure: false },
   );
   if (detail._tag !== "Success") throw new Error(failureText(detail));
+  return detail.value;
+}
+
+/** The issue's description and its comments, oldest first. A thread longer than MAX_COMMENT_PAGES pages past the detail loses its oldest comments. */
+export async function readIssueBrief(
+  registry: AtomRegistry.AtomRegistry,
+  environmentId: EnvironmentId,
+  ref: IssueRef,
+): Promise<IssueBrief> {
+  const detail = await readIssueDetail(registry, environmentId, ref);
   const olderPages: Array<IssueDetail["comments"]> = [];
-  let cursor = detail.value.commentsCursor;
+  let cursor = detail.commentsCursor;
   for (let page = 0; cursor !== null && page < MAX_COMMENT_PAGES; page += 1) {
     const older = await runAtomCommand(
       registry,
@@ -65,7 +75,7 @@ export async function readIssueBrief(
     olderPages.unshift(older.value.comments);
     cursor = older.value.nextCursor;
   }
-  return briefOf(detail.value, [...olderPages.flat(), ...detail.value.comments]);
+  return briefOf(detail, [...olderPages.flat(), ...detail.comments]);
 }
 
 export async function runTrackerCall(

@@ -147,6 +147,8 @@ const NO_SMOKE = Atom.make<Smoke | null>(null).pipe(Atom.withLabel("board-smoke:
 
 export interface PrContextValue {
   readonly project: EnvironmentProject;
+  /** The board folder under `.agentboard`. */
+  readonly folder: string;
   readonly orchestratorThreadId: string;
   readonly family: ReadonlyArray<FamilyRow>;
   readonly tickets: ReadonlyArray<TicketView>;

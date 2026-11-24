@@ -73,7 +73,7 @@ Any push to a ticket's branch after `reviewing` gets a decision line. Before any
 
 ### `ticket-details.json`
 
-A JSON object keyed by ticket key. Each entry has `edits` (fields the user set: `title`, `description`, `track`, `dependsOn`, and `issue`, where `null` means the user unlinked it) and `pulled` (the tracker's `title` and `description` for the `issue` it names). To read a ticket, take its row in `tickets.json`, then apply its `edits`, then its `pulled`, over the ticket, each field replacing the field whole. Decide what to start from the `dependsOn` after those layers, because the user edits prerequisites on the board. Never edit `ticket-details.json`, and never write a `dependsOn` that makes a cycle. The board refuses a cycle the user tries.
+A JSON object keyed by ticket key. A board made before this file may lack it, which means no edits. Each entry has `edits` (fields the user set: `title`, `description`, `track`, `dependsOn`, and `issue`, where `null` means the user unlinked it) and `pulled` (the tracker's `title` and `description` for the `issue` it names). To read a ticket, take its row in `tickets.json`, then apply its `edits`, then its `pulled`, over the ticket, each field replacing the field whole. Decide what to start from the `dependsOn` after those layers, because the user edits prerequisites on the board. Never edit `ticket-details.json`, and never write a `dependsOn` that makes a cycle. The board refuses a cycle the user tries.
 
 ### `decisions.tsv`
 

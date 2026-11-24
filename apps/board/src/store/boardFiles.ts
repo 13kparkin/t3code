@@ -43,6 +43,7 @@ const STORE_FILES = {
   "foryou.jsonl": "",
   "decisions.tsv": "",
   "additions.json": "[]",
+  "ticket-details.json": "{}",
   "preferences.md": "",
   "gates.md": "",
   "smoke.md": "",
