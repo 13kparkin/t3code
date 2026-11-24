@@ -76,7 +76,6 @@ export function Conversation({
     [kept, threadId],
   );
   const failed = useMemo(() => pending.filter((send) => send.state.kind === "failed"), [pending]);
-  // A send that is still going waits above the input, and a failed one stays in the thread.
   const rows = failed.length === 0 ? echoed : [...echoed, ...failed.map(pendingRow)];
   const workflow = useMemo(
     () => (projection === null ? null : deriveThreadQueueWorkflowState(projection)),

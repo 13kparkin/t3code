@@ -91,7 +91,6 @@ export const chatSlotAtom = Atom.make<HTMLElement | null>(null).pipe(
 // A stable function, so a re-render does not detach and attach the slot again.
 export const attachChatSlot = (node: HTMLElement | null) => appAtomRegistry.set(chatSlotAtom, node);
 
-/** Where the composer docks over the board, which the chat fills while its thread is hidden or shown. */
 export const dockSlotAtom = Atom.make<HTMLElement | null>(null).pipe(
   Atom.keepAlive,
   Atom.withLabel("dock-slot"),

@@ -2,7 +2,6 @@ import type { BoardStoreHost } from "../connection/engineState";
 import { BOARD_FILE, BOARDS_DIR } from "../domain/board";
 import type { ProjectFiles } from "./boardFiles";
 
-/** The project's folder under the store: its own name for a human, a hash of its path for uniqueness. */
 export function projectKeyOf(cwd: string): string {
   let hash = 0x811c9dc5;
   for (const char of cwd) hash = Math.imul(hash ^ char.charCodeAt(0), 0x01000193) >>> 0;
@@ -12,10 +11,6 @@ export function projectKeyOf(cwd: string): string {
 
 const PREFIX = `${BOARDS_DIR}/`;
 
-/**
- * The project's files, with each board that moved to the global store answered from there. A board
- * lists from the store when its `board.json` is there, so a move only has to flip that file.
- */
 export function routeFiles(project: ProjectFiles, store: BoardStoreHost): ProjectFiles {
   const stored = async (key: string, slug: string) =>
     (await store.read(`${key}/${slug}/${BOARD_FILE}`).catch(() => null)) !== null;
@@ -67,7 +62,6 @@ export function routeFiles(project: ProjectFiles, store: BoardStoreHost): Projec
   };
 }
 
-/** The absolute folder an agent reads and writes a board in: the store's when the board moved there, else the project's. */
 export async function boardDirOf(
   store: BoardStoreHost | undefined,
   cwd: string,

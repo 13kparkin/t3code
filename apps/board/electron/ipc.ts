@@ -204,9 +204,9 @@ export function registerEngineIpc(options: {
     const text = Option.getOrUndefined(decodeText(contents));
     if (target !== undefined && text !== undefined) storeOrThrow().write(target, text);
   });
-  ipcMain.handle("board:store-move", (_event, input) => {
+  ipcMain.handle("board:store-move", async (_event, input) => {
     const moved = Option.getOrUndefined(decodeMove(input));
-    if (moved !== undefined) storeOrThrow().move(moved);
+    if (moved !== undefined) await storeOrThrow().move(moved);
   });
   ipcMain.handle("board:ensure-pstack", () =>
     env["AGENT_BOARD_PSTACK_DIR"]

@@ -144,7 +144,6 @@ export function timelineRows(projection: TimelineSource): ReadonlyArray<Timeline
         break;
       }
       case "user":
-        // A message the engine still holds waits above the input until it is read.
         if (item.delivery === "queued" || item.delivery === "steering") break;
         rows.push({
           kind: "user",

@@ -108,8 +108,9 @@ export function Composer({
   const [files, setFiles] = useState<File[]>([]);
   const picker = useRef<HTMLInputElement | null>(null);
   const shell = useRef<HTMLDivElement | null>(null);
-  // Sends the user deleted before they went out, which `deliver` skips.
   const deleted = useRef(new Set<string>());
+  // Sends whose turn is already on its way, which can no longer be taken back.
+  const dispatched = useRef(new Set<string>());
   // Sends go out one at a time, so a quick follow-up cannot overtake one still uploading files.
   const outbox = useRef<Promise<void>>(Promise.resolve());
 
@@ -232,6 +233,7 @@ export function Composer({
     }
     const { selection, attachments } = prepared;
     if (deleted.current.has(pending.messageId)) return;
+    dispatched.current.add(pending.messageId);
     const result = await runAtomCommand(
       registry,
       startTurn,
@@ -244,7 +246,7 @@ export function Composer({
           interactionMode: projection.thread.interactionMode,
           ...(selection === null ? {} : { modelSelection: selection }),
           ...(pending.fresh ? { freshContext: true } : {}),
-          // A message sent mid-turn waits in the queue, where it can be deleted, until it is steered in.
+          // A message sent mid-turn waits in the queue, where it can be deleted or steered in.
           ...(live ? { dispatchMode: "queue" as const } : {}),
         },
       },
@@ -316,8 +318,8 @@ export function Composer({
   const remove = async (row: QueueRow) => {
     const target = cancelTarget(row);
     if (target === null) return;
+    if (target.kind === "local" && dispatched.current.has(row.messageId)) return;
     setError(null);
-    // The engine never echoes a deleted message, so its send must leave `sends` too.
     deleted.current.add(row.messageId);
     setSends((all) => all.filter((send) => send.messageId !== row.messageId));
     if (target.kind === "local") return;

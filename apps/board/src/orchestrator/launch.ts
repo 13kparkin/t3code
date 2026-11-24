@@ -80,7 +80,6 @@ export async function launchOrchestrator(
   target: {
     readonly cwd: string;
     readonly folder: string;
-    /** The board folder's absolute path, which is the global store's once the board moved there. */
     readonly boardDir?: string;
     readonly board: Board;
     /** The project's title. */

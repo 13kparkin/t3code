@@ -12,10 +12,6 @@ import { ensureOrchestratorInstance } from "../state/orchestrator";
 import { attachmentInputs } from "./attachments";
 import type { PendingSend } from "./timeline";
 
-/**
- * What a send needs before its turn starts: the model selection when it differs from the thread's,
- * with every turn moved onto the orchestrator instance, and the uploaded attachments.
- */
 export async function prepareSend(
   registry: AtomRegistry.AtomRegistry,
   environmentId: EnvironmentId,

@@ -57,7 +57,6 @@ export function Lanes({
   forYouLane: ReactNode;
   choice: TicketChoice | null;
   onChoose: (choice: TicketChoice) => void;
-  /** Slides an agent's activity out, and marks its ticket as the chosen one. */
   onOpenAgent: (threadId: string, ticketKey: string | null) => void;
   onRemoveAddition: (id: string) => void;
 }) {

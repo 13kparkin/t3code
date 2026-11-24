@@ -17,7 +17,6 @@ export type EngineTokenResult =
   | { readonly ok: true; readonly token: string }
   | { readonly ok: false; readonly error: "auth_failed" | "unavailable"; readonly detail: string };
 
-/** The global board folder, whose paths are relative to it. */
 export interface BoardStoreHost {
   /** The store's absolute path, which agents read and write, or null when it is not available here. */
   readonly root: () => Promise<string | null>;
@@ -26,7 +25,6 @@ export interface BoardStoreHost {
   ) => Promise<ReadonlyArray<{ readonly path: string; readonly kind: string }> | null>;
   readonly read: (path: string) => Promise<string | null>;
   readonly write: (path: string, contents: string) => Promise<void>;
-  /** Copies a board between the project and the store, verifies it, then flips which side lists it. */
   readonly move: (input: {
     readonly direction: "to-store" | "to-project";
     readonly projectRoot: string;
@@ -55,7 +53,6 @@ export interface BoardBridge {
   readonly writeLocalState: (text: string) => Promise<void>;
   /** Clones or refreshes the pstack-t3 checkout the board's Claude instances load, and returns its folder. */
   readonly ensurePstack: () => Promise<PstackResult>;
-  /** The global board folder on this machine. Absent in the web build. */
   readonly store?: BoardStoreHost;
   readonly browser: BrowserHost;
   readonly appUpdate: AppUpdateHost;

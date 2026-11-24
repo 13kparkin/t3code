@@ -314,12 +314,13 @@ export function openBoard(
   return localState.update((state) => ({ ...state, lastOpenedBoard: opened }));
 }
 
-/** Whether a board's `board.json` is in the global store, by its path there. Null until read or when there is no store. */
 export const boardStoredAtom = Atom.family((path: string) =>
   Atom.make<boolean | null>((get) => {
-    void window.board?.store
-      ?.read(path)
-      .then((text) => get.setSelf(text !== null))
+    const store = window.board?.store;
+    void store
+      ?.root()
+      .then((root) => (root === null ? null : store.read(path).then((text) => text !== null)))
+      .then((stored) => get.setSelf(stored ?? null))
       .catch(() => get.setSelf(null));
     return Option.getOrElse(get.self<boolean | null>(), () => null);
   }).pipe(Atom.withLabel(`board-stored:${path}`)),

@@ -14,25 +14,32 @@ const BOARD_FILE = "board.json";
 const MOVED_FILE = "board.json.moved";
 const NAME = /^(?!\.\.?$)[\w.-]+$/;
 
-const files = (directory: string): string[] =>
-  NodeFS.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const path = NodePath.join(directory, entry.name);
-    return entry.isDirectory() ? files(path) : [path];
-  });
+const files = async (directory: string): Promise<string[]> =>
+  (
+    await Promise.all(
+      (await NodeFS.promises.readdir(directory, { withFileTypes: true })).map(async (entry) => {
+        const path = NodePath.join(directory, entry.name);
+        return entry.isDirectory() ? files(path) : [path];
+      }),
+    )
+  ).flat();
 
-const digest = (path: string) =>
-  NodeCrypto.createHash("sha256").update(NodeFS.readFileSync(path)).digest("hex");
+const digest = async (path: string) =>
+  NodeCrypto.createHash("sha256")
+    .update(await NodeFS.promises.readFile(path))
+    .digest("hex");
 
-function verified(from: string, to: string): boolean {
-  return files(from).every((path) => {
+const verified = async (from: string, to: string) => {
+  for (const path of await files(from)) {
     const copy = NodePath.join(to, NodePath.relative(from, path));
-    return NodeFS.existsSync(copy) && digest(copy) === digest(path);
-  });
-}
+    if (!NodeFS.existsSync(copy) || (await digest(copy)) !== (await digest(path))) return false;
+  }
+  return true;
+};
 
 /**
- * The board's global folder, one file tree under `root`. Every path is relative to it and cannot
- * leave it, because the renderer is not trusted with the rest of the disk.
+ * The board's global folder, one file tree under `root`. `list`, `read` and `write` take paths
+ * relative to it and refuse any that leave it. `move` also touches the caller's project folder.
  */
 export function createBoardStore(root: string) {
   const resolve = (path: string) => {
@@ -65,12 +72,17 @@ export function createBoardStore(root: string) {
       NodeFS.renameSync(`${full}.tmp`, full);
     },
     /**
-     * Copies a board between the project and the store, checks every file arrived with the same
-     * content, then flips: the copy keeps its `board.json` and the source's becomes `board.json.moved`,
-     * so only one side lists the board. Nothing is deleted. Running it again ends in the same state.
+     * Copies a board between the project and the store, checks every file by hash, then renames the
+     * source's `board.json` to `board.json.moved` so only the copy lists. Running it again is a no-op.
+     * The copy overwrites same-named files at the target.
      */
-    move: (input: MoveInput, hooks: { afterCopy?: (target: string) => void } = {}): void => {
+    move: async (
+      input: MoveInput,
+      hooks: { afterCopy?: (target: string) => void } = {},
+    ): Promise<void> => {
       if (!NAME.test(input.key) || !NAME.test(input.slug)) throw new Error("Not a board name.");
+      if (!NodePath.isAbsolute(input.projectRoot))
+        throw new Error("The project root is not absolute.");
       const project = NodePath.join(input.projectRoot, BOARDS_DIR, input.slug);
       const stored = resolve(NodePath.join(input.key, input.slug));
       const [from, to] = input.direction === "to-store" ? [project, stored] : [stored, project];
@@ -78,12 +90,16 @@ export function createBoardStore(root: string) {
         if (NodeFS.existsSync(NodePath.join(from, MOVED_FILE))) return;
         throw new Error("There is no board to move.");
       }
-      NodeFS.mkdirSync(to, { recursive: true });
-      NodeFS.cpSync(from, to, { recursive: true, force: true });
+      await NodeFS.promises.mkdir(to, { recursive: true });
+      await NodeFS.promises.cp(from, to, { recursive: true, force: true });
       hooks.afterCopy?.(to);
-      if (!verified(from, to)) throw new Error("The copy did not verify, so nothing moved.");
-      NodeFS.rmSync(NodePath.join(to, MOVED_FILE), { force: true });
-      NodeFS.renameSync(NodePath.join(from, BOARD_FILE), NodePath.join(from, MOVED_FILE));
+      if (!(await verified(from, to)))
+        throw new Error("The copy did not verify, so nothing moved.");
+      await NodeFS.promises.rm(NodePath.join(to, MOVED_FILE), { force: true });
+      await NodeFS.promises.rename(
+        NodePath.join(from, BOARD_FILE),
+        NodePath.join(from, MOVED_FILE),
+      );
     },
   };
 }

@@ -10,7 +10,6 @@ import { serverEnvironment } from "../state/server";
 import { deleteWorktree, vcsEnvironment } from "../state/vcs";
 import { worktreeBytes, worktreeKeptReason } from "./worktreeRow";
 
-/** A ticket's worktree on disk: its size from T3's last storage report, whether it can go, and T3's manual delete with its confirm once it can. */
 export function RemoveWorktree({ view }: { view: TicketView }) {
   const registry = useContext(RegistryContext);
   const { project, keptWorktrees } = usePrContext();

@@ -250,7 +250,7 @@ export function OrchestratorCard({
           Builders <BuilderCap project={project} listed={listed} builders={builders} />
         </span>
       </div>
-      <BoardStorage project={project} listed={listed} />
+      <BoardStorage project={project} listed={listed} busy={status === "Working"} />
       <p
         data-testid="latest-decision"
         className="mt-2 line-clamp-3 text-[11px] break-words text-muted"

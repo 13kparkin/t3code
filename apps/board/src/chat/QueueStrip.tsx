@@ -6,7 +6,6 @@ import type { QueueRow } from "./queue";
 const LABEL = { sending: "Sending", queued: "Queued", steering: "Steering" } as const;
 const STEER_LOCKED = "The running turn already has this message, so it can no longer be deleted.";
 
-/** The messages that have not reached the orchestrator's turn yet, above the input. Each can be deleted until it is read. */
 export function QueueStrip({
   rows,
   canSteer,
