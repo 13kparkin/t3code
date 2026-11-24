@@ -129,10 +129,21 @@ export const issuePullAtom = Atom.family((boardKey: string) =>
         timers.add(timer);
       });
     };
-    round();
+    let started = false;
+    // The first round waits for the board's files, which load after the board opens.
+    const unsubscribe = get.registry.subscribe(
+      boardStoreAtom(boardKey),
+      (files) => {
+        if (started || files === null) return;
+        started = true;
+        round();
+      },
+      { immediate: true },
+    );
     const interval = setInterval(round, PULL_INTERVAL_MS);
     document.addEventListener("visibilitychange", round);
     get.addFinalizer(() => {
+      unsubscribe();
       clearInterval(interval);
       document.removeEventListener("visibilitychange", round);
       timers.forEach(clearTimeout);

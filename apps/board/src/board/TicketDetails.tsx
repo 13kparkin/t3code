@@ -78,10 +78,12 @@ export function TicketDetails({ view }: SectionProps) {
       )}
       {held && (
         <p data-testid="sync-note" className="text-[11px] text-faint">
-          {synced === null
-            ? "Not synced yet"
-            : status?.error != null
-              ? `Last synced ${ago(synced)}, tracker unreachable`
+          {status?.error != null
+            ? synced === null
+              ? `Not synced: ${status.error}`
+              : `Last synced ${ago(synced)}, tracker unreachable`
+            : synced === null
+              ? "Not synced yet"
               : `Synced ${ago(synced)}`}
         </p>
       )}
