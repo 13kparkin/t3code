@@ -151,7 +151,7 @@ export function ForYouCard({
       <h4 className="text-[13px] leading-[18px] font-semibold break-words text-fg">{title}</h4>
       {card.origin === "file" ? (
         <>
-          {card.item.body.trim() !== "" && (
+          {card.item.kind !== "role_target" && card.item.body.trim() !== "" && (
             <div className="text-[12px] break-words text-muted">
               <ChatMarkdown text={card.item.body} untrusted />
             </div>

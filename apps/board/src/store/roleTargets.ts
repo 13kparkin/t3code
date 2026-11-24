@@ -23,7 +23,7 @@ export async function setRoleTarget(
 }
 
 /** The `role_target` items in `foryou.jsonl` text with no result in `roleRequests` yet. */
-export const openRoleTargets = (
+const openRoleTargets = (
   text: string | null,
   roleRequests: Readonly<Record<string, string>> | undefined,
 ) =>

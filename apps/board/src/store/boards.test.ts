@@ -384,6 +384,25 @@ describe("role targets", () => {
     });
   });
 
+  it("Given an open line, when the board is archived while it is applied, then both changes are saved", async () => {
+    const { files: fast, store, target } = await boardWith("orchestrator");
+    store.set(FOR_YOU, `${request("rt-5", { role: "reviewer", model: "claude-opus-5-5" })}\n`);
+    // oxlint-disable-next-line t3code/no-real-time-wait-in-tests -- a zero-delay macrotask boundary, as a disk write has, so the two reads interleave
+    const nextTurn = () => new Promise((done) => setImmediate(done));
+    const files: ProjectFiles = {
+      ...fast,
+      write: (cwd, path, contents) => nextTurn().then(() => fast.write(cwd, path, contents)),
+    };
+    await Promise.all([
+      updateBoard(files, CWD, target.folder, { archived: true }),
+      applyRoleTargetRequests(files, CWD, target.folder, instance),
+    ]);
+    expect(savedBoard(store)).toMatchObject({
+      archived: true,
+      roleRequests: { "rt-5": "Applied: reviewer -> claude-opus-5-5" },
+    });
+  });
+
   it.each([
     ["no Claude instance yet", null],
     ["an instance still probing its models", { ...instance, offered: [], models: [] }],

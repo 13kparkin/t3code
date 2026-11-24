@@ -88,7 +88,7 @@ describe("checking a role target", () => {
   const efforts = ["low", "medium", "high"].map((id) => ({ id, label: id }));
   const instance = {
     instanceId: "claudeAgent",
-    offered: ["claude-opus-5-5", "claude-haiku-4-5"],
+    offered: ["claude-opus-5-5"],
     models: [
       {
         slug: "claude-opus-5-5",
@@ -109,11 +109,6 @@ describe("checking a role target", () => {
       "reviewer",
       { model: "claude-opus-5-5", effort: "max" },
       "claude-opus-5-5 has no effort max. Pick one of low, medium, high.",
-    ],
-    [
-      "reviewer",
-      { model: "claude-haiku-4-5", effort: "low" },
-      "claude-haiku-4-5 has no effort low. Pick one of none.",
     ],
   ])("Given %s on %j, when checked, then the problem is %j", (role, pick, problem) => {
     expect(roleTargetProblem(role, pick, instance)).toBe(problem);

@@ -188,34 +188,35 @@ export async function readBoard(files: ProjectFiles, cwd: string, folder: string
   return parsed.success;
 }
 
-/** Writes only the given fields (an undefined review template removes its key) into the board's own file, read fresh so a change made since the last listing is kept. */
-export async function updateBoard(
-  files: ProjectFiles,
-  cwd: string,
-  folder: string,
-  fields: Omit<Partial<Board>, "reviewTemplate"> & { reviewTemplate?: string | undefined },
-): Promise<Board> {
-  const { reviewTemplate, ...rest } = { ...(await readBoard(files, cwd, folder)), ...fields };
-  const board = reviewTemplate === undefined ? rest : { ...rest, reviewTemplate };
-  await writeBoard(files, cwd, folder, board);
-  return board;
-}
-
 let changing: Promise<unknown> = Promise.resolve();
 
-/** Applies `change` to the board read fresh from its own file. Calls run one at a time, so two quick changes both count. */
+/** Applies `change` to the board read fresh from its own file and resolves to the saved board. Calls run one at a time, so two quick changes both count. */
 function changeBoard(
   files: ProjectFiles,
   cwd: string,
   folder: string,
   change: (board: Board) => Board,
-): Promise<void> {
+): Promise<Board> {
   const run = changing.then(async () => {
-    await writeBoard(files, cwd, folder, change(await readBoard(files, cwd, folder)));
+    const board = change(await readBoard(files, cwd, folder));
+    await writeBoard(files, cwd, folder, board);
+    return board;
   });
   changing = run.catch(() => undefined);
   return run;
 }
+
+/** Writes only the given fields (an undefined review template removes its key) into the board's own file. */
+export const updateBoard = (
+  files: ProjectFiles,
+  cwd: string,
+  folder: string,
+  fields: Omit<Partial<Board>, "reviewTemplate"> & { reviewTemplate?: string | undefined },
+) =>
+  changeBoard(files, cwd, folder, (current) => {
+    const { reviewTemplate, ...rest } = { ...current, ...fields };
+    return reviewTemplate === undefined ? rest : { ...rest, reviewTemplate };
+  });
 
 export const changeHiddenAdditions = (
   files: ProjectFiles,
@@ -263,7 +264,7 @@ export const resolveRoleRequest = (
 export const setBuilderCap = (files: ProjectFiles, cwd: string, folder: string, cap: number) =>
   updateBoard(files, cwd, folder, { builderCap: cap });
 
-/** Adds the names to the board's docs in the board's own file, read fresh so two sends in a row both count. */
+/** Adds the names to the board's docs in the board's own file. */
 export async function appendDocs(
   files: ProjectFiles,
   cwd: string,
@@ -271,11 +272,11 @@ export async function appendDocs(
   names: ReadonlyArray<string>,
   sentAt: string,
 ): Promise<void> {
-  const board = await readBoard(files, cwd, folder);
-  const docs = board.docs ?? [];
-  const added = names
-    .filter((name, at) => !docs.some((doc) => doc.name === name) && names.indexOf(name) === at)
-    .map((name) => ({ name, sentAt }));
-  if (added.length === 0) return;
-  await writeBoard(files, cwd, folder, { ...board, docs: [...docs, ...added] });
+  await changeBoard(files, cwd, folder, (board) => {
+    const docs = board.docs ?? [];
+    const added = names
+      .filter((name, at) => !docs.some((doc) => doc.name === name) && names.indexOf(name) === at)
+      .map((name) => ({ name, sentAt }));
+    return { ...board, docs: [...docs, ...added] };
+  });
 }
