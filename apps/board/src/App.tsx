@@ -3,6 +3,7 @@ import { useContext } from "react";
 
 import { OpenBoard } from "./board/OpenBoard";
 import { sidebarOpenAtom } from "./browser/panel";
+import { attachDockSlot } from "./browser/panel";
 import { PanelHost } from "./browser/PanelHost";
 import { PanelToggle } from "./browser/PanelToggle";
 import { ForYouPanel } from "./foryou/ForYouPanel";
@@ -59,6 +60,10 @@ export function App() {
           <OpenBoard />
           <ForYouPanel />
           <ArchivedPanel />
+          <div
+            ref={attachDockSlot}
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-4 *:pointer-events-auto"
+          />
         </main>
         <PanelHost />
       </div>

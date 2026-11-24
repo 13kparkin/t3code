@@ -12,10 +12,11 @@ import {
   MessageId,
   type OrchestrationV2ThreadProjection,
   ProviderInstanceId,
+  type RunId,
   type ThreadId,
   type ChatAttachment,
 } from "@t3tools/contracts";
-import { Paperclip, SendHorizontal, Square, X } from "lucide-react";
+import { MessagesSquare, Paperclip, SendHorizontal, Square, X } from "lucide-react";
 import { flushSync } from "react-dom";
 import {
   type Dispatch,
@@ -29,6 +30,7 @@ import {
   useState,
 } from "react";
 
+import { panelAtom } from "../browser/panel";
 import { baseInstanceId } from "../orchestrator/orchestratorInstance";
 import {
   modelSelectionOf,
@@ -44,7 +46,8 @@ import { ensureOrchestratorInstance } from "../state/orchestrator";
 import { engineConnectionAtom } from "../state/projects";
 import { engineProvidersAtom, serverEnvironment } from "../state/server";
 import { recordDocs, uploadAttachments } from "../state/attachmentUploads";
-import { interruptTurn, startTurn } from "../state/threads";
+import { threadKey, setThreadShown } from "../state/chatThread";
+import { cancelQueued, interruptTurn, startTurn, steerQueued } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
 import { attachmentInputs, pastedFiles } from "./attachments";
 import { AttachmentThumb } from "./AttachmentThumb";
@@ -59,6 +62,9 @@ import {
   slashMessage,
 } from "./slash";
 import { MARK_SLASH, SlashMenu, slashOptionId } from "./SlashMenu";
+import { cancelTarget, type QueueRow } from "./queue";
+import { QueueStrip } from "./QueueStrip";
+import { SUGGESTIONS } from "./suggestions";
 import type { PendingSend } from "./timeline";
 import { useTriggerLookup } from "./triggerLookup";
 import { emptyText } from "./triggerLookup.logic";
@@ -82,6 +88,8 @@ export function Composer({
   projection,
   live,
   failed,
+  queue,
+  steer,
   setSends,
 }: {
   project: EnvironmentProject;
@@ -90,6 +98,9 @@ export function Composer({
   projection: OrchestrationV2ThreadProjection | null;
   live: boolean;
   failed: ReadonlyArray<PendingSend>;
+  queue: ReadonlyArray<QueueRow>;
+  /** The running turn a queued message can be steered into, or null when none can take one. */
+  steer: RunId | null;
   setSends: Dispatch<SetStateAction<ReadonlyArray<PendingSend>>>;
 }) {
   const registry = useContext(RegistryContext);
@@ -107,10 +118,15 @@ export function Composer({
   const [error, setError] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const picker = useRef<HTMLInputElement | null>(null);
+  const shell = useRef<HTMLDivElement | null>(null);
+  // Sends the user deleted before they went out, which `deliver` skips.
+  const deleted = useRef(new Set<string>());
   // Sends go out one at a time, so a quick follow-up cannot overtake one still uploading files.
   const outbox = useRef<Promise<void>>(Promise.resolve());
 
   const connected = useAtomValue(engineConnectionAtom).state.phase === "connected";
+  const panel = useAtomValue(panelAtom);
+  const threadShown = panel.open && panel.tab === "chat";
   const providers = useAtomValue(engineProvidersAtom);
   const providersForCwd = useMemo(() => resolveProvidersForCwd(providers, cwd), [providers, cwd]);
   const instances = useMemo(() => pickableInstances(providersForCwd), [providersForCwd]);
@@ -208,6 +224,7 @@ export function Composer({
     settle(messageId, { kind: "failed", error });
 
   const deliver = async (pending: PendingSend) => {
+    if (deleted.current.has(pending.messageId)) return;
     if (projection === null) {
       fail(pending.messageId, "The thread is not loaded yet.");
       return;
@@ -246,6 +263,7 @@ export function Composer({
         return;
       }
     }
+    if (deleted.current.has(pending.messageId)) return;
     const result = await runAtomCommand(
       registry,
       startTurn,
@@ -258,6 +276,8 @@ export function Composer({
           interactionMode: projection.thread.interactionMode,
           ...(selection === null ? {} : { modelSelection: selection }),
           ...(pending.fresh ? { freshContext: true } : {}),
+          // A message sent mid-turn waits in the queue, where it can be deleted, until it is steered in.
+          ...(live ? { dispatchMode: "queue" as const } : {}),
         },
       },
       { reportFailure: false },
@@ -302,6 +322,13 @@ export function Composer({
     setFresh(false);
     setError(null);
     enqueue(pending);
+    // One short cue that the message went, for when the thread that would show it is hidden.
+    const cue = shell.current;
+    if (cue !== null && !threadShown) {
+      cue.classList.remove("composer-sent");
+      void cue.offsetWidth;
+      cue.classList.add("composer-sent");
+    }
   };
 
   const retry = (pending: PendingSend) => {
@@ -316,6 +343,39 @@ export function Composer({
     setCursor(next.length);
     setFiles([...pending.files, ...files]);
     if (pending.fresh) setFresh(true);
+  };
+
+  const remove = async (row: QueueRow) => {
+    const target = cancelTarget(row);
+    if (target === null) return;
+    setError(null);
+    if (target.kind === "local") {
+      deleted.current.add(row.messageId);
+      setSends((all) => all.filter((send) => send.messageId !== row.messageId));
+      return;
+    }
+    const result = await runAtomCommand(
+      registry,
+      cancelQueued,
+      { environmentId, input: { threadId, runId: target.runId } },
+      { reportFailure: false },
+    );
+    if (result._tag !== "Success") setError(failureText(result));
+  };
+
+  const steerNow = async (row: QueueRow) => {
+    if (steer === null || row.runId === null) return;
+    setError(null);
+    const result = await runAtomCommand(
+      registry,
+      steerQueued,
+      {
+        environmentId,
+        input: { threadId, queuedRunId: row.runId, targetRunId: steer },
+      },
+      { reportFailure: false },
+    );
+    if (result._tag !== "Success") setError(failureText(result));
   };
 
   const stop = async () => {
@@ -376,7 +436,7 @@ export function Composer({
         performance.mark("board:attach-drop");
         addFiles(Array.from(event.dataTransfer.files));
       }}
-      className="relative shrink-0 border-t border-line p-2"
+      className="relative flex w-full max-w-xl flex-col gap-1.5"
     >
       {open && (
         <SlashMenu
@@ -388,6 +448,7 @@ export function Composer({
           onHover={setActive}
         />
       )}
+      <QueueStrip rows={queue} canSteer={steer !== null} onDelete={remove} onSteer={steerNow} />
       {failed.map((pending) => (
         <p
           key={pending.messageId}
@@ -420,7 +481,29 @@ export function Composer({
           </button>
         </p>
       )}
-      <div className="flex flex-col gap-1 rounded-xl border border-line bg-panel p-2 focus-within:border-muted">
+      {draft === "" && files.length === 0 && (
+        <ul aria-label="Suggestions" className="flex gap-1.5 overflow-x-auto">
+          {SUGGESTIONS.map((suggestion) => (
+            <li key={suggestion} className="shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  edit(suggestion, suggestion.length);
+                  input.current?.focus();
+                }}
+                className="rounded-full border border-line bg-panel px-3 py-1 text-xs text-muted shadow-panel hover:text-fg"
+              >
+                {suggestion}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div
+        ref={shell}
+        data-testid="composer-shell"
+        className="flex flex-col gap-1 rounded-2xl border border-line bg-panel p-2 shadow-panel focus-within:border-muted"
+      >
         {files.length > 0 && (
           <ul aria-label="Attached files" className="flex flex-wrap gap-1">
             {files.map((file, index) => (
@@ -489,6 +572,17 @@ export function Composer({
             className="grid size-7 shrink-0 place-items-center rounded-full text-muted hover:bg-hover hover:text-fg"
           >
             <Paperclip className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-label={threadShown ? "Hide the chat thread" : "Show the chat thread"}
+            aria-pressed={threadShown}
+            onClick={() =>
+              void setThreadShown(registry, threadKey(project.id, listed.folder), !threadShown)
+            }
+            className={`grid size-7 shrink-0 place-items-center rounded-full hover:bg-hover hover:text-fg ${threadShown ? "text-fg" : "text-muted"}`}
+          >
+            <MessagesSquare className="size-3.5" />
           </button>
           {live && draft.trim() === "" ? (
             <button

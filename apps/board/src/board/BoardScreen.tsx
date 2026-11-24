@@ -1,7 +1,7 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { TriangleAlert } from "lucide-react";
-import { useContext, useMemo, useState } from "react";
+import { useContext, useLayoutEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { ArtifactsProvider } from "../artifacts/ArtifactsContext";
@@ -11,6 +11,7 @@ import { OrchestratorPanel } from "../chat/OrchestratorPanel";
 import { MainTabs } from "../files/MainTabs";
 import { visibleAdditions } from "../domain/additions";
 import { mergeTicketKey } from "../domain/readiness";
+import { applyThreadShown, threadKey, threadShownAtom } from "../state/chatThread";
 import { filterFlipsAtom, frameOrderAtom } from "../state/boardUi";
 import { useThreadFamily } from "../state/family";
 import { PrProvider } from "../state/prStatus";
@@ -43,6 +44,8 @@ export function BoardScreen({
   listed: ValidBoard;
 }) {
   const registry = useContext(RegistryContext);
+  const stored = useAtomValue(threadShownAtom)[threadKey(project.id, listed.folder)] ?? false;
+  useLayoutEffect(() => applyThreadShown(registry, stored), [registry, stored]);
   const [dropError, setDropError] = useState<string | null>(null);
   const [hideError, setHideError] = useState<string | null>(null);
   const { board } = listed;

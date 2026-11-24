@@ -15,7 +15,7 @@ const LocalState = Schema.Struct({
   ).pipe(Schema.withDecodingDefaultKey(Effect.succeed({}))),
   /** The canvas filters the user flipped from their default, `lane:<board id>:<filter id>`, and the ticket sections they collapsed, `sec:<id>`. */
   folded: Schema.Array(Schema.String).pipe(Schema.withDecodingDefaultKey(Effect.succeed([]))),
-  /** Whether each board's chat thread shows beside the board, by board id. A board with no entry has it hidden. */
+  /** Whether each board's chat thread shows beside the board, by project id and board folder, `<project id>/<folder>`. A board with no entry has it hidden. */
   threadShown: Schema.Record(Schema.String, Schema.Boolean).pipe(
     Schema.withDecodingDefaultKey(Effect.succeed({})),
   ),

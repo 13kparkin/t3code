@@ -1,3 +1,5 @@
+import type { RunId } from "@t3tools/contracts";
+
 import { type PendingSend, type TimelineSource, userText } from "./timeline";
 
 /** A message that has not reached the orchestrator's turn yet, as the strip above the input lists it. */
@@ -7,7 +9,7 @@ export interface QueueRow {
   readonly text: string;
   readonly delivery: "sending" | "queued" | "steering";
   /** The engine's queued run, which is what deleting the message cancels. */
-  readonly runId: string | null;
+  readonly runId: RunId | null;
 }
 
 /**
@@ -16,7 +18,7 @@ export interface QueueRow {
  */
 export function queueRows(
   source: TimelineSource,
-  runIds: ReadonlyMap<string, string>,
+  runIds: ReadonlyMap<string, RunId>,
   sends: ReadonlyArray<PendingSend>,
 ): ReadonlyArray<QueueRow> {
   const held = source.items.flatMap((item): QueueRow[] =>
@@ -51,7 +53,7 @@ export function queueRows(
 /** What deleting a row does: cancel the engine's queued run, drop the send, or nothing for a steer the turn already holds. */
 export const cancelTarget = (
   row: QueueRow,
-): { readonly kind: "run"; readonly runId: string } | { readonly kind: "local" } | null => {
+): { readonly kind: "run"; readonly runId: RunId } | { readonly kind: "local" } | null => {
   if (row.delivery === "sending") return { kind: "local" };
   return row.delivery === "queued" && row.runId !== null ? { kind: "run", runId: row.runId } : null;
 };

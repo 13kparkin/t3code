@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { MessageId } from "@t3tools/contracts";
+import { MessageId, RunId } from "@t3tools/contracts";
 
 import { NO_PICK } from "../providers/providers";
 import { cancelTarget, queueRows } from "./queue";
@@ -43,11 +43,11 @@ describe("the messages waiting above the input", () => {
         item("m2", "now", "steering"),
         item("m3", "done", "delivered"),
       ]),
-      new Map([["m1", "run-1"]]),
+      new Map([["m1", RunId.make("run-1")]]),
       [send("m4"), send("m5", { kind: "failed", error: "Offline" })],
     );
     expect(rows).toEqual([
-      { key: "m1", messageId: "m1", text: "later", delivery: "queued", runId: "run-1" },
+      { key: "m1", messageId: "m1", text: "later", delivery: "queued", runId: RunId.make("run-1") },
       { key: "m2", messageId: "m2", text: "now", delivery: "steering", runId: null },
       { key: "m4", messageId: "m4", text: "send m4", delivery: "sending", runId: null },
     ]);
@@ -55,8 +55,8 @@ describe("the messages waiting above the input", () => {
 
   it.each([
     [
-      { key: "a", messageId: "a", text: "", delivery: "queued", runId: "run-1" },
-      { kind: "run", runId: "run-1" },
+      { key: "a", messageId: "a", text: "", delivery: "queued", runId: RunId.make("run-1") },
+      { kind: "run", runId: RunId.make("run-1") },
     ],
     [{ key: "a", messageId: "a", text: "", delivery: "sending", runId: null }, { kind: "local" }],
     [{ key: "a", messageId: "a", text: "", delivery: "steering", runId: null }, null],

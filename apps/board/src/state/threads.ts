@@ -1,5 +1,10 @@
 import { useAtomValue } from "@effect/atom-react";
-import { interruptThreadTurn, startThreadTurn } from "@t3tools/client-runtime/operations";
+import {
+  cancelQueuedRun,
+  interruptThreadTurn,
+  promoteQueuedRun,
+  startThreadTurn,
+} from "@t3tools/client-runtime/operations";
 import { createOrchestrationEnvironmentAtoms } from "@t3tools/client-runtime/state/orchestration";
 import { createEnvironmentCommand } from "@t3tools/client-runtime/state/runtime";
 import {
@@ -20,6 +25,16 @@ export const startTurn = createEnvironmentCommand(connectionAtomRuntime, {
 export const interruptTurn = createEnvironmentCommand(connectionAtomRuntime, {
   label: "board:thread:interrupt-turn",
   execute: interruptThreadTurn,
+});
+
+export const cancelQueued = createEnvironmentCommand(connectionAtomRuntime, {
+  label: "board:thread:cancel-queued-run",
+  execute: cancelQueuedRun,
+});
+
+export const steerQueued = createEnvironmentCommand(connectionAtomRuntime, {
+  label: "board:thread:promote-queued-run",
+  execute: promoteQueuedRun,
 });
 
 /** A thread's live state, which the engine streams while the thread is mounted. */

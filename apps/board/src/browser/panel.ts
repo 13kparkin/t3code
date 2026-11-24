@@ -19,7 +19,7 @@ export const PANEL_MIN_WIDTH = 320;
 export const PANEL_DEFAULT_WIDTH = 420;
 
 export const panelAtom = Atom.make<PanelState>({
-  open: true,
+  open: false,
   tab: "chat",
   width: PANEL_DEFAULT_WIDTH,
 }).pipe(Atom.keepAlive, Atom.withLabel("side-panel"));
@@ -70,6 +70,10 @@ export function showPanelTab(registry: AtomRegistry.AtomRegistry, tab: PanelTab)
   change(registry, (state) => ({ ...state, open: true, tab }));
 }
 
+export function setPanelOpen(registry: AtomRegistry.AtomRegistry, open: boolean): void {
+  change(registry, (state) => ({ ...state, open }));
+}
+
 export function togglePanel(registry: AtomRegistry.AtomRegistry): void {
   change(registry, (state) => ({ ...state, open: !state.open }));
 }
@@ -86,6 +90,14 @@ export const chatSlotAtom = Atom.make<HTMLElement | null>(null).pipe(
 
 // A stable function, so a re-render does not detach and attach the slot again.
 export const attachChatSlot = (node: HTMLElement | null) => appAtomRegistry.set(chatSlotAtom, node);
+
+/** Where the composer docks over the board, which the chat fills while its thread is hidden or shown. */
+export const dockSlotAtom = Atom.make<HTMLElement | null>(null).pipe(
+  Atom.keepAlive,
+  Atom.withLabel("dock-slot"),
+);
+
+export const attachDockSlot = (node: HTMLElement | null) => appAtomRegistry.set(dockSlotAtom, node);
 
 /** Where the open board's ticket draws, which needs the board's model. */
 export const ticketSlotAtom = Atom.make<HTMLElement | null>(null).pipe(
