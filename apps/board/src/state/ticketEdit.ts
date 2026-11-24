@@ -3,7 +3,7 @@ import type { AtomRegistry } from "effect/reactivity";
 
 import {
   editOverlay,
-  type EditPatch,
+  type Edits,
   type Overlay,
   type Pulled,
   pullOverlay,
@@ -41,7 +41,7 @@ export const editTicket = (
   project: DetailsProject,
   folder: string,
   ticketKey: string,
-  patch: EditPatch,
+  patch: Edits,
 ) => save(registry, project, folder, (overlay) => editOverlay(overlay, ticketKey, patch));
 
 export const unlinkTicket = (

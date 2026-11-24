@@ -2,7 +2,7 @@ import { RegistryContext } from "@effect/atom-react";
 import { useContext, useState } from "react";
 
 import type { Ticket, TicketIssue } from "../domain/ticket";
-import type { EditPatch } from "../domain/ticketOverlay";
+import type { Edits } from "../domain/ticketOverlay";
 import { pullTicket } from "../state/issuePull";
 import { usePrContext } from "../state/prStatus";
 import { editTicket, unlinkTicket } from "../state/ticketEdit";
@@ -14,8 +14,7 @@ export function useTicketActions(ticket: Ticket) {
   const [error, setError] = useState<string | null>(null);
   return {
     error,
-    edit: (patch: EditPatch) =>
-      editTicket(registry, project, folder, ticket.key, patch).then(setError),
+    edit: (patch: Edits) => editTicket(registry, project, folder, ticket.key, patch).then(setError),
     unlink: () => unlinkTicket(registry, project, folder, ticket.key).then(setError),
     link: async (issue: TicketIssue) => {
       const failure = await editTicket(registry, project, folder, ticket.key, { issue });

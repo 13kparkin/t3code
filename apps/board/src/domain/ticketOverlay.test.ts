@@ -86,14 +86,6 @@ describe("ticket-details.json layers", () => {
 });
 
 describe("changing the layers", () => {
-  it("Given an edit with undefined fields, when applied, then those keys reset to the orchestrator's copy", () => {
-    const next = editOverlay({ "T-1": { edits: { title: "Mine", track: "a" } } }, "T-1", {
-      title: undefined,
-    });
-    expect(next).toEqual({ "T-1": { edits: { track: "a" } } });
-    expect(editOverlay(next, "T-1", { track: undefined })).toEqual({});
-  });
-
   it("Given a new link, when edited, then the copy pulled for the old issue is dropped", () => {
     const start: Overlay = { "T-1": { edits: { issue: LINEAR }, pulled: pulled() } };
     expect(

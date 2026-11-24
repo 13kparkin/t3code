@@ -9,7 +9,6 @@ export const OVERLAY_FILE = "ticket-details.json";
 const Edits = Schema.Struct({
   title: Schema.optionalKey(Schema.String),
   description: Schema.optionalKey(Schema.String),
-  track: Schema.optionalKey(Schema.String),
   dependsOn: Schema.optionalKey(Schema.Array(Schema.String)),
   issue: Schema.optionalKey(Schema.NullOr(TicketIssue)),
 });
@@ -96,13 +95,9 @@ const decodeEdits = Schema.decodeUnknownSync(Edits);
 const parseEdits = (entries: ReadonlyArray<readonly [string, unknown]>) =>
   decodeEdits(Object.fromEntries(entries));
 
-export type EditPatch = { readonly [K in keyof Edits]?: Edits[K] | undefined };
-
-export function editOverlay(overlay: Overlay, key: string, patch: EditPatch): Overlay {
+export function editOverlay(overlay: Overlay, key: string, patch: Edits): Overlay {
   const entry = overlay[key] ?? {};
-  const edits = parseEdits(
-    Object.entries({ ...entry.edits, ...patch }).filter(([, value]) => value !== undefined),
-  );
+  const edits = parseEdits(Object.entries({ ...entry.edits, ...patch }));
   const relinked = "issue" in patch && !sameIssue(patch.issue, entry.edits?.issue);
   const { pulled, ...bare } = entry;
   return prune(overlay, key, {
