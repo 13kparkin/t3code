@@ -60,12 +60,13 @@ export function runRoleTargetRequests(
   project: RoleProject,
   storeKey: string,
   folder: string,
+  forYou: string,
 ): void {
   runOnePerKey(`role-targets:${storeKey}`, async () => {
     const boards = registry.get(projectBoardsAtom(project.id));
     if (boards.status !== "ready") return;
     const listed = boards.boards.find((entry) => entry.ok && entry.folder === folder);
-    const threadId = listed?.ok === true ? listed.board.orchestratorThreadId : null;
+    const held = listed?.ok === true ? listed.board : null;
     const applied = await applyRoleTargetRequests(
       boardEngine(registry, project.environmentId).files,
       project.workspaceRoot,
@@ -73,8 +74,10 @@ export function runRoleTargetRequests(
       boardInstance(
         registry.get(engineProvidersAtom),
         registry.get(environmentSnapshotAtom(project.environmentId))?.threads,
-        threadId,
+        held?.orchestratorThreadId ?? null,
       ),
+      forYou,
+      held,
     );
     if (applied) registry.refresh(projectBoardsAtom(project.id));
   });

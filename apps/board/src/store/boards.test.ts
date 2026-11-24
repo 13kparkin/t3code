@@ -372,8 +372,8 @@ describe("role targets", () => {
     ];
     const text = `${lines.join("\n")}\n`;
     store.set(FOR_YOU, text);
-    await applyRoleTargetRequests(files, CWD, target.folder, instance);
-    await applyRoleTargetRequests(files, CWD, target.folder, instance);
+    await applyRoleTargetRequests(files, CWD, target.folder, instance, text, null);
+    await applyRoleTargetRequests(files, CWD, target.folder, instance, text, null);
     expect(store.get(FOR_YOU)).toBe(text);
     expect(savedBoard(store)).toMatchObject({
       roleTargets: { reviewer: { model: "claude-opus-5-5", effort: "high" } },
@@ -384,18 +384,42 @@ describe("role targets", () => {
     });
   });
 
+  it("Given every role_target line resolved in the held board, when a poll applies them, then no file is read", async () => {
+    const { files, store, target } = await boardWith("orchestrator");
+    const text = `${request("rt-6", { role: "reviewer", model: "claude-opus-5-5" })}\n`;
+    store.set(FOR_YOU, text);
+    await applyRoleTargetRequests(files, CWD, target.folder, instance, text, null);
+    const reads: string[] = [];
+    const counted: ProjectFiles = {
+      ...files,
+      read: (cwd, path) => (reads.push(path), files.read(cwd, path)),
+    };
+    const held = savedBoard(store) ?? null;
+    expect(await applyRoleTargetRequests(counted, CWD, target.folder, instance, text, held)).toBe(
+      false,
+    );
+    expect(reads).toEqual([]);
+  });
+
   it("Given an open line, when the board is archived while it is applied, then both changes are saved", async () => {
     const { files: fast, store, target } = await boardWith("orchestrator");
-    store.set(FOR_YOU, `${request("rt-5", { role: "reviewer", model: "claude-opus-5-5" })}\n`);
-    // oxlint-disable-next-line t3code/no-real-time-wait-in-tests -- a zero-delay macrotask boundary, as a disk write has, so the two reads interleave
-    const nextTurn = () => new Promise((done) => setImmediate(done));
+    const text = `${request("rt-5", { role: "reviewer", model: "claude-opus-5-5" })}\n`;
+    store.set(FOR_YOU, text);
+    let release = () => {};
+    const readTwice = new Promise<void>((done) => (release = done));
+    let boardReads = 0;
     const files: ProjectFiles = {
       ...fast,
-      write: (cwd, path, contents) => nextTurn().then(() => fast.write(cwd, path, contents)),
+      read: (cwd, path) => {
+        if (path.endsWith("board.json") && ++boardReads === 2) release();
+        return fast.read(cwd, path);
+      },
+      write: (cwd, path, contents) => readTwice.then(() => fast.write(cwd, path, contents)),
     };
+    // Apply starts first, so without the shared queue its result read lands before the archive write.
     await Promise.all([
+      applyRoleTargetRequests(files, CWD, target.folder, instance, text, null),
       updateBoard(files, CWD, target.folder, { archived: true }),
-      applyRoleTargetRequests(files, CWD, target.folder, instance),
     ]);
     expect(savedBoard(store)).toMatchObject({
       archived: true,
@@ -413,7 +437,9 @@ describe("role targets", () => {
       const text = `${request("rt-4", { role: "reviewer", model: "claude-opus-5-5" })}\n`;
       store.set(FOR_YOU, text);
       const before = store.get(".agentboard/claude-connector/board.json");
-      expect(await applyRoleTargetRequests(files, CWD, target.folder, early)).toBe(false);
+      expect(await applyRoleTargetRequests(files, CWD, target.folder, early, text, null)).toBe(
+        false,
+      );
       expect([store.get(FOR_YOU), store.get(".agentboard/claude-connector/board.json")]).toEqual([
         text,
         before,
@@ -434,8 +460,9 @@ describe("role targets", () => {
     await setRoleTarget(files, CWD, target.folder, "scout", { model: "claude-opus-5-5" }, instance);
     expect(Object.keys(savedBoard(store)?.roleTargets ?? {})).toEqual(["reviewer", "scout"]);
     await setRoleTarget(files, CWD, target.folder, "scout", null, instance);
-    store.set(FOR_YOU, `${request("rt-3", { role: "reviewer", model: null })}\n`);
-    await applyRoleTargetRequests(files, CWD, target.folder, instance);
+    const text = `${request("rt-3", { role: "reviewer", model: null })}\n`;
+    store.set(FOR_YOU, text);
+    await applyRoleTargetRequests(files, CWD, target.folder, instance, text, null);
     expect(savedBoard(store)).toMatchObject({
       roleTargets: {},
       roleRequests: { "rt-3": "Applied: reviewer -> default" },

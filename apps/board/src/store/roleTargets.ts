@@ -1,4 +1,4 @@
-import { BOARDS_DIR, type RoleOverride } from "../domain/board";
+import type { Board, RoleOverride } from "../domain/board";
 import { describeRoleTarget, mergeForYou } from "../domain/forYou";
 import { type RoleInstance, roleTargetProblem } from "../orchestrator/roles";
 import { changeRoleTarget, type ProjectFiles, readBoard, resolveRoleRequest } from "./boardFiles";
@@ -36,20 +36,21 @@ const openRoleTargets = (
 /**
  * Applies each open `role_target` item and records its result in `board.json`, which the app owns,
  * so a rerun changes nothing. Before the instance reports its models, items stay open for a later
- * run. Resolves to whether any item was resolved.
+ * run. `forYou` is the poll's `foryou.jsonl` text; a `held` board that already resolves every item
+ * skips the `board.json` read. Resolves to whether any item was resolved.
  */
 export async function applyRoleTargetRequests(
   files: ProjectFiles,
   cwd: string,
   folder: string,
   instance: RoleInstance | null,
+  forYou: string | null,
+  held: Board | null,
 ): Promise<boolean> {
   if (instance === null || instance.offered.length === 0) return false;
+  if (held !== null && openRoleTargets(forYou, held.roleRequests).length === 0) return false;
   const board = await readBoard(files, cwd, folder);
-  const requests = openRoleTargets(
-    await files.read(cwd, `${BOARDS_DIR}/${folder}/foryou.jsonl`),
-    board.roleRequests,
-  );
+  const requests = openRoleTargets(forYou, board.roleRequests);
   for (const { id, write } of requests) {
     const { role, model, effort } = write;
     const target = model === null ? null : { model, ...(effort === undefined ? {} : { effort }) };

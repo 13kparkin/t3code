@@ -246,7 +246,7 @@ export const boardStoreAtom = Atom.family((key: string) =>
             const last = Option.getOrNull(get.self<StoreFiles | null>()) ?? null;
             // Every read, not only on a change, so an item that waited on the provider list resolves once it loads.
             if (forYou?.includes('"role_target"')) {
-              runRoleTargetRequests(get.registry, project, key, folder);
+              runRoleTargetRequests(get.registry, project, key, folder, forYou);
             }
             if (!sameFiles(last, next)) {
               if (last !== null && last.tickets !== next.tickets) {
