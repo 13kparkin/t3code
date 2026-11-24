@@ -101,7 +101,6 @@ export function TicketPanel({
   const sections = props === null ? [] : allSections.filter((section) => section.shows(props));
   const open = sections.filter((section) => !folded.has(sectionKey(section.id)));
   const bars = sections.filter((section) => folded.has(sectionKey(section.id)));
-  const filler = open.find((section) => section.fill === true);
   return (
     <div ref={markPainted} className="flex min-h-0 flex-1 flex-col">
       <header className="shrink-0 border-b border-line px-3 py-2.5">
@@ -148,22 +147,13 @@ export function TicketPanel({
         )
       ) : (
         <>
-          <div
-            className={`overflow-y-auto ${filler === undefined ? "min-h-0 flex-1" : "max-h-[50%] shrink-0"}`}
-          >
-            {open
-              .filter((section) => section !== filler)
-              .map(({ id, title, Body }) => (
-                <TicketSection key={id} title={title} fill={false} onCollapse={() => toggle(id)}>
-                  <Body {...props} />
-                </TicketSection>
-              ))}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {open.map(({ id, title, Body }) => (
+              <TicketSection key={id} title={title} onCollapse={() => toggle(id)}>
+                <Body {...props} />
+              </TicketSection>
+            ))}
           </div>
-          {filler !== undefined && (
-            <TicketSection title={filler.title} fill onCollapse={() => toggle(filler.id)}>
-              <filler.Body {...props} />
-            </TicketSection>
-          )}
         </>
       )}
       {bars.length > 0 && (

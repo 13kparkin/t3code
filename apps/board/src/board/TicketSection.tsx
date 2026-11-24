@@ -3,20 +3,15 @@ import type { ReactNode } from "react";
 
 export function TicketSection({
   title,
-  fill,
   onCollapse,
   children,
 }: {
   title: string;
-  fill: boolean;
   onCollapse: () => void;
   children: ReactNode;
 }) {
   return (
-    <section
-      aria-label={title}
-      className={`flex flex-col border-b border-line ${fill ? "min-h-0 flex-1" : "shrink-0"}`}
-    >
+    <section aria-label={title} className="flex shrink-0 flex-col border-b border-line">
       <button
         type="button"
         aria-expanded
@@ -26,9 +21,7 @@ export function TicketSection({
         <ChevronDown className="size-3.5" aria-hidden />
         {title}
       </button>
-      <div className={`px-3 pb-2 text-[12px] ${fill ? "flex min-h-0 flex-1 flex-col" : ""}`}>
-        {children}
-      </div>
+      <div className="px-3 pb-2 text-[12px]">{children}</div>
     </section>
   );
 }

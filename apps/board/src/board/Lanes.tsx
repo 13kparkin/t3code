@@ -9,6 +9,7 @@ import { laneKey, saveFrameOrder, toggleFolded } from "../state/boardUi";
 import { Tooltip } from "../ui/Tooltip";
 import { ago } from "../ui/ago";
 import { AdditionBlocks } from "./AdditionBlocks";
+import { activeAgentOf } from "./activeAgent";
 import { CardLine } from "./CardLine";
 import {
   ADDITION_KEY,
@@ -45,6 +46,7 @@ export function Lanes({
   forYouLane,
   choice,
   onChoose,
+  onOpenAgent,
   onRemoveAddition,
 }: {
   layout: Layout;
@@ -55,6 +57,8 @@ export function Lanes({
   forYouLane: ReactNode;
   choice: TicketChoice | null;
   onChoose: (choice: TicketChoice) => void;
+  /** Slides an agent's activity out, and marks its ticket as the chosen one. */
+  onOpenAgent: (threadId: string, ticketKey: string | null) => void;
   onRemoveAddition: (id: string) => void;
 }) {
   const registry = useContext(RegistryContext);
@@ -219,7 +223,7 @@ export function Lanes({
                       aria-pressed={agent.threadId === choice?.threadId}
                       // A press that starts on a row is a click, not the start of a pan.
                       onPointerDown={(event) => event.stopPropagation()}
-                      onClick={() => onChoose({ threadId: agent.threadId, ticketKey: null })}
+                      onClick={() => onOpenAgent(agent.threadId, null)}
                       style={{ height: CARD_HEIGHT }}
                       className={`flex shrink-0 flex-col justify-center gap-1 rounded-md border bg-bg px-2.5 text-left hover:bg-hover ${agent.threadId === choice?.threadId ? "border-focus" : "border-line"}`}
                     >
@@ -246,9 +250,12 @@ export function Lanes({
               selected={choice?.ticketKey === box.key}
               onDrag={(dy) => setDrag({ key: box.key, dy: clampDrag(lane, box, dy) })}
               onDrop={() => drop(lane)}
-              onOpen={() =>
-                onChoose({ threadId: view.agents[0]?.threadId ?? null, ticketKey: box.key })
-              }
+              onOpen={() => {
+                const active = activeAgentOf(view.agents);
+                if (active === undefined) {
+                  onChoose({ threadId: view.agents[0]?.threadId ?? null, ticketKey: box.key });
+                } else onOpenAgent(active.threadId, box.key);
+              }}
             />
           );
         }),

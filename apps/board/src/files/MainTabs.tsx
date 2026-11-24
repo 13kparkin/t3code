@@ -19,7 +19,6 @@ export function MainTabs({
   files,
   ticketPage,
   cardPage,
-  agentPage,
   children,
 }: {
   files: FilesBoard | null;
@@ -27,10 +26,9 @@ export function MainTabs({
   ticketPage?: ReactNode;
   /** The For you card its tab shows over the canvas. */
   cardPage?: ReactNode;
-  agentPage?: ReactNode;
   children: ReactNode;
 }) {
-  const { tabs: opened, active, surface, ticket, card, agent } = useAtomValue(filesViewAtom);
+  const { tabs: opened, active, surface, ticket, card } = useAtomValue(filesViewAtom);
   const { tabs: pages, agents } = useAtomValue(browserAtom);
   // A tab opened under another board's roots has nothing to read here.
   const tabs = opened.filter((tab) => files?.roots.some((root) => root.cwd === tab.cwd));
@@ -38,12 +36,9 @@ export function MainTabs({
   const covered = shown !== null || surface !== null;
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {(tabs.length > 0 ||
-        pages.tabs.length > 0 ||
-        agents ||
-        ticket ||
-        card !== null ||
-        agent !== null) && <MainTabStrip files={tabs} />}
+      {(tabs.length > 0 || pages.tabs.length > 0 || agents || ticket || card !== null) && (
+        <MainTabStrip files={tabs} />
+      )}
       <div className="relative min-h-0 flex-1">
         {/* Invisible, not removed from the layout, so the canvas keeps its size and with it its pan and zoom. */}
         <div inert={covered} className={`absolute inset-0 ${covered ? "invisible" : ""}`}>
@@ -63,9 +58,6 @@ export function MainTabs({
         )}
         {surface === "card" && (
           <div className="absolute inset-0 flex flex-col bg-bg">{cardPage}</div>
-        )}
-        {surface === "agent" && (
-          <div className="absolute inset-0 flex flex-col bg-bg">{agentPage}</div>
         )}
         {(surface === "page" || surface === "agents") && (
           <div className="absolute inset-0 flex">

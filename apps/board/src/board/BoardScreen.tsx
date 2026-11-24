@@ -23,7 +23,8 @@ import { issuePullAtom } from "../state/issuePull";
 import { keptWorktreesAtom } from "../state/mergeCleanup";
 import { setHiddenAdditions } from "../state/reviews";
 import type { ValidBoard } from "../store/boardFiles";
-import { AgentPage } from "./AgentPage";
+import { openAgentPanel } from "../state/agentPanel";
+import { AgentPanel } from "./AgentPanel";
 import { ForYouLane } from "./ForYouLane";
 import { ForYouPage } from "./ForYouPage";
 import { Lanes } from "./Lanes";
@@ -120,12 +121,12 @@ export function BoardScreen({
   return (
     <ArtifactsProvider value={artifacts}>
       <PrProvider value={prContext}>
-        <div className="flex h-full min-h-0">
+        <div className="relative flex h-full min-h-0">
+          <AgentPanel environmentId={project.environmentId} model={model} />
           <MainTabs
             files={artifacts.files}
             ticketPage={<TicketPanel environmentId={project.environmentId} model={model} page />}
             cardPage={<ForYouPage project={project} listed={listed} forYou={forYou} />}
-            agentPage={<AgentPage environmentId={project.environmentId} model={model} />}
           >
             <Viewport
               content={layout.content}
@@ -158,6 +159,10 @@ export function BoardScreen({
                 }
                 choice={choice}
                 onChoose={(next) => chooseTicket(registry, next)}
+                onOpenAgent={(threadId, ticketKey) => {
+                  registry.set(ticketChoiceAtom, { threadId, ticketKey });
+                  openAgentPanel(registry, threadId);
+                }}
                 onRemoveAddition={(id) => changeHidden((ids) => [...ids, id])}
               />
             </Viewport>
