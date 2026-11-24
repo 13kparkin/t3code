@@ -37,13 +37,13 @@ import { Viewport } from "./Viewport";
 const NO_ORDER = {};
 const NO_IDS: ReadonlyArray<string> = [];
 
-/** A board's orchestrator card and lanes on the canvas, the ticket tab and the orchestrator's chat, which draw in the side panel. Open files are tabs over the canvas. */
 /** A leaf, so the orchestrator's streaming state re-renders only this and not the board. */
 function StoreErrorReports(props: Parameters<typeof useStoreErrorReports>[0]) {
   useStoreErrorReports(props);
   return null;
 }
 
+/** A board's orchestrator card and lanes on the canvas, the ticket tab and the orchestrator's chat, which draw in the side panel. Open files are tabs over the canvas. */
 export function BoardScreen({
   project,
   listed,

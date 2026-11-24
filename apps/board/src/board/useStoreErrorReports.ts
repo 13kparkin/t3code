@@ -11,6 +11,7 @@ import { useEnvironmentThread } from "../state/threads";
 
 const NO_SENT: ReadonlySet<string> = new Set();
 
+// shortcut: sent errors are remembered per app session; persist them in the board folder if repeats after a restart become noise.
 const sentStoreErrorsAtom = Atom.family((boardId: string) =>
   Atom.make(NO_SENT).pipe(Atom.keepAlive, Atom.withLabel(`store-errors-sent:${boardId}`)),
 );

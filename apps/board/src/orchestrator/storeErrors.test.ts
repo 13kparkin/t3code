@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { storeErrorsToSend } from "./storeErrors";
+import { storeErrorMessage, storeErrorsToSend } from "./storeErrors";
 
 const BAD = "tickets.json is invalid: 90.worktreePath Expected string";
 
@@ -21,5 +21,9 @@ describe("store errors sent to the orchestrator", () => {
     const sent = storeErrorsToSend(new Set(), [BAD], true).sent;
     const valid = storeErrorsToSend(sent, [], true);
     expect(storeErrorsToSend(valid.sent, [BAD], true).send).toEqual([BAD]);
+  });
+
+  it("Given a parse error, when it is sent, then the error is fenced as data", () => {
+    expect(storeErrorMessage(BAD).split("\n").slice(-3)).toEqual(["```", BAD, "```"]);
   });
 });
