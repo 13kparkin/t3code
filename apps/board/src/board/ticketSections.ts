@@ -7,6 +7,8 @@ import { AdditionBlocks } from "./AdditionBlocks";
 import type { SectionProps } from "./sectionProps";
 import { TicketActivity } from "./TicketActivity";
 import { TicketAgents } from "./TicketAgents";
+import { Prerequisites } from "./Prerequisites";
+import { TicketDetails } from "./TicketDetails";
 import { TicketFiles } from "./TicketFiles";
 import { TicketGlance } from "./TicketGlance";
 import { TicketReadiness } from "./TicketReadiness";
@@ -34,6 +36,8 @@ export const TICKET_SECTIONS: ReadonlyArray<TicketSection> = [
     Body: TicketSummary,
   },
   { id: "why", title: "Why", shows: () => true, Body: TicketWhy },
+  { id: "details", title: "Details", shows: () => true, Body: TicketDetails },
+  { id: "prerequisites", title: "Prerequisites", shows: () => true, Body: Prerequisites },
   { id: "glance", title: "At a glance", shows: () => true, Body: TicketGlance },
   {
     id: "steps",

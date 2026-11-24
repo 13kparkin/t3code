@@ -46,7 +46,7 @@ export function BoardScreen({
   const [dropError, setDropError] = useState<string | null>(null);
   const [hideError, setHideError] = useState<string | null>(null);
   const { board } = listed;
-  const { model, issue, stats, decisions, additions } = useBoardView(project, listed);
+  const { model, issue, stats, decisions, additions, overlay } = useBoardView(project, listed);
   useAtomValue(issuePullAtom(`${project.id}/${listed.folder}`));
   const hiddenAdditions = board.hiddenAdditions ?? NO_IDS;
   const visible = useMemo(
@@ -92,6 +92,7 @@ export function BoardScreen({
       keptWorktrees,
       decisions,
       additions: visible,
+      overlay,
     };
   }, [
     project,
@@ -103,6 +104,7 @@ export function BoardScreen({
     keptWorktrees,
     decisions,
     visible,
+    overlay,
   ]);
   const chatSlot = useAtomValue(chatSlotAtom);
   const ticketSlot = useAtomValue(ticketSlotAtom);

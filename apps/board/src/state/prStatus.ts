@@ -19,6 +19,7 @@ import {
   type Smoke,
 } from "../domain/readiness";
 import { connectionAtomRuntime } from "../connection/runtime";
+import type { Overlay } from "../domain/ticketOverlay";
 import type { Addition } from "../domain/additions";
 import { locate } from "../files/target";
 import { ROLES } from "../orchestrator/roles";
@@ -160,6 +161,8 @@ export interface PrContextValue {
   readonly decisions: string | null;
   /** The `additions.json` items the user has not hidden. */
   readonly additions: ReadonlyArray<Addition>;
+  /** The app's `ticket-details.json`, for the tracker copy's link and time. */
+  readonly overlay: Overlay;
 }
 
 const PrContext = createContext<PrContextValue | null>(null);
