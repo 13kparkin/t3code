@@ -40,19 +40,22 @@ import { issuePullAtom } from "./issuePull";
 describe("the issue pull rounds", () => {
   it("Given two rounds inside one stagger window, when the timers run, then each linked ticket is read once", async () => {
     vi.useFakeTimers();
-    const handlers: Array<() => void> = [];
-    vi.stubGlobal("document", {
-      visibilityState: "visible",
-      addEventListener: (_type: string, handler: () => void) => handlers.push(handler),
-      removeEventListener: () => {},
-    });
-    const registry = AtomRegistry.make();
-    const unmount = registry.mount(issuePullAtom("p/board"));
-    handlers[0]?.();
-    await vi.advanceTimersByTimeAsync(60_000);
-    unmount();
-    vi.useRealTimers();
-    vi.unstubAllGlobals();
+    try {
+      const handlers: Array<() => void> = [];
+      vi.stubGlobal("document", {
+        visibilityState: "visible",
+        addEventListener: (_type: string, handler: () => void) => handlers.push(handler),
+        removeEventListener: () => {},
+      });
+      const registry = AtomRegistry.make();
+      const unmount = registry.mount(issuePullAtom("p/board"));
+      handlers[0]?.();
+      await vi.advanceTimersByTimeAsync(60_000);
+      unmount();
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
     expect(mocks.reads.toSorted()).toEqual(["T-1", "T-2"]);
   });
 });
