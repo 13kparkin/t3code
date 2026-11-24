@@ -47,8 +47,7 @@ export type WorktreeStatus = Pick<
 
 /**
  * File names under a legacy `.omp/artifacts/` and the board's `artifacts/`, each starting with its
- * ticket key. `worktree` is null when the worktree has no folder for this ticket, which is the
- * normal case, because agents now write straight to the board folder.
+ * ticket key. `worktree` is null when the worktree has no `.omp/artifacts` key folder at all.
  */
 interface Evidence {
   readonly worktree: ReadonlyArray<string> | null;
@@ -207,16 +206,22 @@ export interface CleanupTarget {
 async function readEvidence(
   files: ProjectFiles,
   target: CleanupTarget,
-  key: string,
   path: string,
 ): Promise<Evidence | null> {
   const copies = `${BOARDS_DIR}/${target.folder}/artifacts`;
   const under = (root: string) => (names: string[]) =>
     names.map((name) => name.slice(root.length + 1));
   try {
-    const folders = (await files.list(path, WORKTREE_ARTIFACTS)) ?? [];
-    const keys = folders.filter((entry) => entry.kind === "directory").map((e) => baseName(e.path));
-    if (!keys.includes(key)) return { worktree: null, board: [], partial: false };
+    const folders = await files.list(path, WORKTREE_ARTIFACTS);
+    // A null listing is a missing folder or a failed read. Only a `.omp` that lists without `artifacts` proves it missing.
+    if (folders === null) {
+      const omp = await files.list(path, ".omp");
+      if (omp?.some((entry) => baseName(entry.path) === "artifacts")) return null;
+    }
+    const keys = (folders ?? [])
+      .filter((entry) => entry.kind === "directory")
+      .map((entry) => baseName(entry.path));
+    if (keys.length === 0) return { worktree: null, board: [], partial: false };
     const worktree = under(WORKTREE_ARTIFACTS)(
       await walk(files, path, WORKTREE_ARTIFACTS, { strict: true }),
     );
@@ -260,7 +265,7 @@ export async function cleanupMerged(
     }
     return plan({
       ...facts,
-      evidence: await readEvidence(ports.files, target, facts.ticket.key, facts.path),
+      evidence: await readEvidence(ports.files, target, facts.path),
     });
   };
   const facts = (

@@ -118,7 +118,7 @@ describe("planCleanup", () => {
       { kind: "keep", reason: "running" },
     ],
     [
-      "SAFE: no evidence folder in the worktree, because the agents wrote to the board",
+      "SAFE: no evidence folder in the worktree",
       { evidence: { worktree: null, board: ["README.txt"], partial: false } },
       { kind: "remove", path: WT },
     ],
@@ -222,6 +222,8 @@ function world(input: {
   readonly sibling?: boolean;
   /** The worktree has no `.omp/artifacts`, as when the agents wrote straight to the board. */
   readonly bare?: boolean;
+  /** The worktree holds only a closed sibling ticket's evidence. */
+  readonly siblingOnly?: boolean;
 }) {
   const removed: string[] = [];
   const archived: string[] = [];
@@ -236,7 +238,9 @@ function world(input: {
     [WT]: [
       ...(input.bare
         ? ["src/app.ts"]
-        : [".omp/artifacts/T-26/README.txt", ".omp/artifacts/T-26/smoke.png"]),
+        : input.siblingOnly
+          ? [".omp/artifacts/T-25/notes.md"]
+          : [".omp/artifacts/T-26/README.txt", ".omp/artifacts/T-26/smoke.png"]),
       ...(input.unlisted ? [`${input.unlisted}/1.png`] : []),
       ...(input.sibling ? [".omp/artifacts/T-25/notes.md"] : []),
     ],
@@ -290,6 +294,22 @@ describe("cleanupMerged", () => {
     const bare = world({ board: ["README.txt", "smoke.png"], bare: true });
     expect(await cleanupMerged(bare.ports, target, [ticket()])).toEqual(new Map());
     expect(bare.removed).toEqual([WT]);
+  });
+
+  it("keeps a worktree that holds only a sibling ticket's evidence that was never copied", async () => {
+    const skipped = world({ board: ["README.txt"], siblingOnly: true });
+    expect(await cleanupMerged(skipped.ports, target, [ticket()])).toEqual(
+      new Map([["T-26", "evidence-missing"]]),
+    );
+    expect(skipped.removed).toEqual([]);
+  });
+
+  it("keeps the worktree when .omp/artifacts exists but does not list", async () => {
+    const unreadable = world({ board: ["README.txt", "smoke.png"], unlisted: ".omp/artifacts" });
+    expect(await cleanupMerged(unreadable.ports, target, [ticket()])).toEqual(
+      new Map([["T-26", "evidence-missing"]]),
+    );
+    expect(unreadable.removed).toEqual([]);
   });
 
   it("keeps the worktree while the orchestrator's copy is still in its .partial folder", async () => {
