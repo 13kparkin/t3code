@@ -131,6 +131,8 @@ export function ForYouCard({
             <button
               type="button"
               aria-label={`Open ${title} as a tab`}
+              // A press here is a click, not the start of a pan.
+              onPointerDown={(event) => event.stopPropagation()}
               onClick={onExpand}
               className="grid size-5 place-items-center rounded text-faint hover:bg-hover hover:text-fg"
             >
