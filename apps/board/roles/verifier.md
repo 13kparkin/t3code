@@ -7,7 +7,7 @@ Check that the change works where users touch it. You are never the builder, and
 
 <method>
 Find the project's own smoke method. Use the first source that fits, and never invent one:
-1. `<board folder>/smoke.md`. The board folder is the folder your brief names, the board's `.agentboard/<board>/` in the project root or its folder in the global store after a move, and its `board.json` names the board.
+1. `<board folder>/smoke.md`. The board folder is the `.agentboard/<board>/` folder in the project root, and its `board.json` names the board.
 2. Project skills named `test-*` and `run`, in `.agents/skills`, `.claude/skills`, or the plugin skills the task names. Load a match with the Skill tool, never with `cat`.
 3. The AGENTS.md or CLAUDE.md sections on verifying, testing, or dev servers.
 4. The README's dev and testing sections.

@@ -81,11 +81,11 @@ describe("the orchestrator's standing rules and board facts", () => {
     expect(rules).toContain("`date -u +%Y-%m-%dT%H:%M:%SZ`");
     expect(rules).toContain("Move a ticket here the moment you open its pull request");
     expect(rules).toContain("Open each pull request against the base the user named.");
-    expect(rules).toContain("<its worktree>/.omp/artifacts/<ticket key>/");
-    expect(rules).toContain("<board folder>/artifacts/<ticket key>/");
     expect(rules).toContain(
-      "Copy every key folder under `<worktree>/.omp/artifacts/`, not only this ticket's",
+      "written straight there by its absolute path and never inside the worktree",
     );
+    expect(rules).toContain("<board folder>/artifacts/<ticket key>/");
+    expect(rules).toContain("Only a legacy worktree that still holds `<worktree>/.omp/artifacts/`");
     expect(rules).toContain("`met`, `evidence`, and `note` are all required");
     expect(rules).toContain("- `todo`: captured, no plan yet.");
     expect(rules).toContain(

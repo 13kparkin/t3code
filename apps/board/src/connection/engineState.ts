@@ -17,22 +17,6 @@ export type EngineTokenResult =
   | { readonly ok: true; readonly token: string }
   | { readonly ok: false; readonly error: "auth_failed" | "unavailable"; readonly detail: string };
 
-export interface BoardStoreHost {
-  /** The store's absolute path, which agents read and write, or null when it is not available here. */
-  readonly root: () => Promise<string | null>;
-  readonly list: (
-    path: string,
-  ) => Promise<ReadonlyArray<{ readonly path: string; readonly kind: string }> | null>;
-  readonly read: (path: string) => Promise<string | null>;
-  readonly write: (path: string, contents: string) => Promise<void>;
-  readonly move: (input: {
-    readonly direction: "to-store" | "to-project";
-    readonly projectRoot: string;
-    readonly key: string;
-    readonly slug: string;
-  }) => Promise<void>;
-}
-
 /** What the preload script exposes on `window.board`. */
 export interface BoardBridge {
   readonly reportFirstPaint: (epochMs: number) => void;
@@ -53,7 +37,6 @@ export interface BoardBridge {
   readonly writeLocalState: (text: string) => Promise<void>;
   /** Clones or refreshes the pstack-t3 checkout the board's Claude instances load, and returns its folder. */
   readonly ensurePstack: () => Promise<PstackResult>;
-  readonly store?: BoardStoreHost;
   readonly browser: BrowserHost;
   readonly appUpdate: AppUpdateHost;
 }

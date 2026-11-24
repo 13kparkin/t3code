@@ -80,7 +80,6 @@ export async function launchOrchestrator(
   target: {
     readonly cwd: string;
     readonly folder: string;
-    readonly boardDir?: string;
     readonly board: Board;
     /** The project's title. */
     readonly project: string;
@@ -98,7 +97,7 @@ export async function launchOrchestrator(
   const threadId = await ports.launchThread({
     title: `Orchestrator: ${board.name}`,
     firstMessage: renderFacts({
-      boardDir: target.boardDir ?? `${cwd}/${boardPath}`,
+      boardDir: `${cwd}/${boardPath}`,
       builderCap: board.builderCap,
       project,
       projectDir: cwd,

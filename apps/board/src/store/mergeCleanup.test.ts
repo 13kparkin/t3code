@@ -118,9 +118,9 @@ describe("planCleanup", () => {
       { kind: "keep", reason: "running" },
     ],
     [
-      "skipped t3-c99fb87b: no evidence folder in the worktree",
-      { evidence: { worktree: null, board: [], partial: false } },
-      { kind: "keep", reason: "no-evidence" },
+      "SAFE: no evidence folder in the worktree, because the agents wrote to the board",
+      { evidence: { worktree: null, board: ["README.txt"], partial: false } },
+      { kind: "remove", path: WT },
     ],
     [
       "the orchestrator skipped the evidence copy",
@@ -220,6 +220,8 @@ function world(input: {
   readonly unlisted?: string;
   /** Evidence a closed sibling ticket left in the same worktree. */
   readonly sibling?: boolean;
+  /** The worktree has no `.omp/artifacts`, as when the agents wrote straight to the board. */
+  readonly bare?: boolean;
 }) {
   const removed: string[] = [];
   const archived: string[] = [];
@@ -232,8 +234,9 @@ function world(input: {
       ...(input.partial ? [`${BOARD}/artifacts/T-26.partial/smoke.png`] : []),
     ],
     [WT]: [
-      ".omp/artifacts/T-26/README.txt",
-      ".omp/artifacts/T-26/smoke.png",
+      ...(input.bare
+        ? ["src/app.ts"]
+        : [".omp/artifacts/T-26/README.txt", ".omp/artifacts/T-26/smoke.png"]),
       ...(input.unlisted ? [`${input.unlisted}/1.png`] : []),
       ...(input.sibling ? [".omp/artifacts/T-25/notes.md"] : []),
     ],
@@ -281,6 +284,12 @@ describe("cleanupMerged", () => {
     expect(await cleanupMerged(copied.ports, target, [ticket()])).toEqual(new Map());
     expect(copied.removed).toEqual([WT]);
     expect(copied.archived).toEqual(["builder"]);
+  });
+
+  it("deletes a worktree with no .omp/artifacts, since the evidence is in the board folder", async () => {
+    const bare = world({ board: ["README.txt", "smoke.png"], bare: true });
+    expect(await cleanupMerged(bare.ports, target, [ticket()])).toEqual(new Map());
+    expect(bare.removed).toEqual([WT]);
   });
 
   it("keeps the worktree while the orchestrator's copy is still in its .partial folder", async () => {

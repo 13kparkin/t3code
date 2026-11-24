@@ -19,7 +19,6 @@ type KeepReason =
   | "status-unknown"
   | "dirty"
   | "unpushed"
-  | "no-evidence"
   | "evidence-missing";
 
 type Plan =
@@ -47,8 +46,9 @@ export type WorktreeStatus = Pick<
 >;
 
 /**
- * File names under `.omp/artifacts/` and the board's `artifacts/`, each starting with its ticket key.
- * `worktree` is null when the worktree has no folder for this ticket.
+ * File names under a legacy `.omp/artifacts/` and the board's `artifacts/`, each starting with its
+ * ticket key. `worktree` is null when the worktree has no folder for this ticket, which is the
+ * normal case, because agents now write straight to the board folder.
  */
 interface Evidence {
   readonly worktree: ReadonlyArray<string> | null;
@@ -85,7 +85,8 @@ const branchSafe = (status: WorktreeStatus) =>
   ((status.hasUpstream && status.aheadCount === 0) || status.aheadOfDefaultCount === 0);
 
 const evidenceCopied = ({ worktree, board, partial }: Evidence) => {
-  if (worktree === null || partial) return false;
+  if (worktree === null) return true;
+  if (partial) return false;
   const copied = new Set(board);
   return worktree.every((name) => copied.has(name));
 };
@@ -129,7 +130,6 @@ export function planCleanup(facts: WorktreeFacts): Plan {
   if (status.hasWorkingTreeChanges) return keep("dirty");
   if (!branchSafe(status)) return keep("unpushed");
   if (evidence === undefined) return { kind: "read" };
-  if (evidence?.worktree === null) return keep("no-evidence");
   if (evidence === null || !evidenceCopied(evidence)) return keep("evidence-missing");
   return { kind: "remove", path: worktree };
 }

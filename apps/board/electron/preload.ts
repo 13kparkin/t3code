@@ -24,13 +24,6 @@ const bridge: BoardBridge = {
   readLocalState: () => ipcRenderer.invoke("board:local-state-read"),
   writeLocalState: (text) => ipcRenderer.invoke("board:local-state-write", text),
   ensurePstack: () => ipcRenderer.invoke("board:ensure-pstack"),
-  store: {
-    root: () => ipcRenderer.invoke("board:store-root"),
-    list: (path) => ipcRenderer.invoke("board:store-list", path),
-    read: (path) => ipcRenderer.invoke("board:store-read", path),
-    write: (path, contents) => ipcRenderer.invoke("board:store-write", path, contents),
-    move: (input) => ipcRenderer.invoke("board:store-move", input),
-  },
   browser: {
     open: (id, url) => ipcRenderer.send("board:browser-open", id, url),
     close: (id) => ipcRenderer.send("board:browser-close", id),

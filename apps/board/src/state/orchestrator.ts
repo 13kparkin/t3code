@@ -28,7 +28,6 @@ import { defaultSetupPatch } from "../settings/settingsModel";
 import type { ValidBoard } from "../store/boardFiles";
 import { readingsFor } from "../usage/usageNotice";
 import { boardEngine, localState, newId, projectBoardsAtom } from "./boards";
-import { boardDirOf } from "../store/routedFiles";
 import { runMergeCleanup } from "./mergeCleanup";
 import { engineConnectionAtom, engineEnvironmentIdAtom, environmentProjects } from "./projects";
 import { engineProvidersAtom, engineSettingsAtom, serverEnvironment } from "./server";
@@ -162,7 +161,6 @@ export async function startBoardOrchestrator(
       {
         cwd: project.workspaceRoot,
         folder: listed.folder,
-        boardDir: await boardDirOf(window.board?.store, project.workspaceRoot, listed.folder),
         board: listed.board,
         project: project.title,
         reviewTemplate: pickTemplate(

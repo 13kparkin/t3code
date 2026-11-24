@@ -35,7 +35,6 @@ import {
 } from "../store/boardFiles";
 import { createLocalState, type LocalState } from "../store/localState";
 import { ticketChoiceAtom } from "../browser/panel";
-import { routeFiles } from "../store/routedFiles";
 import { closeAgentPanel } from "./agentPanel";
 import { closePage, showBoard } from "./filesView";
 import { failureText } from "../settings/failureText";
@@ -198,11 +197,7 @@ export function boardEngine(registry: AtomRegistry.AtomRegistry, environmentId: 
         .map(familyThread),
   };
 
-  return {
-    files: window.board?.store ? routeFiles(files, window.board.store) : files,
-    threads,
-    run,
-  };
+  return { files, threads, run };
 }
 
 export type ProjectBoards =
@@ -313,15 +308,3 @@ export function openBoard(
   showBoard(registry);
   return localState.update((state) => ({ ...state, lastOpenedBoard: opened }));
 }
-
-export const boardStoredAtom = Atom.family((path: string) =>
-  Atom.make<boolean | null>((get) => {
-    const store = window.board?.store;
-    void store
-      ?.root()
-      .then((root) => (root === null ? null : store.read(path).then((text) => text !== null)))
-      .then((stored) => get.setSelf(stored ?? null))
-      .catch(() => get.setSelf(null));
-    return Option.getOrElse(get.self<boolean | null>(), () => null);
-  }).pipe(Atom.withLabel(`board-stored:${path}`)),
-);
