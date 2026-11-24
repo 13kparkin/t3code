@@ -219,7 +219,7 @@ async function readEvidence(
       if (omp?.some((entry) => baseName(entry.path) === "artifacts")) return null;
       // Neither lists: a worktree root that lists with no `.omp` is a bare one, an unreadable root is a failed read.
       if (omp === null) {
-        const root = await files.list(path, ".");
+        const root = await files.list(path, "");
         if (root === null || root.some((entry) => baseName(entry.path) === ".omp")) return null;
       }
     }

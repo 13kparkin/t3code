@@ -17,6 +17,7 @@ import { Sidebar } from "./sidebar/Sidebar";
 import { SidebarToggle } from "./sidebar/SidebarToggle";
 import { UpdateToasts } from "./sidebar/UpdateToasts";
 import { connectionWatchAtom } from "./state/engine";
+import { agentPanelAtom } from "./state/agentPanel";
 import { settingsPageAtom } from "./state/settingsPage";
 import { updateWatcherAtom } from "./state/updatesAtoms";
 import { UsageBar } from "./usage/UsageBar";
@@ -25,6 +26,7 @@ export function App() {
   const registry = useContext(RegistryContext);
   const settingsPage = useAtomValue(settingsPageAtom);
   const sidebarOpen = useAtomValue(sidebarOpenAtom);
+  const agentPanelOpen = useAtomValue(agentPanelAtom) !== null;
   const setSettingsPage = (page: SettingsPage | null) => registry.set(settingsPageAtom, page);
   useAtomMount(updateWatcherAtom);
   useAtomMount(connectionWatchAtom);
@@ -62,7 +64,8 @@ export function App() {
           <ArchivedPanel />
           <div
             ref={attachDockSlot}
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-4 pb-4 *:pointer-events-auto"
+            // The agent slide-out is w-96 (24rem) over the board, so the dock stops at its left edge.
+            className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center pb-4 pl-4 *:pointer-events-auto ${agentPanelOpen ? "pr-[25rem]" : "pr-4"}`}
           />
         </main>
         <PanelHost />

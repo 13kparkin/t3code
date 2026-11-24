@@ -194,7 +194,10 @@ const BOARD = ".agentboard/main";
 function filesOf(tree: Record<string, ReadonlyArray<string>>): ProjectFiles {
   return {
     list: async (cwd, directory) => {
-      const prefix = directory === "." ? "" : `${directory}/`;
+      // The engine fails on "." and lists the root as "".
+      if (directory === ".")
+        throw new Error("Workspace file path must stay within the workspace root");
+      const prefix = directory === "" ? "" : `${directory}/`;
       const children = new Map<string, string>();
       for (const path of tree[cwd] ?? []) {
         if (!path.startsWith(prefix)) continue;
@@ -260,7 +263,7 @@ function world(input: {
       list: async (cwd, directory) =>
         directory === input.unlisted ||
         (input.ompUnreadable && directory === ".omp") ||
-        (input.rootUnreadable && directory === ".")
+        (input.rootUnreadable && directory === "")
           ? null
           : files.list(cwd, directory),
     },
