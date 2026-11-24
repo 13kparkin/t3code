@@ -3,10 +3,11 @@ import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { Atom, type AtomRegistry } from "effect/reactivity";
 import * as Result from "effect/Result";
 
-import { parseTickets } from "../domain/ticket";
+import { parseTickets, type Ticket } from "../domain/ticket";
 import {
   type CleanupPorts,
   cleanupMerged,
+  planWorktree,
   readBoardTickets,
   runOnePerKey,
 } from "../store/mergeCleanup";
@@ -89,4 +90,20 @@ export function runMergeCleanup(
           );
     registry.set(keptWorktreesAtom(storeKey), kept);
   });
+}
+
+/** Whether one ticket's worktree could be removed now, and if not, why. Reads only. */
+export function planTicketWorktree(
+  registry: AtomRegistry.AtomRegistry,
+  project: CleanupProject,
+  folder: string,
+  ticket: Ticket,
+  path: string,
+) {
+  return planWorktree(
+    cleanupPorts(registry, project),
+    { workspaceRoot: project.workspaceRoot, folder },
+    ticket,
+    path,
+  );
 }
