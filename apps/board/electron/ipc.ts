@@ -1,4 +1,5 @@
 import * as NodeFS from "node:fs";
+import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import * as NodeTimersPromises from "node:timers/promises";
 
@@ -7,6 +8,7 @@ import * as Schema from "effect/Schema";
 import { app, BrowserWindow, dialog, ipcMain, safeStorage } from "electron";
 
 import { runtimeSupportsClient } from "./runtimeCompatibility";
+import { createBoardStore } from "./boardStore";
 import { createConnectionLog } from "./connectionLog";
 import { createEngine, type EngineConfig, type TokenStore } from "./engine";
 import { createLocalStateFile } from "./localState";
@@ -29,6 +31,14 @@ const sinceStart = (epochMs: number) => Math.round(epochMs - performance.timeOri
 const Settings = Schema.Struct({ wslDistro: Schema.optional(Schema.String) });
 const TokenFile = Schema.Record(Schema.String, Schema.String);
 const decodeText = Schema.decodeUnknownOption(Schema.String);
+const decodeMove = Schema.decodeUnknownOption(
+  Schema.Struct({
+    direction: Schema.Literals(["to-store", "to-project"]),
+    projectRoot: Schema.String,
+    key: Schema.String,
+    slug: Schema.String,
+  }),
+);
 const decodeSettings = Schema.decodeUnknownOption(Schema.fromJsonString(Settings));
 const decodeTokenFile = Schema.decodeUnknownOption(Schema.fromJsonString(TokenFile));
 
@@ -165,6 +175,38 @@ export function registerEngineIpc(options: {
   ipcMain.handle("board:local-state-write", (_event, text) => {
     const contents = Option.getOrUndefined(decodeText(text));
     if (contents !== undefined) localState.write(contents);
+  });
+  // The agents run on the engine's host, so a store on this machine only fits when that is this machine.
+  const storeRoot =
+    platform === "win32"
+      ? null
+      : NodePath.join(
+          env["AGENT_BOARD_T3_HOME"] ??
+            env["T3CODE_HOME"] ??
+            NodePath.join(NodeOS.homedir(), ".t3"),
+          "board",
+        );
+  const store = storeRoot === null ? null : createBoardStore(storeRoot);
+  const storeOrThrow = () => {
+    if (store === null)
+      throw new Error("Global storage is not available when the engine runs in WSL.");
+    return store;
+  };
+  ipcMain.handle("board:store-root", () => storeRoot);
+  ipcMain.handle("board:store-list", (_event, path) =>
+    store === null ? null : store.list(Option.getOrElse(decodeText(path), () => "")),
+  );
+  ipcMain.handle("board:store-read", (_event, path) =>
+    store === null ? null : store.read(Option.getOrElse(decodeText(path), () => "")),
+  );
+  ipcMain.handle("board:store-write", (_event, path, contents) => {
+    const target = Option.getOrUndefined(decodeText(path));
+    const text = Option.getOrUndefined(decodeText(contents));
+    if (target !== undefined && text !== undefined) storeOrThrow().write(target, text);
+  });
+  ipcMain.handle("board:store-move", (_event, input) => {
+    const moved = Option.getOrUndefined(decodeMove(input));
+    if (moved !== undefined) storeOrThrow().move(moved);
   });
   ipcMain.handle("board:ensure-pstack", () =>
     env["AGENT_BOARD_PSTACK_DIR"]

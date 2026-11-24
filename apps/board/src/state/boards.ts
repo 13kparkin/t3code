@@ -35,6 +35,7 @@ import {
 } from "../store/boardFiles";
 import { createLocalState, type LocalState } from "../store/localState";
 import { ticketChoiceAtom } from "../browser/panel";
+import { routeFiles } from "../store/routedFiles";
 import { closeAgentPanel } from "./agentPanel";
 import { closePage, showBoard } from "./filesView";
 import { failureText } from "../settings/failureText";
@@ -197,7 +198,11 @@ export function boardEngine(registry: AtomRegistry.AtomRegistry, environmentId: 
         .map(familyThread),
   };
 
-  return { files, threads, run };
+  return {
+    files: window.board?.store ? routeFiles(files, window.board.store) : files,
+    threads,
+    run,
+  };
 }
 
 export type ProjectBoards =

@@ -14,7 +14,7 @@ Your standing instructions open with poteto-mode and the pstack-t3 adapter, and 
 
 ## Your board
 
-Your first message holds your board facts: the board folder, the builder cap, the project, the review template, and your usage lines. After a compaction you may no longer have it. Then find your board folder again. Read your thread ID with `printenv T3CODE_THREAD_ID`, then look in `.agentboard/*/board.json` under your working directory for the file whose `orchestratorThreadId` equals it. The folder that holds that file is your board folder, and its `builderCap` is your builder cap. Its `reviewTemplate` names your review template, and no `reviewTemplate` means `Review loop`. Do not read old session files for this.
+Your first message holds your board facts: the board folder, the builder cap, the project, the review template, and your usage lines. After a compaction you may no longer have it. Then find your board folder again. Read your thread ID with `printenv T3CODE_THREAD_ID`, then look in `.agentboard/*/board.json` under your working directory for the file whose `orchestratorThreadId` equals it. If no file there matches, the board moved to the global store, so look in `${T3CODE_HOME:-$HOME/.t3}/board/*/*/board.json` the same way. The folder that holds that file is your board folder, and its `builderCap` is your builder cap. Its `reviewTemplate` names your review template, and no `reviewTemplate` means `Review loop`. Do not read old session files for this.
 
 Your working directory is the project that holds the board folder. Read and write the store only by its absolute path.
 

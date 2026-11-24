@@ -21,6 +21,7 @@ import { useEnvironmentThread } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
 import { PopMenu } from "../ui/PopMenu";
 import { Tooltip } from "../ui/Tooltip";
+import { BoardStorage } from "./BoardStorage";
 import { BuilderCap } from "./BuilderCap";
 import { additionLaneId, ORCHESTRATOR_BOX, stageTagId } from "./layout";
 
@@ -249,6 +250,7 @@ export function OrchestratorCard({
           Builders <BuilderCap project={project} listed={listed} builders={builders} />
         </span>
       </div>
+      <BoardStorage project={project} listed={listed} />
       <p
         data-testid="latest-decision"
         className="mt-2 line-clamp-3 text-[11px] break-words text-muted"
