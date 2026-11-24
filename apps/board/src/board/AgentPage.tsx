@@ -2,7 +2,7 @@ import { useAtomValue } from "@effect/atom-react";
 import type { EnvironmentId } from "@t3tools/contracts";
 
 import { EmptyFiles } from "../files/EmptyFiles";
-import type { BoardModel } from "../state/boardModel";
+import { allAgents, type BoardModel } from "../state/boardModel";
 import { filesViewAtom } from "../state/filesView";
 import { AgentLog } from "./AgentLog";
 
@@ -15,12 +15,7 @@ export function AgentPage({
   model: BoardModel;
 }) {
   const page = useAtomValue(filesViewAtom).agent;
-  const agent = [
-    ...Object.values(model.lanes)
-      .flat()
-      .flatMap((view) => view.agents),
-    ...model.unassigned,
-  ].find((entry) => entry.threadId === page?.threadId);
+  const agent = allAgents(model).find((entry) => entry.threadId === page?.threadId);
   if (page === null || agent === undefined) {
     return <EmptyFiles>This agent is no longer on the board</EmptyFiles>;
   }

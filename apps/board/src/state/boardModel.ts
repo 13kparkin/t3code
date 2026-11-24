@@ -165,6 +165,14 @@ export function joinBoard(input: {
   };
 }
 
+/** Every agent on the board: each ticket's, then the ones no ticket claims. */
+export const allAgents = (model: BoardModel): ReadonlyArray<AgentView> => [
+  ...Object.values(model.lanes)
+    .flat()
+    .flatMap((view) => view.agents),
+  ...model.unassigned,
+];
+
 /** Roles that write code: the implementation roles, and the writing roles that get their own worktree. */
 const BUILDER_ROLES: ReadonlySet<string> = new Set(
   ROLES.filter(
@@ -174,12 +182,7 @@ const BUILDER_ROLES: ReadonlySet<string> = new Set(
 
 /** Live builders on any ticket stage or unassigned, which the builder cap limits. */
 export function countBuilders(model: BoardModel): number {
-  return [
-    ...Object.values(model.lanes)
-      .flat()
-      .flatMap((view) => view.agents),
-    ...model.unassigned,
-  ].filter(
+  return allAgents(model).filter(
     (agent) =>
       BUILDER_ROLES.has(agent.role) &&
       (agent.runState === "working" || agent.runState === "waiting"),
