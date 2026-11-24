@@ -1,6 +1,6 @@
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
-import type { EnvironmentId } from "@t3tools/contracts";
-import type { AtomRegistry } from "effect/reactivity";
+import type { OrchestrationV2ThreadShell, ServerProvider } from "@t3tools/contracts";
+import { Atom, type AtomRegistry } from "effect/reactivity";
 
 import type { RoleTarget } from "../domain/board";
 import { baseInstanceId } from "../orchestrator/orchestratorInstance";
@@ -8,7 +8,7 @@ import { defaultPick, type PickableInstance, pickableInstances } from "../provid
 import { runOnePerKey } from "../store/mergeCleanup";
 import { applyRoleTargetRequests, setRoleTarget } from "../store/roleTargets";
 import { boardEngine, projectBoardsAtom } from "./boards";
-import { environmentSnapshotAtom } from "./projects";
+import { environmentProjects, environmentSnapshotAtom } from "./projects";
 import { engineProvidersAtom } from "./server";
 
 type RoleProject = Pick<EnvironmentProject, "id" | "environmentId" | "workspaceRoot">;
@@ -18,23 +18,31 @@ type RoleProject = Pick<EnvironmentProject, "id" | "environmentId" | "workspaceR
  * it has one, the instance a new orchestrator would start on.
  */
 export function boardInstance(
-  registry: AtomRegistry.AtomRegistry,
-  environmentId: EnvironmentId,
+  providers: ReadonlyArray<ServerProvider>,
+  threads: ReadonlyArray<OrchestrationV2ThreadShell> | undefined,
   orchestratorThreadId: string | null,
 ): PickableInstance | null {
-  const instances = pickableInstances(registry.get(engineProvidersAtom));
-  const thread =
-    orchestratorThreadId === null
-      ? undefined
-      : registry
-          .get(environmentSnapshotAtom(environmentId))
-          ?.threads.find((shell) => shell.id === orchestratorThreadId);
+  const instances = pickableInstances(providers);
+  const thread = threads?.find((shell) => shell.id === orchestratorThreadId);
   const id =
     thread === undefined
       ? defaultPick(instances).value.instanceId
       : baseInstanceId(thread.modelSelection.instanceId);
   return instances.find((instance) => instance.instanceId === id) ?? null;
 }
+
+/** Every board that is not archived, in each project that is not archived, for the Roles page's picker. */
+export const activeBoardsAtom = Atom.make((get) =>
+  get(environmentProjects.projectsAtom)
+    .filter((project) => project.archivedAt == null)
+    .flatMap((project) => {
+      const boards = get(projectBoardsAtom(project.id));
+      if (boards.status !== "ready") return [];
+      return boards.boards.flatMap((listed) =>
+        listed.ok && !listed.board.archived ? [{ project, listed }] : [],
+      );
+    }),
+).pipe(Atom.withLabel("active-boards"));
 
 /** Saves a role's target from Settings, then lists the project's boards again so the page shows it. */
 export async function saveRoleTarget(
@@ -69,7 +77,11 @@ export function runRoleTargetRequests(
       boardEngine(registry, project.environmentId).files,
       project.workspaceRoot,
       folder,
-      boardInstance(registry, project.environmentId, threadId),
+      boardInstance(
+        registry.get(engineProvidersAtom),
+        registry.get(environmentSnapshotAtom(project.environmentId))?.threads,
+        threadId,
+      ),
     );
     if (applied) registry.refresh(projectBoardsAtom(project.id));
   });
