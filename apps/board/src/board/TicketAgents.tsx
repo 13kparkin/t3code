@@ -6,7 +6,6 @@ import { openAgentPanel } from "../state/agentPanel";
 import { AgentCard } from "./AgentCard";
 import type { SectionProps } from "./sectionProps";
 
-/** Choosing an agent slides its activity out over the canvas. */
 export function TicketAgents({ view, agent }: SectionProps) {
   const registry = useContext(RegistryContext);
   return (

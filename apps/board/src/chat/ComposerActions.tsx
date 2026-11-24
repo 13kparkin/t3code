@@ -3,7 +3,6 @@ import type { RefObject } from "react";
 
 const ROUND_BUTTON = "grid size-7 shrink-0 place-items-center rounded-full";
 
-/** Attach, show or hide the thread, and send (or stop, while a turn runs and the draft is empty). */
 export function ComposerActions({
   picker,
   threadShown,

@@ -5,7 +5,6 @@ import * as NodePath from "node:path";
 export type MoveInput = {
   readonly direction: "to-store" | "to-project";
   readonly projectRoot: string;
-  /** The project's folder name under the store. */
   readonly key: string;
   readonly slug: string;
 };
@@ -24,7 +23,6 @@ const files = (directory: string): string[] =>
 const digest = (path: string) =>
   NodeCrypto.createHash("sha256").update(NodeFS.readFileSync(path)).digest("hex");
 
-/** Every file of `to` matches the one at the same place in `from`, by content. */
 function verified(from: string, to: string): boolean {
   return files(from).every((path) => {
     const copy = NodePath.join(to, NodePath.relative(from, path));

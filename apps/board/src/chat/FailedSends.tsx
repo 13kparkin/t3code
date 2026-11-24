@@ -1,6 +1,5 @@
 import type { PendingSend } from "./timeline";
 
-/** Sends that did not go out, with the two ways to take them back. */
 export function FailedSends({
   failed,
   onRetry,

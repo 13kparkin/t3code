@@ -9,7 +9,6 @@ import { agentPanelAtom, closeAgentPanel } from "../state/agentPanel";
 import { allAgents, type BoardModel } from "../state/boardModel";
 import { AgentLog } from "./AgentLog";
 
-/** The activity of one agent, slid out over the right of the canvas like For you on the left. */
 export function AgentPanel({
   environmentId,
   model,

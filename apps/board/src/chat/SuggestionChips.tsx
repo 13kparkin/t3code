@@ -1,6 +1,5 @@
 import { SUGGESTIONS } from "./suggestions";
 
-/** Starter prompts: a click fills the draft and does not send it. */
 export function SuggestionChips({ onPick }: { onPick: (text: string) => void }) {
   return (
     <ul aria-label="Suggestions" className="flex gap-1.5 overflow-x-auto">
