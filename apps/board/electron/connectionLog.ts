@@ -14,7 +14,11 @@ export function createConnectionLog(file: string, maxBytes = MAX_BYTES) {
       } catch {
         // No file yet.
       }
-      NodeFS.appendFileSync(file, `${line.slice(0, MAX_LINE)}\n`);
+      try {
+        NodeFS.appendFileSync(file, `${line.slice(0, MAX_LINE)}\n`);
+      } catch {
+        // A failed log write must not throw in the main process.
+      }
     },
   };
 }

@@ -22,4 +22,13 @@ describe("the connection log", () => {
       NodeFS.rmSync(folder, { recursive: true, force: true });
     }
   });
+
+  it("Given a log path that cannot be written, when a line is appended, then nothing throws", () => {
+    const folder = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "board-connection-log-"));
+    try {
+      expect(() => createConnectionLog(folder).append("09:47:26 backoff")).not.toThrow();
+    } finally {
+      NodeFS.rmSync(folder, { recursive: true, force: true });
+    }
+  });
 });
