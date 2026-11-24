@@ -31,6 +31,7 @@ import { Lanes } from "./Lanes";
 import { forYouHeight, hiddenFilters, layoutBoard } from "./layout";
 import { OrchestratorCard } from "./OrchestratorCard";
 import { TicketPanel } from "./TicketPanel";
+import { useStoreErrorReports } from "./useStoreErrorReports";
 import { Viewport } from "./Viewport";
 
 const NO_ORDER = {};
@@ -64,6 +65,11 @@ export function BoardScreen({
     ).then(setHideError);
   const order = useAtomValue(frameOrderAtom)[board.id] ?? NO_ORDER;
   const forYou = useBoardForYou(project, listed);
+  useStoreErrorReports(project.environmentId, board.orchestratorThreadId, board.id, [
+    ...(issue === null ? [] : [issue.message]),
+    ...stats.problems,
+    ...forYou.problems.map((problem) => `foryou.jsonl line ${problem.line}: ${problem.message}`),
+  ]);
   const artifacts = useBoardArtifacts(project, listed, model);
   const flips = useAtomValue(filterFlipsAtom(board.id));
   const hidden = useMemo(() => hiddenFilters(new Set(flips.split(",")), visible), [flips, visible]);
