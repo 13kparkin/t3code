@@ -234,6 +234,12 @@ export const boardStoreAtom = Atom.family((key: string) =>
       const { files } = boardEngine(get.registry, environmentId);
       const read = (name: string) =>
         files.read(project.workspaceRoot, `${BOARDS_DIR}/${folder}/${name}`);
+      const roleRequestsOf = () => {
+        const boards = get.registry.get(projectBoardsAtom(projectId));
+        if (boards.status !== "ready") return undefined;
+        const listed = boards.boards.find((entry) => entry.ok && entry.folder === folder);
+        return listed?.ok === true ? listed.board.roleRequests : undefined;
+      };
       const refresh = () =>
         Promise.all([
           read("tickets.json"),
@@ -246,7 +252,10 @@ export const boardStoreAtom = Atom.family((key: string) =>
             const next = { tickets, forYou, decisions, additions, details };
             const last = Option.getOrNull(get.self<StoreFiles | null>()) ?? null;
             // Every read, not only on a change, so an item that waited on the provider list resolves once it loads.
-            if (forYou?.includes('"role_target"') && openRoleTargets(forYou).length > 0) {
+            if (
+              forYou?.includes('"role_target"') &&
+              openRoleTargets(forYou, roleRequestsOf()).length > 0
+            ) {
               runRoleTargetRequests(get.registry, project, key, folder);
             }
             if (!sameFiles(last, next)) {

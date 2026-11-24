@@ -37,6 +37,8 @@ export const Board = Schema.Struct({
   hiddenAdditions: Schema.optionalKey(Schema.Array(Text)),
   /** The model and effort the user set for a role, by role name. Each overrides the registry's default. Only the app writes this. */
   roleTargets: Schema.optionalKey(Schema.Record(Text, RoleOverride)),
+  /** Each resolved `role_target` item's result, `Applied: ...` or `Rejected: ...`, by item id. Only the app writes this. */
+  roleRequests: Schema.optionalKey(Schema.Record(Text, Text)),
 });
 export type Board = typeof Board.Type;
 

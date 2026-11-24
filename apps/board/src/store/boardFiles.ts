@@ -180,7 +180,7 @@ export function writeBoard(files: ProjectFiles, cwd: string, folder: string, boa
   return files.write(cwd, boardPath(folder), serializeBoard(board));
 }
 
-async function readBoard(files: ProjectFiles, cwd: string, folder: string) {
+export async function readBoard(files: ProjectFiles, cwd: string, folder: string) {
   const text = await files.read(cwd, boardPath(folder));
   if (text === null) throw new Error(`${boardPath(folder)} is missing.`);
   const parsed = parseBoard(text);
@@ -228,6 +228,11 @@ export const changeHiddenAdditions = (
     hiddenAdditions: [...new Set(change(board.hiddenAdditions ?? []))],
   }));
 
+function withRoleTarget(board: Board, role: string, target: RoleOverride | null): Board {
+  const { [role]: _replaced, ...others } = board.roleTargets ?? {};
+  return { ...board, roleTargets: target === null ? others : { ...others, [role]: target } };
+}
+
 /** Sets one role's target; null removes it. */
 export const changeRoleTarget = (
   files: ProjectFiles,
@@ -235,11 +240,25 @@ export const changeRoleTarget = (
   folder: string,
   role: string,
   target: RoleOverride | null,
+) => changeBoard(files, cwd, folder, (board) => withRoleTarget(board, role, target));
+
+/** Records a `role_target` item's result, and its target when applied, in one write. An id already recorded changes nothing. */
+export const resolveRoleRequest = (
+  files: ProjectFiles,
+  cwd: string,
+  folder: string,
+  id: string,
+  resolution: string,
+  applied: { readonly role: string; readonly target: RoleOverride | null } | null,
 ) =>
-  changeBoard(files, cwd, folder, (board) => {
-    const { [role]: _replaced, ...others } = board.roleTargets ?? {};
-    return { ...board, roleTargets: target === null ? others : { ...others, [role]: target } };
-  });
+  changeBoard(files, cwd, folder, (board) =>
+    board.roleRequests?.[id] !== undefined
+      ? board
+      : {
+          ...(applied === null ? board : withRoleTarget(board, applied.role, applied.target)),
+          roleRequests: { ...board.roleRequests, [id]: resolution },
+        },
+  );
 
 export const setBuilderCap = (files: ProjectFiles, cwd: string, folder: string, cap: number) =>
   updateBoard(files, cwd, folder, { builderCap: cap });

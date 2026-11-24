@@ -225,11 +225,13 @@ const createdAtOf = (card: ForYouCard): number => {
 
 /**
  * The file's items, where the latest line for an id wins, then the engine's requests, with a
- * repeated id dropped. Open cards come first, then held, then resolved, each oldest first.
+ * repeated id dropped. A `role_target` item with a result in `board.json`'s `roleRequests` is
+ * resolved with it. Open cards come first, then held, then resolved, each oldest first.
  */
 export function mergeForYou(
   fileText: string | null,
   requests: ReadonlyArray<EngineRequest>,
+  roleRequests: Readonly<Record<string, string>> = {},
 ): ForYouList {
   const problems: ForYouProblem[] = [];
   const items = new Map<string, ForYouItem>();
@@ -262,11 +264,14 @@ export function mergeForYou(
     });
   });
 
-  const cards: ForYouCard[] = [...items.values()].map((item) => ({
-    origin: "file",
-    id: item.id,
-    item,
-  }));
+  const cards: ForYouCard[] = [...items.values()].map((item) => {
+    const resolution = item.kind === "role_target" ? roleRequests[item.id] : undefined;
+    return {
+      origin: "file",
+      id: item.id,
+      item: resolution === undefined ? item : { ...item, status: "resolved", resolution },
+    };
+  });
   for (const request of requests) {
     if (!cards.some((card) => card.id === request.id)) {
       cards.push({ origin: "engine", id: request.id, request });

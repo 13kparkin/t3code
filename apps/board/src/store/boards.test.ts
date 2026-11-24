@@ -364,33 +364,24 @@ describe("role targets", () => {
       write,
     });
 
-  it("Given open role_target lines, when applied twice, then the good one is saved, the bad one rejected, and each resolved once", async () => {
+  it("Given open role_target lines, when applied twice, then board.json holds the override and each result once, and foryou.jsonl is untouched", async () => {
     const { files, store, target } = await boardWith("orchestrator");
     const lines = [
       request("rt-1", { role: "reviewer", model: "claude-opus-5-5", effort: "high" }),
       request("rt-2", { role: "reviewer", model: "claude-fable-5-2" }),
     ];
-    store.set(FOR_YOU, `${lines.join("\n")}\n`);
+    const text = `${lines.join("\n")}\n`;
+    store.set(FOR_YOU, text);
     await applyRoleTargetRequests(files, CWD, target.folder, instance);
     await applyRoleTargetRequests(files, CWD, target.folder, instance);
-    expect(savedBoard(store)?.roleTargets).toEqual({
-      reviewer: { model: "claude-opus-5-5", effort: "high" },
-    });
-    expect(
-      store
-        .get(FOR_YOU)
-        ?.trimEnd()
-        .split("\n")
-        .slice(2)
-        .map((line) => JSON.parse(line)),
-    ).toEqual([
-      { id: "rt-1", status: "resolved", resolution: "Applied: reviewer -> claude-opus-5-5, high" },
-      {
-        id: "rt-2",
-        status: "resolved",
-        resolution: "Rejected: claudeAgent does not offer claude-fable-5-2.",
+    expect(store.get(FOR_YOU)).toBe(text);
+    expect(savedBoard(store)).toMatchObject({
+      roleTargets: { reviewer: { model: "claude-opus-5-5", effort: "high" } },
+      roleRequests: {
+        "rt-1": "Applied: reviewer -> claude-opus-5-5, high",
+        "rt-2": "Rejected: claudeAgent does not offer claude-fable-5-2.",
       },
-    ]);
+    });
   });
 
   it.each([
@@ -426,7 +417,9 @@ describe("role targets", () => {
     await setRoleTarget(files, CWD, target.folder, "scout", null, instance);
     store.set(FOR_YOU, `${request("rt-3", { role: "reviewer", model: null })}\n`);
     await applyRoleTargetRequests(files, CWD, target.folder, instance);
-    expect(savedBoard(store)?.roleTargets).toEqual({});
-    expect(store.get(FOR_YOU)).toContain('"resolution":"Applied: reviewer -> default"');
+    expect(savedBoard(store)).toMatchObject({
+      roleTargets: {},
+      roleRequests: { "rt-3": "Applied: reviewer -> default" },
+    });
   });
 });
