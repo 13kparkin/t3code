@@ -110,6 +110,8 @@ export const issuePullAtom = Atom.family((boardKey: string) =>
       .find((entry) => entry.id === projectId);
     const timers = new Set<ReturnType<typeof setTimeout>>();
     const round = () => {
+      timers.forEach(clearTimeout);
+      timers.clear();
       if (project === undefined || document.visibilityState !== "visible") return;
       const files = get.registry.get(boardStoreAtom(boardKey));
       if (files === null) return;
