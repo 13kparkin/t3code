@@ -52,22 +52,24 @@ export async function pullTicket(
 ): Promise<void> {
   const { issue } = ticket;
   const key = pullStatusKey(project.id, folder, ticket.key);
-  const ref =
-    issue == null
-      ? null
-      : ticketIssueRef(ticket, {
-          projectId: project.id,
-          githubScope: sourceControlClients.issueScope(project.repositoryIdentity),
-        });
-  if (issue == null || ref === null) return;
+  if (issue == null) return;
+  const ref = ticketIssueRef(ticket, {
+    projectId: project.id,
+    githubScope: sourceControlClients.issueScope(project.repositoryIdentity),
+  });
+  if (ref === null) {
+    setStatus(registry, key, (last) => ({
+      ...last,
+      error: `${issue.key} cannot be read from this project. Unlink it or fix the key.`,
+    }));
+    return;
+  }
   try {
     const detail = await readIssueDetail(registry, project.environmentId, ref);
     const failure = await savePulled(registry, project, folder, ticket.key, {
       issue,
       title: detail.title,
       description: detail.body,
-      state: detail.state.name,
-      assignee: detail.assignees[0]?.login ?? null,
       url: detail.url,
       at: new Date().toISOString(),
     });

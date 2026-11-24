@@ -19,8 +19,6 @@ const Pulled = Schema.Struct({
   issue: TicketIssue,
   title: Schema.String,
   description: Schema.String,
-  state: Schema.String,
-  assignee: Schema.NullOr(Schema.String),
   url: Schema.String,
   at: Schema.String,
 });

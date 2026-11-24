@@ -26,8 +26,6 @@ const pulled = (issue = LINEAR) => ({
   issue,
   title: "Tracker title",
   description: "Tracker body",
-  state: "In Progress",
-  assignee: "ana",
   url: "https://linear.app/x/issue/XEO-1",
   at: "2026-11-24T10:00:00Z",
 });
