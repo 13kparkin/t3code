@@ -6,6 +6,7 @@ import { ForYouItem, type TrackerWrite, type TrackerWriteItem } from "../domain/
 import { parseTickets } from "../domain/ticket";
 import {
   describeTrackerWrite,
+  classifyIssueLink,
   findIssueKeys,
   issueBriefText,
   type IssueBrief,
@@ -199,5 +200,20 @@ describe("handing an issue to the orchestrator", () => {
 
   it("Given a ticket request, when worded, then it names the issue field the orchestrator must set", () => {
     expect(ticketRequestMessage(issue)).toContain('{"tracker":"github","key":"#7"}');
+  });
+});
+
+describe("link text typed on a ticket", () => {
+  it.each([
+    ["XEO-3331", { tracker: "linear", key: "XEO-3331" }],
+    ["acme/tools#12", { tracker: "github", key: "acme/tools#12" }],
+    ["#7", { tracker: "github", key: "#7" }],
+    ["https://linear.app/xeo/issue/XEO-12/some-slug", { tracker: "linear", key: "XEO-12" }],
+    ["https://github.com/acme/tools/issues/5", { tracker: "github", key: "acme/tools#5" }],
+    ["  https://example.com/a  ", { tracker: "url", key: "https://example.com/a" }],
+    ["not a link", null],
+    ["javascript:alert(1)", null],
+  ])("Given %j, when classified, then it is %j", (text, issue) => {
+    expect(classifyIssueLink(text)).toEqual(issue);
   });
 });

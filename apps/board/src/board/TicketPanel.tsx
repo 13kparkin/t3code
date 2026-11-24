@@ -21,6 +21,7 @@ import { foldedAtom, sectionKey, toggleFolded } from "../state/boardUi";
 import { usePrContext } from "../state/prStatus";
 import { AgentLog } from "./AgentLog";
 import { SectionBar } from "./SectionBar";
+import { TicketTitle } from "./TicketTitle";
 import { TicketMeta } from "./TicketMeta";
 import { TicketSection } from "./TicketSection";
 import { ticketSectionsFor } from "./ticketSections";
@@ -105,9 +106,11 @@ export function TicketPanel({
     <div ref={markPainted} className="flex min-h-0 flex-1 flex-col">
       <header className="shrink-0 border-b border-line px-3 py-2.5">
         <div className="flex items-center gap-2">
-          <h3 className="min-w-0 flex-1 truncate font-semibold">
-            {view === undefined ? "Unassigned" : `${view.ticket.key} ${view.ticket.title}`}
-          </h3>
+          {view === undefined ? (
+            <h3 className="min-w-0 flex-1 truncate font-semibold">Unassigned</h3>
+          ) : (
+            <TicketTitle ticket={view.ticket} />
+          )}
           {!page && (
             <Tooltip text="Open full page" side="bottom" align="end">
               <button

@@ -19,6 +19,7 @@ import {
   type Smoke,
 } from "../domain/readiness";
 import { connectionAtomRuntime } from "../connection/runtime";
+import type { Overlay } from "../domain/ticketOverlay";
 import type { Addition } from "../domain/additions";
 import { locate } from "../files/target";
 import { ROLES } from "../orchestrator/roles";
@@ -147,6 +148,7 @@ const NO_SMOKE = Atom.make<Smoke | null>(null).pipe(Atom.withLabel("board-smoke:
 
 export interface PrContextValue {
   readonly project: EnvironmentProject;
+  readonly folder: string;
   readonly orchestratorThreadId: string;
   readonly family: ReadonlyArray<FamilyRow>;
   readonly tickets: ReadonlyArray<TicketView>;
@@ -158,6 +160,7 @@ export interface PrContextValue {
   readonly decisions: string | null;
   /** The `additions.json` items the user has not hidden. */
   readonly additions: ReadonlyArray<Addition>;
+  readonly overlay: Overlay;
 }
 
 const PrContext = createContext<PrContextValue | null>(null);

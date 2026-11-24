@@ -18,6 +18,7 @@ import { focusedCardAtom, useBoardForYou } from "../state/forYou";
 import { addDocs } from "../state/attachmentUploads";
 import { countBuilders } from "../state/boardModel";
 import { useBoardView } from "../state/boardView";
+import { issuePullAtom } from "../state/issuePull";
 import { keptWorktreesAtom } from "../state/mergeCleanup";
 import { setHiddenAdditions } from "../state/reviews";
 import type { ValidBoard } from "../store/boardFiles";
@@ -45,7 +46,8 @@ export function BoardScreen({
   const [dropError, setDropError] = useState<string | null>(null);
   const [hideError, setHideError] = useState<string | null>(null);
   const { board } = listed;
-  const { model, issue, stats, decisions, additions } = useBoardView(project, listed);
+  const { model, issue, stats, decisions, additions, overlay } = useBoardView(project, listed);
+  useAtomValue(issuePullAtom(`${project.id}/${listed.folder}`));
   const hiddenAdditions = board.hiddenAdditions ?? NO_IDS;
   const visible = useMemo(
     () => visibleAdditions(additions, hiddenAdditions),
@@ -82,6 +84,7 @@ export function BoardScreen({
     }
     return {
       project,
+      folder: listed.folder,
       orchestratorThreadId: board.orchestratorThreadId ?? "",
       family,
       tickets,
@@ -89,9 +92,11 @@ export function BoardScreen({
       keptWorktrees,
       decisions,
       additions: visible,
+      overlay,
     };
   }, [
     project,
+    listed.folder,
     board.orchestratorThreadId,
     family,
     tickets,
@@ -99,6 +104,7 @@ export function BoardScreen({
     keptWorktrees,
     decisions,
     visible,
+    overlay,
   ]);
   const chatSlot = useAtomValue(chatSlotAtom);
   const ticketSlot = useAtomValue(ticketSlotAtom);

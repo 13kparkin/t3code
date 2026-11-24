@@ -2,7 +2,7 @@ import { useAtomValue } from "@effect/atom-react";
 import { sourceControlClients } from "@t3tools/client-runtime/source-control-clients";
 import type { IssueDetail } from "@t3tools/contracts";
 import { AsyncResult, Atom } from "effect/reactivity";
-import { CircleCheck, CircleDot, CircleSlash, MessageSquare, User } from "lucide-react";
+import { CircleCheck, CircleDot, CircleSlash, Link, MessageSquare, User } from "lucide-react";
 import { useMemo } from "react";
 
 import { openInBrowser } from "../browser/browserTabs";
@@ -10,7 +10,7 @@ import type { Ticket } from "../domain/ticket";
 import { issueEnvironment } from "../state/issues";
 import { usePrContext } from "../state/prStatus";
 import { PopMenu } from "../ui/PopMenu";
-import { ticketIssueRef } from "./issueLinks";
+import { ticketIssueRef, URL_TRACKER } from "./issueLinks";
 
 const NO_ISSUE = Atom.make(AsyncResult.initial<never, never>()).pipe(
   Atom.withLabel("ticket-issue:none"),
@@ -65,6 +65,21 @@ export function IssueChip({
   )?.threads.filter((thread) => thread.archivedAt === null);
 
   if (ticket.issue == null) return null;
+  if (ticket.issue.tracker === URL_TRACKER) {
+    return (
+      <button
+        type="button"
+        data-testid="issue-chip"
+        aria-label={`Open ${ticket.issue.key} in the browser`}
+        onClick={() => openInBrowser(ticket.issue?.key ?? "")}
+        onPointerDown={(event) => event.stopPropagation()}
+        className={`${chip} hover:bg-hover hover:text-fg`}
+      >
+        <Link className="size-3 shrink-0" aria-hidden />
+        <span className="truncate">{ticket.issue.key}</span>
+      </button>
+    );
+  }
   if (detail === null) {
     return (
       <span data-testid="issue-chip" className={chip}>
