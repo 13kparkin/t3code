@@ -36,7 +36,7 @@ export function TicketMeta({
         ticket.stage === "merged") && <PrChip view={view} />}
       {ticket.worktreePath != null && <RemoveWorktree view={view} />}
       {ticket.issue != null && <IssueChip ticket={ticket} onOpenThread={onOpenThread} />}
-      {kept !== undefined && (
+      {kept != null && (
         <span data-testid="worktree-kept" className="truncate text-amber-300">
           Kept: {kept}
         </span>

@@ -23,7 +23,10 @@ export function RemoveWorktree({ view }: { view: TicketView }) {
     () => null,
   );
   const bytes = path == null ? null : worktreeBytes(report, path);
-  const reason = worktreeKeptReason(view.ticket.stage, keptWorktrees.get(view.ticket.key));
+  const verdict = keptWorktrees.get(view.ticket.key);
+  const reason = worktreeKeptReason(view.ticket.stage, verdict ?? null);
+  // No verdict yet: no cleanup run has finished for this ticket, so nothing says it is safe.
+  const checking = reason === null && verdict === undefined;
   // The repository says which worktrees exist, as on the Cleanup page, and a delete refreshes it.
   const refs = AsyncResult.getOrElse(
     useAtomValue(
@@ -52,7 +55,7 @@ export function RemoveWorktree({ view }: { view: TicketView }) {
         type="button"
         data-testid="remove-worktree"
         onPointerDown={(event) => event.stopPropagation()}
-        disabled={reason !== null}
+        disabled={reason !== null || checking}
         onClick={() => setConfirming(true)}
         className="rounded border border-line px-1.5 text-[10px] leading-4 text-muted hover:bg-hover hover:text-fg disabled:opacity-50"
       >
@@ -60,7 +63,7 @@ export function RemoveWorktree({ view }: { view: TicketView }) {
       </button>
       <span data-testid="worktree-state" className="truncate">
         {bytes === null ? "size unknown" : formatBytes(bytes)} ·{" "}
-        {reason === null ? "safe to remove" : `kept: ${reason}`}
+        {reason !== null ? `kept: ${reason}` : checking ? "checking" : "safe to remove"}
       </span>
       {(confirming || failure !== null) && (
         <div

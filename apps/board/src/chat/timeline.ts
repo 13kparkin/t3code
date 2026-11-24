@@ -132,6 +132,7 @@ export function timelineRows(projection: TimelineSource): ReadonlyArray<Timeline
   const createdAt = (item: { messageId: string }) =>
     projection.messages.find((message) => message.id === item.messageId)?.createdAt ?? null;
 
+  const live = isRunLive(projection);
   const rows: TimelineRow[] = [];
   for (const item of projection.items) {
     switch (item.kind) {
@@ -144,7 +145,8 @@ export function timelineRows(projection: TimelineSource): ReadonlyArray<Timeline
         break;
       }
       case "user":
-        if (item.delivery === "queued" || item.delivery === "steering") break;
+        // A steer waits in the strip only while its turn is live; after that the thread shows it.
+        if (item.delivery === "queued" || (item.delivery === "steering" && live)) break;
         rows.push({
           kind: "user",
           id: item.id,

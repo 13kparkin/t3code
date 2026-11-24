@@ -110,7 +110,7 @@ export function Composer({
   const shell = useRef<HTMLDivElement | null>(null);
   const deleted = useRef(new Set<string>());
   // Sends whose turn is already on its way, which can no longer be taken back.
-  const dispatched = useRef(new Set<string>());
+  const [dispatched, setDispatched] = useState<ReadonlySet<string>>(new Set());
   // Sends go out one at a time, so a quick follow-up cannot overtake one still uploading files.
   const outbox = useRef<Promise<void>>(Promise.resolve());
 
@@ -233,7 +233,7 @@ export function Composer({
     }
     const { selection, attachments } = prepared;
     if (deleted.current.has(pending.messageId)) return;
-    dispatched.current.add(pending.messageId);
+    setDispatched((all) => new Set(all).add(pending.messageId));
     const result = await runAtomCommand(
       registry,
       startTurn,
@@ -318,7 +318,6 @@ export function Composer({
   const remove = async (row: QueueRow) => {
     const target = cancelTarget(row);
     if (target === null) return;
-    if (target.kind === "local" && dispatched.current.has(row.messageId)) return;
     setError(null);
     deleted.current.add(row.messageId);
     setSends((all) => all.filter((send) => send.messageId !== row.messageId));
@@ -415,7 +414,13 @@ export function Composer({
           onHover={setActive}
         />
       )}
-      <QueueStrip rows={queue} canSteer={steer !== null} onDelete={remove} onSteer={steerNow} />
+      <QueueStrip
+        rows={queue}
+        dispatched={dispatched}
+        canSteer={steer !== null}
+        onDelete={remove}
+        onSteer={steerNow}
+      />
       <FailedSends failed={failed} onRetry={retry} onEdit={editFailed} />
       {error !== null && (
         <p role="alert" className="mb-1.5 break-words text-red-400">

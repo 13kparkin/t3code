@@ -216,12 +216,15 @@ async function readEvidence(
     // A null listing is a missing folder or a failed read. Only a `.omp` that lists without `artifacts` proves it missing.
     if (folders === null) {
       const omp = await files.list(path, ".omp");
-      if (omp?.some((entry) => baseName(entry.path) === "artifacts")) return null;
+      if (omp === null || omp.some((entry) => baseName(entry.path) === "artifacts")) return null;
     }
     const keys = (folders ?? [])
       .filter((entry) => entry.kind === "directory")
       .map((entry) => baseName(entry.path));
-    if (keys.length === 0) return { worktree: null, board: [], partial: false };
+    // Loose files with no ticket folder have no board copy to compare, so they keep the worktree.
+    if (keys.length === 0) {
+      return folders?.length ? null : { worktree: null, board: [], partial: false };
+    }
     const worktree = under(WORKTREE_ARTIFACTS)(
       await walk(files, path, WORKTREE_ARTIFACTS, { strict: true }),
     );

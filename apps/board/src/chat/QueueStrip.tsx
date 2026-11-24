@@ -8,11 +8,14 @@ const STEER_LOCKED = "The running turn already has this message, so it can no lo
 
 export function QueueStrip({
   rows,
+  dispatched,
   canSteer,
   onDelete,
   onSteer,
 }: {
   rows: ReadonlyArray<QueueRow>;
+  /** Messages already sent to the engine, which can no longer be deleted locally. */
+  dispatched: ReadonlySet<string>;
   canSteer: boolean;
   onDelete: (row: QueueRow) => void;
   onSteer: (row: QueueRow) => void;
@@ -50,16 +53,17 @@ export function QueueStrip({
               Steer now
             </button>
           )}
-          {row.delivery !== "steering" && (
-            <button
-              type="button"
-              aria-label={`Delete ${row.delivery === "sending" ? "unsent" : "queued"} message`}
-              onClick={() => onDelete(row)}
-              className="grid size-5 shrink-0 place-items-center rounded-md hover:bg-hover hover:text-fg"
-            >
-              <X className="size-3" aria-hidden />
-            </button>
-          )}
+          {row.delivery !== "steering" &&
+            !(row.delivery === "sending" && dispatched.has(row.messageId)) && (
+              <button
+                type="button"
+                aria-label={`Delete ${row.delivery === "sending" ? "unsent" : "queued"} message`}
+                onClick={() => onDelete(row)}
+                className="grid size-5 shrink-0 place-items-center rounded-md hover:bg-hover hover:text-fg"
+              >
+                <X className="size-3" aria-hidden />
+              </button>
+            )}
         </li>
       ))}
     </ul>
