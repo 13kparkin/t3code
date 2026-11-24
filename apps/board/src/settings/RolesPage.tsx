@@ -12,7 +12,7 @@ import { Select } from "./controls/Select";
 import { SettingsRow } from "./SettingsRow";
 import { SettingsSection } from "./SettingsSection";
 
-const firstSentence = (text: string) => text.split(/(?<=\.)\s/)[0] ?? text;
+const firstSentence = (text: string) => (text.split(/(?<=\.)\s/)[0] ?? text).replace(/\.?$/, ".");
 
 /** Each role's model and effort on one board. The board saves them in `board.json`, which its orchestrator reads before it starts an agent. */
 export function RolesPage({ environmentId }: { environmentId: EnvironmentId }) {

@@ -162,7 +162,7 @@ Every agent you start is a role in this registry. Never start an agent without a
 
 {{roles}}
 
-**Role targets the user set.** Before every `delegate_task`, read `board.json`. If `roleTargets.<role>` is there, use its `model` and `effort` in the `target`. It wins over the table above. Keep the table's `providerInstanceId`. To change a role's model when the user asks, post a `role_target` item. Never edit `board.json` or `roles/` to change a role's model. An agent already running keeps the target it started with.
+**Role targets the user set.** Before every `delegate_task`, read `board.json` again with a tool call, even if you read it a moment ago, because the user changes it from Settings at any time. If `roleTargets.<role>` is there, use its `model` and `effort` in the `target`. It wins over the table above. Keep the table's `providerInstanceId`. To change a role's model when the user asks, post a `role_target` item. Never edit `board.json` or `roles/` to change a role's model. An agent already running keeps the target it started with.
 
 Start `poteto-agent` for a ticket that crosses several modules or needs a design choice. Start `task` for small or fully specified work, and tell it to load poteto-mode and name the ticket's playbook.
 
