@@ -14,8 +14,6 @@ import {
   ADDITION_KEY,
   additionLaneId,
   clampDrag,
-  edgePath,
-  type FrameBox,
   type LaneBox,
   type LaneId,
   type Layout,
@@ -35,17 +33,9 @@ import { ticketStatus } from "./ticketStatus";
 const LANE_TONE = {
   for_you: "bg-amber-500 text-black",
   todo: "bg-zinc-700 text-white",
-  planned: "bg-zinc-600 text-white",
-  building: "bg-blue-600 text-white",
-  reviewing: "bg-violet-600 text-white",
-  verifying: "bg-cyan-600 text-white",
-  pr: "bg-indigo-600 text-white",
-  awaiting_approval: "bg-orange-600 text-white",
-  merged: "bg-emerald-600 text-white",
-  unassigned: "bg-red-600 text-white",
+  running: "bg-blue-600 text-white",
 } as const satisfies Record<LaneId, string>;
 
-/** Every lane on the canvas, its ticket frames with their agents, and the edges between dependent tickets. */
 export function Lanes({
   layout,
   model,
@@ -75,10 +65,6 @@ export function Lanes({
       .flat()
       .map((view) => [view.ticket.key, view]),
   );
-  const boxes = new Map(layout.lanes.flatMap((lane) => lane.frames).map((box) => [box.key, box]));
-  // The frame under the pointer moves, and its edges follow.
-  const moved = (box: FrameBox): FrameBox =>
-    drag?.key === box.key ? { ...box, y: box.y + drag.dy } : box;
 
   const drop = (lane: LaneBox) => {
     if (drag === null) return;
@@ -89,42 +75,6 @@ export function Lanes({
 
   return (
     <>
-      <svg
-        aria-hidden
-        className="pointer-events-none absolute top-0 left-0 overflow-visible"
-        width={layout.content.width}
-        height={layout.content.height}
-      >
-        <defs>
-          <marker
-            id="edge-arrow"
-            viewBox="0 0 8 8"
-            refX="7"
-            refY="4"
-            markerWidth="7"
-            markerHeight="7"
-            orient="auto"
-          >
-            <path d="M 0 0 L 8 4 L 0 8 z" fill="var(--color-muted)" />
-          </marker>
-        </defs>
-        {layout.edges.map((edge) => {
-          const from = boxes.get(edge.from);
-          const to = boxes.get(edge.to);
-          if (from === undefined || to === undefined) return null;
-          return (
-            <path
-              key={`${edge.from}>${edge.to}`}
-              data-edge={`${edge.from}>${edge.to}`}
-              d={edgePath(moved(from), moved(to))}
-              fill="none"
-              stroke="var(--color-muted)"
-              strokeWidth={1.5}
-              markerEnd="url(#edge-arrow)"
-            />
-          );
-        })}
-      </svg>
       {layout.lanes.map((lane) => (
         <section
           key={lane.id}
@@ -145,22 +95,24 @@ export function Lanes({
               className={`rounded-md px-2 text-[11px] leading-5 font-semibold ${LANE_TONE[lane.id]}`}
             >
               {LANE_LABEL[lane.id]}
-              {lane.id === "planned" && queued ? " · queued" : ""}
+              {lane.id === "todo" && queued ? " · queued" : ""}
             </span>
-            <span className="text-[11px] text-faint">{laneCount(lane, model, forYouOpen)}</span>
+            <span className="text-[11px] text-faint">{laneCount(lane, views, forYouOpen)}</span>
             <span className="flex-1" />
-            <Tooltip text="Hide lane" side="bottom" align="end">
-              <button
-                type="button"
-                aria-label={`Hide the ${LANE_LABEL[lane.id]} lane`}
-                // A press here is a click, not the start of a pan.
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={() => void toggleFolded(registry, laneKey(boardId, lane.id))}
-                className="grid size-5 place-items-center rounded text-faint hover:bg-hover hover:text-fg"
-              >
-                <EyeOff className="size-3" aria-hidden />
-              </button>
-            </Tooltip>
+            {lane.id === "for_you" && (
+              <Tooltip text="Hide lane" side="bottom" align="end">
+                <button
+                  type="button"
+                  aria-label="Hide the For you lane"
+                  // A press here is a click, not the start of a pan.
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={() => void toggleFolded(registry, laneKey(boardId, "for_you"))}
+                  className="grid size-5 place-items-center rounded text-faint hover:bg-hover hover:text-fg"
+                >
+                  <EyeOff className="size-3" aria-hidden />
+                </button>
+              </Tooltip>
+            )}
           </header>
           {lane.id === "for_you" && forYouLane}
         </section>
@@ -305,7 +257,8 @@ export function Lanes({
   );
 }
 
-function laneCount(lane: LaneBox, model: BoardModel, forYouOpen: number): number {
-  if (lane.id === "for_you") return forYouOpen;
-  return lane.id === "unassigned" ? model.unassigned.length : model.lanes[lane.id].length;
+function laneCount(lane: LaneBox, views: ReadonlyMap<string, unknown>, forYouOpen: number) {
+  return lane.id === "for_you"
+    ? forYouOpen
+    : lane.frames.filter((frame) => views.has(frame.key)).length;
 }

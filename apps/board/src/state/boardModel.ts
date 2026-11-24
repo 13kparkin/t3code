@@ -165,20 +165,24 @@ export function joinBoard(input: {
   };
 }
 
-const IMPLEMENTATION_ROLES: ReadonlySet<string> = new Set(
-  ROLES.filter((role) => role.t3Role === "implementation").map((role) => role.name),
+export const allAgents = (model: BoardModel): ReadonlyArray<AgentView> => [
+  ...Object.values(model.lanes)
+    .flat()
+    .flatMap((view) => view.agents),
+  ...model.unassigned,
+];
+
+const BUILDER_ROLES: ReadonlySet<string> = new Set(
+  ROLES.filter(
+    (role) => role.t3Role === "implementation" || (!role.readOnly && role.isolation === "worktree"),
+  ).map((role) => role.name),
 );
 
-/** Live implementation agents on any ticket stage or unassigned: each runs its own worktree, install, and dev server. */
-export function countImplementationAgents(model: BoardModel): number {
-  return [
-    ...Object.values(model.lanes)
-      .flat()
-      .flatMap((view) => view.agents),
-    ...model.unassigned,
-  ].filter(
+/** Live builders on any ticket stage or unassigned, which the builder cap limits. */
+export function countBuilders(model: BoardModel): number {
+  return allAgents(model).filter(
     (agent) =>
-      IMPLEMENTATION_ROLES.has(agent.role) &&
+      BUILDER_ROLES.has(agent.role) &&
       (agent.runState === "working" || agent.runState === "waiting"),
   ).length;
 }

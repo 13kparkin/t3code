@@ -10,6 +10,7 @@ import type {
 const bridge: BoardBridge = {
   reportFirstPaint: (epochMs) => ipcRenderer.send("board:first-paint", epochMs),
   reportEngineConnected: (epochMs) => ipcRenderer.send("board:engine-connected", epochMs),
+  logConnection: (line) => ipcRenderer.send("board:connection-log", line),
   engineState: () => ipcRenderer.invoke("board:engine-state"),
   onEngineState: (listener) => {
     const handler = (_event: IpcRendererEvent, state: EngineState) => listener(state);

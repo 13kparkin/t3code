@@ -2,7 +2,12 @@ import { Atom } from "effect/reactivity";
 
 import { engineBridge } from "../connection/bridge";
 import type { EngineState } from "../connection/engineState";
-import { type EngineConnection, engineConnectionAtom } from "./projects";
+import {
+  type EngineConnection,
+  engineConnectionAtom,
+  engineEnvironmentIdAtom,
+  environmentCatalog,
+} from "./projects";
 
 export const engineStateAtom = Atom.make<EngineState>((get) => {
   // Subscribe before the read so a change between the two is not lost.
@@ -64,3 +69,27 @@ export function deriveEngineStatus(
 export const engineStatusAtom = Atom.make((get) =>
   deriveEngineStatus(get(engineStateAtom), get(engineConnectionAtom)),
 ).pipe(Atom.withLabel("engine-status"));
+
+/** The supervisor's own wait grows to minutes and resets only when the window becomes visible again. */
+const RETRY_WHEN_STUCK_MS = 30_000;
+const STUCK_PHASES: ReadonlySet<string> = new Set(["backoff", "blocked"]);
+
+const connectionPhaseAtom = Atom.make((get) => {
+  const { state } = get(engineConnectionAtom);
+  return `${state.phase}\t${state.lastFailure?.detail ?? ""}`;
+}).pipe(Atom.withLabel("engine-connection-phase"));
+
+/** Logs each phase change, and asks for a retry once the connection is stuck. */
+export const connectionWatchAtom = Atom.make((get) => {
+  const line = get(connectionPhaseAtom);
+  const environmentId = get(engineEnvironmentIdAtom);
+  engineBridge.logConnection(`${new Date().toISOString()}\t${line}`);
+  if (environmentId === null || !STUCK_PHASES.has(get.once(engineConnectionAtom).state.phase))
+    return;
+  const registry = get.registry;
+  const timer = setTimeout(() => {
+    engineBridge.logConnection(`${new Date().toISOString()}\tretry-requested`);
+    void environmentCatalog.retryNow.run(registry, environmentId);
+  }, RETRY_WHEN_STUCK_MS);
+  get.addFinalizer(() => clearTimeout(timer));
+}).pipe(Atom.withLabel("engine-connection-watch"));

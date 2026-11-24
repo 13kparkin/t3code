@@ -1,10 +1,11 @@
-import { Check } from "lucide-react";
+import { Check, Maximize2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
 import { ChatMarkdown } from "../chat/Markdown";
 import { cardTitle, type CardState, type CardView, type ForYouItem } from "../domain/forYou";
 import { describeTrackerWrite } from "../issues/issueLinks";
 import { answerItem, type ForYouTarget } from "../foryou/actions";
+import { Tooltip } from "../ui/Tooltip";
 import { ApprovalBody } from "./ApprovalBody";
 import { ItemActions } from "./ItemActions";
 import { MergeApprovalConditions } from "./MergeApprovalConditions";
@@ -36,7 +37,16 @@ export interface CardContext {
 }
 
 /** One thing that needs the user: what it is, what to choose, and whether the choice went through. */
-export function ForYouCard({ view, context }: { view: CardView; context: CardContext }) {
+export function ForYouCard({
+  view,
+  context,
+  onExpand,
+}: {
+  view: CardView;
+  context: CardContext;
+  /** Opens the card as a full-page tab. The page itself leaves it out. */
+  onExpand?: () => void;
+}) {
   const { card, state, detail } = view;
   const { target, orchestratorThreadId, focused } = context;
   const [error, setError] = useState<string | null>(null);
@@ -116,6 +126,20 @@ export function ForYouCard({ view, context }: { view: CardView; context: CardCon
         >
           {chip.label}
         </span>
+        {onExpand !== undefined && (
+          <Tooltip text="Open as a tab" side="bottom" align="end">
+            <button
+              type="button"
+              aria-label={`Open ${title} as a tab`}
+              // A press here is a click, not the start of a pan.
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={onExpand}
+              className="grid size-5 place-items-center rounded text-faint hover:bg-hover hover:text-fg"
+            >
+              <Maximize2 className="size-3" aria-hidden />
+            </button>
+          </Tooltip>
+        )}
       </header>
       <h4 className="text-[13px] leading-[18px] font-semibold break-words text-fg">{title}</h4>
       {card.origin === "file" ? (

@@ -1,10 +1,10 @@
 import { useRef } from "react";
 
-import { missingPlan } from "../domain/ticket";
+import { missingPlan, STAGE_LABEL } from "../domain/ticket";
 import type { TicketView } from "../state/boardModel";
 import { ago } from "../ui/ago";
 import { CardLine } from "./CardLine";
-import type { FrameBox } from "./layout";
+import { type FrameBox, STAGE_TAGS } from "./layout";
 import { newestAgent, ticketStatus } from "./ticketStatus";
 import { useViewScale } from "./Viewport";
 
@@ -34,6 +34,7 @@ export function TicketFrame({
   const press = useRef<{ startY: number; dragging: boolean } | null>(null);
   const dragged = useRef(false);
   const newest = newestAgent(agents);
+  const tag = STAGE_TAGS[ticket.stage];
   const end = () => {
     if (press.current?.dragging) {
       dragged.current = true;
@@ -47,9 +48,10 @@ export function TicketFrame({
       type="button"
       data-testid="ticket-frame"
       data-ticket={ticket.key}
+      data-stage={ticket.stage}
       aria-label={`${ticket.key} ${ticket.title}`}
       aria-pressed={selected}
-      className={`absolute flex cursor-grab touch-none flex-col justify-center gap-1 rounded-lg border bg-panel px-2.5 text-left shadow-panel select-none hover:bg-hover ${selected ? "border-focus" : "border-line"} ${offset === 0 ? "" : "z-10 opacity-95"}`}
+      className={`absolute flex cursor-grab touch-none flex-col justify-center gap-1 rounded-lg border bg-panel px-2.5 text-left shadow-panel select-none hover:bg-hover ${selected ? "border-focus" : "border-line"} ${offset === 0 ? "" : "z-10"} ${tag.dim ? "opacity-60" : offset === 0 ? "" : "opacity-95"}`}
       style={{
         left: box.x,
         top: box.y,
@@ -88,6 +90,12 @@ export function TicketFrame({
         status={ticketStatus(agents)}
         detail={
           <>
+            <span
+              data-testid="stage-tag"
+              className={`mr-1.5 rounded bg-hover px-1 text-[10px] leading-4 ${tag.tone}`}
+            >
+              {STAGE_LABEL[ticket.stage]}
+            </span>
             {missingPlan(ticket) && <span className="text-amber-300">No plan · </span>}
             {newest === undefined ? "No agents" : `${newest.role} · ${ago(newest.updatedAt)}`}
           </>

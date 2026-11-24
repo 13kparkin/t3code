@@ -19,7 +19,7 @@ function markPainted(node: HTMLElement | null) {
 }
 
 /** What a browser tab of the main view shows: a native page inside Electron, or the engine's agent tabs everywhere. */
-export function BrowserSurface({ surface }: { surface: Exclude<Surface, "ticket"> }) {
+export function BrowserSurface({ surface }: { surface: Extract<Surface, "page" | "agents"> }) {
   const { tabs } = useAtomValue(browserAtom);
   const active = tabs.tabs.find((tab) => tab.id === tabs.activeId) ?? null;
   return (

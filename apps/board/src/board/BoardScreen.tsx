@@ -11,19 +11,21 @@ import { OrchestratorPanel } from "../chat/OrchestratorPanel";
 import { MainTabs } from "../files/MainTabs";
 import { visibleAdditions } from "../domain/additions";
 import { mergeTicketKey } from "../domain/readiness";
-import { frameOrderAtom, hiddenLanesAtom } from "../state/boardUi";
+import { filterFlipsAtom, frameOrderAtom } from "../state/boardUi";
 import { useThreadFamily } from "../state/family";
 import { PrProvider } from "../state/prStatus";
 import { focusedCardAtom, useBoardForYou } from "../state/forYou";
 import { addDocs } from "../state/attachmentUploads";
-import { countImplementationAgents } from "../state/boardModel";
+import { countBuilders } from "../state/boardModel";
 import { useBoardView } from "../state/boardView";
 import { keptWorktreesAtom } from "../state/mergeCleanup";
 import { setHiddenAdditions } from "../state/reviews";
 import type { ValidBoard } from "../store/boardFiles";
+import { AgentPage } from "./AgentPage";
 import { ForYouLane } from "./ForYouLane";
+import { ForYouPage } from "./ForYouPage";
 import { Lanes } from "./Lanes";
-import { additionLaneId, forYouHeight, LANE_IDS, layoutBoard } from "./layout";
+import { forYouHeight, hiddenFilters, layoutBoard } from "./layout";
 import { OrchestratorCard } from "./OrchestratorCard";
 import { TicketPanel } from "./TicketPanel";
 import { Viewport } from "./Viewport";
@@ -57,22 +59,15 @@ export function BoardScreen({
   const order = useAtomValue(frameOrderAtom)[board.id] ?? NO_ORDER;
   const forYou = useBoardForYou(project, listed);
   const artifacts = useBoardArtifacts(project, listed, model);
-  const hiddenIds = useAtomValue(hiddenLanesAtom(board.id));
-  const hidden = useMemo(() => {
-    const folded = hiddenIds.split(",");
-    const lanes = [
-      ...LANE_IDS,
-      ...visible.flatMap((item) => (item.place === "canvas" ? [additionLaneId(item.id)] : [])),
-    ];
-    return new Set<string>(lanes.filter((id) => folded.includes(id)));
-  }, [hiddenIds, visible]);
+  const flips = useAtomValue(filterFlipsAtom(board.id));
+  const hidden = useMemo(() => hiddenFilters(new Set(flips.split(",")), visible), [flips, visible]);
   const layout = useMemo(
     () =>
       layoutBoard(model, order, forYouHeight(forYou.views), hidden, visible, stats.problems.length),
     [model, order, forYou.views, hidden, visible, stats.problems.length],
   );
   const family = useThreadFamily(project.environmentId, board.orchestratorThreadId);
-  const builders = useMemo(() => countImplementationAgents(model), [model]);
+  const builders = useMemo(() => countBuilders(model), [model]);
   const tickets = useMemo(() => Object.values(model.lanes).flat(), [model]);
   const keptWorktrees = useAtomValue(keptWorktreesAtom(`${project.id}/${listed.folder}`));
   const prContext = useMemo(() => {
@@ -120,6 +115,8 @@ export function BoardScreen({
           <MainTabs
             files={artifacts.files}
             ticketPage={<TicketPanel environmentId={project.environmentId} model={model} page />}
+            cardPage={<ForYouPage project={project} listed={listed} forYou={forYou} />}
+            agentPage={<AgentPage environmentId={project.environmentId} model={model} />}
           >
             <Viewport
               content={layout.content}
@@ -132,7 +129,6 @@ export function BoardScreen({
                 listed={listed}
                 stats={{ ...stats, forYouOpen: forYou.open }}
                 builders={builders}
-                offPath={model.lanes.off_path.map((view) => view.ticket)}
                 hidden={hidden}
                 additions={additions}
                 onChangeHidden={changeHidden}

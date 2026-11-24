@@ -14,10 +14,7 @@ export function OpenedBoard({ projectId, folder }: { projectId: string; folder: 
   const boards = useAtomValue(projectBoardsAtom(projectId));
   const listed: ValidBoard | undefined =
     boards.status === "ready"
-      ? boards.boards.find(
-          (entry): entry is ValidBoard =>
-            entry.ok && entry.folder === folder && !entry.board.archived,
-        )
+      ? boards.boards.find((entry): entry is ValidBoard => entry.ok && entry.folder === folder)
       : undefined;
   if (project === undefined || listed === undefined) return <Viewport />;
   return <BoardScreen key={`${projectId}/${folder}`} project={project} listed={listed} />;

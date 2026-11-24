@@ -2,7 +2,7 @@ import * as DateTime from "effect/DateTime";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { Ticket } from "../domain/ticket";
-import { countImplementationAgents, type FamilyRow, joinBoard } from "./boardModel";
+import { countBuilders, type FamilyRow, joinBoard } from "./boardModel";
 
 const ORCHESTRATOR = "th-orch";
 
@@ -103,8 +103,8 @@ describe("joining tickets with the thread family", () => {
   });
 });
 
-describe("counting implementation agents", () => {
-  it("Given live task agents on building and verifying tickets, a live scout, and an idle task agent, when counted, then only the live task agents count", () => {
+describe("counting builders", () => {
+  it("Given running agents in every writing role and in read-only and test roles, plus an idle builder, when counted, then only the four running writers count", () => {
     const model = joinBoard({
       tickets: [
         { key: "T-1", title: "a", stage: "building" },
@@ -112,14 +112,18 @@ describe("counting implementation agents", () => {
       ],
       family: [
         row("th-a", "[T-1] task", { status: "running" }),
-        row("th-b", "[T-2] task", { status: "running" }),
-        row("th-c", "[T-2] scout", { status: "running" }),
-        row("th-d", "[T-1] task"),
+        row("th-b", "[T-2] sonic", { status: "running" }),
+        row("th-c", "[T-1] poteto-agent", { status: "running" }),
+        row("th-d", "[T-2] egm-bootstrap-orchestrator", { status: "waiting" }),
+        row("th-e", "[T-2] scout", { status: "running" }),
+        row("th-f", "[T-2] verifier", { status: "running" }),
+        row("th-g", "[T-2] egm-synthesizer", { status: "running" }),
+        row("th-h", "[T-1] task"),
       ],
       orchestratorThreadId: ORCHESTRATOR,
       driverOf,
     });
-    expect(countImplementationAgents(model)).toBe(2);
+    expect(countBuilders(model)).toBe(4);
   });
 });
 

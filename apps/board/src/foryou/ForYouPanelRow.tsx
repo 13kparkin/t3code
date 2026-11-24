@@ -2,10 +2,10 @@ import { RegistryContext } from "@effect/atom-react";
 import { useContext } from "react";
 
 import type { BoardOpenItems } from "../domain/forYou";
+import { openCardPage } from "../state/filesView";
 import { forYouOpenAtom } from "../state/forYou";
 import { showForYouCard } from "../sidebar/ForYouRow";
 
-/** A press opens its board, marks the card, and closes the slide-out. */
 export function ForYouPanelRow({
   board,
   item,
@@ -20,6 +20,7 @@ export function ForYouPanelRow({
       data-testid="foryou-panel-row"
       onClick={() => {
         showForYouCard(registry, board, item.id);
+        openCardPage(registry, item.id);
         registry.set(forYouOpenAtom, false);
       }}
       className="flex w-full min-w-0 flex-col gap-0.5 rounded-md px-2.5 py-2 text-left hover:bg-hover"

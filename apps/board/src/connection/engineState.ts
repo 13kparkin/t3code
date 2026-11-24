@@ -21,6 +21,8 @@ export type EngineTokenResult =
 export interface BoardBridge {
   readonly reportFirstPaint: (epochMs: number) => void;
   readonly reportEngineConnected: (epochMs: number) => void;
+  /** Writes one engine connection event to the log file in the app's user data folder. */
+  readonly logConnection: (line: string) => void;
   readonly engineState: () => Promise<EngineState>;
   readonly onEngineState: (listener: (state: EngineState) => void) => () => void;
   readonly engineToken: () => Promise<EngineTokenResult>;

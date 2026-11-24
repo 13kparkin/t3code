@@ -4,8 +4,10 @@ import { describe, expect, it } from "vite-plus/test";
 import { chooseTicket, setPanelTab, ticketTabShownAtom } from "../browser/panel";
 import {
   closeFile,
-  closeTicketPage,
+  closePage,
   filesViewAtom,
+  openAgentPage,
+  openCardPage,
   openFile,
   openTicketPage,
   showBoard,
@@ -53,7 +55,7 @@ describe("the main view's shown tab", () => {
     const registry = AtomRegistry.make();
     openTicketPage(registry);
     expect(registry.get(filesViewAtom)).toMatchObject({ ticket: true, surface: "ticket" });
-    closeTicketPage(registry);
+    closePage(registry, "ticket");
     expect(registry.get(filesViewAtom)).toMatchObject({
       ticket: false,
       surface: null,
@@ -62,8 +64,29 @@ describe("the main view's shown tab", () => {
 
     openTicketPage(registry);
     openFile(registry, readme);
-    closeTicketPage(registry);
+    closePage(registry, "ticket");
     expect(registry.get(filesViewAtom)).toMatchObject({ ticket: false, active: readme });
+  });
+
+  it("Given the ticket's, a For you card's and an agent's tabs, when the card's and then the agent's close while shown, then the canvas returns, and the ticket's tab stays open", () => {
+    const registry = AtomRegistry.make();
+    openTicketPage(registry);
+    openAgentPage(registry, { threadId: "th-1", label: "T-1 task" });
+    closePage(registry, "agent");
+    openCardPage(registry, "q-1");
+    expect(registry.get(filesViewAtom)).toMatchObject({
+      ticket: true,
+      card: "q-1",
+      surface: "card",
+    });
+    closePage(registry, "card");
+    expect(registry.get(filesViewAtom)).toMatchObject({
+      ticket: true,
+      card: null,
+      agent: null,
+      surface: null,
+      active: null,
+    });
   });
 });
 

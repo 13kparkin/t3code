@@ -18,7 +18,7 @@ describe("the orchestrator's standing rules and board facts", () => {
   it("Given a board, when the facts render, then they name the folder, the cap, and the project and nothing else", () => {
     const facts = renderFacts(FACTS);
     expect(facts).toContain("`/p/.agentboard/x`");
-    expect(facts).toContain("at most 2 implementation agents");
+    expect(facts).toContain("at most 2 builders");
     expect(facts).toContain("`slugkit`, at `/p`");
     expect(facts).not.toContain("{{");
     expect(facts).not.toContain("delegate_task");

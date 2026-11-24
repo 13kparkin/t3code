@@ -2,16 +2,15 @@ import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { ThreadId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
-import { Eye, Layers, ListChecks, Paperclip, Plus } from "lucide-react";
+import { Layers, ListChecks, Paperclip, Plus } from "lucide-react";
 import { useContext, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { chooseTicket } from "../browser/panel";
 import { useArtifacts } from "../artifacts/ArtifactsContext";
 import { isRunLive } from "../chat/timeline";
 import { type Addition, lineText } from "../domain/additions";
 import { pickTemplate, SYSTEM_TEMPLATE } from "../domain/reviewTemplate";
-import { STAGE_LABEL, TICKET_STAGES, type Ticket } from "../domain/ticket";
+import { STAGE_LABEL, TICKET_STAGES } from "../domain/ticket";
 import { AddFromIssue } from "../issues/AddFromIssue";
 import type { OrchestratorStats } from "../orchestrator/brief";
 import { baseInstanceId } from "../orchestrator/orchestratorInstance";
@@ -21,8 +20,9 @@ import { usePrContext } from "../state/prStatus";
 import { useEnvironmentThread } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
 import { PopMenu } from "../ui/PopMenu";
+import { Tooltip } from "../ui/Tooltip";
 import { BuilderCap } from "./BuilderCap";
-import { additionLaneId, LANE_IDS, LANE_LABEL, ORCHESTRATOR_BOX } from "./layout";
+import { additionLaneId, ORCHESTRATOR_BOX, stageTagId } from "./layout";
 
 /** Mounts the board's usage watch, which messages the orchestrator when a usage window passes a level. */
 function UsageWatch({ instanceId, threadId }: { instanceId: string; threadId: string }) {
@@ -30,13 +30,14 @@ function UsageWatch({ instanceId, threadId }: { instanceId: string; threadId: st
   return null;
 }
 
-/** A board's orchestrator on the canvas: its tickets by stage, what waits on the user, and its builders against the cap. */
+const ACTION =
+  "inline-flex shrink-0 items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-5 text-muted hover:bg-hover hover:text-fg";
+
 export function OrchestratorCard({
   project,
   listed,
   stats,
   builders,
-  offPath,
   hidden,
   additions,
   onChangeHidden,
@@ -45,9 +46,7 @@ export function OrchestratorCard({
   listed: ValidBoard;
   stats: OrchestratorStats;
   builders: number;
-  /** Tickets with no lane on the canvas. */
-  offPath: ReadonlyArray<Ticket>;
-  /** Stage lanes and `canvas` addition lanes the user folded away. */
+  /** The filter ids whose cards or lane the canvas hides. */
   hidden: ReadonlySet<string>;
   /** Every `additions.json` item, hidden ones too, so the menu can show them again. */
   additions: ReadonlyArray<Addition>;
@@ -73,12 +72,19 @@ export function OrchestratorCard({
   const tickets = context.tickets.map((view) => view.ticket);
   const shown = context.additions;
   const lines = shown.filter((item) => item.place === "orchestrator");
-  const laneLabels = new Map<string, string>([
-    ...LANE_IDS.map((id) => [id, LANE_LABEL[id]] as const),
+  const filters: ReadonlyArray<{ id: string; label: string; count: number | null }> = [
+    ...TICKET_STAGES.map((stage) => ({
+      id: stageTagId(stage),
+      label: STAGE_LABEL[stage],
+      count: stats.stages[stage],
+    })),
+    { id: "for_you", label: "For you", count: stats.forYouOpen },
     ...shown.flatMap((item) =>
-      item.place === "canvas" ? [[additionLaneId(item.id), item.title] as const] : [],
+      item.place === "canvas"
+        ? [{ id: additionLaneId(item.id), label: item.title, count: null }]
+        : [],
     ),
-  ]);
+  ];
   const status =
     board.orchestratorThreadId === null
       ? "Not started"
@@ -95,126 +101,107 @@ export function OrchestratorCard({
     >
       <header className="flex items-center gap-2">
         <h3 className="min-w-0 flex-1 truncate font-semibold">{board.name}</h3>
-        {board.orchestratorThreadId !== null && (
-          <button
-            type="button"
-            data-testid="add-from-tracker"
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={() => setAdding(true)}
-            className="inline-flex shrink-0 items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-5 text-muted hover:bg-hover hover:text-fg"
-          >
-            <Plus className="size-3" aria-hidden />
-            Add from tracker
-          </button>
-        )}
-        <div onPointerDown={(event) => event.stopPropagation()}>
-          <PopMenu
-            label="Review template"
-            align="start"
-            triggerClass="inline-flex shrink-0 items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-5 text-muted hover:bg-hover hover:text-fg"
-            trigger={
-              <>
-                <ListChecks className="size-3" aria-hidden />
-                Review
-              </>
-            }
-            items={[SYSTEM_TEMPLATE, ...custom].map((template) => ({
-              label: template.name,
-              hint: template.name === picked.name ? "Current" : undefined,
-              onSelect: () => {
-                setPickError(null);
-                void setBoardReviewTemplate(
-                  registry,
-                  project,
-                  listed,
-                  template === SYSTEM_TEMPLATE ? undefined : template.name,
-                ).then(setPickError);
-              },
-            }))}
-          />
-        </div>
-        <div onPointerDown={(event) => event.stopPropagation()}>
-          <PopMenu
-            label="Lanes"
-            align="start"
-            triggerClass="inline-flex shrink-0 items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-5 text-muted hover:bg-hover hover:text-fg"
-            trigger={
-              <>
-                <Eye className="size-3" aria-hidden />
-                {hidden.size > 0 ? `${hidden.size} hidden` : "Lanes"}
-              </>
-            }
-            items={[...laneLabels].map(([id, label]) => ({
-              label,
-              hint: hidden.has(id) ? "Hidden" : "Shown",
-              onSelect: () => void toggleFolded(registry, laneKey(board.id, id)),
-            }))}
-          />
-        </div>
-        {additions.length > 0 && (
-          <div onPointerDown={(event) => event.stopPropagation()}>
-            <PopMenu
-              label="Additions"
-              align="start"
-              triggerClass="inline-flex shrink-0 items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-5 text-muted hover:bg-hover hover:text-fg"
-              trigger={
-                <>
-                  <Layers className="size-3" aria-hidden />
-                  {hiddenAdditions.length > 0 && `${hiddenAdditions.length} hidden`}
-                </>
-              }
-              items={[
-                ...additions.map((item) => {
-                  const isHidden = hiddenAdditions.includes(item.id);
-                  return {
-                    label: `${item.title} · ${item.place}`,
-                    hint: isHidden ? "Hidden" : "Shown",
-                    onSelect: () =>
-                      onChangeHidden((ids) =>
-                        isHidden ? ids.filter((id) => id !== item.id) : [...ids, item.id],
-                      ),
-                  };
-                }),
-                {
-                  label: "Reset to default",
-                  onSelect: () => onChangeHidden(() => additions.map((item) => item.id)),
-                },
-                { label: "Show all", onSelect: () => onChangeHidden(() => []) },
-              ]}
-            />
-          </div>
-        )}
-        <span data-testid="card-status" className="text-[11px] text-muted">
+        <span data-testid="card-status" className="shrink-0 text-[11px] text-muted">
           {status}
         </span>
       </header>
-      <p className="mt-0.5 text-[11px] text-faint">Orchestrator</p>
-      <dl className="mt-2.5 grid grid-cols-5 gap-x-2 gap-y-2">
-        {TICKET_STAGES.map((stage) => (
-          <div key={stage} className="min-w-0">
-            <dt className="text-[10px] leading-tight text-faint">{STAGE_LABEL[stage]}</dt>
-            <dd className={stats.stages[stage] === 0 ? "text-faint" : "text-fg"}>
-              {stage === "off_path" && offPath.length > 0 ? (
-                <span onPointerDown={(event) => event.stopPropagation()}>
-                  <PopMenu
-                    label="Off path tickets"
-                    align="start"
-                    triggerClass="text-fg underline decoration-dotted hover:text-accent"
-                    trigger={stats.stages[stage]}
-                    items={offPath.map((ticket) => ({
-                      label: `${ticket.key} ${ticket.title}`,
-                      onSelect: () =>
-                        chooseTicket(registry, { threadId: null, ticketKey: ticket.key }),
-                    }))}
-                  />
-                </span>
-              ) : (
-                stats.stages[stage]
-              )}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      <div
+        className="mt-1 flex items-center gap-1.5"
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        <p className="min-w-0 flex-1 truncate text-[11px] text-faint">Orchestrator</p>
+        {board.orchestratorThreadId !== null && (
+          <Tooltip text="Add from tracker" side="bottom">
+            <button
+              type="button"
+              data-testid="add-from-tracker"
+              aria-label="Add from tracker"
+              onClick={() => setAdding(true)}
+              className={ACTION}
+            >
+              <Plus className="size-3" aria-hidden />
+              Add
+            </button>
+          </Tooltip>
+        )}
+        <PopMenu
+          label="Review template"
+          triggerClass={ACTION}
+          trigger={
+            <>
+              <ListChecks className="size-3" aria-hidden />
+              Review
+            </>
+          }
+          items={[SYSTEM_TEMPLATE, ...custom].map((template) => ({
+            label: template.name,
+            hint: template.name === picked.name ? "Current" : undefined,
+            onSelect: () => {
+              setPickError(null);
+              void setBoardReviewTemplate(
+                registry,
+                project,
+                listed,
+                template === SYSTEM_TEMPLATE ? undefined : template.name,
+              ).then(setPickError);
+            },
+          }))}
+        />
+        {additions.length > 0 && (
+          <PopMenu
+            label="Additions"
+            triggerClass={ACTION}
+            trigger={
+              <>
+                <Layers className="size-3" aria-hidden />
+                {hiddenAdditions.length > 0 && `${hiddenAdditions.length} hidden`}
+              </>
+            }
+            items={[
+              ...additions.map((item) => {
+                const isHidden = hiddenAdditions.includes(item.id);
+                return {
+                  label: `${item.title} · ${item.place}`,
+                  hint: isHidden ? "Hidden" : "Shown",
+                  onSelect: () =>
+                    onChangeHidden((ids) =>
+                      isHidden ? ids.filter((id) => id !== item.id) : [...ids, item.id],
+                    ),
+                };
+              }),
+              {
+                label: "Reset to default",
+                onSelect: () => onChangeHidden(() => additions.map((item) => item.id)),
+              },
+              { label: "Show all", onSelect: () => onChangeHidden(() => []) },
+            ]}
+          />
+        )}
+      </div>
+      <div
+        role="group"
+        aria-label="Show on the canvas"
+        data-testid="tag-filter"
+        className="mt-2.5 flex flex-wrap gap-1"
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        {filters.map(({ id, label, count }) => {
+          const on = !hidden.has(id);
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={on}
+              data-filter={id}
+              onClick={() => void toggleFolded(registry, laneKey(board.id, id))}
+              className={`inline-flex max-w-full items-center gap-1 rounded-full border px-2 text-[11px] leading-5 hover:bg-hover ${on ? "border-line text-fg" : "border-transparent text-faint"}`}
+            >
+              <span className="truncate">{label}</span>
+              {count !== null && <span className="tabular-nums">{count}</span>}
+            </button>
+          );
+        })}
+      </div>
       {docs.length > 0 && (
         <div data-testid="board-docs" className="mt-2">
           <p className="text-[10px] text-faint">
@@ -232,13 +219,7 @@ export function OrchestratorCard({
           </ul>
         </div>
       )}
-      <div className="mt-3 flex items-center justify-between border-t border-line pt-2">
-        <span className="text-muted">
-          For you{" "}
-          <span data-testid="foryou-open" className={stats.forYouOpen > 0 ? "text-fg" : ""}>
-            {stats.forYouOpen}
-          </span>
-        </span>
+      <div className="mt-3 flex items-start justify-between gap-3 border-t border-line pt-2">
         <span className="inline-flex items-center gap-1 text-muted">
           Artifacts{" "}
           {groups.board.length === 0 ? (
@@ -268,10 +249,18 @@ export function OrchestratorCard({
           Builders <BuilderCap project={project} listed={listed} builders={builders} />
         </span>
       </div>
-      <p className="mt-2 line-clamp-2 text-[11px] text-muted" data-testid="latest-decision">
-        {stats.latestDecision === null
-          ? "No decisions yet"
-          : `${stats.latestDecision.time}  ${stats.latestDecision.decision}`}
+      <p
+        data-testid="latest-decision"
+        className="mt-2 line-clamp-3 text-[11px] break-words text-muted"
+      >
+        {stats.latestDecision === null ? (
+          "No decisions yet"
+        ) : (
+          <>
+            <span className="text-faint">{stats.latestDecision.time}</span>{" "}
+            {stats.latestDecision.decision}
+          </>
+        )}
       </p>
       {lines.length > 0 && (
         <dl>

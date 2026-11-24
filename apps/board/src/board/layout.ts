@@ -1,30 +1,66 @@
 import type { Addition } from "../domain/additions";
 import type { CardView } from "../domain/forYou";
-import { STAGE_LABEL, TICKET_STAGES, type TicketStage } from "../domain/ticket";
+import { TICKET_STAGES, type TicketStage } from "../domain/ticket";
 import type { BoardModel } from "../state/boardModel";
 import type { FrameOrder } from "../state/boardUi";
 import type { Rect } from "./viewport";
 
-export type LaneId = "for_you" | Exclude<TicketStage, "off_path"> | "unassigned";
-/** Off-path tickets have no lane. The orchestrator card lists them. */
-export const LANE_IDS: ReadonlyArray<LaneId> = [
-  "for_you",
-  ...TICKET_STAGES.filter((stage) => stage !== "off_path"),
-  "unassigned",
-];
+type StageLane = "todo" | "running";
+export type LaneId = "for_you" | StageLane;
+const LANE_IDS: ReadonlyArray<LaneId> = ["for_you", "todo", "running"];
 
 export const LANE_LABEL = {
   for_you: "For you",
-  ...STAGE_LABEL,
-  unassigned: "Unassigned",
+  todo: "To do",
+  running: "Running",
 } as const satisfies Record<LaneId, string>;
+
+/**
+ * Which lane holds each stage, in tag order. A dim stage's tag starts off, and once shown its
+ * cards sit after the others in their lane, dimmed.
+ */
+export const STAGE_TAGS = {
+  todo: { lane: "todo", dim: false, tone: "text-zinc-300" },
+  planned: { lane: "todo", dim: false, tone: "text-zinc-400" },
+  building: { lane: "running", dim: false, tone: "text-blue-300" },
+  reviewing: { lane: "running", dim: false, tone: "text-violet-300" },
+  verifying: { lane: "running", dim: false, tone: "text-cyan-300" },
+  pr: { lane: "running", dim: false, tone: "text-indigo-300" },
+  awaiting_approval: { lane: "running", dim: false, tone: "text-orange-300" },
+  merged: { lane: "running", dim: true, tone: "text-emerald-300" },
+  off_path: { lane: "running", dim: true, tone: "text-red-300" },
+} as const satisfies Record<
+  TicketStage,
+  { readonly lane: StageLane; readonly dim: boolean; readonly tone: string }
+>;
+
+export const stageTagId = (stage: TicketStage) => `stage:${stage}`;
+export const additionLaneId = (id: string) => `add:${id}`;
+
+/**
+ * The filter ids that hide their cards or lane: the For you lane, each stage's tag, and each
+ * `canvas` addition's lane. The saved set holds the ids the user flipped from their default.
+ */
+export function hiddenFilters(
+  flipped: ReadonlySet<string>,
+  additions: ReadonlyArray<Addition>,
+): ReadonlySet<string> {
+  const filters = [
+    { id: "for_you", starts: false },
+    ...TICKET_STAGES.map((stage) => ({ id: stageTagId(stage), starts: STAGE_TAGS[stage].dim })),
+    ...additions.flatMap((item) =>
+      item.place === "canvas" ? [{ id: additionLaneId(item.id), starts: false }] : [],
+    ),
+  ];
+  return new Set(
+    filters.filter(({ id, starts }) => starts !== flipped.has(id)).map(({ id }) => id),
+  );
+}
 
 /** The key of the one frame that holds the agents no ticket claims. */
 export const UNASSIGNED_KEY = "__unassigned";
 /** A lane card's frame key is this and the addition's id. */
 export const ADDITION_KEY = "__add:";
-/** The hide key of a `canvas` addition's own lane, which folds like a stage lane. */
-export const additionLaneId = (id: string) => `add:${id}`;
 /** Each orchestrator line and problem line is one 18px row on the orchestrator card, so the lanes start that much lower. */
 export const ADDITION_LINE = 18;
 const ADDITION_FRAME = 140;
@@ -53,11 +89,9 @@ const TRACKER_CARD = 250;
 const RESOLVED_CARD = 34;
 const LEFT = 40;
 /** The orchestrator card's place on the canvas. */
-export const ORCHESTRATOR_BOX: Rect = { x: LEFT, y: LEFT, width: 340, height: 280 };
+export const ORCHESTRATOR_BOX: Rect = { x: LEFT, y: LEFT, width: 340, height: 310 };
 /** Where the lanes start, below the orchestrator card. */
 export const LANES_TOP = ORCHESTRATOR_BOX.y + ORCHESTRATOR_BOX.height + LEFT;
-const EDGE_ATTACH_Y = CARD_HEIGHT / 2;
-const EDGE_CURVE = 40;
 
 export interface FrameBox extends Rect {
   readonly key: string;
@@ -68,17 +102,10 @@ export interface LaneBox extends Rect {
   readonly frames: ReadonlyArray<FrameBox>;
 }
 
-export interface Edge {
-  /** The ticket that is depended on. */
-  readonly from: string;
-  readonly to: string;
-}
-
 export interface Layout {
   readonly lanes: ReadonlyArray<LaneBox>;
   /** `canvas` additions, each a lane of its own after the stage lanes, keyed by the addition's id. */
   readonly additionLanes: ReadonlyArray<FrameBox>;
-  readonly edges: ReadonlyArray<Edge>;
   readonly content: Rect;
 }
 
@@ -111,7 +138,7 @@ export function forYouHeight(views: ReadonlyArray<CardView>): number {
 
 const NO_HIDDEN: ReadonlySet<string> = new Set();
 
-/** Stacks each shown lane's frames in its column, and adds one edge for each `dependsOn` between two tickets. Later lanes pack left over hidden ones. */
+/** Later lanes pack left over a hidden one. */
 export function layoutBoard(
   model: BoardModel,
   order: FrameOrder,
@@ -123,31 +150,27 @@ export function layoutBoard(
   const lines = additions.filter((item) => item.place === "orchestrator").length + problemLines;
   const top = LANES_TOP + lines * ADDITION_LINE;
   const lanes: LaneBox[] = [];
-  const edges: Edge[] = [];
-  const known = new Set(
-    Object.values(model.lanes).flatMap((lane) => lane.map((v) => v.ticket.key)),
-  );
   LANE_IDS.forEach((id) => {
     if (hidden.has(id)) return;
     const x = LEFT + lanes.length * (LANE_WIDTH + LANE_GAP);
     const items: Array<{ key: string; height: number }> = [];
-    if (id === "unassigned") {
-      if (model.unassigned.length === 0) return;
-      items.push({ key: UNASSIGNED_KEY, height: unassignedHeight(model.unassigned.length) });
-    } else if (id !== "for_you") {
-      const card = additions.find((item) => item.place === "lane" && item.lane === id);
-      if (card !== undefined) items.push({ key: ADDITION_KEY + card.id, height: ADDITION_FRAME });
-      const views = model.lanes[id];
-      for (const key of orderedKeys(
-        views.map((view) => view.ticket.key),
-        order[id],
-      )) {
-        const view = views.find((entry) => entry.ticket.key === key);
-        if (view === undefined) continue;
-        items.push({ key, height: CARD_HEIGHT });
-        for (const dependency of view.ticket.dependsOn ?? []) {
-          if (known.has(dependency)) edges.push({ from: dependency, to: key });
+    if (id !== "for_you") {
+      for (const card of additions) {
+        if (card.place === "lane" && STAGE_TAGS[card.lane].lane === id) {
+          items.push({ key: ADDITION_KEY + card.id, height: ADDITION_FRAME });
         }
+      }
+      if (id === "todo" && model.unassigned.length > 0) {
+        items.push({ key: UNASSIGNED_KEY, height: unassignedHeight(model.unassigned.length) });
+      }
+      const shown = TICKET_STAGES.filter(
+        (stage) => STAGE_TAGS[stage].lane === id && !hidden.has(stageTagId(stage)),
+      );
+      for (const dim of [false, true]) {
+        const keys = shown
+          .filter((stage) => STAGE_TAGS[stage].dim === dim)
+          .flatMap((stage) => model.lanes[stage].map((view) => view.ticket.key));
+        for (const key of orderedKeys(keys, order[id])) items.push({ key, height: CARD_HEIGHT });
       }
     }
     let y = top + LANE_HEAD;
@@ -182,7 +205,6 @@ export function layoutBoard(
   return {
     lanes,
     additionLanes,
-    edges,
     content: { x: 0, y: 0, width: right + LEFT, height: bottom + LEFT },
   };
 }
@@ -202,19 +224,4 @@ export function clampDrag(lane: LaneBox, frame: FrameBox, dy: number): number {
   const min = lane.y + LANE_HEAD - frame.y;
   const max = lane.y + lane.height - LANE_PAD - frame.height - frame.y;
   return Math.min(Math.max(dy, min), Math.max(min, max));
-}
-
-/** A curve from the frame that is depended on to the frame that depends on it, ending at the dependent's edge. */
-export function edgePath(from: FrameBox, to: FrameBox): string {
-  const y1 = from.y + EDGE_ATTACH_Y;
-  const y2 = to.y + EDGE_ATTACH_Y;
-  if (from.x === to.x) {
-    const x = from.x;
-    return `M ${x} ${y1} C ${x - EDGE_CURVE} ${y1}, ${x - EDGE_CURVE} ${y2}, ${x} ${y2}`;
-  }
-  const forward = to.x > from.x;
-  const x1 = forward ? from.x + from.width : from.x;
-  const x2 = forward ? to.x : to.x + to.width;
-  const bend = Math.max(EDGE_CURVE, Math.abs(x2 - x1) / 2) * (forward ? 1 : -1);
-  return `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`;
 }

@@ -4,6 +4,7 @@ import { useContext } from "react";
 
 import type { BoardOpenItems } from "../domain/forYou";
 import { focusedCardAtom, forYouBoardsAtom, forYouOpenAtom } from "../state/forYou";
+import { archivedOpenAtom } from "../state/archivedBoards";
 import { openBoard } from "../state/boards";
 import { laneKey, setFolded } from "../state/boardUi";
 import { SidebarRow } from "./SidebarRow";
@@ -31,7 +32,10 @@ export function ForYouRow() {
       title="For you"
       label={`For you, ${total} open`}
       selected={open}
-      onClick={() => registry.set(forYouOpenAtom, !open)}
+      onClick={() => {
+        registry.set(archivedOpenAtom, false);
+        registry.set(forYouOpenAtom, !open);
+      }}
       trailing={
         <span
           data-testid="sidebar-foryou-count"
