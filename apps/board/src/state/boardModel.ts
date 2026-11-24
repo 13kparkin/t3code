@@ -165,12 +165,15 @@ export function joinBoard(input: {
   };
 }
 
-const IMPLEMENTATION_ROLES: ReadonlySet<string> = new Set(
-  ROLES.filter((role) => role.t3Role === "implementation").map((role) => role.name),
+/** Roles that write code: the implementation roles, and the writing roles that get their own worktree. */
+const BUILDER_ROLES: ReadonlySet<string> = new Set(
+  ROLES.filter(
+    (role) => role.t3Role === "implementation" || (!role.readOnly && role.isolation === "worktree"),
+  ).map((role) => role.name),
 );
 
-/** Live implementation agents on any ticket stage or unassigned: each runs its own worktree, install, and dev server. */
-export function countImplementationAgents(model: BoardModel): number {
+/** Live builders on any ticket stage or unassigned, which the builder cap limits. */
+export function countBuilders(model: BoardModel): number {
   return [
     ...Object.values(model.lanes)
       .flat()
@@ -178,7 +181,7 @@ export function countImplementationAgents(model: BoardModel): number {
     ...model.unassigned,
   ].filter(
     (agent) =>
-      IMPLEMENTATION_ROLES.has(agent.role) &&
+      BUILDER_ROLES.has(agent.role) &&
       (agent.runState === "working" || agent.runState === "waiting"),
   ).length;
 }

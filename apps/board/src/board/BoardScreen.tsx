@@ -16,7 +16,7 @@ import { useThreadFamily } from "../state/family";
 import { PrProvider } from "../state/prStatus";
 import { focusedCardAtom, useBoardForYou } from "../state/forYou";
 import { addDocs } from "../state/attachmentUploads";
-import { countImplementationAgents } from "../state/boardModel";
+import { countBuilders } from "../state/boardModel";
 import { useBoardView } from "../state/boardView";
 import { keptWorktreesAtom } from "../state/mergeCleanup";
 import { setHiddenAdditions } from "../state/reviews";
@@ -66,7 +66,7 @@ export function BoardScreen({
     [model, order, forYou.views, hidden, visible, stats.problems.length],
   );
   const family = useThreadFamily(project.environmentId, board.orchestratorThreadId);
-  const builders = useMemo(() => countImplementationAgents(model), [model]);
+  const builders = useMemo(() => countBuilders(model), [model]);
   const tickets = useMemo(() => Object.values(model.lanes).flat(), [model]);
   const keptWorktrees = useAtomValue(keptWorktreesAtom(`${project.id}/${listed.folder}`));
   const prContext = useMemo(() => {
