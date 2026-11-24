@@ -216,7 +216,12 @@ async function readEvidence(
     // A null listing is a missing folder or a failed read. Only a `.omp` that lists without `artifacts` proves it missing.
     if (folders === null) {
       const omp = await files.list(path, ".omp");
-      if (omp === null || omp.some((entry) => baseName(entry.path) === "artifacts")) return null;
+      if (omp?.some((entry) => baseName(entry.path) === "artifacts")) return null;
+      // Neither lists: a worktree root that lists with no `.omp` is a bare one, an unreadable root is a failed read.
+      if (omp === null) {
+        const root = await files.list(path, ".");
+        if (root === null || root.some((entry) => baseName(entry.path) === ".omp")) return null;
+      }
     }
     const keys = (folders ?? [])
       .filter((entry) => entry.kind === "directory")

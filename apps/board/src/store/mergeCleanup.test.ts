@@ -194,7 +194,7 @@ const BOARD = ".agentboard/main";
 function filesOf(tree: Record<string, ReadonlyArray<string>>): ProjectFiles {
   return {
     list: async (cwd, directory) => {
-      const prefix = `${directory}/`;
+      const prefix = directory === "." ? "" : `${directory}/`;
       const children = new Map<string, string>();
       for (const path of tree[cwd] ?? []) {
         if (!path.startsWith(prefix)) continue;
@@ -224,6 +224,8 @@ function world(input: {
   readonly bare?: boolean;
   /** The worktree holds only a closed sibling ticket's evidence. */
   readonly siblingOnly?: boolean;
+  /** The worktree root does not list either, as when the whole folder is unreadable. */
+  readonly rootUnreadable?: boolean;
   /** `.omp` does not list either, as when the folder is unreadable. */
   readonly ompUnreadable?: boolean;
   /** `.omp/artifacts` holds only loose files, no ticket folder. */
@@ -241,7 +243,7 @@ function world(input: {
     ],
     [WT]: [
       ...(input.bare
-        ? ["src/app.ts", ".omp/notes.md"]
+        ? ["src/app.ts"]
         : input.loose
           ? [".omp/artifacts/notes.md"]
           : input.siblingOnly
@@ -256,7 +258,9 @@ function world(input: {
     files: {
       ...files,
       list: async (cwd, directory) =>
-        directory === input.unlisted || (input.ompUnreadable && directory === ".omp")
+        directory === input.unlisted ||
+        (input.ompUnreadable && directory === ".omp") ||
+        (input.rootUnreadable && directory === ".")
           ? null
           : files.list(cwd, directory),
     },
@@ -325,6 +329,19 @@ describe("cleanupMerged", () => {
       board: ["README.txt", "smoke.png"],
       unlisted: ".omp/artifacts",
       ompUnreadable: true,
+    });
+    expect(await cleanupMerged(unreadable.ports, target, [ticket()])).toEqual(
+      new Map([["T-26", "evidence-missing"]]),
+    );
+    expect(unreadable.removed).toEqual([]);
+  });
+
+  it("keeps the worktree when .omp/artifacts, .omp and the worktree root all fail to list", async () => {
+    const unreadable = world({
+      board: ["README.txt", "smoke.png"],
+      bare: true,
+      ompUnreadable: true,
+      rootUnreadable: true,
     });
     expect(await cleanupMerged(unreadable.ports, target, [ticket()])).toEqual(
       new Map([["T-26", "evidence-missing"]]),
