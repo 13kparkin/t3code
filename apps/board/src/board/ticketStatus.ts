@@ -8,7 +8,7 @@ export interface CardStatus {
 
 /**
  * What a card's agents are doing: a question for the user, then live work, then the newest agent's
- * state, so a failed agent that another agent has since replaced no longer marks the ticket.
+ * state, so a failed agent that another agent has since replaced does not mark the ticket.
  */
 export function ticketStatus(agents: ReadonlyArray<AgentView>): CardStatus | null {
   if (agents.length === 0) return null;
