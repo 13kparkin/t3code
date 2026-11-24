@@ -41,6 +41,7 @@ import {
 import { failureText } from "../settings/failureText";
 import { newId } from "../state/boards";
 import { ensureOrchestratorInstance } from "../state/orchestrator";
+import { engineConnectionAtom } from "../state/projects";
 import { engineProvidersAtom, serverEnvironment } from "../state/server";
 import { recordDocs, uploadAttachments } from "../state/attachmentUploads";
 import { interruptTurn, startTurn } from "../state/threads";
@@ -109,6 +110,7 @@ export function Composer({
   // Sends go out one at a time, so a quick follow-up cannot overtake one still uploading files.
   const outbox = useRef<Promise<void>>(Promise.resolve());
 
+  const connected = useAtomValue(engineConnectionAtom).state.phase === "connected";
   const providers = useAtomValue(engineProvidersAtom);
   const providersForCwd = useMemo(() => resolveProvidersForCwd(providers, cwd), [providers, cwd]);
   const instances = useMemo(() => pickableInstances(providersForCwd), [providersForCwd]);
@@ -273,7 +275,16 @@ export function Composer({
   const send = (event?: FormEvent) => {
     event?.preventDefault();
     const text = draft.trim();
-    if (text === "" || projection === null) return;
+    if (text === "") return;
+    // A turn sent over a dropped socket waits for it with no sign, so the draft stays for a later send.
+    if (!connected || projection === null) {
+      setError(
+        connected
+          ? "The thread is not loaded yet. Your message is kept."
+          : "Not connected to the engine. Your message is kept; send it again once the footer reads Engine connected.",
+      );
+      return;
+    }
     const pending: PendingSend = {
       threadId,
       messageId: MessageId.make(newId()),
