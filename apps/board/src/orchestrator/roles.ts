@@ -151,13 +151,14 @@ export interface RoleInstance {
   }>;
 }
 
-/** Why `role` cannot run on this model and effort, or null when it can. */
+/** Why `role` cannot run on this model and effort, or null when it can. A null pick, the registry's default, needs only a known role. */
 export function roleTargetProblem(
   role: string,
-  pick: RoleOverride,
+  pick: RoleOverride | null,
   instance: RoleInstance | null,
 ): string | null {
   if (!ROLES.some((entry) => entry.name === role)) return `${role} is not a role in the registry.`;
+  if (pick === null) return null;
   if (instance === null) return "No Claude instance is running to check the model against.";
   if (!instance.offered.includes(pick.model)) {
     return `${instance.instanceId} does not offer ${pick.model}.`;

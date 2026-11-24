@@ -29,6 +29,7 @@ import type { ValidBoard } from "../store/boardFiles";
 import { readingsFor } from "../usage/usageNotice";
 import { boardEngine, localState, newId, projectBoardsAtom } from "./boards";
 import { runMergeCleanup } from "./mergeCleanup";
+import { openRoleTargets } from "../store/roleTargets";
 import { runRoleTargetRequests } from "./roleTargets";
 import { engineConnectionAtom, engineEnvironmentIdAtom, environmentProjects } from "./projects";
 import { engineProvidersAtom, engineSettingsAtom, serverEnvironment } from "./server";
@@ -244,15 +245,16 @@ export const boardStoreAtom = Atom.family((key: string) =>
           ([tickets, forYou, decisions, additions, details]) => {
             const next = { tickets, forYou, decisions, additions, details };
             const last = Option.getOrNull(get.self<StoreFiles | null>()) ?? null;
+            // Every read, not only on a change, so an item that waited on the provider list resolves once it loads.
+            if (forYou?.includes('"role_target"') && openRoleTargets(forYou).length > 0) {
+              runRoleTargetRequests(get.registry, project, key, folder);
+            }
             if (!sameFiles(last, next)) {
               if (last !== null && last.tickets !== next.tickets) {
                 markReviews(last.tickets, next.tickets);
               }
               if (last?.tickets !== next.tickets) {
                 runMergeCleanup(get.registry, project, key, folder, next.tickets);
-              }
-              if (last?.forYou !== next.forYou) {
-                runRoleTargetRequests(get.registry, project, key, folder);
               }
               if (last !== null && last.forYou !== next.forYou) {
                 performance.mark("board:foryou-file-change", { detail: { key } });

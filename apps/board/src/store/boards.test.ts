@@ -393,6 +393,24 @@ describe("role targets", () => {
     ]);
   });
 
+  it.each([
+    ["no Claude instance yet", null],
+    ["an instance still probing its models", { ...instance, offered: [], models: [] }],
+  ])(
+    "Given %s, when an open line is applied, then it stays open and nothing is written",
+    async (_case, early) => {
+      const { files, store, target } = await boardWith("orchestrator");
+      const text = `${request("rt-4", { role: "reviewer", model: "claude-opus-5-5" })}\n`;
+      store.set(FOR_YOU, text);
+      const before = store.get(".agentboard/claude-connector/board.json");
+      expect(await applyRoleTargetRequests(files, CWD, target.folder, early)).toBe(false);
+      expect([store.get(FOR_YOU), store.get(".agentboard/claude-connector/board.json")]).toEqual([
+        text,
+        before,
+      ]);
+    },
+  );
+
   it("Given a role on its own target, when it is reset by Settings or by a line, then the board drops it", async () => {
     const { files, store, target } = await boardWith("orchestrator");
     await setRoleTarget(

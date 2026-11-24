@@ -63,10 +63,8 @@ export function runRoleTargetRequests(
 ): void {
   runOnePerKey(`role-targets:${storeKey}`, async () => {
     const boards = registry.get(projectBoardsAtom(project.id));
-    const listed =
-      boards.status === "ready"
-        ? boards.boards.find((entry) => entry.ok && entry.folder === folder)
-        : undefined;
+    if (boards.status !== "ready") return;
+    const listed = boards.boards.find((entry) => entry.ok && entry.folder === folder);
     const threadId = listed?.ok === true ? listed.board.orchestratorThreadId : null;
     const applied = await applyRoleTargetRequests(
       boardEngine(registry, project.environmentId).files,

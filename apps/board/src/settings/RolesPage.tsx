@@ -86,7 +86,10 @@ export function RolesPage({ environmentId }: { environmentId: EnvironmentId }) {
       {ROLES.map((role) => {
         const own = board.roleTargets?.[role.name];
         const shown = own ?? { model: role.model.slug, effort: role.model.effort };
-        const problem = own === undefined ? null : roleTargetProblem(role.name, own, instance);
+        const problem =
+          own === undefined || instance === null
+            ? null
+            : roleTargetProblem(role.name, own, instance);
         return (
           <SettingsRow
             key={role.name}

@@ -102,6 +102,8 @@ describe("checking a role target", () => {
     ["reviewer", { model: "claude-opus-5-5", effort: "high" }, null],
     ["reviewer", { model: "claude-opus-5-5" }, null],
     ["nobody", { model: "claude-opus-5-5" }, "nobody is not a role in the registry."],
+    ["reviewer", null, null],
+    ["nobody", null, "nobody is not a role in the registry."],
     ["reviewer", { model: "claude-fable-5-2" }, "claudeAgent does not offer claude-fable-5-2."],
     [
       "reviewer",

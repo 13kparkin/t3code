@@ -12,7 +12,7 @@ export async function setRoleTarget(
   target: RoleOverride | null,
   instance: RoleInstance | null,
 ): Promise<string | null> {
-  const problem = target === null ? null : roleTargetProblem(role, target, instance);
+  const problem = roleTargetProblem(role, target, instance);
   if (problem !== null) return problem;
   try {
     await changeRoleTarget(files, cwd, folder, role, target);
@@ -22,9 +22,18 @@ export async function setRoleTarget(
   }
 }
 
+/** The open `role_target` items in `foryou.jsonl` text. */
+export const openRoleTargets = (text: string | null) =>
+  mergeForYou(text, []).cards.flatMap((card) =>
+    card.origin === "file" && card.item.kind === "role_target" && card.item.status === "open"
+      ? [card.item]
+      : [],
+  );
+
 /**
  * Applies each open `role_target` item and appends its resolving line, so a rerun changes nothing.
- * Resolves to whether any item was resolved.
+ * Before the instance reports its models, items stay open for a later run. Resolves to whether any
+ * item was resolved.
  */
 export async function applyRoleTargetRequests(
   files: ProjectFiles,
@@ -32,12 +41,9 @@ export async function applyRoleTargetRequests(
   folder: string,
   instance: RoleInstance | null,
 ): Promise<boolean> {
+  if (instance === null || instance.offered.length === 0) return false;
   const path = `${BOARDS_DIR}/${folder}/foryou.jsonl`;
-  const requests = mergeForYou(await files.read(cwd, path), []).cards.flatMap((card) =>
-    card.origin === "file" && card.item.kind === "role_target" && card.item.status === "open"
-      ? [card.item]
-      : [],
-  );
+  const requests = openRoleTargets(await files.read(cwd, path));
   if (requests.length === 0) return false;
   const lines: string[] = [];
   for (const { id, write } of requests) {
@@ -48,7 +54,7 @@ export async function applyRoleTargetRequests(
       problem === null ? `Applied: ${describeRoleTarget(write)}` : `Rejected: ${problem}`;
     lines.push(JSON.stringify({ id, status: "resolved", resolution }));
   }
-  // Read again, so a line the orchestrator wrote meanwhile is kept.
+  // shortcut: re-reading narrows, but does not close, the window where an orchestrator line is lost; add an append to ProjectFiles if it shows up.
   const latest = (await files.read(cwd, path)) ?? "";
   const separator = latest === "" || latest.endsWith("\n") ? "" : "\n";
   await files.write(cwd, path, `${latest}${separator}${lines.join("\n")}\n`);
