@@ -36,15 +36,11 @@ const send = (
 const source = (items: ReadonlyArray<ChatItem>) => ({ runs: [], messages: [], items });
 
 describe("the messages waiting above the input", () => {
-  it("Given a queued, a steering, a delivered message and a send not yet echoed, when rows are read, then each waiting one has its delivery and run id", () => {
+  it("Given a queued run the thread has no item for yet, a steering message, a delivered one and unechoed sends, when rows are read, then each waiting one has its delivery and run id and a queued send is not listed twice", () => {
     const rows = queueRows(
-      source([
-        item("m1", "later", "queued"),
-        item("m2", "now", "steering"),
-        item("m3", "done", "delivered"),
-      ]),
-      new Map([["m1", RunId.make("run-1")]]),
-      [send("m4"), send("m5", { kind: "failed", error: "Offline" })],
+      source([item("m2", "now", "steering"), item("m3", "done", "delivered")]),
+      [{ messageId: "m1", text: "later", runId: RunId.make("run-1") }],
+      [send("m1"), send("m4"), send("m5", { kind: "failed", error: "Offline" })],
     );
     expect(rows).toEqual([
       { key: "m1", messageId: "m1", text: "later", delivery: "queued", runId: RunId.make("run-1") },

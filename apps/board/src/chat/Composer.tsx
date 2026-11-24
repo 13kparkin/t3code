@@ -317,11 +317,10 @@ export function Composer({
     const target = cancelTarget(row);
     if (target === null) return;
     setError(null);
-    if (target.kind === "local") {
-      deleted.current.add(row.messageId);
-      setSends((all) => all.filter((send) => send.messageId !== row.messageId));
-      return;
-    }
+    // The engine never echoes a deleted message, so its send must leave `sends` too.
+    deleted.current.add(row.messageId);
+    setSends((all) => all.filter((send) => send.messageId !== row.messageId));
+    if (target.kind === "local") return;
     const result = await runAtomCommand(
       registry,
       cancelQueued,

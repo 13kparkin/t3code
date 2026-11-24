@@ -13,29 +13,36 @@ export interface QueueRow {
 }
 
 /**
- * The messages the engine holds as queued or steering, then the sends it has not echoed yet.
- * `runIds` maps a queued message's id to its run.
+ * The engine's queued runs, its steering messages, then the sends it has not echoed yet. A queued
+ * run has no thread item until it starts, so the runs come from `queued`, not from the items.
  */
 export function queueRows(
   source: TimelineSource,
-  runIds: ReadonlyMap<string, RunId>,
+  queued: ReadonlyArray<{ messageId: string; text: string; runId: RunId }>,
   sends: ReadonlyArray<PendingSend>,
 ): ReadonlyArray<QueueRow> {
-  const held = source.items.flatMap((item): QueueRow[] =>
-    item.kind === "user" && (item.delivery === "queued" || item.delivery === "steering")
+  const held = queued.map((run): QueueRow => ({
+    key: run.messageId,
+    messageId: run.messageId,
+    text: run.text,
+    delivery: "queued",
+    runId: run.runId,
+  }));
+  const steering = source.items.flatMap((item): QueueRow[] =>
+    item.kind === "user" && item.delivery === "steering"
       ? [
           {
             key: item.messageId,
             messageId: item.messageId,
             text: userText(source, item),
-            delivery: item.delivery,
-            runId: runIds.get(item.messageId) ?? null,
+            delivery: "steering",
+            runId: null,
           },
         ]
       : [],
   );
   const unechoed = sends.flatMap((send): QueueRow[] =>
-    send.state.kind === "sending"
+    send.state.kind === "sending" && !queued.some((run) => run.messageId === send.messageId)
       ? [
           {
             key: send.messageId,
@@ -47,7 +54,7 @@ export function queueRows(
         ]
       : [],
   );
-  return [...held, ...unechoed];
+  return [...held, ...steering, ...unechoed];
 }
 
 /** What deleting a row does: cancel the engine's queued run, drop the send, or nothing for a steer the turn already holds. */

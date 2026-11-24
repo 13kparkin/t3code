@@ -86,7 +86,11 @@ export function Conversation({
     () =>
       queueRows(
         source ?? EMPTY,
-        new Map(workflow?.queuedRuns.map(({ messageId, run }) => [messageId, run.id])),
+        workflow?.queuedRuns.map(({ messageId, text, run }) => ({
+          messageId,
+          text,
+          runId: run.id,
+        })) ?? [],
         pending,
       ),
     [source, workflow, pending],
