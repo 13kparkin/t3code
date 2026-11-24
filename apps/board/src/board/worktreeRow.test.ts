@@ -3,18 +3,21 @@ import { describe, expect, it } from "vite-plus/test";
 import type { StorageCleanupReport } from "@t3tools/contracts";
 import { worktreeBytes, worktreeKeptReason } from "./worktreeRow";
 
-const entry = (path: string, bytes: number | null, kind = "worktree") =>
-  ({
-    kind,
-    outcome: "kept",
-    reason: "",
-    path,
-    projectPath: null,
-    threadId: null,
-    threadTitle: null,
-    bytes,
-    files: null,
-  }) as StorageCleanupReport["entries"][number];
+const entry = (
+  path: string,
+  bytes: number | null,
+  kind: "worktree" | "logs" = "worktree",
+): StorageCleanupReport["entries"][number] => ({
+  kind,
+  outcome: "kept",
+  reason: "",
+  path,
+  projectPath: null,
+  threadId: null,
+  threadTitle: null,
+  bytes,
+  files: null,
+});
 
 const report = (entries: StorageCleanupReport["entries"]): StorageCleanupReport => ({
   trigger: "manual",

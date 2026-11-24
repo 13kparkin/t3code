@@ -3,8 +3,25 @@ import { describe, expect, it } from "vite-plus/test";
 import type { AgentView } from "../state/boardModel";
 import { activeAgentOf } from "./activeAgent";
 
-const agent = (threadId: string, runState: AgentView["runState"], updatedAt: string) =>
-  ({ threadId, runState, updatedAt }) as AgentView;
+const agent = (
+  threadId: string,
+  runState: AgentView["runState"],
+  updatedAt: string,
+): AgentView => ({
+  threadId,
+  title: threadId,
+  role: "task",
+  registered: true,
+  outsideRegistry: false,
+  ticketKey: "T-1",
+  driver: null,
+  runState,
+  pendingRequest: false,
+  branch: null,
+  parentThreadId: null,
+  round: null,
+  updatedAt,
+});
 
 describe("a ticket's active agent", () => {
   it.each([
