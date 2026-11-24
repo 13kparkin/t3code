@@ -1,5 +1,15 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
-import { Bot, FileDiff, FileText, Globe, Inbox, LayoutDashboard, Plus, Ticket } from "lucide-react";
+import {
+  Bot,
+  FileDiff,
+  FileText,
+  Globe,
+  Inbox,
+  LayoutDashboard,
+  Plus,
+  ScrollText,
+  Ticket,
+} from "lucide-react";
 import { useContext } from "react";
 
 import {
@@ -47,13 +57,13 @@ function tabLabel(file: FileRef): string {
 }
 
 /**
- * The tabs of the main view, the way Orca's draw them: the board first, then the ticket, a For you card, and each open file, each
+ * The tabs of the main view, the way Orca's draw them: the board first, then the ticket, a For you card, an agent's log, and each open file, each
  * browser page with a globe, and the agents' tabs, each with a close button. The active tab is lit
  * and underlined, and a plus opens a blank page.
  */
 export function MainTabStrip({ files }: { files: ReadonlyArray<FileRef> }) {
   const registry = useContext(RegistryContext);
-  const { active, surface, ticket, card } = useAtomValue(filesViewAtom);
+  const { active, surface, ticket, card, agent } = useAtomValue(filesViewAtom);
   const ticketKey = useAtomValue(ticketChoiceAtom)?.ticketKey ?? null;
   const { tabs, agents } = useAtomValue(browserAtom);
   const onBoard = active === null && surface === null;
@@ -89,6 +99,15 @@ export function MainTabStrip({ files }: { files: ReadonlyArray<FileRef> }) {
           label="For you"
           onSelect={() => showSurface(registry, "card")}
           onClose={() => closePage(registry, "card")}
+        />
+      )}
+      {agent !== null && (
+        <ClosableTab
+          shown={surface === "agent"}
+          icon={<ScrollText className="size-3.5 shrink-0" aria-hidden />}
+          label={agent.label}
+          onSelect={() => showSurface(registry, "agent")}
+          onClose={() => closePage(registry, "agent")}
         />
       )}
       {files.map((file) => (

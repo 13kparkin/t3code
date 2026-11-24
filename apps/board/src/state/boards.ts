@@ -301,6 +301,7 @@ export function openBoard(
     registry.set(ticketChoiceAtom, null);
     closePage(registry, "ticket");
     closePage(registry, "card");
+    closePage(registry, "agent");
   }
   registry.set(lastOpenedBoardAtom, opened);
   showBoard(registry);

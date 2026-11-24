@@ -21,6 +21,7 @@ import { useBoardView } from "../state/boardView";
 import { keptWorktreesAtom } from "../state/mergeCleanup";
 import { setHiddenAdditions } from "../state/reviews";
 import type { ValidBoard } from "../store/boardFiles";
+import { AgentPage } from "./AgentPage";
 import { ForYouLane } from "./ForYouLane";
 import { ForYouPage } from "./ForYouPage";
 import { Lanes } from "./Lanes";
@@ -115,6 +116,7 @@ export function BoardScreen({
             files={artifacts.files}
             ticketPage={<TicketPanel environmentId={project.environmentId} model={model} page />}
             cardPage={<ForYouPage project={project} listed={listed} forYou={forYou} />}
+            agentPage={<AgentPage environmentId={project.environmentId} model={model} />}
           >
             <Viewport
               content={layout.content}
