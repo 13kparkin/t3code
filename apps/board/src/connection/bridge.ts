@@ -11,6 +11,7 @@ type EngineBridge = Pick<
   | "readLocalState"
   | "writeLocalState"
   | "ensurePstack"
+  | "logConnection"
 >;
 
 // Without the main process there is no WSL to ask, so the engine rejects a folder that is missing.
@@ -47,6 +48,7 @@ function webBridge(): EngineBridge {
     onEngineState: () => () => undefined,
     engineToken: () => Promise.resolve(result),
     answerPrompt: () => undefined,
+    logConnection: (line) => console.info(`board:connection ${line}`),
     pickFolder: () =>
       Promise.resolve({
         ok: false,

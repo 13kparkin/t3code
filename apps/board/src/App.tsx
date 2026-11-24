@@ -15,6 +15,7 @@ import { ForYouToasts } from "./sidebar/ForYouToasts";
 import { Sidebar } from "./sidebar/Sidebar";
 import { SidebarToggle } from "./sidebar/SidebarToggle";
 import { UpdateToasts } from "./sidebar/UpdateToasts";
+import { connectionWatchAtom } from "./state/engine";
 import { settingsPageAtom } from "./state/settingsPage";
 import { updateWatcherAtom } from "./state/updatesAtoms";
 import { UsageBar } from "./usage/UsageBar";
@@ -25,6 +26,7 @@ export function App() {
   const sidebarOpen = useAtomValue(sidebarOpenAtom);
   const setSettingsPage = (page: SettingsPage | null) => registry.set(settingsPageAtom, page);
   useAtomMount(updateWatcherAtom);
+  useAtomMount(connectionWatchAtom);
   return (
     <div className="grid h-full grid-rows-[var(--topbar-height)_minmax(0,1fr)_auto]">
       <header className="drag-region flex items-center justify-between border-b border-line bg-bg px-2">

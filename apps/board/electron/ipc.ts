@@ -7,6 +7,7 @@ import * as Schema from "effect/Schema";
 import { app, BrowserWindow, dialog, ipcMain, safeStorage } from "electron";
 
 import { runtimeSupportsClient } from "./runtimeCompatibility";
+import { createConnectionLog } from "./connectionLog";
 import { createEngine, type EngineConfig, type TokenStore } from "./engine";
 import { createLocalStateFile } from "./localState";
 import { pickFolder, resolveFolder } from "./pickFolder";
@@ -170,6 +171,13 @@ export function registerEngineIpc(options: {
       ? { ok: true, dir: env["AGENT_BOARD_PSTACK_DIR"] }
       : ensurePstack(host),
   );
+  const connectionLog = createConnectionLog(
+    NodePath.join(userData, "logs", "board-connection.log"),
+  );
+  ipcMain.on("board:connection-log", (_event, text) => {
+    const line = Option.getOrUndefined(decodeText(text));
+    if (line !== undefined) connectionLog.append(line);
+  });
   ipcMain.on("board:engine-connected", (_event, epochMs) => {
     if (isEpochMs(epochMs)) console.log(`board:engine-connected ${sinceStart(epochMs)} ms`);
   });
