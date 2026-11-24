@@ -8,7 +8,6 @@ const CWD = "/home/me/proj";
 const KEY = projectKeyOf(CWD);
 
 function fakes(stored: Record<string, string>, inProject: Record<string, string> = {}) {
-  const writes: string[] = [];
   const project: ProjectFiles = {
     list: async (_cwd, directory) =>
       Object.keys(inProject)
@@ -36,11 +35,11 @@ function fakes(stored: Record<string, string>, inProject: Record<string, string>
           }));
     },
     read: async (path) => stored[path] ?? null,
-    write: async (path, contents) => void ((stored[path] = contents), writes.push(path)),
+    write: async (path, contents) => void (stored[path] = contents),
     move: async () => undefined,
     root: async () => "/home/me/.t3/board",
   };
-  return { files: routeFiles(project, store), store, writes, stored, inProject };
+  return { files: routeFiles(project, store), store, stored, inProject };
 }
 
 describe("a board's files in the global store", () => {
