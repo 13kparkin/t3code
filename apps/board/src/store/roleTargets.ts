@@ -1,4 +1,4 @@
-import { BOARDS_DIR, type RoleTarget } from "../domain/board";
+import { BOARDS_DIR, type RoleOverride } from "../domain/board";
 import { describeRoleTarget, mergeForYou } from "../domain/forYou";
 import { type RoleInstance, roleTargetProblem } from "../orchestrator/roles";
 import { changeRoleTarget, type ProjectFiles } from "./boardFiles";
@@ -13,7 +13,7 @@ export async function setRoleTarget(
   cwd: string,
   folder: string,
   role: string,
-  target: RoleTarget | null,
+  target: RoleOverride | null,
   instance: RoleInstance | null,
 ): Promise<string | null> {
   const problem = target === null ? null : roleTargetProblem(role, target, instance);

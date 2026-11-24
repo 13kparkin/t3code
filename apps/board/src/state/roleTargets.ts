@@ -2,7 +2,7 @@ import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import type { OrchestrationV2ThreadShell, ServerProvider } from "@t3tools/contracts";
 import { Atom, type AtomRegistry } from "effect/reactivity";
 
-import type { RoleTarget } from "../domain/board";
+import type { RoleOverride } from "../domain/board";
 import { baseInstanceId } from "../orchestrator/orchestratorInstance";
 import { defaultPick, type PickableInstance, pickableInstances } from "../providers/providers";
 import { runOnePerKey } from "../store/mergeCleanup";
@@ -50,7 +50,7 @@ export async function saveRoleTarget(
   project: RoleProject,
   folder: string,
   role: string,
-  target: RoleTarget | null,
+  target: RoleOverride | null,
   instance: PickableInstance | null,
 ): Promise<string | null> {
   const { files } = boardEngine(registry, project.environmentId);

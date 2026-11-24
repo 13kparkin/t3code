@@ -3,6 +3,7 @@ import type { EnvironmentId } from "@t3tools/contracts";
 import { useContext, useState } from "react";
 
 import { ModelPicker } from "../chat/ModelPicker";
+import type { RoleOverride } from "../domain/board";
 import { ROLES, roleTargetProblem } from "../orchestrator/roles";
 import { lastOpenedBoardAtom } from "../state/boards";
 import { environmentSnapshotAtom } from "../state/projects";
@@ -37,7 +38,7 @@ export function RolesPage({ environmentId }: { environmentId: EnvironmentId }) {
 
   const { board } = choice.listed;
   const instance = boardInstance(providers, threads, board.orchestratorThreadId);
-  const save = (role: string, target: { model: string; effort?: string } | null) => {
+  const save = (role: string, target: RoleOverride | null) => {
     setStatus("Saving…");
     void saveRoleTarget(
       registry,

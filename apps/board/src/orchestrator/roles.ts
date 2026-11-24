@@ -1,3 +1,5 @@
+import type { RoleOverride } from "../domain/board";
+
 /** The task roles `delegate_task` accepts. */
 export type T3Role = "implementation" | "research" | "review" | "design" | "test" | "general";
 export type Isolation = "shared" | "worktree";
@@ -152,7 +154,7 @@ export interface RoleInstance {
 /** Why `role` cannot run on this model and effort, or null when it can. */
 export function roleTargetProblem(
   role: string,
-  pick: { readonly model: string; readonly effort?: string },
+  pick: RoleOverride,
   instance: RoleInstance | null,
 ): string | null {
   if (!ROLES.some((entry) => entry.name === role)) return `${role} is not a role in the registry.`;

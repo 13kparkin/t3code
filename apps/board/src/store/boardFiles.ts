@@ -9,7 +9,7 @@ import {
   type BoardIssue,
   DEFAULT_BUILDER_CAP,
   parseBoard,
-  type RoleTarget,
+  type RoleOverride,
   serializeBoard,
   uniqueSlug,
 } from "../domain/board";
@@ -234,7 +234,7 @@ export const changeRoleTarget = (
   cwd: string,
   folder: string,
   role: string,
-  target: RoleTarget | null,
+  target: RoleOverride | null,
 ) =>
   changeBoard(files, cwd, folder, (board) => {
     const { [role]: _replaced, ...others } = board.roleTargets ?? {};

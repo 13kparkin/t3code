@@ -12,12 +12,12 @@ const Text = Schema.String.check(Schema.isNonEmpty());
 
 const Doc = Schema.Struct({ name: Text, sentAt: Text });
 
-const RoleTarget = Schema.Struct({
+const RoleOverride = Schema.Struct({
   model: Text,
   /** Missing means the model's own default. */
   effort: Schema.optionalKey(Text),
 });
-export type RoleTarget = typeof RoleTarget.Type;
+export type RoleOverride = typeof RoleOverride.Type;
 
 export const Board = Schema.Struct({
   id: Text,
@@ -36,7 +36,7 @@ export const Board = Schema.Struct({
   /** The `additions.json` item ids the user hid. Only the app writes this. */
   hiddenAdditions: Schema.optionalKey(Schema.Array(Text)),
   /** The model and effort the user set for a role, by role name. Each overrides the registry's default. Only the app writes this. */
-  roleTargets: Schema.optionalKey(Schema.Record(Text, RoleTarget)),
+  roleTargets: Schema.optionalKey(Schema.Record(Text, RoleOverride)),
 });
 export type Board = typeof Board.Type;
 
