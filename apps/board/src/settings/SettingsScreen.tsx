@@ -7,6 +7,7 @@ import { CleanupPage } from "./CleanupPage";
 import { Select } from "./controls/Select";
 import { IntegrationsPage } from "./IntegrationsPage";
 import { ReviewsPage } from "./ReviewsPage";
+import { RolesPage } from "./RolesPage";
 import { pageTitle, SettingsNav, type SettingsPage } from "./SettingsNav";
 import { TextModelsPage } from "./TextModelsPage";
 import { UpdatesPage } from "./UpdatesPage";
@@ -43,6 +44,7 @@ const PAGE_PAINTED = {
   integrations: paintedMarker("board:integrations-painted"),
   updates: paintedMarker("board:updates-painted"),
   reviews: paintedMarker("board:reviews-painted"),
+  roles: paintedMarker("board:roles-painted"),
   text: paintedMarker("board:text-painted"),
 } satisfies Record<SettingsPage, ReturnType<typeof paintedMarker>>;
 
@@ -115,6 +117,8 @@ export function SettingsScreen({
             <UpdatesPage settings={settings} save={(input) => void save(input)} />
           ) : page === "reviews" ? (
             <ReviewsPage environmentId={environmentId} />
+          ) : page === "roles" ? (
+            <RolesPage environmentId={environmentId} />
           ) : page === "text" ? (
             <TextModelsPage settings={settings} save={(input) => void save(input)} />
           ) : (

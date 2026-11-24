@@ -2,7 +2,13 @@ import { Check, Maximize2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
 import { ChatMarkdown } from "../chat/Markdown";
-import { cardTitle, type CardState, type CardView, type ForYouItem } from "../domain/forYou";
+import {
+  cardTitle,
+  type CardState,
+  type CardView,
+  describeRoleTarget,
+  type ForYouItem,
+} from "../domain/forYou";
 import { describeTrackerWrite } from "../issues/issueLinks";
 import { answerItem, type ForYouTarget } from "../foryou/actions";
 import { Tooltip } from "../ui/Tooltip";
@@ -17,6 +23,7 @@ const KIND_LABEL = {
   question: "Question",
   ticket_draft: "Ticket draft",
   tracker_write: "Tracker write",
+  role_target: "Role change",
   gate: "Gate",
   read: "Read",
   resume: "Resume",
@@ -144,7 +151,7 @@ export function ForYouCard({
       <h4 className="text-[13px] leading-[18px] font-semibold break-words text-fg">{title}</h4>
       {card.origin === "file" ? (
         <>
-          {card.item.body.trim() !== "" && (
+          {card.item.kind !== "role_target" && card.item.body.trim() !== "" && (
             <div className="text-[12px] break-words text-muted">
               <ChatMarkdown text={card.item.body} untrusted />
             </div>
@@ -158,14 +165,20 @@ export function ForYouCard({
               {describeTrackerWrite(card.item.write)}
             </pre>
           )}
-          <ItemActions
-            item={card.item}
-            sent={sent}
-            send={(answer) => {
-              setError(null);
-              void answerItem(target, orchestratorThreadId, card, answer).then(setError);
-            }}
-          />
+          {card.item.kind === "role_target" ? (
+            <p data-testid="role-target" className="font-mono text-[11px] break-words text-fg">
+              {describeRoleTarget(card.item.write)}
+            </p>
+          ) : (
+            <ItemActions
+              item={card.item}
+              sent={sent}
+              send={(answer) => {
+                setError(null);
+                void answerItem(target, orchestratorThreadId, card, answer).then(setError);
+              }}
+            />
+          )}
         </>
       ) : card.request.kind === "approval" ? (
         <ApprovalBody

@@ -47,14 +47,15 @@ export function useBoardForYou(project: EnvironmentProject, listed: ValidBoard):
   const family = useThreadFamily(project.environmentId, listed.board.orchestratorThreadId);
   const sent = useAtomValue(forYouSentAtom)[listed.board.id] ?? NO_SENT;
   const text = files?.forYou ?? null;
+  const roleRequests = listed.board.roleRequests;
   return useMemo(() => {
-    const merged = mergeForYou(text, engineRequestsOf(family));
+    const merged = mergeForYou(text, engineRequestsOf(family), roleRequests);
     return {
       views: cardViews(merged.cards, sent),
       problems: merged.problems,
       open: openCards(merged.cards).length,
     };
-  }, [text, family, sent]);
+  }, [text, family, sent, roleRequests]);
 }
 
 const NO_BOARDS: ReadonlyArray<BoardOpenItems> = [];

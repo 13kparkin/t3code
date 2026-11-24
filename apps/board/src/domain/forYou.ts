@@ -9,6 +9,7 @@ export const FOR_YOU_KINDS = [
   "question",
   "ticket_draft",
   "tracker_write",
+  "role_target",
   "gate",
   "read",
   "resume",
@@ -107,12 +108,36 @@ const TrackerWriteItem = Schema.Struct({
 });
 export type TrackerWriteItem = typeof TrackerWriteItem.Type;
 
+/** A role's new model and effort; `model: null` goes back to the registry's default. */
+export const RoleTargetWrite = Schema.Struct({
+  role: Schema.String.check(Schema.isNonEmpty()),
+  model: Schema.NullOr(Schema.String.check(Schema.isNonEmpty())),
+  effort: Schema.optionalKey(Schema.String.check(Schema.isNonEmpty())),
+});
+export type RoleTargetWrite = typeof RoleTargetWrite.Type;
+
+/** The change as the card and the resolution word it: `reviewer -> claude-opus-5-5, high`. */
+export const describeRoleTarget = ({ role, model, effort }: RoleTargetWrite): string =>
+  `${role} -> ${model === null ? "default" : [model, effort].filter(Boolean).join(", ")}`;
+
+const RoleTargetItem = Schema.Struct({
+  ...base,
+  kind: Schema.Literal("role_target"),
+  write: RoleTargetWrite,
+});
+
 const Plain = Schema.Struct({
   ...base,
   kind: Schema.Literals(["ticket_draft", "gate", "read", "resume"]),
 });
 
-export const ForYouItem = Schema.Union([MergeApproval, Question, TrackerWriteItem, Plain]);
+export const ForYouItem = Schema.Union([
+  MergeApproval,
+  Question,
+  TrackerWriteItem,
+  RoleTargetItem,
+  Plain,
+]);
 export type ForYouItem = typeof ForYouItem.Type;
 
 /** A later line for an item that only moves it on: a new status, and what was done. */
@@ -200,11 +225,13 @@ const createdAtOf = (card: ForYouCard): number => {
 
 /**
  * The file's items, where the latest line for an id wins, then the engine's requests, with a
- * repeated id dropped. Open cards come first, then held, then resolved, each oldest first.
+ * repeated id dropped. A `role_target` item with a result in `board.json`'s `roleRequests` is
+ * resolved with it. Open cards come first, then held, then resolved, each oldest first.
  */
 export function mergeForYou(
   fileText: string | null,
   requests: ReadonlyArray<EngineRequest>,
+  roleRequests: Readonly<Record<string, string>> = {},
 ): ForYouList {
   const problems: ForYouProblem[] = [];
   const items = new Map<string, ForYouItem>();
@@ -237,11 +264,14 @@ export function mergeForYou(
     });
   });
 
-  const cards: ForYouCard[] = [...items.values()].map((item) => ({
-    origin: "file",
-    id: item.id,
-    item,
-  }));
+  const cards: ForYouCard[] = [...items.values()].map((item) => {
+    const resolution = item.kind === "role_target" ? roleRequests[item.id] : undefined;
+    return {
+      origin: "file",
+      id: item.id,
+      item: resolution === undefined ? item : { ...item, status: "resolved", resolution },
+    };
+  });
   for (const request of requests) {
     if (!cards.some((card) => card.id === request.id)) {
       cards.push({ origin: "engine", id: request.id, request });
@@ -261,9 +291,12 @@ export function mergeForYou(
   };
 }
 
-/** The cards waiting on the user now. Held and resolved ones do not count. */
+/** The cards waiting on the user now. Held and resolved ones do not count, nor a `role_target` item, which the app applies itself. */
 export const openCards = (cards: ReadonlyArray<ForYouCard>): ReadonlyArray<ForYouCard> =>
-  cards.filter((card) => statusOf(card) === "open");
+  cards.filter(
+    (card) =>
+      statusOf(card) === "open" && !(card.origin === "file" && card.item.kind === "role_target"),
+  );
 
 /** What the user chose on a card, which `forYouMessage` words for the orchestrator. */
 export type ForYouAnswer =

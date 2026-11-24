@@ -9,6 +9,7 @@ import {
   type BoardIssue,
   DEFAULT_BUILDER_CAP,
   parseBoard,
+  type RoleOverride,
   serializeBoard,
   uniqueSlug,
 } from "../domain/board";
@@ -179,7 +180,7 @@ export function writeBoard(files: ProjectFiles, cwd: string, folder: string, boa
   return files.write(cwd, boardPath(folder), serializeBoard(board));
 }
 
-async function readBoard(files: ProjectFiles, cwd: string, folder: string) {
+export async function readBoard(files: ProjectFiles, cwd: string, folder: string) {
   const text = await files.read(cwd, boardPath(folder));
   if (text === null) throw new Error(`${boardPath(folder)} is missing.`);
   const parsed = parseBoard(text);
@@ -187,43 +188,83 @@ async function readBoard(files: ProjectFiles, cwd: string, folder: string) {
   return parsed.success;
 }
 
-/** Writes only the given fields (an undefined review template removes its key) into the board's own file, read fresh so a change made since the last listing is kept. */
-export async function updateBoard(
+let changing: Promise<unknown> = Promise.resolve();
+
+/** Applies `change` to the board read fresh from its own file and resolves to the saved board. Calls run one at a time, so two quick changes both count. */
+function changeBoard(
+  files: ProjectFiles,
+  cwd: string,
+  folder: string,
+  change: (board: Board) => Board,
+): Promise<Board> {
+  const run = changing.then(async () => {
+    const board = change(await readBoard(files, cwd, folder));
+    await writeBoard(files, cwd, folder, board);
+    return board;
+  });
+  changing = run.catch(() => undefined);
+  return run;
+}
+
+/** Writes only the given fields (an undefined review template removes its key) into the board's own file. */
+export const updateBoard = (
   files: ProjectFiles,
   cwd: string,
   folder: string,
   fields: Omit<Partial<Board>, "reviewTemplate"> & { reviewTemplate?: string | undefined },
-): Promise<Board> {
-  const { reviewTemplate, ...rest } = { ...(await readBoard(files, cwd, folder)), ...fields };
-  const board = reviewTemplate === undefined ? rest : { ...rest, reviewTemplate };
-  await writeBoard(files, cwd, folder, board);
-  return board;
-}
+) =>
+  changeBoard(files, cwd, folder, (current) => {
+    const { reviewTemplate, ...rest } = { ...current, ...fields };
+    return reviewTemplate === undefined ? rest : { ...rest, reviewTemplate };
+  });
 
-let hiding: Promise<unknown> = Promise.resolve();
-
-/** Applies `change` to the hidden addition ids read fresh from the board's own file. Calls run one at a time, so two quick hides both count. */
-export function changeHiddenAdditions(
+export const changeHiddenAdditions = (
   files: ProjectFiles,
   cwd: string,
   folder: string,
   change: (ids: ReadonlyArray<string>) => ReadonlyArray<string>,
-): Promise<void> {
-  const run = hiding.then(async () => {
-    const board = await readBoard(files, cwd, folder);
-    await writeBoard(files, cwd, folder, {
-      ...board,
-      hiddenAdditions: [...new Set(change(board.hiddenAdditions ?? []))],
-    });
-  });
-  hiding = run.catch(() => undefined);
-  return run;
+) =>
+  changeBoard(files, cwd, folder, (board) => ({
+    ...board,
+    hiddenAdditions: [...new Set(change(board.hiddenAdditions ?? []))],
+  }));
+
+function withRoleTarget(board: Board, role: string, target: RoleOverride | null): Board {
+  const { [role]: _replaced, ...others } = board.roleTargets ?? {};
+  return { ...board, roleTargets: target === null ? others : { ...others, [role]: target } };
 }
+
+/** Sets one role's target; null removes it. */
+export const changeRoleTarget = (
+  files: ProjectFiles,
+  cwd: string,
+  folder: string,
+  role: string,
+  target: RoleOverride | null,
+) => changeBoard(files, cwd, folder, (board) => withRoleTarget(board, role, target));
+
+/** Records a `role_target` item's result, and its target when applied, in one write. An id already recorded changes nothing. */
+export const resolveRoleRequest = (
+  files: ProjectFiles,
+  cwd: string,
+  folder: string,
+  id: string,
+  resolution: string,
+  applied: { readonly role: string; readonly target: RoleOverride | null } | null,
+) =>
+  changeBoard(files, cwd, folder, (board) =>
+    board.roleRequests?.[id] !== undefined
+      ? board
+      : {
+          ...(applied === null ? board : withRoleTarget(board, applied.role, applied.target)),
+          roleRequests: { ...board.roleRequests, [id]: resolution },
+        },
+  );
 
 export const setBuilderCap = (files: ProjectFiles, cwd: string, folder: string, cap: number) =>
   updateBoard(files, cwd, folder, { builderCap: cap });
 
-/** Adds the names to the board's docs in the board's own file, read fresh so two sends in a row both count. */
+/** Adds the names to the board's docs in the board's own file. */
 export async function appendDocs(
   files: ProjectFiles,
   cwd: string,
@@ -231,11 +272,11 @@ export async function appendDocs(
   names: ReadonlyArray<string>,
   sentAt: string,
 ): Promise<void> {
-  const board = await readBoard(files, cwd, folder);
-  const docs = board.docs ?? [];
-  const added = names
-    .filter((name, at) => !docs.some((doc) => doc.name === name) && names.indexOf(name) === at)
-    .map((name) => ({ name, sentAt }));
-  if (added.length === 0) return;
-  await writeBoard(files, cwd, folder, { ...board, docs: [...docs, ...added] });
+  await changeBoard(files, cwd, folder, (board) => {
+    const docs = board.docs ?? [];
+    const added = names
+      .filter((name, at) => !docs.some((doc) => doc.name === name) && names.indexOf(name) === at)
+      .map((name) => ({ name, sentAt }));
+    return { ...board, docs: [...docs, ...added] };
+  });
 }

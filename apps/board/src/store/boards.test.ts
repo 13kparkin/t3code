@@ -14,6 +14,8 @@ import {
   updateBoard,
 } from "./boardFiles";
 import { roleFiles } from "../orchestrator/roles";
+import type { RoleTargetWrite } from "../domain/forYou";
+import { applyRoleTargetRequests, setRoleTarget } from "./roleTargets";
 
 const CWD = "/work/project";
 const PROJECT_ID = "586df7d0-cfc5-44b8-957a-ae03fb872e67";
@@ -334,5 +336,136 @@ describe("hiding additions", () => {
     await changeHiddenAdditions(files, CWD, target.folder, (ids) => [...ids, "a"]);
     await changeHiddenAdditions(files, CWD, target.folder, (ids) => [...ids, "a"]);
     expect(savedBoard(store)).toMatchObject({ hiddenAdditions: ["a"] });
+  });
+});
+
+describe("role targets", () => {
+  const efforts = ["low", "medium", "high"].map((id) => ({ id, label: id }));
+  const instance = {
+    instanceId: "claudeAgent",
+    offered: ["claude-opus-5-5"],
+    models: [
+      {
+        slug: "claude-opus-5-5",
+        name: "Opus",
+        effort: { id: "effort", choices: efforts, defaultChoice: "medium" },
+      },
+    ],
+  };
+  const FOR_YOU = ".agentboard/claude-connector/foryou.jsonl";
+  const request = (id: string, write: RoleTargetWrite) =>
+    JSON.stringify({
+      id,
+      kind: "role_target",
+      title: "Role change",
+      body: "",
+      status: "open",
+      createdAt: "2026-11-24T10:00:00Z",
+      write,
+    });
+
+  it("Given open role_target lines, when applied twice, then board.json holds the override and each result once, and foryou.jsonl is untouched", async () => {
+    const { files, store, target } = await boardWith("orchestrator");
+    const lines = [
+      request("rt-1", { role: "reviewer", model: "claude-opus-5-5", effort: "high" }),
+      request("rt-2", { role: "reviewer", model: "claude-fable-5-2" }),
+    ];
+    const text = `${lines.join("\n")}\n`;
+    store.set(FOR_YOU, text);
+    await applyRoleTargetRequests(files, CWD, target.folder, instance, text, null);
+    await applyRoleTargetRequests(files, CWD, target.folder, instance, text, null);
+    expect(store.get(FOR_YOU)).toBe(text);
+    expect(savedBoard(store)).toMatchObject({
+      roleTargets: { reviewer: { model: "claude-opus-5-5", effort: "high" } },
+      roleRequests: {
+        "rt-1": "Applied: reviewer -> claude-opus-5-5, high",
+        "rt-2": "Rejected: claudeAgent does not offer claude-fable-5-2.",
+      },
+    });
+  });
+
+  it("Given every role_target line resolved in the held board, when a poll applies them, then no file is read", async () => {
+    const { files, store, target } = await boardWith("orchestrator");
+    const text = `${request("rt-6", { role: "reviewer", model: "claude-opus-5-5" })}\n`;
+    store.set(FOR_YOU, text);
+    await applyRoleTargetRequests(files, CWD, target.folder, instance, text, null);
+    const reads: string[] = [];
+    const counted: ProjectFiles = {
+      ...files,
+      read: (cwd, path) => (reads.push(path), files.read(cwd, path)),
+    };
+    const held = savedBoard(store) ?? null;
+    expect(await applyRoleTargetRequests(counted, CWD, target.folder, instance, text, held)).toBe(
+      false,
+    );
+    expect(reads).toEqual([]);
+  });
+
+  it("Given an open line, when the board is archived while it is applied, then both changes are saved", async () => {
+    const { files: fast, store, target } = await boardWith("orchestrator");
+    const text = `${request("rt-5", { role: "reviewer", model: "claude-opus-5-5" })}\n`;
+    store.set(FOR_YOU, text);
+    let release = () => {};
+    const readTwice = new Promise<void>((done) => (release = done));
+    let boardReads = 0;
+    const files: ProjectFiles = {
+      ...fast,
+      read: (cwd, path) => {
+        if (path.endsWith("board.json") && ++boardReads === 2) release();
+        return fast.read(cwd, path);
+      },
+      write: (cwd, path, contents) => readTwice.then(() => fast.write(cwd, path, contents)),
+    };
+    // Apply starts first, so without the shared queue its result read lands before the archive write.
+    await Promise.all([
+      applyRoleTargetRequests(files, CWD, target.folder, instance, text, null),
+      updateBoard(files, CWD, target.folder, { archived: true }),
+    ]);
+    expect(savedBoard(store)).toMatchObject({
+      archived: true,
+      roleRequests: { "rt-5": "Applied: reviewer -> claude-opus-5-5" },
+    });
+  });
+
+  it.each([
+    ["no Claude instance yet", null],
+    ["an instance still probing its models", { ...instance, offered: [], models: [] }],
+  ])(
+    "Given %s, when an open line is applied, then it stays open and nothing is written",
+    async (_case, early) => {
+      const { files, store, target } = await boardWith("orchestrator");
+      const text = `${request("rt-4", { role: "reviewer", model: "claude-opus-5-5" })}\n`;
+      store.set(FOR_YOU, text);
+      const before = store.get(".agentboard/claude-connector/board.json");
+      expect(await applyRoleTargetRequests(files, CWD, target.folder, early, text, null)).toBe(
+        false,
+      );
+      expect([store.get(FOR_YOU), store.get(".agentboard/claude-connector/board.json")]).toEqual([
+        text,
+        before,
+      ]);
+    },
+  );
+
+  it("Given a role on its own target, when it is reset by Settings or by a line, then the board drops it", async () => {
+    const { files, store, target } = await boardWith("orchestrator");
+    await setRoleTarget(
+      files,
+      CWD,
+      target.folder,
+      "reviewer",
+      { model: "claude-opus-5-5" },
+      instance,
+    );
+    await setRoleTarget(files, CWD, target.folder, "scout", { model: "claude-opus-5-5" }, instance);
+    expect(Object.keys(savedBoard(store)?.roleTargets ?? {})).toEqual(["reviewer", "scout"]);
+    await setRoleTarget(files, CWD, target.folder, "scout", null, instance);
+    const text = `${request("rt-3", { role: "reviewer", model: null })}\n`;
+    store.set(FOR_YOU, text);
+    await applyRoleTargetRequests(files, CWD, target.folder, instance, text, null);
+    expect(savedBoard(store)).toMatchObject({
+      roleTargets: {},
+      roleRequests: { "rt-3": "Applied: reviewer -> default" },
+    });
   });
 });

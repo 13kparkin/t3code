@@ -3,7 +3,7 @@ import * as NodePath from "node:path";
 
 import { describe, expect, it } from "vite-plus/test";
 
-import { resolveRoles, ROLES } from "./roles";
+import { resolveRoles, roleTargetProblem, ROLES } from "./roles";
 
 const rolesDir = NodePath.resolve(import.meta.dirname, "../../roles");
 
@@ -81,5 +81,42 @@ describe("the role registry", () => {
       fallback:
         "claude-haiku-5-5 is not offered by claudeAgent, so it uses the orchestrator's model",
     });
+  });
+});
+
+describe("checking a role target", () => {
+  const efforts = ["low", "medium", "high"].map((id) => ({ id, label: id }));
+  const instance = {
+    instanceId: "claudeAgent",
+    offered: ["claude-opus-5-5"],
+    models: [
+      {
+        slug: "claude-opus-5-5",
+        name: "Opus",
+        effort: { id: "effort", choices: efforts, defaultChoice: "medium" },
+      },
+    ],
+  };
+
+  it.each([
+    ["reviewer", { model: "claude-opus-5-5", effort: "high" }, null],
+    ["reviewer", { model: "claude-opus-5-5" }, null],
+    ["nobody", { model: "claude-opus-5-5" }, "nobody is not a role in the registry."],
+    ["reviewer", null, null],
+    ["nobody", null, "nobody is not a role in the registry."],
+    ["reviewer", { model: "claude-fable-5-2" }, "claudeAgent does not offer claude-fable-5-2."],
+    [
+      "reviewer",
+      { model: "claude-opus-5-5", effort: "max" },
+      "claude-opus-5-5 has no effort max. Pick one of low, medium, high.",
+    ],
+  ])("Given %s on %j, when checked, then the problem is %j", (role, pick, problem) => {
+    expect(roleTargetProblem(role, pick, instance)).toBe(problem);
+  });
+
+  it("Given no Claude instance, when checked, then it says nothing can be checked", () => {
+    expect(roleTargetProblem("reviewer", { model: "claude-opus-5-5" }, null)).toBe(
+      "No Claude instance is running to check the model against.",
+    );
   });
 });

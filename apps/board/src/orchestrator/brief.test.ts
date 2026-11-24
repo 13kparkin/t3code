@@ -66,6 +66,15 @@ describe("the orchestrator's standing rules and board facts", () => {
     expect(ROLES.filter((role) => !rules.includes(`| \`${role.name}\` |`))).toEqual([]);
   });
 
+  it("Given the rules, when they render, then a board.json roleTargets entry wins over the table and changes go through role_target items", () => {
+    const rules = renderRules();
+    expect(rules).toContain(
+      "Before every `delegate_task`, read `board.json` again with a tool call, even if you read it a moment ago, because the user changes it from Settings at any time. If `roleTargets.<role>` is there, use its `model` and `effort` in the `target`. It wins over the table above.",
+    );
+    expect(rules).toContain("- `role_target`:");
+    expect(rules).toContain("Never edit `board.json` or `roles/` to change a role's model.");
+  });
+
   it("Given an instance that lacks a model, when the rules render, then the fallback is stated under the table", () => {
     const roles = resolveRoles(ROLES, {
       instanceId: "claudeAgent",

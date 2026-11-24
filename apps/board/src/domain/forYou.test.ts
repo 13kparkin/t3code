@@ -216,6 +216,27 @@ describe("answering a card", () => {
     expect(merged.problems[0]?.line).toBe(2);
   });
 
+  it("Given role_target items, when the file is merged, then each is a card with its change, and none waits on the user", () => {
+    const write = { role: "reviewer", model: "claude-opus-5-5", effort: "high" };
+    const lines = [
+      item("rt-1", "role_target", "open", "2026-11-21T10:00:00Z", { write }),
+      item("rt-2", "role_target", "open", "2026-11-21T10:01:00Z", {
+        write: { role: "reviewer", model: null },
+      }),
+      item("rt-3", "role_target", "open", "2026-11-21T10:02:00Z", { write: { model: "x" } }),
+    ].join("\n");
+    const merged = mergeForYou(lines, [], {});
+    expect(merged.cards.map((card) => card.id)).toEqual(["rt-1", "rt-2"]);
+    expect(merged.cards[0]).toMatchObject({ item: { kind: "role_target", write } });
+    expect(merged.problems.map((problem) => problem.line)).toEqual([3]);
+    expect(openCards(merged.cards)).toEqual([]);
+    const recorded = mergeForYou(lines, [], { "rt-2": "Rejected: no." }).cards;
+    expect(recorded.map((card) => [card.id, card.origin === "file" && card.item])).toEqual([
+      ["rt-1", expect.objectContaining({ status: "open" })],
+      ["rt-2", expect.objectContaining({ status: "resolved", resolution: "Rejected: no." })],
+    ]);
+  });
+
   const open = mergeForYou(item("a", "gate", "open", "2026-11-20T10:00:00Z"), [
     request("approval", "req", "2026-11-20T10:01:00Z"),
   ]).cards;

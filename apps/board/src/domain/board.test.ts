@@ -41,6 +41,17 @@ describe("parseBoard", () => {
     expect(Result.isFailure(result) && result.failure.fields).toEqual(["archived", "builderCap"]);
   });
 
+  it("Given role targets, when decoded, then each role keeps its model and effort, and an empty model is a bad field", () => {
+    const roleTargets = {
+      reviewer: { model: "claude-opus-5-5", effort: "high" },
+      sonic: { model: "claude-sonnet-5-5" },
+    };
+    const result = parseBoard(JSON.stringify({ ...valid, roleTargets }));
+    expect(Result.isSuccess(result) && result.success.roleTargets).toEqual(roleTargets);
+    const bad = parseBoard(JSON.stringify({ ...valid, roleTargets: { reviewer: { model: "" } } }));
+    expect(Result.isFailure(bad) && bad.failure.fields).toEqual(["roleTargets"]);
+  });
+
   it("Given text that is not JSON, when decoded, then it fails without naming a field", () => {
     const result = parseBoard("{ nope");
     expect(Result.isFailure(result) && result.failure.fields).toEqual([]);
