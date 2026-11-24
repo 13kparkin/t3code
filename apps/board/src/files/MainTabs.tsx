@@ -18,14 +18,17 @@ import type { FilesBoard } from "./target";
 export function MainTabs({
   files,
   ticketPage,
+  cardPage,
   children,
 }: {
   files: FilesBoard | null;
   /** The chosen ticket's details, which its tab shows over the canvas. */
   ticketPage?: ReactNode;
+  /** The For you card its tab shows over the canvas. */
+  cardPage?: ReactNode;
   children: ReactNode;
 }) {
-  const { tabs: opened, active, surface, ticket } = useAtomValue(filesViewAtom);
+  const { tabs: opened, active, surface, ticket, card } = useAtomValue(filesViewAtom);
   const { tabs: pages, agents } = useAtomValue(browserAtom);
   // A tab opened under another board's roots has nothing to read here.
   const tabs = opened.filter((tab) => files?.roots.some((root) => root.cwd === tab.cwd));
@@ -33,7 +36,7 @@ export function MainTabs({
   const covered = shown !== null || surface !== null;
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {(tabs.length > 0 || pages.tabs.length > 0 || agents || ticket) && (
+      {(tabs.length > 0 || pages.tabs.length > 0 || agents || ticket || card !== null) && (
         <MainTabStrip files={tabs} />
       )}
       <div className="relative min-h-0 flex-1">
@@ -53,7 +56,10 @@ export function MainTabs({
         {surface === "ticket" && (
           <div className="absolute inset-0 flex flex-col bg-bg">{ticketPage}</div>
         )}
-        {surface !== null && surface !== "ticket" && (
+        {surface === "card" && (
+          <div className="absolute inset-0 flex flex-col bg-bg">{cardPage}</div>
+        )}
+        {(surface === "page" || surface === "agents") && (
           <div className="absolute inset-0 flex">
             <BrowserSurface surface={surface} />
           </div>

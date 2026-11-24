@@ -22,6 +22,7 @@ import { keptWorktreesAtom } from "../state/mergeCleanup";
 import { setHiddenAdditions } from "../state/reviews";
 import type { ValidBoard } from "../store/boardFiles";
 import { ForYouLane } from "./ForYouLane";
+import { ForYouPage } from "./ForYouPage";
 import { Lanes } from "./Lanes";
 import { forYouHeight, hiddenFilters, layoutBoard } from "./layout";
 import { OrchestratorCard } from "./OrchestratorCard";
@@ -113,6 +114,7 @@ export function BoardScreen({
           <MainTabs
             files={artifacts.files}
             ticketPage={<TicketPanel environmentId={project.environmentId} model={model} page />}
+            cardPage={<ForYouPage project={project} listed={listed} forYou={forYou} />}
           >
             <Viewport
               content={layout.content}

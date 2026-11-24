@@ -35,7 +35,7 @@ import {
 } from "../store/boardFiles";
 import { createLocalState, type LocalState } from "../store/localState";
 import { showPanelTab, ticketChoiceAtom } from "../browser/panel";
-import { closeTicketPage, showBoard } from "./filesView";
+import { closePage, showBoard } from "./filesView";
 import { failureText } from "../settings/failureText";
 import {
   engineConnectionAtom,
@@ -299,7 +299,8 @@ export function openBoard(
   const before = registry.get(lastOpenedBoardAtom);
   if (before?.projectId !== opened.projectId || before.folder !== opened.folder) {
     registry.set(ticketChoiceAtom, null);
-    closeTicketPage(registry);
+    closePage(registry, "ticket");
+    closePage(registry, "card");
   }
   registry.set(lastOpenedBoardAtom, opened);
   showBoard(registry);

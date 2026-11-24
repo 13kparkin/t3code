@@ -18,8 +18,8 @@ export interface FileRef {
   readonly diff?: DiffSource;
 }
 
-/** Which tab other than a file covers the canvas: a browser page, the agents' tabs, or the chosen ticket's details. */
-export type Surface = "page" | "agents" | "ticket";
+/** Which tab other than a file covers the canvas: a browser page, the agents' tabs, the chosen ticket's details, or one For you card. */
+export type Surface = "page" | "agents" | "ticket" | "card";
 
 /** The explorer's root, the files open as tabs beside the board, and which tab the main view shows. */
 export interface FilesViewState {
@@ -32,6 +32,8 @@ export interface FilesViewState {
   readonly surface: Surface | null;
   /** Whether the ticket's full-page tab is open. */
   readonly ticket: boolean;
+  /** The id of the For you card open as a full-page tab. */
+  readonly card: string | null;
 }
 
 export const filesViewAtom = Atom.make<FilesViewState>({
@@ -40,6 +42,7 @@ export const filesViewAtom = Atom.make<FilesViewState>({
   active: null,
   surface: null,
   ticket: false,
+  card: null,
 }).pipe(Atom.keepAlive, Atom.withLabel("files-view"));
 
 /** The identity of a tab: a line request does not make a second tab, and a diff is not the file it shows. */
@@ -85,13 +88,16 @@ export const showSurface = (registry: AtomRegistry.AtomRegistry, surface: Surfac
 export const openTicketPage = (registry: AtomRegistry.AtomRegistry) =>
   change(registry, (state) => ({ ...state, ticket: true, active: null, surface: "ticket" }));
 
-/** Closing it while it shows returns to the canvas. */
-export const closeTicketPage = (registry: AtomRegistry.AtomRegistry) =>
-  change(registry, (state) =>
-    state.surface === "ticket"
-      ? { ...state, ticket: false, active: null, surface: null }
-      : { ...state, ticket: false },
-  );
+export const openCardPage = (registry: AtomRegistry.AtomRegistry, card: string) =>
+  change(registry, (state) => ({ ...state, card, active: null, surface: "card" }));
+
+/** Closing the ticket's or the card's page while it shows returns to the canvas. */
+export const closePage = (registry: AtomRegistry.AtomRegistry, page: "ticket" | "card") =>
+  change(registry, (state) => ({
+    ...state,
+    ...(page === "ticket" ? { ticket: false } : { card: null }),
+    ...(state.surface === page ? { active: null, surface: null } : {}),
+  }));
 
 /** Closes a tab. Closing the one shown moves to the tab before it, or back to the canvas. */
 export const closeFile = (registry: AtomRegistry.AtomRegistry, file: FileRef) =>
