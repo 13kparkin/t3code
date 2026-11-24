@@ -33,14 +33,7 @@ import { ticketStatus } from "./ticketStatus";
 const LANE_TONE = {
   for_you: "bg-amber-500 text-black",
   todo: "bg-zinc-700 text-white",
-  planned: "bg-zinc-600 text-white",
-  building: "bg-blue-600 text-white",
-  reviewing: "bg-violet-600 text-white",
-  verifying: "bg-cyan-600 text-white",
-  pr: "bg-indigo-600 text-white",
-  awaiting_approval: "bg-orange-600 text-white",
-  merged: "bg-emerald-600 text-white",
-  unassigned: "bg-red-600 text-white",
+  running: "bg-blue-600 text-white",
 } as const satisfies Record<LaneId, string>;
 
 /** Every lane on the canvas and its ticket frames with their agents. */
@@ -103,22 +96,24 @@ export function Lanes({
               className={`rounded-md px-2 text-[11px] leading-5 font-semibold ${LANE_TONE[lane.id]}`}
             >
               {LANE_LABEL[lane.id]}
-              {lane.id === "planned" && queued ? " · queued" : ""}
+              {lane.id === "todo" && queued ? " · queued" : ""}
             </span>
-            <span className="text-[11px] text-faint">{laneCount(lane, model, forYouOpen)}</span>
+            <span className="text-[11px] text-faint">{laneCount(lane, views, forYouOpen)}</span>
             <span className="flex-1" />
-            <Tooltip text="Hide lane" side="bottom" align="end">
-              <button
-                type="button"
-                aria-label={`Hide the ${LANE_LABEL[lane.id]} lane`}
-                // A press here is a click, not the start of a pan.
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={() => void toggleFolded(registry, laneKey(boardId, lane.id))}
-                className="grid size-5 place-items-center rounded text-faint hover:bg-hover hover:text-fg"
-              >
-                <EyeOff className="size-3" aria-hidden />
-              </button>
-            </Tooltip>
+            {lane.id === "for_you" && (
+              <Tooltip text="Hide lane" side="bottom" align="end">
+                <button
+                  type="button"
+                  aria-label="Hide the For you lane"
+                  // A press here is a click, not the start of a pan.
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={() => void toggleFolded(registry, laneKey(boardId, "for_you"))}
+                  className="grid size-5 place-items-center rounded text-faint hover:bg-hover hover:text-fg"
+                >
+                  <EyeOff className="size-3" aria-hidden />
+                </button>
+              </Tooltip>
+            )}
           </header>
           {lane.id === "for_you" && forYouLane}
         </section>
@@ -263,7 +258,8 @@ export function Lanes({
   );
 }
 
-function laneCount(lane: LaneBox, model: BoardModel, forYouOpen: number): number {
-  if (lane.id === "for_you") return forYouOpen;
-  return lane.id === "unassigned" ? model.unassigned.length : model.lanes[lane.id].length;
+function laneCount(lane: LaneBox, views: ReadonlyMap<string, unknown>, forYouOpen: number) {
+  return lane.id === "for_you"
+    ? forYouOpen
+    : lane.frames.filter((frame) => views.has(frame.key)).length;
 }

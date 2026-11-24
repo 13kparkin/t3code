@@ -11,7 +11,7 @@ import { OrchestratorPanel } from "../chat/OrchestratorPanel";
 import { MainTabs } from "../files/MainTabs";
 import { visibleAdditions } from "../domain/additions";
 import { mergeTicketKey } from "../domain/readiness";
-import { frameOrderAtom, hiddenLanesAtom } from "../state/boardUi";
+import { filterFlipsAtom, frameOrderAtom } from "../state/boardUi";
 import { useThreadFamily } from "../state/family";
 import { PrProvider } from "../state/prStatus";
 import { focusedCardAtom, useBoardForYou } from "../state/forYou";
@@ -23,7 +23,7 @@ import { setHiddenAdditions } from "../state/reviews";
 import type { ValidBoard } from "../store/boardFiles";
 import { ForYouLane } from "./ForYouLane";
 import { Lanes } from "./Lanes";
-import { additionLaneId, forYouHeight, LANE_IDS, layoutBoard } from "./layout";
+import { forYouHeight, hiddenFilters, layoutBoard } from "./layout";
 import { OrchestratorCard } from "./OrchestratorCard";
 import { TicketPanel } from "./TicketPanel";
 import { Viewport } from "./Viewport";
@@ -57,15 +57,8 @@ export function BoardScreen({
   const order = useAtomValue(frameOrderAtom)[board.id] ?? NO_ORDER;
   const forYou = useBoardForYou(project, listed);
   const artifacts = useBoardArtifacts(project, listed, model);
-  const hiddenIds = useAtomValue(hiddenLanesAtom(board.id));
-  const hidden = useMemo(() => {
-    const folded = hiddenIds.split(",");
-    const lanes = [
-      ...LANE_IDS,
-      ...visible.flatMap((item) => (item.place === "canvas" ? [additionLaneId(item.id)] : [])),
-    ];
-    return new Set<string>(lanes.filter((id) => folded.includes(id)));
-  }, [hiddenIds, visible]);
+  const flips = useAtomValue(filterFlipsAtom(board.id));
+  const hidden = useMemo(() => hiddenFilters(new Set(flips.split(",")), visible), [flips, visible]);
   const layout = useMemo(
     () =>
       layoutBoard(model, order, forYouHeight(forYou.views), hidden, visible, stats.problems.length),
@@ -132,7 +125,6 @@ export function BoardScreen({
                 listed={listed}
                 stats={{ ...stats, forYouOpen: forYou.open }}
                 builders={builders}
-                offPath={model.lanes.off_path.map((view) => view.ticket)}
                 hidden={hidden}
                 additions={additions}
                 onChangeHidden={changeHidden}
