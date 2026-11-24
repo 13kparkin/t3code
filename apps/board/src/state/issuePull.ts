@@ -12,7 +12,7 @@ import { boardStoreAtom } from "./orchestrator";
 import { savePulled } from "./ticketEdit";
 
 /** A tracker is read for each linked ticket this often, and the tickets of one board are spread across it. */
-export const PULL_INTERVAL_MS = 120_000;
+const PULL_INTERVAL_MS = 120_000;
 const PULL_GAP_MS = 5_000;
 
 type PullProject = Pick<

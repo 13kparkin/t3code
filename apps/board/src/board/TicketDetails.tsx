@@ -1,13 +1,12 @@
+import { useAtomValue } from "@effect/atom-react";
 import { useState } from "react";
 
 import { openInBrowser } from "../browser/browserTabs";
-import { classifyIssueLink } from "../issues/issueLinks";
-import { URL_TRACKER } from "../issues/issueLinks";
+import { classifyIssueLink, URL_TRACKER } from "../issues/issueLinks";
 import { lockedFields } from "../domain/ticketOverlay";
 import { pullStatusAtom, pullStatusKey } from "../state/issuePull";
 import { usePrContext } from "../state/prStatus";
 import { ago } from "../ui/ago";
-import { useAtomValue } from "@effect/atom-react";
 import type { SectionProps } from "./sectionProps";
 import { useTicketActions } from "./useTicketActions";
 
