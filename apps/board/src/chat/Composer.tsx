@@ -40,13 +40,11 @@ import { cancelQueued, interruptTurn, startTurn, steerQueued } from "../state/th
 import type { ValidBoard } from "../store/boardFiles";
 import { attachmentInputs, pastedFiles } from "./attachments";
 import { prepareSend } from "./prepareSend";
-import {
-  AttachedFiles,
-  ComposerActions,
-  FailedSends,
-  FreshNotice,
-  Suggestions,
-} from "./ComposerParts";
+import { AttachedFiles } from "./AttachedFiles";
+import { ComposerActions } from "./ComposerActions";
+import { FailedSends } from "./FailedSends";
+import { FreshNotice } from "./FreshNotice";
+import { SuggestionChips } from "./SuggestionChips";
 import { ModelPicker } from "./ModelPicker";
 import {
   detectSlashTrigger,
@@ -425,7 +423,7 @@ export function Composer({
       )}
       {fresh && <FreshNotice onCancel={() => setFresh(false)} />}
       {draft === "" && files.length === 0 && (
-        <Suggestions
+        <SuggestionChips
           onPick={(text) => {
             edit(text, text.length);
             input.current?.focus();
