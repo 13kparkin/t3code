@@ -34,7 +34,8 @@ import {
   type ValidBoard,
 } from "../store/boardFiles";
 import { createLocalState, type LocalState } from "../store/localState";
-import { showPanelTab, ticketChoiceAtom } from "../browser/panel";
+import { ticketChoiceAtom } from "../browser/panel";
+import { closeAgentPanel } from "./agentPanel";
 import { closePage, showBoard } from "./filesView";
 import { failureText } from "../settings/failureText";
 import {
@@ -301,10 +302,9 @@ export function openBoard(
     registry.set(ticketChoiceAtom, null);
     closePage(registry, "ticket");
     closePage(registry, "card");
-    closePage(registry, "agent");
+    closeAgentPanel(registry);
   }
   registry.set(lastOpenedBoardAtom, opened);
   showBoard(registry);
-  showPanelTab(registry, "chat");
   return localState.update((state) => ({ ...state, lastOpenedBoard: opened }));
 }

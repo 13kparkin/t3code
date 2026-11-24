@@ -5,7 +5,6 @@ import type { Addition } from "../domain/additions";
 import { missingPlan } from "../domain/ticket";
 import { AdditionBlocks } from "./AdditionBlocks";
 import type { SectionProps } from "./sectionProps";
-import { TicketActivity } from "./TicketActivity";
 import { TicketAgents } from "./TicketAgents";
 import { Prerequisites } from "./Prerequisites";
 import { TicketDetails } from "./TicketDetails";
@@ -23,8 +22,6 @@ export interface TicketSection {
   /** Whether the ticket has anything for this section. A section with nothing is left out, bar and all. */
   readonly shows: (props: SectionProps) => boolean;
   readonly Body: ComponentType<SectionProps>;
-  /** The section takes the panel's spare height. */
-  readonly fill?: true;
 }
 
 /** Top to bottom. Collapsed bars stack in this order too. */
@@ -58,13 +55,6 @@ export const TICKET_SECTIONS: ReadonlyArray<TicketSection> = [
   { id: "source", title: "Source control", shows: () => true, Body: TicketSource },
   { id: "checks", title: "Checks", shows: () => true, Body: TicketChecks },
   { id: "files", title: "Files", shows: () => true, Body: TicketFiles },
-  {
-    id: "activity",
-    title: "Activity",
-    shows: ({ agent }) => agent !== null,
-    Body: TicketActivity,
-    fill: true,
-  },
 ];
 
 /** The sections with each `ticket` addition after Readiness, shown on its own ticket only. */

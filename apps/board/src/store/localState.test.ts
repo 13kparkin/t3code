@@ -32,6 +32,13 @@ describe("local state", () => {
     });
   });
 
+  it("Given a file saved before the chat thread could hide, when read, then no board has it shown; a saved choice is kept", async () => {
+    expect((await createLocalState(fakeStorage("{}").storage).read()).threadShown).toEqual({});
+    const { storage } = fakeStorage();
+    await createLocalState(storage).update((state) => ({ ...state, threadShown: { b1: true } }));
+    expect((await createLocalState(storage).read()).threadShown).toEqual({ b1: true });
+  });
+
   it("Given a last opened board, when the app reads again, then it is still there", async () => {
     const { storage } = fakeStorage();
     await createLocalState(storage).update((state) => ({

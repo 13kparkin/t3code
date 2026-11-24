@@ -1,7 +1,7 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { TriangleAlert } from "lucide-react";
-import { useContext, useMemo, useState } from "react";
+import { useContext, useLayoutEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { ArtifactsProvider } from "../artifacts/ArtifactsContext";
@@ -11,6 +11,7 @@ import { OrchestratorPanel } from "../chat/OrchestratorPanel";
 import { MainTabs } from "../files/MainTabs";
 import { visibleAdditions } from "../domain/additions";
 import { mergeTicketKey } from "../domain/readiness";
+import { applyThreadShown, threadKey, threadShownAtom } from "../state/chatThread";
 import { filterFlipsAtom, frameOrderAtom } from "../state/boardUi";
 import { useThreadFamily } from "../state/family";
 import { PrProvider } from "../state/prStatus";
@@ -22,7 +23,8 @@ import { issuePullAtom } from "../state/issuePull";
 import { keptWorktreesAtom } from "../state/mergeCleanup";
 import { setHiddenAdditions } from "../state/reviews";
 import type { ValidBoard } from "../store/boardFiles";
-import { AgentPage } from "./AgentPage";
+import { openAgentPanel } from "../state/agentPanel";
+import { AgentPanel } from "./AgentPanel";
 import { ForYouLane } from "./ForYouLane";
 import { ForYouPage } from "./ForYouPage";
 import { Lanes } from "./Lanes";
@@ -43,6 +45,8 @@ export function BoardScreen({
   listed: ValidBoard;
 }) {
   const registry = useContext(RegistryContext);
+  const stored = useAtomValue(threadShownAtom)[threadKey(project.id, listed.folder)] ?? false;
+  useLayoutEffect(() => applyThreadShown(registry, stored), [registry, stored]);
   const [dropError, setDropError] = useState<string | null>(null);
   const [hideError, setHideError] = useState<string | null>(null);
   const { board } = listed;
@@ -117,12 +121,12 @@ export function BoardScreen({
   return (
     <ArtifactsProvider value={artifacts}>
       <PrProvider value={prContext}>
-        <div className="flex h-full min-h-0">
+        <div className="relative flex h-full min-h-0">
+          <AgentPanel environmentId={project.environmentId} model={model} />
           <MainTabs
             files={artifacts.files}
             ticketPage={<TicketPanel environmentId={project.environmentId} model={model} page />}
             cardPage={<ForYouPage project={project} listed={listed} forYou={forYou} />}
-            agentPage={<AgentPage environmentId={project.environmentId} model={model} />}
           >
             <Viewport
               content={layout.content}
@@ -155,6 +159,10 @@ export function BoardScreen({
                 }
                 choice={choice}
                 onChoose={(next) => chooseTicket(registry, next)}
+                onOpenAgent={(threadId, ticketKey) => {
+                  registry.set(ticketChoiceAtom, { threadId, ticketKey });
+                  openAgentPanel(registry, threadId);
+                }}
                 onRemoveAddition={(id) => changeHidden((ids) => [...ids, id])}
               />
             </Viewport>

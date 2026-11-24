@@ -19,7 +19,6 @@ type KeepReason =
   | "status-unknown"
   | "dirty"
   | "unpushed"
-  | "no-evidence"
   | "evidence-missing";
 
 type Plan =
@@ -47,8 +46,8 @@ export type WorktreeStatus = Pick<
 >;
 
 /**
- * File names under `.omp/artifacts/` and the board's `artifacts/`, each starting with its ticket key.
- * `worktree` is null when the worktree has no folder for this ticket.
+ * File names under a legacy `.omp/artifacts/` and the board's `artifacts/`, each starting with its
+ * ticket key. `worktree` is null when the worktree has no `.omp/artifacts` key folder at all.
  */
 interface Evidence {
   readonly worktree: ReadonlyArray<string> | null;
@@ -85,7 +84,8 @@ const branchSafe = (status: WorktreeStatus) =>
   ((status.hasUpstream && status.aheadCount === 0) || status.aheadOfDefaultCount === 0);
 
 const evidenceCopied = ({ worktree, board, partial }: Evidence) => {
-  if (worktree === null || partial) return false;
+  if (worktree === null) return true;
+  if (partial) return false;
   const copied = new Set(board);
   return worktree.every((name) => copied.has(name));
 };
@@ -129,7 +129,6 @@ export function planCleanup(facts: WorktreeFacts): Plan {
   if (status.hasWorkingTreeChanges) return keep("dirty");
   if (!branchSafe(status)) return keep("unpushed");
   if (evidence === undefined) return { kind: "read" };
-  if (evidence?.worktree === null) return keep("no-evidence");
   if (evidence === null || !evidenceCopied(evidence)) return keep("evidence-missing");
   return { kind: "remove", path: worktree };
 }
@@ -207,16 +206,30 @@ export interface CleanupTarget {
 async function readEvidence(
   files: ProjectFiles,
   target: CleanupTarget,
-  key: string,
   path: string,
 ): Promise<Evidence | null> {
   const copies = `${BOARDS_DIR}/${target.folder}/artifacts`;
   const under = (root: string) => (names: string[]) =>
     names.map((name) => name.slice(root.length + 1));
   try {
-    const folders = (await files.list(path, WORKTREE_ARTIFACTS)) ?? [];
-    const keys = folders.filter((entry) => entry.kind === "directory").map((e) => baseName(e.path));
-    if (!keys.includes(key)) return { worktree: null, board: [], partial: false };
+    const folders = await files.list(path, WORKTREE_ARTIFACTS);
+    // A null listing is a missing folder or a failed read. Only a `.omp` that lists without `artifacts` proves it missing.
+    if (folders === null) {
+      const omp = await files.list(path, ".omp");
+      if (omp?.some((entry) => baseName(entry.path) === "artifacts")) return null;
+      // Neither lists: a worktree root that lists with no `.omp` is a bare one, an unreadable root is a failed read.
+      if (omp === null) {
+        const root = await files.list(path, "");
+        if (root === null || root.some((entry) => baseName(entry.path) === ".omp")) return null;
+      }
+    }
+    const keys = (folders ?? [])
+      .filter((entry) => entry.kind === "directory")
+      .map((entry) => baseName(entry.path));
+    // Loose files with no ticket folder have no board copy to compare, so they keep the worktree.
+    if (keys.length === 0) {
+      return folders?.length ? null : { worktree: null, board: [], partial: false };
+    }
     const worktree = under(WORKTREE_ARTIFACTS)(
       await walk(files, path, WORKTREE_ARTIFACTS, { strict: true }),
     );
@@ -260,7 +273,7 @@ export async function cleanupMerged(
     }
     return plan({
       ...facts,
-      evidence: await readEvidence(ports.files, target, facts.ticket.key, facts.path),
+      evidence: await readEvidence(ports.files, target, facts.path),
     });
   };
   const facts = (

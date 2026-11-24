@@ -46,7 +46,17 @@ export function ticketPrRef(
       const number = Number(bare[1]);
       const link = usable.find((entry) => entry.number === number);
       if (link !== undefined) return refOfLink(project.id, link);
-      const repository = sourceControlClients.repositorySelector(project.repositoryIdentity);
+      // A fork's project names the upstream, but a bare number is the fork's own pull request.
+      const identity = project.repositoryIdentity;
+      const originName = identity?.origin?.displayName;
+      const repository = sourceControlClients.repositorySelector(
+        originName === undefined
+          ? identity
+          : {
+              ...(identity?.provider ? { provider: identity.provider } : {}),
+              displayName: originName,
+            },
+      );
       return repository === null || number < 1
         ? null
         : { projectId: project.id, repository, number };

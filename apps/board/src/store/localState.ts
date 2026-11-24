@@ -15,6 +15,9 @@ const LocalState = Schema.Struct({
   ).pipe(Schema.withDecodingDefaultKey(Effect.succeed({}))),
   /** The canvas filters the user flipped from their default, `lane:<board id>:<filter id>`, and the ticket sections they collapsed, `sec:<id>`. */
   folded: Schema.Array(Schema.String).pipe(Schema.withDecodingDefaultKey(Effect.succeed([]))),
+  threadShown: Schema.Record(Schema.String, Schema.Boolean).pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed({})),
+  ),
   /** Whether the app installs engine and provider updates itself. Both start off. */
   autoUpdate: Schema.Struct({ engine: Schema.Boolean, providers: Schema.Boolean }).pipe(
     Schema.withDecodingDefaultKey(Effect.succeed({ engine: false, providers: false })),
@@ -45,6 +48,7 @@ export const EMPTY_LOCAL_STATE: LocalState = {
   lastOpenedBoard: null,
   frameOrder: {},
   folded: [],
+  threadShown: {},
   autoUpdate: { engine: false, providers: false },
   appPrereleases: false,
   announcedUpdates: {},

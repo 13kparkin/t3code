@@ -234,6 +234,28 @@ describe("the sends the engine has not echoed", () => {
   );
 });
 
+describe("the thread leaves out messages that wait above the input", () => {
+  const user = (messageId: string, delivery: "delivered" | "queued" | "steering"): ChatItem => ({
+    kind: "user",
+    id: `i-${messageId}`,
+    messageId,
+    text: messageId,
+    textOmitted: false,
+    delivery,
+  });
+  const items = [user("a", "delivered"), user("b", "queued"), user("c", "steering")];
+
+  it("Given a live turn, when rows are read, then only the delivered message is a row", () => {
+    const rows = timelineRows(source(items, [{ id: "r1", status: "running" }]));
+    expect(rows.map((row) => row.id)).toEqual(["i-a"]);
+  });
+
+  it("Given the turn ended before it took a steering message, when rows are read, then the steer is a row", () => {
+    const rows = timelineRows(source(items, [{ id: "r1", status: "completed" }]));
+    expect(rows.map((row) => row.id)).toEqual(["i-a", "i-c"]);
+  });
+});
+
 describe("how a user message stands", () => {
   it.each([
     ["pending", "queued_turn", "queued"],

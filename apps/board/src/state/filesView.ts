@@ -19,12 +19,7 @@ export interface FileRef {
 }
 
 /** Which non-file tab covers the canvas. */
-export type Surface = "page" | "agents" | "ticket" | "card" | "agent";
-
-export interface AgentPage {
-  readonly threadId: string;
-  readonly label: string;
-}
+export type Surface = "page" | "agents" | "ticket" | "card";
 
 /** The explorer's root, the files open as tabs beside the board, and which tab the main view shows. */
 export interface FilesViewState {
@@ -39,7 +34,6 @@ export interface FilesViewState {
   readonly ticket: boolean;
   /** The id of the For you card open as a full-page tab. */
   readonly card: string | null;
-  readonly agent: AgentPage | null;
 }
 
 export const filesViewAtom = Atom.make<FilesViewState>({
@@ -49,7 +43,6 @@ export const filesViewAtom = Atom.make<FilesViewState>({
   surface: null,
   ticket: false,
   card: null,
-  agent: null,
 }).pipe(Atom.keepAlive, Atom.withLabel("files-view"));
 
 /** The identity of a tab: a line request does not make a second tab, and a diff is not the file it shows. */
@@ -98,14 +91,10 @@ export const openTicketPage = (registry: AtomRegistry.AtomRegistry) =>
 export const openCardPage = (registry: AtomRegistry.AtomRegistry, card: string) =>
   change(registry, (state) => ({ ...state, card, active: null, surface: "card" }));
 
-export const openAgentPage = (registry: AtomRegistry.AtomRegistry, agent: AgentPage) =>
-  change(registry, (state) => ({ ...state, agent, active: null, surface: "agent" }));
-
 const CLOSED = {
   ticket: { ticket: false },
   card: { card: null },
-  agent: { agent: null },
-} as const satisfies Record<"ticket" | "card" | "agent", Partial<FilesViewState>>;
+} as const satisfies Record<"ticket" | "card", Partial<FilesViewState>>;
 
 /** Closing a page tab while it shows returns to the canvas. */
 export const closePage = (registry: AtomRegistry.AtomRegistry, page: keyof typeof CLOSED) =>

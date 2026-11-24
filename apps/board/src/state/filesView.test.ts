@@ -6,7 +6,6 @@ import {
   closeFile,
   closePage,
   filesViewAtom,
-  openAgentPage,
   openCardPage,
   openFile,
   openTicketPage,
@@ -68,11 +67,9 @@ describe("the main view's shown tab", () => {
     expect(registry.get(filesViewAtom)).toMatchObject({ ticket: false, active: readme });
   });
 
-  it("Given the ticket's, a For you card's and an agent's tabs, when the card's and then the agent's close while shown, then the canvas returns, and the ticket's tab stays open", () => {
+  it("Given the ticket's and a For you card's tabs, when the card's closes while shown, then the canvas returns, and the ticket's tab stays open", () => {
     const registry = AtomRegistry.make();
     openTicketPage(registry);
-    openAgentPage(registry, { threadId: "th-1", label: "T-1 task" });
-    closePage(registry, "agent");
     openCardPage(registry, "q-1");
     expect(registry.get(filesViewAtom)).toMatchObject({
       ticket: true,
@@ -83,7 +80,6 @@ describe("the main view's shown tab", () => {
     expect(registry.get(filesViewAtom)).toMatchObject({
       ticket: true,
       card: null,
-      agent: null,
       surface: null,
       active: null,
     });

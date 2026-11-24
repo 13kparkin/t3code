@@ -16,9 +16,9 @@ import { deleteWorktree, vcsEnvironment } from "./vcs";
 
 type CleanupProject = Pick<EnvironmentProject, "id" | "environmentId" | "workspaceRoot">;
 
-const NONE: ReadonlyMap<string, string> = new Map();
+const NONE: ReadonlyMap<string, string | null> = new Map();
 
-/** Why each merged ticket of a board still has a worktree, by ticket key, from the last cleanup run. */
+/** Each merged ticket's verdict from the last finished cleanup run: why its worktree is kept, or null when it passed. */
 export const keptWorktreesAtom = Atom.family((storeKey: string) =>
   Atom.make(NONE).pipe(Atom.keepAlive, Atom.withLabel(`kept-worktrees:${storeKey}`)),
 );
@@ -87,6 +87,11 @@ export function runMergeCleanup(
             { workspaceRoot: project.workspaceRoot, folder },
             merged,
           );
-    registry.set(keptWorktreesAtom(storeKey), kept);
+    registry.set(
+      keptWorktreesAtom(storeKey),
+      merged.length === 0
+        ? NONE
+        : new Map(merged.map((ticket) => [ticket.key, kept.get(ticket.key) ?? null])),
+    );
   });
 }

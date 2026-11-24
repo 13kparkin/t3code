@@ -118,9 +118,9 @@ describe("planCleanup", () => {
       { kind: "keep", reason: "running" },
     ],
     [
-      "skipped t3-c99fb87b: no evidence folder in the worktree",
-      { evidence: { worktree: null, board: [], partial: false } },
-      { kind: "keep", reason: "no-evidence" },
+      "SAFE: no evidence folder in the worktree",
+      { evidence: { worktree: null, board: ["README.txt"], partial: false } },
+      { kind: "remove", path: WT },
     ],
     [
       "the orchestrator skipped the evidence copy",
@@ -194,7 +194,10 @@ const BOARD = ".agentboard/main";
 function filesOf(tree: Record<string, ReadonlyArray<string>>): ProjectFiles {
   return {
     list: async (cwd, directory) => {
-      const prefix = `${directory}/`;
+      // The engine fails on "." and lists the root as "".
+      if (directory === ".")
+        throw new Error("Workspace file path must stay within the workspace root");
+      const prefix = directory === "" ? "" : `${directory}/`;
       const children = new Map<string, string>();
       for (const path of tree[cwd] ?? []) {
         if (!path.startsWith(prefix)) continue;
@@ -220,6 +223,16 @@ function world(input: {
   readonly unlisted?: string;
   /** Evidence a closed sibling ticket left in the same worktree. */
   readonly sibling?: boolean;
+  /** The worktree has no `.omp/artifacts`, as when the agents wrote straight to the board. */
+  readonly bare?: boolean;
+  /** The worktree holds only a closed sibling ticket's evidence. */
+  readonly siblingOnly?: boolean;
+  /** The worktree root does not list either, as when the whole folder is unreadable. */
+  readonly rootUnreadable?: boolean;
+  /** `.omp` does not list either, as when the folder is unreadable. */
+  readonly ompUnreadable?: boolean;
+  /** `.omp/artifacts` holds only loose files, no ticket folder. */
+  readonly loose?: boolean;
 }) {
   const removed: string[] = [];
   const archived: string[] = [];
@@ -232,8 +245,13 @@ function world(input: {
       ...(input.partial ? [`${BOARD}/artifacts/T-26.partial/smoke.png`] : []),
     ],
     [WT]: [
-      ".omp/artifacts/T-26/README.txt",
-      ".omp/artifacts/T-26/smoke.png",
+      ...(input.bare
+        ? ["src/app.ts"]
+        : input.loose
+          ? [".omp/artifacts/notes.md"]
+          : input.siblingOnly
+            ? [".omp/artifacts/T-25/notes.md"]
+            : [".omp/artifacts/T-26/README.txt", ".omp/artifacts/T-26/smoke.png"]),
       ...(input.unlisted ? [`${input.unlisted}/1.png`] : []),
       ...(input.sibling ? [".omp/artifacts/T-25/notes.md"] : []),
     ],
@@ -243,7 +261,11 @@ function world(input: {
     files: {
       ...files,
       list: async (cwd, directory) =>
-        directory === input.unlisted ? null : files.list(cwd, directory),
+        directory === input.unlisted ||
+        (input.ompUnreadable && directory === ".omp") ||
+        (input.rootUnreadable && directory === "")
+          ? null
+          : files.list(cwd, directory),
     },
     tickets: async () => new Map([["main", [ticket()]]]),
     worktrees: async () => [OTHER, WT],
@@ -281,6 +303,61 @@ describe("cleanupMerged", () => {
     expect(await cleanupMerged(copied.ports, target, [ticket()])).toEqual(new Map());
     expect(copied.removed).toEqual([WT]);
     expect(copied.archived).toEqual(["builder"]);
+  });
+
+  it("deletes a worktree with no .omp/artifacts, since the evidence is in the board folder", async () => {
+    const bare = world({ board: ["README.txt", "smoke.png"], bare: true });
+    expect(await cleanupMerged(bare.ports, target, [ticket()])).toEqual(new Map());
+    expect(bare.removed).toEqual([WT]);
+  });
+
+  it("keeps a worktree that holds only a sibling ticket's evidence that was never copied", async () => {
+    const skipped = world({ board: ["README.txt"], siblingOnly: true });
+    expect(await cleanupMerged(skipped.ports, target, [ticket()])).toEqual(
+      new Map([["T-26", "evidence-missing"]]),
+    );
+    expect(skipped.removed).toEqual([]);
+  });
+
+  it("keeps the worktree when .omp/artifacts exists but does not list", async () => {
+    const unreadable = world({ board: ["README.txt", "smoke.png"], unlisted: ".omp/artifacts" });
+    expect(await cleanupMerged(unreadable.ports, target, [ticket()])).toEqual(
+      new Map([["T-26", "evidence-missing"]]),
+    );
+    expect(unreadable.removed).toEqual([]);
+  });
+
+  it("keeps the worktree when neither .omp/artifacts nor .omp lists", async () => {
+    const unreadable = world({
+      board: ["README.txt", "smoke.png"],
+      unlisted: ".omp/artifacts",
+      ompUnreadable: true,
+    });
+    expect(await cleanupMerged(unreadable.ports, target, [ticket()])).toEqual(
+      new Map([["T-26", "evidence-missing"]]),
+    );
+    expect(unreadable.removed).toEqual([]);
+  });
+
+  it("keeps the worktree when .omp/artifacts, .omp and the worktree root all fail to list", async () => {
+    const unreadable = world({
+      board: ["README.txt", "smoke.png"],
+      bare: true,
+      ompUnreadable: true,
+      rootUnreadable: true,
+    });
+    expect(await cleanupMerged(unreadable.ports, target, [ticket()])).toEqual(
+      new Map([["T-26", "evidence-missing"]]),
+    );
+    expect(unreadable.removed).toEqual([]);
+  });
+
+  it("keeps the worktree when .omp/artifacts holds loose files and no ticket folder", async () => {
+    const loose = world({ board: ["README.txt"], loose: true });
+    expect(await cleanupMerged(loose.ports, target, [ticket()])).toEqual(
+      new Map([["T-26", "evidence-missing"]]),
+    );
+    expect(loose.removed).toEqual([]);
   });
 
   it("keeps the worktree while the orchestrator's copy is still in its .partial folder", async () => {

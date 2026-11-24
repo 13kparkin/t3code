@@ -1,7 +1,9 @@
-import { RegistryContext } from "@effect/atom-react";
+import { RegistryContext, useAtomValue } from "@effect/atom-react";
+import { deriveThreadQueueWorkflowState } from "@t3tools/client-runtime/state/thread-workflows";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import type { ThreadId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
+import { createPortal } from "react-dom";
 import {
   useCallback,
   useContext,
@@ -12,9 +14,11 @@ import {
   useSyncExternalStore,
 } from "react";
 
+import { dockSlotAtom } from "../browser/panel";
 import { environmentThreads, useEnvironmentThread } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
 import { useArtifacts } from "../artifacts/ArtifactsContext";
+import { queueRows } from "./queue";
 import { ArtifactLookup, ArtifactLookupContext } from "./artifactLookup";
 import { Composer } from "./Composer";
 import { PanelHeader } from "./PanelHeader";
@@ -67,8 +71,31 @@ export function Conversation({
   const [sends, setSends] = useState<ReadonlyArray<PendingSend>>([]);
   const kept = pendingSends(source ?? EMPTY, sends);
   if (kept !== sends) setSends(kept);
-  const pending = kept.filter((send) => send.threadId === threadId);
-  const rows = pending.length === 0 ? echoed : [...echoed, ...pending.map(pendingRow)];
+  const pending = useMemo(
+    () => kept.filter((send) => send.threadId === threadId),
+    [kept, threadId],
+  );
+  const failed = useMemo(() => pending.filter((send) => send.state.kind === "failed"), [pending]);
+  const rows = failed.length === 0 ? echoed : [...echoed, ...failed.map(pendingRow)];
+  const workflow = useMemo(
+    () => (projection === null ? null : deriveThreadQueueWorkflowState(projection)),
+    [projection],
+  );
+  const queue = useMemo(
+    () =>
+      queueRows(
+        source ?? EMPTY,
+        workflow?.queuedRuns.map(({ messageId, text, run }) => ({
+          messageId,
+          text,
+          runId: run.id,
+        })) ?? [],
+        pending,
+        live,
+      ),
+    [source, workflow, pending, live],
+  );
+  const dock = useAtomValue(dockSlotAtom);
   const failure = Option.getOrNull(state.error);
   const { all: artifacts, open: openArtifact } = useArtifacts();
   const lookup = useMemo(() => new ArtifactLookup(), []);
@@ -127,15 +154,21 @@ export function Conversation({
             <p className="text-faint">Thinking</p>
           )}
         </div>
-        <Composer
-          project={project}
-          listed={listed}
-          threadId={threadId}
-          projection={projection}
-          live={live}
-          failed={pending.filter((send) => send.state.kind === "failed")}
-          setSends={setSends}
-        />
+        {dock !== null &&
+          createPortal(
+            <Composer
+              project={project}
+              listed={listed}
+              threadId={threadId}
+              projection={projection}
+              live={live}
+              failed={failed}
+              queue={queue}
+              steer={workflow?.canPromoteToSteer === true ? (workflow.activeRun?.id ?? null) : null}
+              setSends={setSends}
+            />,
+            dock,
+          )}
       </ArtifactLookupContext>
     </SkillsContext>
   );

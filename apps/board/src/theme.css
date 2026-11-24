@@ -99,3 +99,20 @@
 .chat-markdown .katex-display {
   margin: 0;
 }
+
+@keyframes composer-sent {
+  40% {
+    transform: translateY(-4px);
+    border-color: var(--color-focus);
+  }
+}
+
+.composer-sent {
+  animation: composer-sent 220ms ease-out 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .composer-sent {
+    animation: none;
+  }
+}
