@@ -8,15 +8,12 @@ import { runAtomCommand } from "@t3tools/client-runtime/state/runtime";
 import { threadSupportsProviderHandoff } from "@t3tools/client-runtime/state/thread-workflows";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import {
-  type ModelSelection,
   MessageId,
   type OrchestrationV2ThreadProjection,
   ProviderInstanceId,
   type RunId,
   type ThreadId,
-  type ChatAttachment,
 } from "@t3tools/contracts";
-import { MessagesSquare, Paperclip, SendHorizontal, Square, X } from "lucide-react";
 import { flushSync } from "react-dom";
 import {
   type Dispatch,
@@ -32,25 +29,24 @@ import {
 
 import { panelAtom } from "../browser/panel";
 import { baseInstanceId } from "../orchestrator/orchestratorInstance";
-import {
-  modelSelectionOf,
-  NO_PICK,
-  pickableInstances,
-  type PickerValue,
-  pickOf,
-  selectionOf,
-} from "../providers/providers";
+import { NO_PICK, pickableInstances, type PickerValue, pickOf } from "../providers/providers";
 import { failureText } from "../settings/failureText";
 import { newId } from "../state/boards";
-import { ensureOrchestratorInstance } from "../state/orchestrator";
 import { engineConnectionAtom } from "../state/projects";
 import { engineProvidersAtom, serverEnvironment } from "../state/server";
-import { recordDocs, uploadAttachments } from "../state/attachmentUploads";
+import { recordDocs } from "../state/attachmentUploads";
 import { threadKey, setThreadShown } from "../state/chatThread";
 import { cancelQueued, interruptTurn, startTurn, steerQueued } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
 import { attachmentInputs, pastedFiles } from "./attachments";
-import { AttachmentThumb } from "./AttachmentThumb";
+import { prepareSend } from "./prepareSend";
+import {
+  AttachedFiles,
+  ComposerActions,
+  FailedSends,
+  FreshNotice,
+  Suggestions,
+} from "./ComposerParts";
 import { ModelPicker } from "./ModelPicker";
 import {
   detectSlashTrigger,
@@ -64,7 +60,6 @@ import {
 import { MARK_SLASH, SlashMenu, slashOptionId } from "./SlashMenu";
 import { cancelTarget, type QueueRow } from "./queue";
 import { QueueStrip } from "./QueueStrip";
-import { SUGGESTIONS } from "./suggestions";
 import type { PendingSend } from "./timeline";
 import { useTriggerLookup } from "./triggerLookup";
 import { emptyText } from "./triggerLookup.logic";
@@ -72,10 +67,6 @@ import { useWorkspaceSnapshot } from "./workspaceSnapshot";
 
 const SWITCH_BLOCKED =
   "This thread does not support switching providers after it has started. Start a new thread to use this model.";
-
-const markShown = (chip: HTMLElement | null) => {
-  if (chip !== null) performance.mark("board:attach-shown");
-};
 
 /**
  * The box that sends a message to the orchestrator or stops its turn, with the model picker for the
@@ -173,6 +164,7 @@ export function Composer({
     [open, trigger, restIsBlank, provider, cwd, canFresh, found.files, found.pullRequests],
   );
   const highlighted = Math.min(active, Math.max(ranked.length - 1, 0));
+  const highlightedItem = open ? ranked[highlighted] : undefined;
 
   const addFiles = (added: File[]) => {
     const checked = attachmentInputs([...files, ...added]);
@@ -229,40 +221,18 @@ export function Composer({
       fail(pending.messageId, "The thread is not loaded yet.");
       return;
     }
-    // Every turn goes out on the orchestrator instance, which also moves a board that started before it existed.
-    let selection: ModelSelection | null = null;
-    const picked = selectionOf(instances, pending.shown);
-    const base = modelSelectionOf(instances, pending.shown);
-    if (picked !== null && base !== null) {
-      try {
-        const instanceId = await ensureOrchestratorInstance(registry, environmentId, picked);
-        if (pending.overridden || instanceId !== projection.thread.modelSelection.instanceId) {
-          selection = { ...base, instanceId: ProviderInstanceId.make(instanceId) };
-        }
-      } catch (failure) {
-        fail(pending.messageId, failure instanceof Error ? failure.message : String(failure));
-        return;
-      }
+    const prepared = await prepareSend(
+      registry,
+      environmentId,
+      pending,
+      instances,
+      projection.thread.modelSelection.instanceId,
+    );
+    if ("error" in prepared) {
+      fail(pending.messageId, prepared.error);
+      return;
     }
-    let attachments: ChatAttachment[] = [];
-    if (pending.files.length > 0) {
-      const checked = attachmentInputs(pending.files);
-      if ("error" in checked) {
-        fail(pending.messageId, checked.error);
-        return;
-      }
-      try {
-        attachments = await uploadAttachments(
-          registry,
-          environmentId,
-          pending.files,
-          checked.inputs,
-        );
-      } catch (failure) {
-        fail(pending.messageId, failure instanceof Error ? failure.message : String(failure));
-        return;
-      }
-    }
+    const { selection, attachments } = prepared;
     if (deleted.current.has(pending.messageId)) return;
     const result = await runAtomCommand(
       registry,
@@ -421,8 +391,6 @@ export function Composer({
     }
   };
 
-  const highlightedItem = open ? ranked[highlighted] : undefined;
-
   return (
     <form
       onSubmit={send}
@@ -449,55 +417,20 @@ export function Composer({
         />
       )}
       <QueueStrip rows={queue} canSteer={steer !== null} onDelete={remove} onSteer={steerNow} />
-      {failed.map((pending) => (
-        <p
-          key={pending.messageId}
-          role="alert"
-          className="mb-1.5 flex items-center gap-2 break-words text-red-400"
-        >
-          <span className="min-w-0 flex-1">
-            Not sent: {pending.state.kind === "failed" ? pending.state.error : ""}
-          </span>
-          {!pending.fresh && (
-            <button type="button" onClick={() => retry(pending)} className="hover:text-fg">
-              Retry
-            </button>
-          )}
-          <button type="button" onClick={() => editFailed(pending)} className="hover:text-fg">
-            Edit
-          </button>
-        </p>
-      ))}
+      <FailedSends failed={failed} onRetry={retry} onEdit={editFailed} />
       {error !== null && (
         <p role="alert" className="mb-1.5 break-words text-red-400">
           {error}
         </p>
       )}
-      {fresh && (
-        <p className="mb-1.5 flex items-center gap-2 text-muted">
-          <span className="min-w-0 flex-1">The next message starts a fresh session.</span>
-          <button type="button" onClick={() => setFresh(false)} className="hover:text-fg">
-            Cancel
-          </button>
-        </p>
-      )}
+      {fresh && <FreshNotice onCancel={() => setFresh(false)} />}
       {draft === "" && files.length === 0 && (
-        <ul aria-label="Suggestions" className="flex gap-1.5 overflow-x-auto">
-          {SUGGESTIONS.map((suggestion) => (
-            <li key={suggestion} className="shrink-0">
-              <button
-                type="button"
-                onClick={() => {
-                  edit(suggestion, suggestion.length);
-                  input.current?.focus();
-                }}
-                className="rounded-full border border-line bg-panel px-3 py-1 text-xs text-muted shadow-panel hover:text-fg"
-              >
-                {suggestion}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <Suggestions
+          onPick={(text) => {
+            edit(text, text.length);
+            input.current?.focus();
+          }}
+        />
       )}
       <div
         ref={shell}
@@ -505,26 +438,10 @@ export function Composer({
         className="flex flex-col gap-1 rounded-2xl border border-line bg-panel p-2 shadow-panel focus-within:border-muted"
       >
         {files.length > 0 && (
-          <ul aria-label="Attached files" className="flex flex-wrap gap-1">
-            {files.map((file, index) => (
-              <li
-                key={`${file.name}:${file.lastModified}:${file.size}`}
-                ref={markShown}
-                className="flex max-w-full items-center gap-1 rounded-md border border-line bg-hover px-1.5 text-[11px] leading-5 text-fg"
-              >
-                <AttachmentThumb file={file} />
-                <span className="min-w-0 truncate">{file.name}</span>
-                <button
-                  type="button"
-                  aria-label={`Remove ${file.name}`}
-                  onClick={() => setFiles(files.filter((_, at) => at !== index))}
-                  className="text-muted hover:text-fg"
-                >
-                  <X className="size-3" />
-                </button>
-              </li>
-            ))}
-          </ul>
+          <AttachedFiles
+            files={files}
+            onRemove={(at) => setFiles(files.filter((_, i) => i !== at))}
+          />
         )}
         <div className="flex items-end gap-2">
           <textarea
@@ -554,55 +471,17 @@ export function Composer({
             }
             className="field-sizing-content max-h-40 min-h-10 min-w-0 flex-1 resize-none bg-transparent text-fg outline-none placeholder:text-faint"
           />
-          <input
-            ref={picker}
-            type="file"
-            multiple
-            hidden
-            data-testid="attach-input"
-            onChange={(event) => {
-              addFiles(Array.from(event.target.files ?? []));
-              event.target.value = "";
-            }}
-          />
-          <button
-            type="button"
-            aria-label="Attach files"
-            onClick={() => picker.current?.click()}
-            className="grid size-7 shrink-0 place-items-center rounded-full text-muted hover:bg-hover hover:text-fg"
-          >
-            <Paperclip className="size-3.5" />
-          </button>
-          <button
-            type="button"
-            aria-label={threadShown ? "Hide the chat thread" : "Show the chat thread"}
-            aria-pressed={threadShown}
-            onClick={() =>
+          <ComposerActions
+            picker={picker}
+            threadShown={threadShown}
+            stopping={live && draft.trim() === ""}
+            canSend={draft.trim() !== ""}
+            onAttach={addFiles}
+            onToggleThread={() =>
               void setThreadShown(registry, threadKey(project.id, listed.folder), !threadShown)
             }
-            className={`grid size-7 shrink-0 place-items-center rounded-full hover:bg-hover hover:text-fg ${threadShown ? "text-fg" : "text-muted"}`}
-          >
-            <MessagesSquare className="size-3.5" />
-          </button>
-          {live && draft.trim() === "" ? (
-            <button
-              type="button"
-              aria-label="Stop"
-              onClick={() => void stop()}
-              className="grid size-7 shrink-0 place-items-center rounded-full bg-fg text-bg"
-            >
-              <Square className="size-3 fill-current" />
-            </button>
-          ) : (
-            <button
-              type="submit"
-              aria-label="Send"
-              disabled={draft.trim() === ""}
-              className="grid size-7 shrink-0 place-items-center rounded-full bg-fg text-bg disabled:opacity-40"
-            >
-              <SendHorizontal className="size-3.5" />
-            </button>
-          )}
+            onStop={() => void stop()}
+          />
         </div>
         <ModelPicker
           instances={instances}
