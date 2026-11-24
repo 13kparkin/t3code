@@ -41,12 +41,17 @@ describe("the messages waiting above the input", () => {
       source([item("m2", "now", "steering"), item("m3", "done", "delivered")]),
       [{ messageId: "m1", text: "later", runId: RunId.make("run-1") }],
       [send("m1"), send("m4"), send("m5", { kind: "failed", error: "Offline" })],
+      true,
     );
     expect(rows).toEqual([
       { key: "m1", messageId: "m1", text: "later", delivery: "queued", runId: RunId.make("run-1") },
       { key: "m2", messageId: "m2", text: "now", delivery: "steering", runId: null },
       { key: "m4", messageId: "m4", text: "send m4", delivery: "sending", runId: null },
     ]);
+  });
+
+  it("Given a steering message and no live turn, when rows are read, then it is not listed", () => {
+    expect(queueRows(source([item("m2", "now", "steering")]), [], [], false)).toEqual([]);
   });
 
   it.each([

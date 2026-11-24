@@ -92,8 +92,9 @@ export function Conversation({
           runId: run.id,
         })) ?? [],
         pending,
+        live,
       ),
-    [source, workflow, pending],
+    [source, workflow, pending, live],
   );
   const dock = useAtomValue(dockSlotAtom);
   const failure = Option.getOrNull(state.error);

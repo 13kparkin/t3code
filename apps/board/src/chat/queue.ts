@@ -20,6 +20,7 @@ export function queueRows(
   source: TimelineSource,
   queued: ReadonlyArray<{ messageId: string; text: string; runId: RunId }>,
   sends: ReadonlyArray<PendingSend>,
+  live: boolean,
 ): ReadonlyArray<QueueRow> {
   const held = queued.map((run): QueueRow => ({
     key: run.messageId,
@@ -28,8 +29,9 @@ export function queueRows(
     delivery: "queued",
     runId: run.runId,
   }));
+  // A steer the finished turn took is no longer waiting, though the engine keeps it pending.
   const steering = source.items.flatMap((item): QueueRow[] =>
-    item.kind === "user" && item.delivery === "steering"
+    live && item.kind === "user" && item.delivery === "steering"
       ? [
           {
             key: item.messageId,
