@@ -111,6 +111,15 @@ export const isRunLive = (projection: {
   readonly runs: ReadonlyArray<{ readonly status: string }>;
 }): boolean => LIVE_RUN.includes(projection.runs.at(-1)?.status ?? "");
 
+/** A message's text, read from the thread's messages when the engine left it out of the item. */
+export const userText = (
+  source: Pick<TimelineSource, "messages">,
+  item: { messageId: string; text: string; textOmitted: boolean },
+): string =>
+  item.textOmitted
+    ? (source.messages.find((message) => message.id === item.messageId)?.text ?? "")
+    : item.text;
+
 /**
  * The thread as chat rows: the user's messages, the orchestrator's replies, and each stretch of tool
  * calls folded into one row. A user message or reply whose text the engine left out is read from the
@@ -118,9 +127,7 @@ export const isRunLive = (projection: {
  */
 export function timelineRows(projection: TimelineSource): ReadonlyArray<TimelineRow> {
   const textOf = (item: { messageId: string; text: string; textOmitted: boolean }) =>
-    item.textOmitted
-      ? (projection.messages.find((message) => message.id === item.messageId)?.text ?? "")
-      : item.text;
+    userText(projection, item);
 
   const createdAt = (item: { messageId: string }) =>
     projection.messages.find((message) => message.id === item.messageId)?.createdAt ?? null;
@@ -137,6 +144,8 @@ export function timelineRows(projection: TimelineSource): ReadonlyArray<Timeline
         break;
       }
       case "user":
+        // A message the engine still holds waits above the input until it is read.
+        if (item.delivery === "queued" || item.delivery === "steering") break;
         rows.push({
           kind: "user",
           id: item.id,
