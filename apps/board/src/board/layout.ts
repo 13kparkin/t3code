@@ -91,7 +91,7 @@ const TRACKER_CARD = 250;
 const RESOLVED_CARD = 34;
 const LEFT = 40;
 /** The orchestrator card's place on the canvas. */
-export const ORCHESTRATOR_BOX: Rect = { x: LEFT, y: LEFT, width: 340, height: 280 };
+export const ORCHESTRATOR_BOX: Rect = { x: LEFT, y: LEFT, width: 340, height: 310 };
 /** Where the lanes start, below the orchestrator card. */
 export const LANES_TOP = ORCHESTRATOR_BOX.y + ORCHESTRATOR_BOX.height + LEFT;
 

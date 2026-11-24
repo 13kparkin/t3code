@@ -146,12 +146,12 @@ describe("laying out additions", () => {
 
   it("Given two orchestrator lines, when laid out, then the lanes start 36px lower", () => {
     const moved = building(layoutBoard(model, {}, 0, new Set(), [line("a"), line("b")]));
-    expect([moved?.y, moved?.frames[0]?.y]).toEqual([396, 430]);
+    expect([moved?.y, moved?.frames[0]?.y]).toEqual([426, 460]);
   });
 
   it("Given one orchestrator line and two problem lines, when laid out, then the lanes start 54px lower", () => {
     const moved = building(layoutBoard(model, {}, 0, new Set(), [line("a")], 2));
-    expect([moved?.y, moved?.frames[0]?.y]).toEqual([414, 448]);
+    expect([moved?.y, moved?.frames[0]?.y]).toEqual([444, 478]);
   });
 
   it("Given a lane card for the building stage, when laid out, then it is the Running lane's first frame and the tickets follow it", () => {
@@ -159,16 +159,16 @@ describe("laying out additions", () => {
       layoutBoard(model, {}, 0, new Set(["stage:merged", "stage:off_path"]), [ci]),
     );
     expect(lane?.frames.map((frame) => [frame.key, frame.y, frame.height])).toEqual([
-      ["__add:ci", 394, 140],
-      ["T-1", 542, 52],
-      ["T-2", 602, 52],
+      ["__add:ci", 424, 140],
+      ["T-1", 572, 52],
+      ["T-2", 632, 52],
     ]);
   });
 
   it("Given a canvas addition, when laid out, then it is a lane after the stage lanes and widens the canvas", () => {
     const layout = layoutBoard(model, {}, 0, new Set(), [wait]);
     expect([layout.additionLanes, layout.content.width]).toEqual([
-      [{ key: "wait", x: 952, y: 360, width: 288, height: 314 }],
+      [{ key: "wait", x: 952, y: 390, width: 288, height: 314 }],
       1280,
     ]);
   });
