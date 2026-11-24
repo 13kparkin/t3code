@@ -9,6 +9,7 @@ import {
   type BoardIssue,
   DEFAULT_BUILDER_CAP,
   parseBoard,
+  type RoleTarget,
   serializeBoard,
   uniqueSlug,
 } from "../domain/board";
@@ -200,25 +201,45 @@ export async function updateBoard(
   return board;
 }
 
-let hiding: Promise<unknown> = Promise.resolve();
+let changing: Promise<unknown> = Promise.resolve();
 
-/** Applies `change` to the hidden addition ids read fresh from the board's own file. Calls run one at a time, so two quick hides both count. */
-export function changeHiddenAdditions(
+/** Applies `change` to the board read fresh from its own file. Calls run one at a time, so two quick changes both count. */
+function changeBoard(
+  files: ProjectFiles,
+  cwd: string,
+  folder: string,
+  change: (board: Board) => Board,
+): Promise<void> {
+  const run = changing.then(async () => {
+    await writeBoard(files, cwd, folder, change(await readBoard(files, cwd, folder)));
+  });
+  changing = run.catch(() => undefined);
+  return run;
+}
+
+export const changeHiddenAdditions = (
   files: ProjectFiles,
   cwd: string,
   folder: string,
   change: (ids: ReadonlyArray<string>) => ReadonlyArray<string>,
-): Promise<void> {
-  const run = hiding.then(async () => {
-    const board = await readBoard(files, cwd, folder);
-    await writeBoard(files, cwd, folder, {
-      ...board,
-      hiddenAdditions: [...new Set(change(board.hiddenAdditions ?? []))],
-    });
+) =>
+  changeBoard(files, cwd, folder, (board) => ({
+    ...board,
+    hiddenAdditions: [...new Set(change(board.hiddenAdditions ?? []))],
+  }));
+
+/** Sets one role's target, or with null removes it so the role takes the registry's default. */
+export const changeRoleTarget = (
+  files: ProjectFiles,
+  cwd: string,
+  folder: string,
+  role: string,
+  target: RoleTarget | null,
+) =>
+  changeBoard(files, cwd, folder, (board) => {
+    const { [role]: _replaced, ...others } = board.roleTargets ?? {};
+    return { ...board, roleTargets: target === null ? others : { ...others, [role]: target } };
   });
-  hiding = run.catch(() => undefined);
-  return run;
-}
 
 export const setBuilderCap = (files: ProjectFiles, cwd: string, folder: string, cap: number) =>
   updateBoard(files, cwd, folder, { builderCap: cap });

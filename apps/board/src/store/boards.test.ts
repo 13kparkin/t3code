@@ -14,6 +14,8 @@ import {
   updateBoard,
 } from "./boardFiles";
 import { roleFiles } from "../orchestrator/roles";
+import type { RoleTargetWrite } from "../domain/forYou";
+import { applyRoleTargetRequests, setRoleTarget } from "./roleTargets";
 
 const CWD = "/work/project";
 const PROJECT_ID = "586df7d0-cfc5-44b8-957a-ae03fb872e67";
@@ -334,5 +336,79 @@ describe("hiding additions", () => {
     await changeHiddenAdditions(files, CWD, target.folder, (ids) => [...ids, "a"]);
     await changeHiddenAdditions(files, CWD, target.folder, (ids) => [...ids, "a"]);
     expect(savedBoard(store)).toMatchObject({ hiddenAdditions: ["a"] });
+  });
+});
+
+describe("role targets", () => {
+  const efforts = ["low", "medium", "high"].map((id) => ({ id, label: id }));
+  const instance = {
+    instanceId: "claudeAgent",
+    offered: ["claude-opus-5-5"],
+    models: [
+      {
+        slug: "claude-opus-5-5",
+        name: "Opus",
+        effort: { id: "effort", choices: efforts, defaultChoice: "medium" },
+      },
+    ],
+  };
+  const FOR_YOU = ".agentboard/claude-connector/foryou.jsonl";
+  const request = (id: string, write: RoleTargetWrite) =>
+    JSON.stringify({
+      id,
+      kind: "role_target",
+      title: "Role change",
+      body: "",
+      status: "open",
+      createdAt: "2026-11-24T10:00:00Z",
+      write,
+    });
+
+  it("Given open role_target lines, when applied twice, then the good one is saved, the bad one rejected, and each resolved once", async () => {
+    const { files, store, target } = await boardWith("orchestrator");
+    const lines = [
+      request("rt-1", { role: "reviewer", model: "claude-opus-5-5", effort: "high" }),
+      request("rt-2", { role: "reviewer", model: "claude-fable-5-2" }),
+    ];
+    store.set(FOR_YOU, `${lines.join("\n")}\n`);
+    await applyRoleTargetRequests(files, CWD, target.folder, instance);
+    await applyRoleTargetRequests(files, CWD, target.folder, instance);
+    expect(savedBoard(store)?.roleTargets).toEqual({
+      reviewer: { model: "claude-opus-5-5", effort: "high" },
+    });
+    expect(
+      store
+        .get(FOR_YOU)
+        ?.trimEnd()
+        .split("\n")
+        .slice(2)
+        .map((line) => JSON.parse(line)),
+    ).toEqual([
+      { id: "rt-1", status: "resolved", resolution: "Applied: reviewer -> claude-opus-5-5, high" },
+      {
+        id: "rt-2",
+        status: "resolved",
+        resolution: "Rejected: claudeAgent does not offer claude-fable-5-2.",
+      },
+    ]);
+  });
+
+  it("Given a role on its own target, when it is reset by Settings or by a line, then the board drops it", async () => {
+    const { files, store, target } = await boardWith("orchestrator");
+    await setRoleTarget(
+      files,
+      CWD,
+      target.folder,
+      "reviewer",
+      { model: "claude-opus-5-5" },
+      instance,
+    );
+    await setRoleTarget(files, CWD, target.folder, "scout", { model: "claude-opus-5-5" }, instance);
+    expect(Object.keys(savedBoard(store)?.roleTargets ?? {})).toEqual(["reviewer", "scout"]);
+    await setRoleTarget(files, CWD, target.folder, "scout", null, instance);
+    store.set(FOR_YOU, `${request("rt-3", { role: "reviewer", model: null })}\n`);
+    await applyRoleTargetRequests(files, CWD, target.folder, instance);
+    expect(savedBoard(store)?.roleTargets).toEqual({});
+    expect(store.get(FOR_YOU)).toContain('"resolution":"Applied: reviewer -> default"');
   });
 });

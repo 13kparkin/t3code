@@ -29,6 +29,7 @@ import type { ValidBoard } from "../store/boardFiles";
 import { readingsFor } from "../usage/usageNotice";
 import { boardEngine, localState, newId, projectBoardsAtom } from "./boards";
 import { runMergeCleanup } from "./mergeCleanup";
+import { runRoleTargetRequests } from "./roleTargets";
 import { engineConnectionAtom, engineEnvironmentIdAtom, environmentProjects } from "./projects";
 import { engineProvidersAtom, engineSettingsAtom, serverEnvironment } from "./server";
 
@@ -249,6 +250,9 @@ export const boardStoreAtom = Atom.family((key: string) =>
               }
               if (last?.tickets !== next.tickets) {
                 runMergeCleanup(get.registry, project, key, folder, next.tickets);
+              }
+              if (last?.forYou !== next.forYou) {
+                runRoleTargetRequests(get.registry, project, key, folder);
               }
               if (last !== null && last.forYou !== next.forYou) {
                 performance.mark("board:foryou-file-change", { detail: { key } });
