@@ -6,6 +6,7 @@ import { sidebarOpenAtom } from "./browser/panel";
 import { PanelHost } from "./browser/PanelHost";
 import { PanelToggle } from "./browser/PanelToggle";
 import { ForYouPanel } from "./foryou/ForYouPanel";
+import { ArchivedPanel } from "./sidebar/ArchivedPanel";
 import { EngineStatus } from "./sidebar/EngineStatus";
 import { EngineVersion } from "./sidebar/EngineVersion";
 import { SettingsScreen } from "./settings/SettingsScreen";
@@ -55,6 +56,7 @@ export function App() {
         <main className="relative min-h-0 min-w-0">
           <OpenBoard />
           <ForYouPanel />
+          <ArchivedPanel />
         </main>
         <PanelHost />
       </div>

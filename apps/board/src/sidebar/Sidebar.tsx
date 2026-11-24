@@ -5,6 +5,7 @@ import { type ReactNode, useState } from "react";
 import { updateNoticeAtom } from "../state/updatesAtoms";
 import { Tooltip } from "../ui/Tooltip";
 import { AddProject } from "./AddProject";
+import { ArchivedRow } from "./ArchivedRow";
 import { BrowserRow } from "./BrowserRow";
 import { ForYouRow } from "./ForYouRow";
 import { ProjectList } from "./ProjectList";
@@ -57,6 +58,7 @@ export function Sidebar({
         <ProjectList />
       </Section>
       <div className="flex-1" />
+      <ArchivedRow />
       <div className="flex shrink-0 flex-col gap-2 border-t border-line p-2 text-xs text-muted">
         <div className="flex items-center gap-1">
           <Tooltip text={settingsLabel}>
