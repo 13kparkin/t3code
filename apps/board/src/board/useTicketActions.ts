@@ -8,7 +8,6 @@ import { usePrContext } from "../state/prStatus";
 import { editTicket, unlinkTicket } from "../state/ticketEdit";
 import { URL_TRACKER } from "../issues/issueLinks";
 
-/** The saves one ticket's details make. `error` is the last failure's text, or null once a save went through. */
 export function useTicketActions(ticket: Ticket) {
   const registry = useContext(RegistryContext);
   const { project, folder } = usePrContext();
@@ -18,7 +17,6 @@ export function useTicketActions(ticket: Ticket) {
     edit: (patch: EditPatch) =>
       editTicket(registry, project, folder, ticket.key, patch).then(setError),
     unlink: () => unlinkTicket(registry, project, folder, ticket.key).then(setError),
-    /** Links the ticket, then reads the issue at once so its text shows without waiting for the next round. */
     link: async (issue: TicketIssue) => {
       const failure = await editTicket(registry, project, folder, ticket.key, { issue });
       setError(failure);

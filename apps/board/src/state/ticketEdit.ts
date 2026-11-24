@@ -15,7 +15,6 @@ import { boardStoreAtom } from "./orchestrator";
 
 type DetailsProject = Pick<EnvironmentProject, "id" | "environmentId" | "workspaceRoot">;
 
-/** Saves a change to `ticket-details.json`, then reads the board's files again so the card shows it at once. Resolves to the failure text, or null once saved. */
 async function save(
   registry: AtomRegistry.AtomRegistry,
   project: DetailsProject,

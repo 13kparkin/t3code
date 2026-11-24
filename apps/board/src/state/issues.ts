@@ -39,7 +39,6 @@ const briefOf = (detail: IssueDetail, comments: IssueDetail["comments"]): IssueB
   })),
 });
 
-/** One uncached read of an issue, which the ticket pull uses so a change shows within its own interval. */
 export async function readIssueDetail(
   registry: AtomRegistry.AtomRegistry,
   environmentId: EnvironmentId,

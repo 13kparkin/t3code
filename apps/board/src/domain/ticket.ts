@@ -82,9 +82,7 @@ export const Ticket = Schema.Struct({
   threads: optional(Schema.Array(TicketThread)),
   verdicts: optional(Schema.Array(Verdict)),
   fixRounds: optional(Count),
-  /** The ticket's long text. The tracker's body when a linked issue holds it. */
   description: optional(Schema.String),
-  /** The tracker issue this ticket works, which its frame shows. A `url` tracker is a plain link whose key is the URL. */
   issue: optional(TicketIssue),
   /** The poteto-mode playbook's file name, such as `feature.md`. */
   playbook: optional(Schema.String),

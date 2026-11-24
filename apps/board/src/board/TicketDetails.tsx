@@ -17,7 +17,6 @@ const TRACKER_NAME = new Map([
 const button =
   "rounded border border-line px-1.5 leading-5 text-muted hover:bg-hover hover:text-fg";
 
-/** The ticket's long description and its tracker link. A linked tracker holds the text, so it shows read-only with a way to edit it there. */
 export function TicketDetails({ view }: SectionProps) {
   const { ticket } = view;
   const { overlay, project, folder } = usePrContext();

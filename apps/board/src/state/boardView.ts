@@ -27,7 +27,6 @@ export interface BoardView {
   readonly decisions: string | null;
   /** Every readable `additions.json` item, hidden ones too. A file that stops parsing keeps the last items. */
   readonly additions: ReadonlyArray<Addition>;
-  /** The app's edits and the trackers' copies, which the tickets above already carry. */
   readonly overlay: Overlay;
 }
 

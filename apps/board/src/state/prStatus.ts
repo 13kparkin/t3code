@@ -148,7 +148,6 @@ const NO_SMOKE = Atom.make<Smoke | null>(null).pipe(Atom.withLabel("board-smoke:
 
 export interface PrContextValue {
   readonly project: EnvironmentProject;
-  /** The board folder under `.agentboard`. */
   readonly folder: string;
   readonly orchestratorThreadId: string;
   readonly family: ReadonlyArray<FamilyRow>;
@@ -161,7 +160,6 @@ export interface PrContextValue {
   readonly decisions: string | null;
   /** The `additions.json` items the user has not hidden. */
   readonly additions: ReadonlyArray<Addition>;
-  /** The app's `ticket-details.json`, for the tracker copy's link and time. */
   readonly overlay: Overlay;
 }
 

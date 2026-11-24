@@ -11,12 +11,10 @@ const Edits = Schema.Struct({
   description: Schema.optionalKey(Schema.String),
   track: Schema.optionalKey(Schema.String),
   dependsOn: Schema.optionalKey(Schema.Array(Schema.String)),
-  /** Null cuts the link the orchestrator's row has. */
   issue: Schema.optionalKey(Schema.NullOr(TicketIssue)),
 });
 export type Edits = typeof Edits.Type;
 
-/** The tracker's copy of an issue, kept for the issue it was read from. */
 const Pulled = Schema.Struct({
   issue: TicketIssue,
   title: Schema.String,
@@ -38,7 +36,6 @@ export type Overlay = typeof OverlaySchema.Type;
 
 export type LockedField = "title" | "description";
 
-/** The fields each tracker holds, and the board never edits while a ticket links to it. */
 const LOCKED_FIELDS = new Map<string, ReadonlyArray<LockedField>>([
   ["linear", ["title", "description"]],
   ["github", ["title", "description"]],
@@ -62,7 +59,6 @@ export function parseOverlay(text: string): Result.Result<Overlay, { readonly me
 const sameIssue = (a: TicketIssue | null | undefined, b: TicketIssue | null | undefined) =>
   a?.tracker === b?.tracker && a?.key === b?.key;
 
-/** The ticket as the board shows it: the row, then the user's edits, then the tracker's copy of what it holds. */
 export function applyOverlay(
   tickets: ReadonlyArray<Ticket>,
   overlay: Overlay,
@@ -104,7 +100,6 @@ const parseEdits = (entries: ReadonlyArray<readonly [string, unknown]>) =>
 
 export type EditPatch = { readonly [K in keyof Edits]?: Edits[K] | undefined };
 
-/** Sets the given fields on a ticket's edits. A field set to undefined goes back to the orchestrator's copy. */
 export function editOverlay(overlay: Overlay, key: string, patch: EditPatch): Overlay {
   const entry = overlay[key] ?? {};
   const edits = parseEdits(
@@ -122,14 +117,12 @@ export function editOverlay(overlay: Overlay, key: string, patch: EditPatch): Ov
 const samePulled = (a: Pulled, b: Pulled) =>
   JSON.stringify({ ...a, at: "" }) === JSON.stringify({ ...b, at: "" });
 
-/** Stores the tracker's copy. The same values with a later time return the same overlay, so a poll that found nothing writes nothing. */
 export function pullOverlay(overlay: Overlay, key: string, pulled: Pulled): Overlay {
   const entry = overlay[key] ?? {};
   if (entry.pulled !== undefined && samePulled(entry.pulled, pulled)) return overlay;
   return prune(overlay, key, { ...entry, pulled });
 }
 
-/** Cuts the link. The last pulled text becomes the ticket's own edits. */
 export function unlinkOverlay(overlay: Overlay, key: string): Overlay {
   const entry = overlay[key] ?? {};
   const { pulled, ...bare } = entry;
@@ -137,7 +130,6 @@ export function unlinkOverlay(overlay: Overlay, key: string): Overlay {
   return prune(overlay, key, { ...bare, edits: { ...entry.edits, ...copy, issue: null } });
 }
 
-/** The path that closes a loop if `key` came to wait on `next`, from `key` back to `key`, or null. */
 export function wouldCycle(
   tickets: ReadonlyArray<Ticket>,
   key: string,
@@ -162,7 +154,6 @@ export function wouldCycle(
   return null;
 }
 
-/** The prerequisites that are not merged, a key with no ticket included. */
 export const waitingOn = (ticket: Ticket, tickets: ReadonlyArray<Ticket>): ReadonlyArray<string> =>
   (ticket.dependsOn ?? []).filter(
     (dep) => tickets.find((entry) => entry.key === dep)?.stage !== "merged",

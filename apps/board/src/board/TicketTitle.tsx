@@ -5,7 +5,6 @@ import type { Ticket } from "../domain/ticket";
 import { Tooltip } from "../ui/Tooltip";
 import { useTicketActions } from "./useTicketActions";
 
-/** The ticket's key and title. A click edits the title in place: Enter or leaving the box saves a changed title, Escape drops it. A linked tracker holds the title, so then it is plain text. */
 export function TicketTitle({ ticket }: { ticket: Ticket }) {
   const { edit } = useTicketActions(ticket);
   const [draft, setDraft] = useState<string | null>(null);

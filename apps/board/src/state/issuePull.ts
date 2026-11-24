@@ -11,7 +11,6 @@ import { environmentProjects } from "./projects";
 import { boardStoreAtom } from "./orchestrator";
 import { savePulled } from "./ticketEdit";
 
-/** A tracker is read for each linked ticket this often, and the tickets of one board are spread across it. */
 const PULL_INTERVAL_MS = 120_000;
 const PULL_GAP_MS = 5_000;
 
@@ -21,13 +20,10 @@ type PullProject = Pick<
 >;
 
 export interface PullStatus {
-  /** When the tracker last answered this session, or null before it has. */
   readonly syncedAt: string | null;
-  /** Why the last read failed, or null when it worked. */
   readonly error: string | null;
 }
 
-/** How each ticket's last reads went, by `<project id>/<folder>/<ticket key>`. */
 export const pullStatusAtom = Atom.make<ReadonlyMap<string, PullStatus>>(new Map()).pipe(
   Atom.keepAlive,
   Atom.withLabel("ticket-pull-status"),
@@ -48,7 +44,6 @@ const setStatus = (
   );
 };
 
-/** Reads the ticket's issue and stores the tracker's copy. A failure keeps the last copy and is noted for the card. */
 export async function pullTicket(
   registry: AtomRegistry.AtomRegistry,
   project: PullProject,
@@ -89,7 +84,6 @@ export async function pullTicket(
 
 const IDLE_STAGES: ReadonlySet<string> = new Set(["merged", "off_path"]);
 
-/** The tickets whose issue a tracker holds, with the board's edits applied, so an unlink or a new link counts at once. */
 function linkedTickets(tickets: string | null, details: string | null): ReadonlyArray<Ticket> {
   const parsed = tickets === null ? null : parseTickets(tickets);
   const overlay = details === null ? null : parseOverlay(details);
@@ -103,11 +97,7 @@ function linkedTickets(tickets: string | null, details: string | null): Readonly
   );
 }
 
-/**
- * Keeps each linked ticket's tracker copy fresh for one board, by `<projectId>/<folder>`, while a
- * board screen mounts it. It reads when it mounts, every PULL_INTERVAL_MS after that, and when the
- * window comes back into view, and never while the window is hidden.
- */
+/** Keyed by `<projectId>/<folder>`. A board screen mounts it, and it stops with the screen. */
 export const issuePullAtom = Atom.family((boardKey: string) =>
   Atom.make((get) => {
     const split = boardKey.indexOf("/");

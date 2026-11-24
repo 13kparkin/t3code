@@ -70,7 +70,6 @@ export interface StoreFiles {
   readonly forYou: string | null;
   readonly decisions: string | null;
   readonly additions: string | null;
-  /** The app's `ticket-details.json`. */
   readonly details: string | null;
 }
 

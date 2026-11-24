@@ -7,7 +7,6 @@ import { PopMenu } from "../ui/PopMenu";
 import type { SectionProps } from "./sectionProps";
 import { useTicketActions } from "./useTicketActions";
 
-/** What the ticket waits on, which the user adds to and removes from, and what waits on it. A prerequisite that would close a loop is offered but off. */
 export function Prerequisites({ view }: SectionProps) {
   const { ticket } = view;
   const all = usePrContext().tickets.map((entry) => entry.ticket);

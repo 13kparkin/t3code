@@ -39,7 +39,6 @@ const LINEAR_URL =
   /^https:\/\/linear\.app\/[^/]+\/issue\/([A-Za-z][A-Za-z0-9_]*-[1-9][0-9]*)(?:\/|$)/;
 const GITHUB_URL = /^https:\/\/github\.com\/([^/\s]+\/[^/\s]+)\/issues\/([1-9][0-9]*)\/?$/;
 
-/** The link a ticket gets from text typed or pasted: a tracker key, an issue's address, or any other web address. */
 export function classifyIssueLink(text: string): TicketIssue | null {
   const value = text.trim();
   const linear = LINEAR_URL.exec(value)?.[1];
