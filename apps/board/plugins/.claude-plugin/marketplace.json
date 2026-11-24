@@ -6,7 +6,7 @@
     {
       "name": "board-rules",
       "source": "./board-rules",
-      "description": "Applies the omp rules, TypeScript LSP, and the vp environment to every Claude Code session"
+      "description": "Applies the omp rules and the vp environment to every Claude Code session"
     }
   ]
 }
