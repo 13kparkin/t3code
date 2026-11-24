@@ -56,8 +56,6 @@ const LEFT = 40;
 export const ORCHESTRATOR_BOX: Rect = { x: LEFT, y: LEFT, width: 340, height: 280 };
 /** Where the lanes start, below the orchestrator card. */
 export const LANES_TOP = ORCHESTRATOR_BOX.y + ORCHESTRATOR_BOX.height + LEFT;
-const EDGE_ATTACH_Y = CARD_HEIGHT / 2;
-const EDGE_CURVE = 40;
 
 export interface FrameBox extends Rect {
   readonly key: string;
@@ -68,17 +66,10 @@ export interface LaneBox extends Rect {
   readonly frames: ReadonlyArray<FrameBox>;
 }
 
-export interface Edge {
-  /** The ticket that is depended on. */
-  readonly from: string;
-  readonly to: string;
-}
-
 export interface Layout {
   readonly lanes: ReadonlyArray<LaneBox>;
   /** `canvas` additions, each a lane of its own after the stage lanes, keyed by the addition's id. */
   readonly additionLanes: ReadonlyArray<FrameBox>;
-  readonly edges: ReadonlyArray<Edge>;
   readonly content: Rect;
 }
 
@@ -111,7 +102,7 @@ export function forYouHeight(views: ReadonlyArray<CardView>): number {
 
 const NO_HIDDEN: ReadonlySet<string> = new Set();
 
-/** Stacks each shown lane's frames in its column, and adds one edge for each `dependsOn` between two tickets. Later lanes pack left over hidden ones. */
+/** Stacks each shown lane's frames in its column. Later lanes pack left over hidden ones. */
 export function layoutBoard(
   model: BoardModel,
   order: FrameOrder,
@@ -123,10 +114,6 @@ export function layoutBoard(
   const lines = additions.filter((item) => item.place === "orchestrator").length + problemLines;
   const top = LANES_TOP + lines * ADDITION_LINE;
   const lanes: LaneBox[] = [];
-  const edges: Edge[] = [];
-  const known = new Set(
-    Object.values(model.lanes).flatMap((lane) => lane.map((v) => v.ticket.key)),
-  );
   LANE_IDS.forEach((id) => {
     if (hidden.has(id)) return;
     const x = LEFT + lanes.length * (LANE_WIDTH + LANE_GAP);
@@ -145,9 +132,6 @@ export function layoutBoard(
         const view = views.find((entry) => entry.ticket.key === key);
         if (view === undefined) continue;
         items.push({ key, height: CARD_HEIGHT });
-        for (const dependency of view.ticket.dependsOn ?? []) {
-          if (known.has(dependency)) edges.push({ from: dependency, to: key });
-        }
       }
     }
     let y = top + LANE_HEAD;
@@ -182,7 +166,6 @@ export function layoutBoard(
   return {
     lanes,
     additionLanes,
-    edges,
     content: { x: 0, y: 0, width: right + LEFT, height: bottom + LEFT },
   };
 }
@@ -202,19 +185,4 @@ export function clampDrag(lane: LaneBox, frame: FrameBox, dy: number): number {
   const min = lane.y + LANE_HEAD - frame.y;
   const max = lane.y + lane.height - LANE_PAD - frame.height - frame.y;
   return Math.min(Math.max(dy, min), Math.max(min, max));
-}
-
-/** A curve from the frame that is depended on to the frame that depends on it, ending at the dependent's edge. */
-export function edgePath(from: FrameBox, to: FrameBox): string {
-  const y1 = from.y + EDGE_ATTACH_Y;
-  const y2 = to.y + EDGE_ATTACH_Y;
-  if (from.x === to.x) {
-    const x = from.x;
-    return `M ${x} ${y1} C ${x - EDGE_CURVE} ${y1}, ${x - EDGE_CURVE} ${y2}, ${x} ${y2}`;
-  }
-  const forward = to.x > from.x;
-  const x1 = forward ? from.x + from.width : from.x;
-  const x2 = forward ? to.x : to.x + to.width;
-  const bend = Math.max(EDGE_CURVE, Math.abs(x2 - x1) / 2) * (forward ? 1 : -1);
-  return `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`;
 }

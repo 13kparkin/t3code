@@ -5,7 +5,6 @@ import type { Ticket } from "../domain/ticket";
 import type { AgentView, BoardModel, TicketView } from "../state/boardModel";
 import {
   clampDrag,
-  edgePath,
   FRAME_WIDTH,
   CARD_HEIGHT,
   FRAME_GAP,
@@ -97,13 +96,6 @@ describe("laying out the lanes", () => {
     );
   });
 
-  it("Given a dependency on a ticket that exists and one that does not, when laid out, then only the first has an edge", () => {
-    expect(layout.edges).toEqual([
-      { from: "T-1", to: "T-3" },
-      { from: "T-1", to: "T-2" },
-    ]);
-  });
-
   it("Given agents no ticket claims, when laid out, then an unassigned lane follows the others", () => {
     const withOrphan = layoutBoard({ ...model, unassigned: [agent("orphan")] }, {});
     const last = withOrphan.lanes.at(-1);
@@ -186,32 +178,5 @@ describe("dragging a frame", () => {
     expect(clampDrag(building, first, 5000)).toBe(
       building.y + building.height - LANE_PAD - first.height - first.y,
     );
-  });
-});
-
-describe("dependency edges", () => {
-  const box = (x: number, y: number) => ({ key: "k", x, y, width: 264, height: CARD_HEIGHT });
-
-  const endpoints = (path: string) => {
-    const numbers = path.match(/-?\d+(\.\d+)?/g)?.map(Number) ?? [];
-    return { from: numbers.slice(0, 2), to: numbers.slice(-2) };
-  };
-
-  it("Given a dependent in a later lane, when drawn, then the curve runs from the right edge to the left edge", () => {
-    expect(endpoints(edgePath(box(0, 0), box(300, 200)))).toEqual({
-      from: [264, 26],
-      to: [300, 226],
-    });
-  });
-
-  it("Given a dependent in an earlier lane, when drawn, then it runs from the left edge to the right edge", () => {
-    expect(endpoints(edgePath(box(300, 0), box(0, 200)))).toEqual({
-      from: [300, 26],
-      to: [264, 226],
-    });
-  });
-
-  it("Given two frames in one lane, when drawn, then the curve joins their left edges", () => {
-    expect(endpoints(edgePath(box(0, 0), box(0, 200)))).toEqual({ from: [0, 26], to: [0, 226] });
   });
 });

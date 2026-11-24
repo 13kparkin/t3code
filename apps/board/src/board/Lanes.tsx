@@ -14,8 +14,6 @@ import {
   ADDITION_KEY,
   additionLaneId,
   clampDrag,
-  edgePath,
-  type FrameBox,
   type LaneBox,
   type LaneId,
   type Layout,
@@ -45,7 +43,7 @@ const LANE_TONE = {
   unassigned: "bg-red-600 text-white",
 } as const satisfies Record<LaneId, string>;
 
-/** Every lane on the canvas, its ticket frames with their agents, and the edges between dependent tickets. */
+/** Every lane on the canvas and its ticket frames with their agents. */
 export function Lanes({
   layout,
   model,
@@ -75,10 +73,6 @@ export function Lanes({
       .flat()
       .map((view) => [view.ticket.key, view]),
   );
-  const boxes = new Map(layout.lanes.flatMap((lane) => lane.frames).map((box) => [box.key, box]));
-  // The frame under the pointer moves, and its edges follow.
-  const moved = (box: FrameBox): FrameBox =>
-    drag?.key === box.key ? { ...box, y: box.y + drag.dy } : box;
 
   const drop = (lane: LaneBox) => {
     if (drag === null) return;
@@ -89,42 +83,6 @@ export function Lanes({
 
   return (
     <>
-      <svg
-        aria-hidden
-        className="pointer-events-none absolute top-0 left-0 overflow-visible"
-        width={layout.content.width}
-        height={layout.content.height}
-      >
-        <defs>
-          <marker
-            id="edge-arrow"
-            viewBox="0 0 8 8"
-            refX="7"
-            refY="4"
-            markerWidth="7"
-            markerHeight="7"
-            orient="auto"
-          >
-            <path d="M 0 0 L 8 4 L 0 8 z" fill="var(--color-muted)" />
-          </marker>
-        </defs>
-        {layout.edges.map((edge) => {
-          const from = boxes.get(edge.from);
-          const to = boxes.get(edge.to);
-          if (from === undefined || to === undefined) return null;
-          return (
-            <path
-              key={`${edge.from}>${edge.to}`}
-              data-edge={`${edge.from}>${edge.to}`}
-              d={edgePath(moved(from), moved(to))}
-              fill="none"
-              stroke="var(--color-muted)"
-              strokeWidth={1.5}
-              markerEnd="url(#edge-arrow)"
-            />
-          );
-        })}
-      </svg>
       {layout.lanes.map((lane) => (
         <section
           key={lane.id}
