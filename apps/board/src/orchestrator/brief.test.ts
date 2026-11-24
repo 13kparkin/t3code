@@ -36,7 +36,7 @@ describe("the orchestrator's standing rules and board facts", () => {
 
   it("Given the rules, when they render, then they say the app owns ticket-details.json and how its layers and prerequisites apply", () => {
     const rules = renderRules();
-    expect(rules).toContain("| `ticket-details.json` | app |");
+    expect(rules).toMatch(/\| `ticket-details.json`\s+\| app\s+\|/);
     expect(rules).toContain("apply its `edits`, then its `pulled`, over the ticket");
     expect(rules).toContain("Never edit `ticket-details.json`");
     expect(rules).toContain("Decide what to start from the `dependsOn` after those layers");
