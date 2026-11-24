@@ -24,11 +24,12 @@ describe("tickets.json", () => {
       pr: 12,
       headSha: "abc1234",
       summary: "Adds the form",
+      description: "The long text.",
       why: "Users need it",
       threads: [{ threadId: "th-1", role: "task", round: 1 }],
       verdicts: [{ role: "reviewer", p0: 0, p1: 1, p2: 0, p3: 2 }],
       fixRounds: 1,
-      issue: { tracker: "linear", key: "XEO-3331" },
+      issue: { tracker: "url", key: "https://example.com/a" },
       playbook: "feature.md",
       steps: [
         { text: "Write the plan", state: "done" },

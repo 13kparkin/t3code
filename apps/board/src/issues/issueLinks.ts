@@ -12,6 +12,7 @@ import type { Ticket, TicketIssue } from "../domain/ticket";
 
 export const LINEAR = "linear";
 export const GITHUB = "github";
+export const URL_TRACKER = "url";
 const LINEAR_HOST = "linear.app";
 
 const LINEAR_KEY = /^([A-Z][A-Z0-9_]*)-[1-9][0-9]*$/;
@@ -32,6 +33,23 @@ export function findIssueKeys(text: string): ReadonlyArray<TicketIssue> {
     if (issue !== null) found.set(`${issue.tracker} ${issue.key}`, issue);
   }
   return [...found.values()];
+}
+
+const LINEAR_URL =
+  /^https:\/\/linear\.app\/[^/]+\/issue\/([A-Za-z][A-Za-z0-9_]*-[1-9][0-9]*)(?:\/|$)/;
+const GITHUB_URL = /^https:\/\/github\.com\/([^/\s]+\/[^/\s]+)\/issues\/([1-9][0-9]*)\/?$/;
+
+/** The link a ticket gets from text typed or pasted: a tracker key, an issue's address, or any other web address. */
+export function classifyIssueLink(text: string): TicketIssue | null {
+  const value = text.trim();
+  const linear = LINEAR_URL.exec(value)?.[1];
+  if (linear !== undefined) return { tracker: LINEAR, key: linear.toUpperCase() };
+  const github = GITHUB_URL.exec(value);
+  if (github !== null) return { tracker: GITHUB, key: `${github[1]}#${github[2]}` };
+  if (LINEAR_KEY.test(value) || GITHUB_KEY.test(value)) {
+    return { tracker: LINEAR_KEY.test(value) ? LINEAR : GITHUB, key: value };
+  }
+  return /^https?:\/\/\S+$/.test(value) ? { tracker: URL_TRACKER, key: value } : null;
 }
 
 /** What a ticket needs to find its issue: the board's project and the repository its `#12` keys mean. */
