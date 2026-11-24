@@ -228,7 +228,7 @@ export const changeHiddenAdditions = (
     hiddenAdditions: [...new Set(change(board.hiddenAdditions ?? []))],
   }));
 
-/** Sets one role's target, or with null removes it so the role takes the registry's default. */
+/** Sets one role's target; null removes it. */
 export const changeRoleTarget = (
   files: ProjectFiles,
   cwd: string,

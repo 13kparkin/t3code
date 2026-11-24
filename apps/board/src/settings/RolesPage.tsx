@@ -15,7 +15,7 @@ import { SettingsSection } from "./SettingsSection";
 
 const firstSentence = (text: string) => (text.split(/(?<=\.)\s/)[0] ?? text).replace(/\.?$/, ".");
 
-/** Each role's model and effort on one board. The board saves them in `board.json`, which its orchestrator reads before it starts an agent. */
+/** Each role's model and effort on one board, saved in `board.json`. */
 export function RolesPage({ environmentId }: { environmentId: EnvironmentId }) {
   const registry = useContext(RegistryContext);
   const boards = useAtomValue(activeBoardsAtom);

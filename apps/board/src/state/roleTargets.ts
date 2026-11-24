@@ -13,10 +13,7 @@ import { engineProvidersAtom } from "./server";
 
 type RoleProject = Pick<EnvironmentProject, "id" | "environmentId" | "workspaceRoot">;
 
-/**
- * The Claude instance a board's agents run on: the one its orchestrator thread runs on, or before
- * it has one, the instance a new orchestrator would start on.
- */
+/** The Claude instance a board's agents run on: its orchestrator's, or the default pick before it has one. */
 export function boardInstance(
   providers: ReadonlyArray<ServerProvider>,
   threads: ReadonlyArray<OrchestrationV2ThreadShell> | undefined,
@@ -31,7 +28,6 @@ export function boardInstance(
   return instances.find((instance) => instance.instanceId === id) ?? null;
 }
 
-/** Every board that is not archived, in each project that is not archived, for the Roles page's picker. */
 export const activeBoardsAtom = Atom.make((get) =>
   get(environmentProjects.projectsAtom)
     .filter((project) => project.archivedAt == null)
@@ -44,7 +40,6 @@ export const activeBoardsAtom = Atom.make((get) =>
     }),
 ).pipe(Atom.withLabel("active-boards"));
 
-/** Saves a role's target from Settings, then lists the project's boards again so the page shows it. */
 export async function saveRoleTarget(
   registry: AtomRegistry.AtomRegistry,
   project: RoleProject,
@@ -59,7 +54,7 @@ export async function saveRoleTarget(
   return problem;
 }
 
-/** Applies the board's open `role_target` items, after the run already going for it ends. */
+/** Applies the board's open `role_target` items. */
 export function runRoleTargetRequests(
   registry: AtomRegistry.AtomRegistry,
   project: RoleProject,

@@ -3,11 +3,7 @@ import { describeRoleTarget, mergeForYou } from "../domain/forYou";
 import { type RoleInstance, roleTargetProblem } from "../orchestrator/roles";
 import { changeRoleTarget, type ProjectFiles } from "./boardFiles";
 
-/**
- * Saves one role's model and effort in `board.json`, or with null removes it so the role takes the
- * registry's default. Settings and the orchestrator's `role_target` items both come through here.
- * Resolves to the problem, or null once saved.
- */
+/** Checks, then saves one role's target in `board.json`; null removes it. Resolves to the problem, or null once saved. */
 export async function setRoleTarget(
   files: ProjectFiles,
   cwd: string,
@@ -27,9 +23,8 @@ export async function setRoleTarget(
 }
 
 /**
- * Applies each open `role_target` item in the board's `foryou.jsonl` and appends the line that
- * resolves it. A resolved item is never applied again, so a second run changes nothing. Resolves
- * to whether any item was resolved.
+ * Applies each open `role_target` item and appends its resolving line, so a rerun changes nothing.
+ * Resolves to whether any item was resolved.
  */
 export async function applyRoleTargetRequests(
   files: ProjectFiles,

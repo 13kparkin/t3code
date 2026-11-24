@@ -108,7 +108,7 @@ const TrackerWriteItem = Schema.Struct({
 });
 export type TrackerWriteItem = typeof TrackerWriteItem.Type;
 
-/** A role's new model and effort, or `model: null` to go back to the registry's default. The app applies it and resolves the item. */
+/** A role's new model and effort; `model: null` goes back to the registry's default. */
 export const RoleTargetWrite = Schema.Struct({
   role: Schema.String.check(Schema.isNonEmpty()),
   model: Schema.NullOr(Schema.String.check(Schema.isNonEmpty())),
