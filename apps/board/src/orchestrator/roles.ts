@@ -138,3 +138,34 @@ export const DEFAULT_ROLES: ReadonlyArray<ResolvedRole> = ROLES.map((role) => ({
   target: { model: role.model.slug, effort: role.model.effort },
   fallback: null,
 }));
+
+/** The parts of a Claude instance a role target is checked against. A picker's instance fits it. */
+export interface RoleInstance {
+  readonly instanceId: string;
+  readonly offered: ReadonlyArray<string>;
+  readonly models: ReadonlyArray<{
+    readonly slug: string;
+    readonly effort: { readonly choices: ReadonlyArray<{ readonly id: string }> } | null;
+  }>;
+}
+
+/** Why `role` cannot run on this model and effort, or null when it can. */
+export function roleTargetProblem(
+  role: string,
+  pick: { readonly model: string; readonly effort?: string },
+  instance: RoleInstance | null,
+): string | null {
+  if (!ROLES.some((entry) => entry.name === role)) return `${role} is not a role in the registry.`;
+  if (instance === null) return "No Claude instance is running to check the model against.";
+  if (!instance.offered.includes(pick.model)) {
+    return `${instance.instanceId} does not offer ${pick.model}.`;
+  }
+  if (pick.effort === undefined) return null;
+  const choices =
+    instance.models
+      .find((model) => model.slug === pick.model)
+      ?.effort?.choices.map((choice) => choice.id) ?? [];
+  return choices.includes(pick.effort)
+    ? null
+    : `${pick.model} has no effort ${pick.effort}. Pick one of ${choices.join(", ") || "none"}.`;
+}
