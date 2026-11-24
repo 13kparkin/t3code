@@ -270,14 +270,14 @@ Each live lane runs against a frozen PR head in its own worktree or disjoint out
 - [ ] Rebased onto current trunk after the verdict, patch-id unchanged.
 - [ ] The root appends S1 to the base-branch stack and the operator lands it bottom-up.
 
-## Bring the omp rules, LSP, and persistent env to every Claude Code session (K1)
+## Bring the omp rules and persistent env to every Claude Code session (K1)
 
 **Depends on.** S1.
 
 **Files.**
 
 - [ ] Create `apps/board/plugins/.claude-plugin/marketplace.json` that lists one plugin, `board-rules`.
-- [ ] Create `apps/board/plugins/board-rules/.claude-plugin/plugin.json`, `apps/board/plugins/board-rules/hooks/hooks.json`, and `apps/board/plugins/board-rules/.lsp.json`.
+- [ ] Create `apps/board/plugins/board-rules/.claude-plugin/plugin.json` and `apps/board/plugins/board-rules/hooks/hooks.json`.
 - [ ] Create `apps/board/plugins/board-rules/engine/rules.mjs`, `apps/board/plugins/board-rules/engine/hook.mjs`, and `apps/board/plugins/board-rules/engine/rules.test.mjs`.
 - [ ] Create `apps/board/scripts/install-board-rules.mjs`.
 
@@ -291,12 +291,11 @@ Each live lane runs against a frozen PR head in its own worktree or disjoint out
   - [ ] Stop. Match text rules against the last assistant message in `transcript_path`. An interrupt rule returns `decision: "block"` with the rule body, which starts one more turn. A remind rule waits for the next PostToolUse or UserPromptSubmit.
   - [ ] SessionStart. Return `~/.omp/agent/RULES.md` as added context. Write `. ~/.config/vite-plus/env` into `CLAUDE_ENV_FILE`, so `vp` and anything the agent appends to that file persist across Bash calls.
 - [ ] Fire each rule once per session, as omp does. Keep the fired names in a state file per `session_id` in the plugin's data folder.
-- [ ] In `.lsp.json`, register `typescript-language-server --stdio` for `.ts`, `.tsx`, `.js`, and `.mjs`, so Claude Code's LSP tool and its diagnostics after edits work.
 - [ ] In `install-board-rules.mjs`, run `claude plugin marketplace add apps/board/plugins` and `claude plugin install board-rules@agent-board --scope user`. Skip each step that is already done.
 
 **You see.**
 
-- [ ] Every Claude Code session on this machine, T3 Claude threads included, gets an omp rule when it matches, the LSP tool, and `vp` on its Bash path.
+- [ ] Every Claude Code session on this machine, T3 Claude threads included, gets an omp rule when it matches and `vp` on its Bash path.
 
 **Verify, unit.** Tests alone are not sufficient verification. A PR is verified only when its unit, live, and perf boxes are all checked.
 
@@ -310,7 +309,6 @@ Each live lane runs against a frozen PR head in its own worktree or disjoint out
 - [ ] Lane 4. Ask a session to run a Bash command that matches `linear-writes-require-approval`. Save `k1-deny.txt`. Pass when the call is denied with that rule's text.
 - [ ] Lane 5. Prompt a session so its reply matches the `surgical-changes` rule twice in a row. Save `k1-text.txt`. Pass when the Stop hook blocks once with the rule body and stays silent the second time.
 - [ ] Lane 6. Repeat lane 5 in a new session. Save `k1-new-session.txt`. Pass when the rule fires again.
-- [ ] Lane 7. Ask a session for the references to a symbol in `apps/board/src`. Save `k1-lsp.txt`. Pass when the LSP tool returns them.
 - [ ] Lane 8. Ask a session to run `vp --version` in Bash with no setup. Save `k1-env.txt`. Pass when it prints the version.
 - [ ] Lane 9. Repeat lane 3 in a T3 Claude thread on an isolated engine. Save `k1-t3-thread.txt`. Pass when the reminder shows in the thread.
 - [ ] Lane 10. Point `OMP_KIT_RULES_DIR` at a scratch copy with one rule changed, and start a session. Save `k1-rules-dir.txt`. Pass when the changed rule is the one that fires.
