@@ -2,8 +2,9 @@ import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
 const MAX_BYTES = 512 * 1024;
+const MAX_LINE = 2000;
 
-/** Appends the renderer's engine connection events to a file, keeping the one before it as `.1` once it passes 512 KiB. */
+/** Appends lines to `file`, moving the old file to `.1` once it reaches `maxBytes`. */
 export function createConnectionLog(file: string, maxBytes = MAX_BYTES) {
   NodeFS.mkdirSync(NodePath.dirname(file), { recursive: true });
   return {
@@ -13,7 +14,7 @@ export function createConnectionLog(file: string, maxBytes = MAX_BYTES) {
       } catch {
         // No file yet.
       }
-      NodeFS.appendFileSync(file, `${line}\n`);
+      NodeFS.appendFileSync(file, `${line.slice(0, MAX_LINE)}\n`);
     },
   };
 }

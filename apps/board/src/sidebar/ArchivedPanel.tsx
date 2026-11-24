@@ -7,7 +7,6 @@ import { type ArchivedBoard, archivedBoardsAtom, archivedOpenAtom } from "../sta
 import { openBoard, setBoardArchived } from "../state/boards";
 import { Tooltip } from "../ui/Tooltip";
 
-/** The archived boards of every project, the way the For you slide-out lists its items. */
 export function ArchivedPanel() {
   const registry = useContext(RegistryContext);
   const open = useAtomValue(archivedOpenAtom);

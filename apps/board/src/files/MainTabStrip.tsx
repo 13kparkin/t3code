@@ -56,11 +56,7 @@ function tabLabel(file: FileRef): string {
   return file.diff.kind === "branch-range" ? "Branch changes" : "Changes";
 }
 
-/**
- * The tabs of the main view, the way Orca's draw them: the board first, then the ticket, a For you card, an agent's log, and each open file, each
- * browser page with a globe, and the agents' tabs, each with a close button. The active tab is lit
- * and underlined, and a plus opens a blank page.
- */
+/** The main view's tabs, drawn the way Orca's are. */
 export function MainTabStrip({ files }: { files: ReadonlyArray<FileRef> }) {
   const registry = useContext(RegistryContext);
   const { active, surface, ticket, card, agent } = useAtomValue(filesViewAtom);

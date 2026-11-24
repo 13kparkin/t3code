@@ -5,9 +5,9 @@ import type { BoardModel } from "../state/boardModel";
 import type { FrameOrder } from "../state/boardUi";
 import type { Rect } from "./viewport";
 
-export type StageLane = "todo" | "running";
+type StageLane = "todo" | "running";
 export type LaneId = "for_you" | StageLane;
-export const LANE_IDS: ReadonlyArray<LaneId> = ["for_you", "todo", "running"];
+const LANE_IDS: ReadonlyArray<LaneId> = ["for_you", "todo", "running"];
 
 export const LANE_LABEL = {
   for_you: "For you",
@@ -34,9 +34,7 @@ export const STAGE_TAGS = {
   { readonly lane: StageLane; readonly dim: boolean; readonly tone: string }
 >;
 
-/** The filter id of a stage's tag. */
 export const stageTagId = (stage: TicketStage) => `stage:${stage}`;
-/** The filter id of a `canvas` addition's own lane. */
 export const additionLaneId = (id: string) => `add:${id}`;
 
 /**
@@ -140,7 +138,7 @@ export function forYouHeight(views: ReadonlyArray<CardView>): number {
 
 const NO_HIDDEN: ReadonlySet<string> = new Set();
 
-/** Stacks each lane's shown frames in its column. Later lanes pack left over a hidden one. */
+/** Later lanes pack left over a hidden one. */
 export function layoutBoard(
   model: BoardModel,
   order: FrameOrder,

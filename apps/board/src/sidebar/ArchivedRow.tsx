@@ -6,7 +6,6 @@ import { archivedBoardsAtom, archivedOpenAtom } from "../state/archivedBoards";
 import { forYouOpenAtom } from "../state/forYou";
 import { SidebarRow } from "./SidebarRow";
 
-/** Every project's archived boards. A press opens or closes their slide-out. */
 export function ArchivedRow() {
   const registry = useContext(RegistryContext);
   const count = useAtomValue(archivedBoardsAtom).length;

@@ -51,7 +51,7 @@ export function TicketFrame({
       data-stage={ticket.stage}
       aria-label={`${ticket.key} ${ticket.title}`}
       aria-pressed={selected}
-      className={`absolute flex cursor-grab touch-none flex-col justify-center gap-1 rounded-lg border bg-panel px-2.5 text-left shadow-panel select-none hover:bg-hover ${selected ? "border-focus" : "border-line"} ${offset === 0 ? "" : "z-10 opacity-95"} ${tag.dim ? "opacity-60" : ""}`}
+      className={`absolute flex cursor-grab touch-none flex-col justify-center gap-1 rounded-lg border bg-panel px-2.5 text-left shadow-panel select-none hover:bg-hover ${selected ? "border-focus" : "border-line"} ${offset === 0 ? "" : "z-10"} ${tag.dim ? "opacity-60" : offset === 0 ? "" : "opacity-95"}`}
       style={{
         left: box.x,
         top: box.y,

@@ -9,7 +9,6 @@ import type { ValidBoard } from "../store/boardFiles";
 import { ForYouCard } from "./ForYouCard";
 import { cardContext } from "./ForYouLane";
 
-/** The For you card open as a tab over the canvas, at reading width. */
 export function ForYouPage({
   project,
   listed,

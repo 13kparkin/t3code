@@ -32,7 +32,7 @@ export type FoldKey = `lane:${string}:${string}` | `sec:${string}`;
 export const laneKey = (boardId: string, lane: string): FoldKey => `lane:${boardId}:${lane}`;
 export const sectionKey = (id: string): FoldKey => `sec:${id}`;
 
-/** The filters the user flipped and the sections they folded away. Defaults hold until the saved set arrives. */
+/** Canvas filters flipped from their default, and ticket sections folded away. Defaults hold until the saved set arrives. */
 export const foldedAtom = Atom.writable(
   (get): ReadonlySet<string> => {
     void localState.read().then((state) => get.setSelf(new Set(state.folded)));

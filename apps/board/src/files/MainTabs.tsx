@@ -27,7 +27,6 @@ export function MainTabs({
   ticketPage?: ReactNode;
   /** The For you card its tab shows over the canvas. */
   cardPage?: ReactNode;
-  /** One agent's log, which its tab shows over the canvas. */
   agentPage?: ReactNode;
   children: ReactNode;
 }) {

@@ -6,7 +6,6 @@ import { openCardPage } from "../state/filesView";
 import { forYouOpenAtom } from "../state/forYou";
 import { showForYouCard } from "../sidebar/ForYouRow";
 
-/** A press opens its board with the card as a full-page tab, and closes the slide-out. */
 export function ForYouPanelRow({
   board,
   item,

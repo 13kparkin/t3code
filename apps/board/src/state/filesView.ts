@@ -18,10 +18,9 @@ export interface FileRef {
   readonly diff?: DiffSource;
 }
 
-/** Which tab other than a file covers the canvas: a browser page, the agents' tabs, the chosen ticket's details, one For you card, or one agent's log. */
+/** Which non-file tab covers the canvas. */
 export type Surface = "page" | "agents" | "ticket" | "card" | "agent";
 
-/** The agent open as a full-page tab, with the label its tab shows. */
 export interface AgentPage {
   readonly threadId: string;
   readonly label: string;

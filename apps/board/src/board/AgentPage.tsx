@@ -6,7 +6,6 @@ import { allAgents, type BoardModel } from "../state/boardModel";
 import { filesViewAtom } from "../state/filesView";
 import { AgentLog } from "./AgentLog";
 
-/** One agent's messages and work log as a tab over the canvas. */
 export function AgentPage({
   environmentId,
   model,

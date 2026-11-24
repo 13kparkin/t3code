@@ -165,7 +165,6 @@ export function joinBoard(input: {
   };
 }
 
-/** Every agent on the board: each ticket's, then the ones no ticket claims. */
 export const allAgents = (model: BoardModel): ReadonlyArray<AgentView> => [
   ...Object.values(model.lanes)
     .flat()
@@ -173,7 +172,6 @@ export const allAgents = (model: BoardModel): ReadonlyArray<AgentView> => [
   ...model.unassigned,
 ];
 
-/** Roles that write code: the implementation roles, and the writing roles that get their own worktree. */
 const BUILDER_ROLES: ReadonlySet<string> = new Set(
   ROLES.filter(
     (role) => role.t3Role === "implementation" || (!role.readOnly && role.isolation === "worktree"),

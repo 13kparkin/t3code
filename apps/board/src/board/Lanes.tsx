@@ -36,7 +36,6 @@ const LANE_TONE = {
   running: "bg-blue-600 text-white",
 } as const satisfies Record<LaneId, string>;
 
-/** Every lane on the canvas and its ticket frames with their agents. */
 export function Lanes({
   layout,
   model,

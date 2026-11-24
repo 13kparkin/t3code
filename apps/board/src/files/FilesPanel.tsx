@@ -15,8 +15,7 @@ export function FilesPanel() {
   const listed: ValidBoard | undefined =
     opened !== null && boards.status === "ready"
       ? boards.boards.find(
-          (entry): entry is ValidBoard =>
-            entry.ok && entry.folder === opened.folder && !entry.board.archived,
+          (entry): entry is ValidBoard => entry.ok && entry.folder === opened.folder,
         )
       : undefined;
   if (project === undefined || listed === undefined)

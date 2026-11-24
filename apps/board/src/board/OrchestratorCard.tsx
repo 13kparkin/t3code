@@ -33,7 +33,6 @@ function UsageWatch({ instanceId, threadId }: { instanceId: string; threadId: st
 const ACTION =
   "inline-flex shrink-0 items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-5 text-muted hover:bg-hover hover:text-fg";
 
-/** A board's orchestrator on the canvas: the tags that filter the canvas with their counts, what waits on the user, and its builders against the cap. */
 export function OrchestratorCard({
   project,
   listed,

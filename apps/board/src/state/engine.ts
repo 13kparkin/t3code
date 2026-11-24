@@ -79,12 +79,13 @@ const connectionPhaseAtom = Atom.make((get) => {
   return `${state.phase}\t${state.lastFailure?.detail ?? ""}`;
 }).pipe(Atom.withLabel("engine-connection-phase"));
 
-/** Logs each change of the engine connection's phase, and retries once it has waited 30 s in backoff or blocked. */
+/** Logs each phase change, and asks for a retry once the connection is stuck. */
 export const connectionWatchAtom = Atom.make((get) => {
-  const phase = get(connectionPhaseAtom);
+  const line = get(connectionPhaseAtom);
   const environmentId = get(engineEnvironmentIdAtom);
-  engineBridge.logConnection(`${new Date().toISOString()}\t${phase}`);
-  if (environmentId === null || !STUCK_PHASES.has(phase.split("\t")[0] ?? "")) return;
+  engineBridge.logConnection(`${new Date().toISOString()}\t${line}`);
+  if (environmentId === null || !STUCK_PHASES.has(get.once(engineConnectionAtom).state.phase))
+    return;
   const registry = get.registry;
   const timer = setTimeout(() => {
     engineBridge.logConnection(`${new Date().toISOString()}\tretry-requested`);
