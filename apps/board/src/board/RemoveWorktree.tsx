@@ -1,20 +1,19 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import { AsyncResult } from "effect/reactivity";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useState } from "react";
 
 import { formatBytes } from "../settings/settingsModel";
 import { DeleteWorktreeConfirm } from "../settings/cleanup/DeleteWorktreeConfirm";
 import type { TicketView } from "../state/boardModel";
 import { usePrContext } from "../state/prStatus";
-import { planTicketWorktree } from "../state/mergeCleanup";
 import { serverEnvironment } from "../state/server";
 import { deleteWorktree, vcsEnvironment } from "../state/vcs";
-import { worktreeBytes } from "./worktreeRow";
+import { worktreeBytes, worktreeKeptReason } from "./worktreeRow";
 
-/** Offers T3's manual worktree delete, with its confirm, for a ticket whose worktree is still on disk. The frame mounts it only once the ticket has merged, which is when the repository is asked. */
+/** A ticket's worktree on disk: its size from T3's last storage report, whether it can go, and T3's manual delete with its confirm once it can. */
 export function RemoveWorktree({ view }: { view: TicketView }) {
   const registry = useContext(RegistryContext);
-  const { project, folder } = usePrContext();
+  const { project, keptWorktrees } = usePrContext();
   const [confirming, setConfirming] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const path = view.ticket.worktreePath;
@@ -25,18 +24,7 @@ export function RemoveWorktree({ view }: { view: TicketView }) {
     () => null,
   );
   const bytes = path == null ? null : worktreeBytes(report, path);
-  const [verdict, setVerdict] = useState<string | null>(null);
-  // The verdict reads the engine and the board's files, which React does not own.
-  useEffect(() => {
-    if (path == null) return;
-    let current = true;
-    void planTicketWorktree(registry, project, folder, view.ticket, path).then((plan) => {
-      if (current) setVerdict(plan.kind === "keep" ? plan.reason : plan.kind);
-    });
-    return () => {
-      current = false;
-    };
-  }, [registry, project, folder, view.ticket, path]);
+  const reason = worktreeKeptReason(view.ticket.stage, keptWorktrees.get(view.ticket.key));
   // The repository says which worktrees exist, as on the Cleanup page, and a delete refreshes it.
   const refs = AsyncResult.getOrElse(
     useAtomValue(
@@ -65,7 +53,7 @@ export function RemoveWorktree({ view }: { view: TicketView }) {
         type="button"
         data-testid="remove-worktree"
         onPointerDown={(event) => event.stopPropagation()}
-        disabled={verdict !== "remove"}
+        disabled={reason !== null}
         onClick={() => setConfirming(true)}
         className="rounded border border-line px-1.5 text-[10px] leading-4 text-muted hover:bg-hover hover:text-fg disabled:opacity-50"
       >
@@ -73,11 +61,7 @@ export function RemoveWorktree({ view }: { view: TicketView }) {
       </button>
       <span data-testid="worktree-state" className="truncate">
         {bytes === null ? "size unknown" : formatBytes(bytes)} ·{" "}
-        {verdict === null
-          ? "checking"
-          : verdict === "remove"
-            ? "safe to remove"
-            : `kept: ${verdict}`}
+        {reason === null ? "safe to remove" : `kept: ${reason}`}
       </span>
       {(confirming || failure !== null) && (
         <div

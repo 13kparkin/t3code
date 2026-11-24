@@ -1,9 +1,9 @@
-import { RegistryContext } from "@effect/atom-react";
+import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useState } from "react";
 
 import { BOARD_FILE } from "../domain/board";
-import { projectBoardsAtom } from "../state/boards";
+import { boardStoredAtom, projectBoardsAtom } from "../state/boards";
 import type { ValidBoard } from "../store/boardFiles";
 import { projectKeyOf } from "../store/routedFiles";
 
@@ -18,15 +18,9 @@ export function BoardStorage({
   const registry = useContext(RegistryContext);
   const store = window.board?.store;
   const key = projectKeyOf(project.workspaceRoot);
-  const [global, setGlobal] = useState<boolean | null>(null);
+  const storedAtom = boardStoredAtom(`${key}/${listed.folder}/${BOARD_FILE}`);
+  const global = useAtomValue(storedAtom);
   const [failure, setFailure] = useState<string | null>(null);
-  // Which side lists the board is a file on this machine, not React state.
-  useEffect(() => {
-    void store
-      ?.read(`${key}/${listed.folder}/${BOARD_FILE}`)
-      .then((text) => setGlobal(text !== null))
-      .catch(() => setGlobal(null));
-  }, [store, key, listed.folder]);
   if (store === undefined || global === null) return null;
   const move = async () => {
     setFailure(null);
@@ -37,7 +31,7 @@ export function BoardStorage({
         key,
         slug: listed.folder,
       });
-      setGlobal(!global);
+      registry.refresh(storedAtom);
       registry.refresh(projectBoardsAtom(project.id));
     } catch (error) {
       setFailure(error instanceof Error ? error.message : String(error));

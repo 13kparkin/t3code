@@ -236,11 +236,23 @@ async function readEvidence(
   }
 }
 
-type Decided = Exclude<Plan, { kind: "read" }>;
-
-/** `planCleanup` with its reads filled in as they are asked for: the worktree's status, then its evidence. */
-function planner(ports: CleanupPorts, target: CleanupTarget, listed: ReadonlyArray<string> | null) {
-  const plan = async (facts: WorktreeFacts): Promise<Decided> => {
+/**
+ * Deletes the merged tickets' worktrees that pass every check in `planCleanup`, then archives the
+ * ticket's own threads once its worktrees are gone. Each run reads the world again and stores
+ * nothing, so a run that stopped part way is finished by the next. Resolves to the reason each
+ * kept ticket shows.
+ */
+export async function cleanupMerged(
+  ports: CleanupPorts,
+  target: CleanupTarget,
+  merged: ReadonlyArray<Ticket>,
+): Promise<ReadonlyMap<string, string>> {
+  const kept = new Map<string, string>();
+  const [boards, listed] = await Promise.all([
+    ports.tickets().catch(() => null),
+    ports.worktrees().catch(() => null),
+  ]);
+  const plan = async (facts: WorktreeFacts): Promise<Exclude<Plan, { kind: "read" }>> => {
     const next = planCleanup(facts);
     if (next.kind !== "read") return next;
     if (facts.status === undefined) {
@@ -263,41 +275,6 @@ function planner(ports: CleanupPorts, target: CleanupTarget, listed: ReadonlyArr
     listed,
     threads: ports.threads(),
   });
-  return { plan, facts };
-}
-
-/** What `cleanupMerged` would do with one worktree now, reading as it does and deleting nothing. */
-export async function planWorktree(
-  ports: CleanupPorts,
-  target: CleanupTarget,
-  ticket: Ticket,
-  path: string,
-): Promise<Decided> {
-  const [boards, listed] = await Promise.all([
-    ports.tickets().catch(() => null),
-    ports.worktrees().catch(() => null),
-  ]);
-  const { plan, facts } = planner(ports, target, listed);
-  return plan(facts(ticket, path, boards));
-}
-
-/**
- * Deletes the merged tickets' worktrees that pass every check in `planCleanup`, then archives the
- * ticket's own threads once its worktrees are gone. Each run reads the world again and stores
- * nothing, so a run that stopped part way is finished by the next. Resolves to the reason each
- * kept ticket shows.
- */
-export async function cleanupMerged(
-  ports: CleanupPorts,
-  target: CleanupTarget,
-  merged: ReadonlyArray<Ticket>,
-): Promise<ReadonlyMap<string, string>> {
-  const kept = new Map<string, string>();
-  const [boards, listed] = await Promise.all([
-    ports.tickets().catch(() => null),
-    ports.worktrees().catch(() => null),
-  ]);
-  const { plan, facts } = planner(ports, target, listed);
   for (const ticket of merged) {
     let done = true;
     for (const path of ticketWorktrees(ticket, ports.threads() ?? [])) {

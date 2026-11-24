@@ -7,7 +7,6 @@ import {
   cleanupMerged,
   type LiveThread,
   planCleanup,
-  planWorktree,
   readBoardTickets,
   runOnePerKey,
   type WorktreeFacts,
@@ -374,24 +373,6 @@ describe("cleanupMerged", () => {
       new Map([["T-26", "running"]]),
     );
     expect(busy.archived).toEqual([]);
-  });
-});
-
-describe("planWorktree", () => {
-  const target = { workspaceRoot: ROOT, folder: "main" };
-
-  it("Given a merged ticket's worktree, when it is planned, then it can go only once its evidence is on the board, and planning deletes nothing", async () => {
-    const missing = world({ board: ["README.txt"] });
-    expect(await planWorktree(missing.ports, target, ticket(), WT)).toEqual({
-      kind: "keep",
-      reason: "evidence-missing",
-    });
-    const copied = world({ board: ["README.txt", "smoke.png"] });
-    expect(await planWorktree(copied.ports, target, ticket(), WT)).toEqual({
-      kind: "remove",
-      path: WT,
-    });
-    expect([...missing.removed, ...copied.removed]).toEqual([]);
   });
 });
 
