@@ -12,9 +12,6 @@ import { ensureOrchestratorInstance } from "../state/orchestrator";
 import { attachmentInputs } from "./attachments";
 import type { PendingSend } from "./timeline";
 
-const messageOf = (failure: unknown) =>
-  failure instanceof Error ? failure.message : String(failure);
-
 /**
  * What a send needs before its turn starts: the model selection when it differs from the thread's,
  * with every turn moved onto the orchestrator instance, and the uploaded attachments.
@@ -38,7 +35,7 @@ export async function prepareSend(
         selection = { ...base, instanceId: ProviderInstanceId.make(instanceId) };
       }
     } catch (failure) {
-      return { error: messageOf(failure) };
+      return { error: failure instanceof Error ? failure.message : String(failure) };
     }
   }
   if (pending.files.length === 0) return { selection, attachments: [] };
@@ -53,6 +50,6 @@ export async function prepareSend(
     );
     return { selection, attachments };
   } catch (failure) {
-    return { error: messageOf(failure) };
+    return { error: failure instanceof Error ? failure.message : String(failure) };
   }
 }
