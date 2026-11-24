@@ -36,7 +36,7 @@ The app creates these files empty with the board. After that you are the only on
 
 ### `tickets.json`
 
-A JSON array. Write the whole file each time, and keep it valid JSON, because the board reads it after every change. If a ticket has a bad field, the board shows an error naming it and keeps the last valid layout, so a typo hides your update. Every ticket has `key`, `title`, and `stage`. The other fields are optional. Leave out a field you do not know yet.
+A JSON array. Write the whole file each time, and keep it valid JSON, because the board reads it after every change. If a ticket has a bad field, the board shows an error naming it and keeps the last valid layout, so a typo hides your update. While you run, the board also sends you that error once as a message. Fix the file when you get one. Every ticket has `key`, `title`, and `stage`. The other fields are optional. Leave out a field you do not know yet.
 
 - `key`: a short stable id, unique in the file. Use the tracker key when the user gives one, otherwise `T-1`, `T-2`, and so on.
 - `title`, `track` (the group it belongs to), and `dependsOn` (a list of the keys it waits for).

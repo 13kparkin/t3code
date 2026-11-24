@@ -38,6 +38,12 @@ const NO_ORDER = {};
 const NO_IDS: ReadonlyArray<string> = [];
 
 /** A board's orchestrator card and lanes on the canvas, the ticket tab and the orchestrator's chat, which draw in the side panel. Open files are tabs over the canvas. */
+/** A leaf, so the orchestrator's streaming state re-renders only this and not the board. */
+function StoreErrorReports(props: Parameters<typeof useStoreErrorReports>[0]) {
+  useStoreErrorReports(props);
+  return null;
+}
+
 export function BoardScreen({
   project,
   listed,
@@ -65,11 +71,6 @@ export function BoardScreen({
     ).then(setHideError);
   const order = useAtomValue(frameOrderAtom)[board.id] ?? NO_ORDER;
   const forYou = useBoardForYou(project, listed);
-  useStoreErrorReports(project.environmentId, board.orchestratorThreadId, board.id, [
-    ...(issue === null ? [] : [issue.message]),
-    ...stats.problems,
-    ...forYou.problems.map((problem) => `foryou.jsonl line ${problem.line}: ${problem.message}`),
-  ]);
   const artifacts = useBoardArtifacts(project, listed, model);
   const flips = useAtomValue(filterFlipsAtom(board.id));
   const hidden = useMemo(() => hiddenFilters(new Set(flips.split(",")), visible), [flips, visible]);
@@ -128,6 +129,18 @@ export function BoardScreen({
     <ArtifactsProvider value={artifacts}>
       <PrProvider value={prContext}>
         <div className="relative flex h-full min-h-0">
+          <StoreErrorReports
+            environmentId={project.environmentId}
+            orchestratorThreadId={board.orchestratorThreadId}
+            boardId={board.id}
+            errors={[
+              ...(issue === null ? [] : [issue.message]),
+              ...stats.problems,
+              ...forYou.problems.map(
+                (problem) => `foryou.jsonl line ${problem.line}: ${problem.message}`,
+              ),
+            ]}
+          />
           <AgentPanel environmentId={project.environmentId} model={model} />
           <MainTabs
             files={artifacts.files}
