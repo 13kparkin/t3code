@@ -104,6 +104,29 @@ describe("a ticket's pull request", () => {
     });
   });
 
+  it("Given a fork checkout whose project names the upstream, when a bare number is the pr, then it is read against the fork's own repository", () => {
+    const fork: PrProject = {
+      ...project,
+      repositoryIdentity: {
+        canonicalKey: "github.com/upstream/app",
+        locator: {
+          source: "git-remote",
+          remoteName: "upstream",
+          remoteUrl: "https://github.com/upstream/app.git",
+        },
+        provider: SourceControlProviderKind.make("github"),
+        owner: "upstream",
+        name: "app",
+        origin: { canonicalKey: "github.com/acme/app", displayName: "acme/app" },
+      },
+    };
+    expect(ticketPrRef(ticket({ pr: 91 }), [], fork)).toEqual({
+      projectId: "project-1",
+      repository: "acme/app",
+      number: 91,
+    });
+  });
+
   it("Given a link that was dismissed from a stack, when no pr is set, then it is not the ticket's", () => {
     expect(ticketPrRef(ticket(), [link(5, { source: "stack-dismissed" })], project)).toBeNull();
   });
