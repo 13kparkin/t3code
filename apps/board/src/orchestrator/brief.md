@@ -110,7 +110,7 @@ Each item has `id` (lowercase, digits, and dashes, up to 40 characters, never re
 Pick `place` from the ask:
 
 - `canvas`: a lane of its own on the canvas, after the stage lanes. At most 4.
-- `lane`: a card at the top of one stage lane. Add `"lane": "<stage>"`. At most 1 per lane.
+- `lane`: a card at the top of the lane that holds one stage. The canvas has three lanes: For you, To do (`todo`, `planned`), and Running (the later stages). Add `"lane": "<stage>"`. At most 1 per stage.
 - `ticket`: a section in one ticket's details. Add `"ticket": "<key>"`.
 - `glance`: one line in a ticket's At a glance. Add `"ticket": "<key>"`, and one `text` or `stat` block.
 - `orchestrator`: one line on your own card, with one `text` or `stat` block. At most 3.
