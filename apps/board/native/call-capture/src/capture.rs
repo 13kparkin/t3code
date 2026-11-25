@@ -316,13 +316,6 @@ pub fn record(pid: u32, them_path: &Path, me_path: &Path) -> i32 {
             return 1;
         }
     };
-    let (mut them, mut me) = match (WavWriter::create(them_path), WavWriter::create(me_path)) {
-        (Ok(them), Ok(me)) => (Track::new(them), Track::new(me)),
-        (Err(err), _) | (_, Err(err)) => {
-            emit(write_error(&err));
-            return 1;
-        }
-    };
     match free_bytes(them_path) {
         Ok(free) if free >= MIN_FREE_BYTES => {}
         Ok(_) => {
@@ -348,6 +341,13 @@ pub fn record(pid: u32, them_path: &Path, me_path: &Path) -> i32 {
         }
     };
     let mut mic = Stream::microphone().ok();
+    let (mut them, mut me) = match (WavWriter::create(them_path), WavWriter::create(me_path)) {
+        (Ok(them), Ok(me)) => (Track::new(them), Track::new(me)),
+        (Err(err), _) | (_, Err(err)) => {
+            emit(write_error(&err));
+            return 1;
+        }
+    };
     let stdin = stdin_watch();
     let start = Instant::now();
     let now = || (start.elapsed().as_secs_f64() * f64::from(SAMPLE_RATE)) as u64;

@@ -5,6 +5,7 @@ use std::path::Path;
 pub const SAMPLE_RATE: u32 = 16_000;
 const HEADER_LEN: u64 = 44;
 const BYTES_PER_SAMPLE: u64 = 2;
+#[cfg(any(windows, test))]
 const MAX_LAG: u64 = SAMPLE_RATE as u64 / 10;
 
 pub fn header(data_bytes: u64) -> [u8; 44] {
@@ -93,12 +94,14 @@ pub fn repair(path: &Path) -> io::Result<f64> {
     Ok(data as f64 / (SAMPLE_RATE as u64 * BYTES_PER_SAMPLE) as f64)
 }
 
+#[cfg(any(windows, test))]
 pub struct Track {
     pub wav: WavWriter,
     energy: f64,
     count: u64,
 }
 
+#[cfg(any(windows, test))]
 impl Track {
     pub fn new(wav: WavWriter) -> Self {
         Self {
@@ -130,6 +133,7 @@ impl Track {
 }
 
 /// Pads every track to the longest one, or to `now` when that is later, and rewrites the headers.
+#[cfg(any(windows, test))]
 pub fn finish(tracks: &mut [Track], now: u64) -> io::Result<u64> {
     let end = tracks.iter().map(|t| t.wav.samples()).fold(now, u64::max);
     for track in tracks {
@@ -210,11 +214,11 @@ mod tests {
     fn a_lagging_track_and_a_full_track_end_at_the_same_length() {
         let (full_path, lagging_path) = (temp("full.wav"), temp("lagging.wav"));
         let mut tracks = [
-            Track::new(WavWriter::create(&full_path).unwrap()),
             Track::new(WavWriter::create(&lagging_path).unwrap()),
+            Track::new(WavWriter::create(&full_path).unwrap()),
         ];
-        tracks[0].append(&[1; 16_000], 16_000).unwrap();
-        tracks[1].append(&[], 14_000).unwrap();
+        tracks[0].append(&[], 14_000).unwrap();
+        tracks[1].append(&[1; 16_000], 16_000).unwrap();
         assert_eq!(finish(&mut tracks, 15_000).unwrap(), 16_000);
         assert_eq!(tracks.each_ref().map(|t| t.wav.samples()), [16_000, 16_000]);
         drop(tracks);
