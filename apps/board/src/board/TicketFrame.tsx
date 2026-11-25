@@ -17,6 +17,7 @@ interface Press {
   readonly startY: number;
   readonly lane: HTMLElement | null;
   readonly startScroll: number;
+  reportedScroll: number;
   clientY: number;
   dragging: boolean;
   timer: ReturnType<typeof setInterval> | null;
@@ -64,11 +65,10 @@ export function TicketFrame({
     if (press.current?.timer != null) clearInterval(press.current.timer);
   };
   // The lane may have scrolled since the press, so its scroll joins the pointer's travel.
-  const report = (active: Press) =>
-    onDrag(
-      (active.clientY - active.startY) / scale +
-        (active.lane === null ? 0 : active.lane.scrollTop - active.startScroll),
-    );
+  const report = (active: Press) => {
+    active.reportedScroll = active.lane?.scrollTop ?? 0;
+    onDrag((active.clientY - active.startY) / scale + active.reportedScroll - active.startScroll);
+  };
   const end = () => {
     stopEdgeScroll();
     if (press.current?.dragging) {
@@ -104,6 +104,7 @@ export function TicketFrame({
           startY: event.clientY,
           lane,
           startScroll: lane?.scrollTop ?? 0,
+          reportedScroll: lane?.scrollTop ?? 0,
           clientY: event.clientY,
           dragging: false,
           timer: null,
@@ -129,9 +130,8 @@ export function TicketFrame({
           }
           const rect = lane.getBoundingClientRect();
           const step = edgeScrollStep(active.clientY, rect.top, rect.bottom);
-          if (step === 0) return;
-          lane.scrollTop += step;
-          report(active);
+          if (step !== 0) lane.scrollTop += step;
+          if (lane.scrollTop !== active.reportedScroll) report(active);
         }, EDGE_TICK_MS);
       }}
       onPointerUp={end}

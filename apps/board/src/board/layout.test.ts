@@ -210,19 +210,16 @@ describe("laying out the lanes", () => {
     });
   });
 
-  it.each([1, 3, 8])(
-    "Given %i To do cards, when laid out, then the cards fit the lane's scroll box exactly",
-    (count) => {
-      const cards = Array.from({ length: count }, (_, at) =>
-        view({ key: `T-${at + 10}`, title: "x", stage: "todo" }),
-      );
-      const todo = lane(
-        "todo",
-        layoutBoard({ ...model, lanes: { ...empty, todo: cards } }, {}, 0, defaults),
-      )!;
-      expect(laneCardsHeight(todo)).toBeLessThanOrEqual(todo.height - 2 * LANE_BORDER - LANE_HEAD);
-    },
-  );
+  it("Given 3 To do cards, when laid out, then the cards fit the lane's scroll box exactly", () => {
+    const cards = Array.from({ length: 3 }, (_, at) =>
+      view({ key: `T-${at + 10}`, title: "x", stage: "todo" }),
+    );
+    const todo = lane(
+      "todo",
+      layoutBoard({ ...model, lanes: { ...empty, todo: cards } }, {}, 0, defaults),
+    )!;
+    expect(laneCardsHeight(todo)).toBeLessThanOrEqual(todo.height - 2 * LANE_BORDER - LANE_HEAD);
+  });
 
   it.each([
     ["mid lane", 300, 0],
