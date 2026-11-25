@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import type { Ticket } from "../domain/ticket";
 import { applyOverlay } from "../domain/ticketOverlay";
-import { agentFile, cardFile, cardMarkdown } from "./cardAttachment";
+import { agentFile, cardFile, cardMarkdown, sendToChatError } from "./cardAttachment";
 
 const ticket: Ticket = {
   key: "T-42",
@@ -73,5 +73,13 @@ describe("cardFile", () => {
     expect(await agentFile({ threadId: "thread-0123456789abcdef" }).text()).toBe(
       "# Agent 89abcdef\n\n- Agent thread: `thread-0123456789abcdef`\n",
     );
+  });
+
+  it("says to start the orchestrator only while a failed send still has none", () => {
+    expect([
+      sendToChatError(true, null),
+      sendToChatError(true, "thread-1"),
+      sendToChatError(false, null),
+    ]).toEqual(["Start this board's orchestrator to send a card to chat.", null, null]);
   });
 });

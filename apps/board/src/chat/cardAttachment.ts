@@ -78,6 +78,11 @@ export const dropOnComposer = (clientX: number, clientY: number, file: File): bo
 export const sendToComposer = (file: File): boolean =>
   attach(document.querySelector(`[${DROP_ATTRIBUTE}]`), file);
 
+export const sendToChatError = (failed: boolean, orchestratorThreadId: string | null) =>
+  failed && orchestratorThreadId === null
+    ? "Start this board's orchestrator to send a card to chat."
+    : null;
+
 export function useComposerDrop(addFiles: (files: File[]) => void) {
   const ref = useRef<HTMLFormElement | null>(null);
   const add = (files: File[]) => {

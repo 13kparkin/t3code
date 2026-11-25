@@ -186,6 +186,9 @@ export function Lanes({
                   if (rowPress.current?.moved)
                     dropOnComposer(event.clientX, event.clientY, agentFile(row));
                 }}
+                onPointerCancel={() => {
+                  rowPress.current = null;
+                }}
                 onClick={() => {
                   if (!rowPress.current?.moved) onOpenAgent(row.threadId, null);
                   rowPress.current = null;

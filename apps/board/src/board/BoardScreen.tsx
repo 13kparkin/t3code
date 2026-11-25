@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { ArtifactsProvider } from "../artifacts/ArtifactsContext";
 import { useBoardArtifacts } from "../artifacts/useBoardArtifacts";
 import { chatSlotAtom, chooseTicket, ticketChoiceAtom, ticketSlotAtom } from "../browser/panel";
-import { agentFile, cardFile, sendToComposer } from "../chat/cardAttachment";
+import { agentFile, cardFile, sendToChatError, sendToComposer } from "../chat/cardAttachment";
 import { OrchestratorPanel } from "../chat/OrchestratorPanel";
 import { MainTabs } from "../files/MainTabs";
 import { visibleAdditions } from "../domain/additions";
@@ -73,8 +73,10 @@ export function BoardScreen({
   const [dropError, setDropError] = useState<string | null>(null);
   const [hideError, setHideError] = useState<string | null>(null);
   const [cardError, setCardError] = useState<string | null>(null);
+  const [sendFailed, setSendFailed] = useState(false);
   const [menu, setMenu] = useState<CardMenu | null>(null);
   const { board } = listed;
+  const cardNotice = cardError ?? sendToChatError(sendFailed, board.orchestratorThreadId);
   const {
     model: fullModel,
     issue,
@@ -117,12 +119,7 @@ export function BoardScreen({
       items: [
         {
           label: "Send to chat",
-          onSelect: () =>
-            setCardError(
-              sendToComposer(file())
-                ? null
-                : "Start this board's orchestrator to send a card to chat.",
-            ),
+          onSelect: () => setSendFailed(!sendToComposer(file())),
         },
         ...(ticket
           ? []
@@ -333,13 +330,13 @@ export function BoardScreen({
                   {dropError}
                 </p>
               )}
-              {cardError !== null && (
+              {cardNotice !== null && (
                 <p
                   role="alert"
                   data-testid="card-error"
                   className="rounded-lg border border-red-400/40 bg-panel px-3 py-2 break-words text-red-300 shadow-panel"
                 >
-                  {cardError}
+                  {cardNotice}
                 </p>
               )}
               {hideError !== null && (
