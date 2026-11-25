@@ -10,8 +10,7 @@ const SCRIPT = NodePath.join(
   NodePath.dirname(NodeURL.fileURLToPath(import.meta.url)),
   "ci-local.mjs",
 );
-// A PATH without vp, so the checks fail at once instead of running for real.
-const ENV = {
+const ENV_WITHOUT_VP = {
   ...process.env,
   PATH: "/usr/bin:/bin",
   GIT_CONFIG_GLOBAL: "/dev/null",
@@ -28,7 +27,7 @@ NodeTest.test(
       NodeChildProcess.execFileSync(
         "git",
         ["-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", ...args],
-        { cwd: repo, env: ENV, encoding: "utf8" },
+        { cwd: repo, env: ENV_WITHOUT_VP, encoding: "utf8" },
       ).trim();
     try {
       NodeFS.mkdirSync(repo);
@@ -37,7 +36,7 @@ NodeTest.test(
       git("remote", "add", "upstream", NodePath.join(temp, "missing.git"));
       const result = NodeChildProcess.spawnSync(process.execPath, [SCRIPT, "T-1", evidence], {
         cwd: repo,
-        env: ENV,
+        env: ENV_WITHOUT_VP,
         encoding: "utf8",
       });
       NodeAssert.equal(result.status, 1, result.stderr);

@@ -6,7 +6,7 @@ import {
   type CleanupPorts,
   cleanupMerged,
   type LiveThread,
-  migratedWorktrees,
+  evidenceOnBoardWorktrees,
   planCleanup,
   readBoardTickets,
   runOnePerKey,
@@ -44,7 +44,7 @@ const facts = (patch: Partial<WorktreeFacts> = {}): WorktreeFacts => ({
   listed: [OTHER, WT],
   threads: [{ id: "builder", worktreePath: WT, working: false, isRoot: false }],
   status: clean,
-  migrated: true,
+  evidenceOnBoard: true,
   ...patch,
 });
 
@@ -53,7 +53,7 @@ describe("planCleanup", () => {
     ["SAFE: T-26 merged, clean, pushed, evidence on the board", {}, { kind: "remove", path: WT }],
     [
       "this session's migration did not report the worktree migrated",
-      { migrated: false },
+      { evidenceOnBoard: false },
       { kind: "keep", reason: "evidence-missing" },
     ],
     [
@@ -191,11 +191,11 @@ function world(input: {
 
 describe("cleanupMerged", () => {
   const target = { workspaceRoot: ROOT, folder: "main" };
-  const MIGRATED: ReadonlySet<string> = new Set([WT, OTHER]);
+  const ON_BOARD: ReadonlySet<string> = new Set([WT, OTHER]);
 
   it("deletes a clean merged worktree, then archives the ticket's threads", async () => {
     const clear = world({});
-    expect(await cleanupMerged(clear.ports, target, [ticket()], MIGRATED)).toEqual(new Map());
+    expect(await cleanupMerged(clear.ports, target, [ticket()], ON_BOARD)).toEqual(new Map());
     expect(clear.removed).toEqual([WT]);
     expect(clear.archived).toEqual(["builder"]);
   });
@@ -223,7 +223,7 @@ describe("cleanupMerged", () => {
         { threadId: "reviewer", role: "reviewer" },
       ],
     });
-    expect(await cleanupMerged(two.ports, target, [owner], MIGRATED)).toEqual(
+    expect(await cleanupMerged(two.ports, target, [owner], ON_BOARD)).toEqual(
       new Map([["T-26", "dirty"]]),
     );
     expect(two.removed).toEqual([WT]);
@@ -232,7 +232,7 @@ describe("cleanupMerged", () => {
 
   it("archives without a delete when the worktree is already gone", async () => {
     const gone = world({ statuses: [{ ...clean, isRepo: false }] });
-    expect(await cleanupMerged(gone.ports, target, [ticket()], MIGRATED)).toEqual(new Map());
+    expect(await cleanupMerged(gone.ports, target, [ticket()], ON_BOARD)).toEqual(new Map());
     expect(gone.removed).toEqual([]);
     expect(gone.archived).toEqual(["builder"]);
   });
@@ -241,7 +241,7 @@ describe("cleanupMerged", () => {
     const changed = world({
       statuses: [clean, { ...clean, hasWorkingTreeChanges: true }],
     });
-    expect(await cleanupMerged(changed.ports, target, [ticket()], MIGRATED)).toEqual(
+    expect(await cleanupMerged(changed.ports, target, [ticket()], ON_BOARD)).toEqual(
       new Map([["T-26", "dirty"]]),
     );
     expect(changed.removed).toEqual([]);
@@ -251,7 +251,7 @@ describe("cleanupMerged", () => {
     const refused = world({
       removeFails: "fatal: contains modified or untracked files",
     });
-    expect(await cleanupMerged(refused.ports, target, [ticket()], MIGRATED)).toEqual(
+    expect(await cleanupMerged(refused.ports, target, [ticket()], ON_BOARD)).toEqual(
       new Map([["T-26", "fatal: contains modified or untracked files"]]),
     );
     expect(refused.archived).toEqual([]);
@@ -262,14 +262,14 @@ describe("cleanupMerged", () => {
       statuses: [{ ...clean, isRepo: false }],
       threads: [{ id: "builder", worktreePath: null, working: true, isRoot: false }],
     });
-    expect(await cleanupMerged(busy.ports, target, [ticket()], MIGRATED)).toEqual(
+    expect(await cleanupMerged(busy.ports, target, [ticket()], ON_BOARD)).toEqual(
       new Map([["T-26", "running"]]),
     );
     expect(busy.archived).toEqual([]);
   });
 });
 
-describe("migratedWorktrees", () => {
+describe("evidenceOnBoardWorktrees", () => {
   it("Given a migration report, when it is read, then only migrated and empty worktrees count", () => {
     const report = [
       `migrated\t${WT}/`,
@@ -277,7 +277,7 @@ describe("migratedWorktrees", () => {
       `failed\t${OTHER}\tT-1: smoke.png is not on the board`,
       "",
     ].join("\n");
-    expect([...migratedWorktrees(report)]).toEqual([WT, "/wt/empty"]);
+    expect([...evidenceOnBoardWorktrees(report)]).toEqual([WT, "/wt/empty"]);
   });
 });
 

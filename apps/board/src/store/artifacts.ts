@@ -43,7 +43,6 @@ async function inBatches<T, R>(
   return results;
 }
 
-/** Every file under a directory, which `projects.listEntries` lists one level at a time. Paths are relative to `cwd`. */
 async function walk(files: ProjectFiles, cwd: string, directory: string): Promise<string[]> {
   const found: string[] = [];
   let level = [directory];
@@ -59,10 +58,7 @@ async function walk(files: ProjectFiles, cwd: string, directory: string): Promis
   return found;
 }
 
-/**
- * The artifacts in a board's store folder, ordered by path. Every `projects.listEntries` call takes
- * a path relative to its `cwd`, because the engine refuses an absolute one.
- */
+/** Every `projects.listEntries` call takes a path relative to its `cwd`, because the engine refuses an absolute one. */
 export async function listArtifacts(
   files: ProjectFiles,
   { workspaceRoot, folder }: { readonly workspaceRoot: string; readonly folder: string },

@@ -38,11 +38,6 @@ for tree in "$@"; do
 done
 `;
 
-/**
- * Copies each worktree's legacy `.omp/artifacts/<key>/` into `<artifactsDir>/<key>/` through a
- * `<key>.partial` folder, never overwriting a board file, and leaves the originals. Per worktree it
- * prints one tab-separated line: `migrated`, `nothing`, or `failed`, the worktree, and a failure's reason.
- */
 export function migrationScript(artifactsDir: string, worktrees: ReadonlyArray<string>): string {
   return [
     `board=${shellQuote(artifactsDir)}`,

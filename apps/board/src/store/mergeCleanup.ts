@@ -24,8 +24,7 @@ type Plan =
   | { readonly kind: "remove"; readonly path: string }
   | { readonly kind: "gone" }
   | { readonly kind: "keep"; readonly reason: KeepReason }
-  /** The next check needs `status`, which the facts have not read yet. */
-  | { readonly kind: "read" };
+  | { readonly kind: "read-status" };
 
 export interface LiveThread {
   readonly id: string;
@@ -54,8 +53,7 @@ export interface WorktreeFacts {
   readonly listed: ReadonlyArray<string> | null;
   readonly threads: ReadonlyArray<LiveThread> | null;
   readonly status?: WorktreeStatus | null;
-  /** This session's migration reported the worktree's legacy evidence on the board, or found none. */
-  readonly migrated: boolean;
+  readonly evidenceOnBoard: boolean;
 }
 
 const ABSOLUTE = /^(\/|[A-Za-z]:[\\/])/;
@@ -89,7 +87,7 @@ export function planCleanup(facts: WorktreeFacts): Plan {
   // Git deletes the folder it resolves, so only a path git lists as written can be trusted.
   const worktree = listed.find((entry) => samePath(entry, path));
   if (worktree === undefined) {
-    if (status === undefined) return { kind: "read" };
+    if (status === undefined) return { kind: "read-status" };
     if (status === null) return keep("status-unknown");
     return status.isRepo ? keep("unlisted") : { kind: "gone" };
   }
@@ -105,12 +103,12 @@ export function planCleanup(facts: WorktreeFacts): Plan {
   );
   if (otherTicket || otherThread) return keep("shared");
   if (threads.some((thread) => own.has(thread.id) && thread.working)) return keep("running");
-  if (status === undefined) return { kind: "read" };
+  if (status === undefined) return { kind: "read-status" };
   if (status === null) return keep("status-unknown");
   if (!status.isRepo) return { kind: "gone" };
   if (status.hasWorkingTreeChanges) return keep("dirty");
   if (!branchSafe(status)) return keep("unpushed");
-  if (!facts.migrated) return keep("evidence-missing");
+  if (!facts.evidenceOnBoard) return keep("evidence-missing");
   return { kind: "remove", path: worktree };
 }
 
@@ -125,8 +123,7 @@ export function ticketWorktrees(ticket: Ticket, threads: ReadonlyArray<LiveThrea
 
 const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
 
-/** The worktrees a migration report says hold no legacy evidence that is not on the board. */
-export function migratedWorktrees(report: string): ReadonlySet<string> {
+export function evidenceOnBoardWorktrees(report: string): ReadonlySet<string> {
   return new Set(
     report.split("\n").flatMap((line) => {
       const [status, path] = line.split("\t");
@@ -203,16 +200,16 @@ export async function cleanupMerged(
   ports: CleanupPorts,
   target: CleanupTarget,
   merged: ReadonlyArray<Ticket>,
-  migrated: ReadonlySet<string>,
+  evidenceOnBoard: ReadonlySet<string>,
 ): Promise<ReadonlyMap<string, string>> {
   const kept = new Map<string, string>();
   const [boards, listed] = await Promise.all([
     ports.tickets().catch(() => null),
     ports.worktrees().catch(() => null),
   ]);
-  const plan = async (facts: WorktreeFacts): Promise<Exclude<Plan, { kind: "read" }>> => {
+  const plan = async (facts: WorktreeFacts): Promise<Exclude<Plan, { kind: "read-status" }>> => {
     const next = planCleanup(facts);
-    if (next.kind !== "read") return next;
+    if (next.kind !== "read-status") return next;
     return plan({ ...facts, status: await ports.status(facts.path).catch(() => null) });
   };
   const facts = (
@@ -226,7 +223,7 @@ export async function cleanupMerged(
     projectTickets: read === null ? null : [...read.values()].flat(),
     listed,
     threads: ports.threads(),
-    migrated: migrated.has(trimSlashes(path)),
+    evidenceOnBoard: evidenceOnBoard.has(trimSlashes(path)),
   });
   for (const ticket of merged) {
     let done = true;

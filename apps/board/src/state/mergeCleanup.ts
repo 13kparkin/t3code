@@ -9,7 +9,7 @@ import { parseTickets } from "../domain/ticket";
 import {
   type CleanupPorts,
   cleanupMerged,
-  migratedWorktrees,
+  evidenceOnBoardWorktrees,
   readBoardTickets,
   runOnePerKey,
   ticketWorktrees,
@@ -70,10 +70,6 @@ function cleanupPorts(registry: AtomRegistry.AtomRegistry, project: CleanupProje
   };
 }
 
-/**
- * Copies the board's legacy worktree evidence into its `artifacts` folder, then cleans up its merged
- * tickets, after the run already going for it ends. Only a worktree this run migrated can be deleted.
- */
 export function runMergeCleanup(
   registry: AtomRegistry.AtomRegistry,
   project: CleanupProject,
@@ -103,7 +99,7 @@ export function runMergeCleanup(
             ports,
             { workspaceRoot: project.workspaceRoot, folder },
             merged,
-            migratedWorktrees(report),
+            evidenceOnBoardWorktrees(report),
           );
     registry.set(
       keptWorktreesAtom(storeKey),

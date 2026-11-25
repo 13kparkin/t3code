@@ -39,7 +39,6 @@ export interface BoardBridge {
   readonly ensurePstack: () => Promise<PstackResult>;
   /** The raw `.agents/skills` SKILL.md listing for a project and the WSL home. */
   readonly listAgentSkills: (projectRoot: string) => Promise<string>;
-  /** Copies the worktrees' legacy `.omp/artifacts` into the board's `artifacts` folder, and returns the script's report. */
   readonly migrateLegacyEvidence: (
     artifactsDir: string,
     worktrees: ReadonlyArray<string>,
