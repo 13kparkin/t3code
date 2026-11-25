@@ -9,6 +9,11 @@ files:
   - package.json
   - "!node_modules/**/*"
 asar: false
+extraResources:
+  - from: native/call-capture/target/x86_64-pc-windows-msvc/release/agent-board-call-capture.exe
+    to: agent-board-call-capture.exe
+  - from: native/call-capture/THIRD_PARTY_NOTICES.md
+    to: THIRD_PARTY_NOTICES.md
 # Writes app-update.yml, latest.yml, and the blockmap the in-app updater reads.
 publish:
   provider: github

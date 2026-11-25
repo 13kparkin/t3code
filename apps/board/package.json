@@ -16,6 +16,7 @@
     "start:windows": "node scripts/launch-windows.mjs",
     "typecheck": "effect-tsgo tsrs --noEmit",
     "test": "vp test run && node --test scripts/*.test.mjs",
+    "prepackage": "cargo xwin build --locked --release --target x86_64-pc-windows-msvc --manifest-path native/call-capture/Cargo.toml",
     "package": "electron-builder --config electron-builder.yml --win --publish never",
     "check:boundary": "node scripts/check-engine-untouched.mjs",
     "ci:local": "node scripts/ci-local.mjs",

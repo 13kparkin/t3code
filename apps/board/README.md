@@ -25,6 +25,16 @@ vp run --filter @agent-board/app start    # production build, loaded from agentb
 
 On a Windows machine, run the same commands from WSL with `dev:windows` and `start:windows` (after `build`) to get Windows' own window frame. They download Electron for `win32-x64` once into `%LOCALAPPDATA%\agent-board\` and copy the bundle there, so Electron never runs from a `\\wsl.localhost` path. This needs WSL mirrored networking, so the Windows app can reach the dev server on `127.0.0.1`.
 
+`dev:windows` and `start:windows` also copy the call capture helper into the staged app, and stop when it is not built. Build it from the repo root, and again after you change it.
+
+```sh
+rustup target add x86_64-pc-windows-msvc
+cargo install --locked cargo-xwin@0.23.1
+cargo xwin build --locked --release --target x86_64-pc-windows-msvc --manifest-path apps/board/native/call-capture/Cargo.toml
+```
+
+The helper, `agent-board-call-capture.exe`, records one app's audio through Windows process loopback plus the default communications microphone. Its source is in `native/call-capture`. `pnpm run package` builds it first through `prepackage`, and the installer ships it in `resources`.
+
 `PORT` moves the dev server. `AGENT_BOARD_CDP_PORT` turns on Electron's remote debugging port. Electron prints `board:first-paint <ms>` once the renderer has painted, measured from the main process start.
 
 ## Releases
@@ -46,7 +56,7 @@ To cut a release, check out a clean `origin/main` and run this.
 node apps/board/scripts/release.mjs 0.1.0
 ```
 
-It stops if the tag exists, runs the same gates as CI, builds, packages the installer with electron-builder from Linux with no Wine, writes `SHA256SUMS` and the release notes, and runs `gh release create`.
+It needs the Rust target and `cargo-xwin` above. It stops if the tag exists, runs the same gates as CI, builds, packages the installer with electron-builder from Linux with no Wine, writes `SHA256SUMS` and the release notes, and runs `gh release create`.
 A test release comes from a pushed branch and is marked with `--prerelease`. Give its version a suffix such as `0.0.3-test`, so it never uses up a real version tag.
 With `ANTHROPIC_API_KEY` set, the notes open with a Claude summary of the pull requests since the previous `board-v*` tag, over GitHub's generated list. Without it, the notes are GitHub's list alone.
 
