@@ -21,6 +21,24 @@ export function agentActivity(agent: AgentView, now: number): AgentActivity {
   return agent.runState === "failed" ? "failed" : "stopped";
 }
 
+/** T3 releases an idle provider session after this long by itself, so an older agent needs no stop. */
+const ENGINE_IDLE_RELEASE_MS = 30 * 60_000;
+
+/** Whether the board ends this agent's session: a finished run that waits on nothing, never the orchestrator's. */
+export function shouldAutoStop(
+  agent: AgentView,
+  orchestratorThreadId: string | null,
+  now: number,
+): boolean {
+  const activity = agentActivity(agent, now);
+  return (
+    agent.threadId !== orchestratorThreadId &&
+    agent.latestRunId !== null &&
+    (activity === "stopped" || activity === "failed") &&
+    now - Date.parse(agent.updatedAt) <= ENGINE_IDLE_RELEASE_MS
+  );
+}
+
 /**
  * What a card's agents are doing: a question for the user, then live work, then waiting on
  * children, then the newest agent's state, so a failed agent that another agent has since

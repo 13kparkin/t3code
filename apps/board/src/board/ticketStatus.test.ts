@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import type { AgentView, RunState } from "../state/boardModel";
-import { newestAgent, ticketStatus } from "./ticketStatus";
+import { newestAgent, shouldAutoStop, ticketStatus } from "./ticketStatus";
 
 const agent = (
   threadId: string,
@@ -49,5 +49,34 @@ describe("a card's status", () => {
     const later = agent("b", "idle", { updatedAt: "2026-11-21T10:00:00.000Z" });
     expect(newestAgent([agent("a", "idle"), later, agent("c", "idle")])).toBe(later);
     expect(newestAgent([])).toBeUndefined();
+  });
+});
+
+describe("which agents the board stops", () => {
+  const now = Date.parse("2026-11-20T10:10:00.000Z");
+  const ran = { latestRunId: "run-1", updatedAt: "2026-11-20T10:09:00.000Z" };
+  it.each([
+    { name: "a finished run", agent: agent("a", "idle", ran), stop: true },
+    { name: "a failed run", agent: agent("a", "failed", ran), stop: true },
+    { name: "the orchestrator", agent: agent("orch", "idle", ran), stop: false },
+    { name: "a working run", agent: agent("a", "working", ran), stop: false },
+    {
+      name: "a question",
+      agent: agent("a", "idle", { ...ran, pendingRequest: true }),
+      stop: false,
+    },
+    {
+      name: "children",
+      agent: agent("a", "idle", { ...ran, waitingOnChildren: true }),
+      stop: false,
+    },
+    { name: "no run yet", agent: agent("a", "idle"), stop: false },
+    {
+      name: "a run the engine already released",
+      agent: agent("a", "idle", { latestRunId: "run-1", updatedAt: "2026-11-20T09:30:00.000Z" }),
+      stop: false,
+    },
+  ])("Given $name, then stop is $stop", ({ agent: subject, stop }) => {
+    expect(shouldAutoStop(subject, "orch", now)).toBe(stop);
   });
 });

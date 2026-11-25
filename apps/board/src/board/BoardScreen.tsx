@@ -14,14 +14,12 @@ import type { CardState, FreeAgent } from "../domain/board";
 import { mergeTicketKey } from "../domain/readiness";
 import { applyThreadShown, threadKey, threadShownAtom } from "../state/chatThread";
 import { filterFlipsAtom, frameOrderAtom } from "../state/boardUi";
-import { useDriverOf, useThreadFamily } from "../state/family";
+import { useThreadFamily } from "../state/family";
 import { clockAtom, PrProvider } from "../state/prStatus";
-import { environmentSnapshotAtom } from "../state/projects";
 import { focusedCardAtom, useBoardForYou } from "../state/forYou";
 import { addDocs } from "../state/attachmentUploads";
-import { agentOf, type AgentView, allAgents, countBuilders } from "../state/boardModel";
-import { ticketStatus } from "./ticketStatus";
-import { useAutoStop } from "./useAutoStop";
+import { countBuilders } from "../state/boardModel";
+import { FreeAgents } from "./FreeAgents";
 import { useBoardView } from "../state/boardView";
 import { issuePullAtom } from "../state/issuePull";
 import { keptWorktreesAtom } from "../state/mergeCleanup";
@@ -32,7 +30,7 @@ import { moveFreeAgent, setCardState, startFreeAgent } from "../state/boardCards
 import { splitCards } from "../state/cardStates";
 import { ContextMenu } from "../ui/ContextMenu";
 import type { PopMenuItem } from "../ui/MenuList";
-import { FREE_CARD, FreeAgentCard } from "./FreeAgentCard";
+import { FREE_CARD } from "./FreeAgentCard";
 import { AgentPanel } from "./AgentPanel";
 import { ForYouLane } from "./ForYouLane";
 import { ForYouPage } from "./ForYouPage";
@@ -92,21 +90,6 @@ export function BoardScreen({
   );
   const { model } = cards;
   const now = useAtomValue(clockAtom);
-  const driverOf = useDriverOf();
-  const shells = useAtomValue(environmentSnapshotAtom(project.environmentId))?.threads;
-  const freeViews = useMemo(() => {
-    const ids = new Set(freeAgents.map((agent) => agent.threadId));
-    return new Map<string, AgentView>(
-      (shells ?? [])
-        .filter((shell) => ids.has(shell.id))
-        .map((shell) => [shell.id, agentOf(shell, driverOf, null)]),
-    );
-  }, [shells, freeAgents, driverOf]);
-  const cardAgents = useMemo(
-    () => [...allAgents(fullModel), ...freeViews.values()],
-    [fullModel, freeViews],
-  );
-  useAutoStop(project.environmentId, cardAgents, board.orchestratorThreadId, now);
   const saveCard = (key: string, state: CardState | null) =>
     void setCardState(registry, project, listed, key, state).then(setCardError);
   const openCardMenu = (event: MouseEvent, key: string, label: string, ticket: boolean) => {
@@ -298,24 +281,18 @@ export function BoardScreen({
                 onCardMenu={openCardMenu}
                 now={now}
               />
-              {cards.free.map((agent) => {
-                const view = freeViews.get(agent.threadId);
-                return (
-                  <FreeAgentCard
-                    key={agent.threadId}
-                    environmentId={project.environmentId}
-                    agent={agent}
-                    status={ticketStatus(view === undefined ? [] : [view], now)}
-                    onMove={(at) =>
-                      void moveFreeAgent(registry, project, listed, {
-                        threadId: agent.threadId,
-                        ...at,
-                      }).then(setCardError)
-                    }
-                    onMenu={(event) => openCardMenu(event, agent.threadId, "Agent", false)}
-                  />
-                );
-              })}
+              <FreeAgents
+                environmentId={project.environmentId}
+                model={fullModel}
+                all={freeAgents}
+                shown={cards.free}
+                orchestratorThreadId={board.orchestratorThreadId}
+                now={now}
+                onMove={(agent) =>
+                  void moveFreeAgent(registry, project, listed, agent).then(setCardError)
+                }
+                onMenu={(event, threadId) => openCardMenu(event, threadId, "Agent", false)}
+              />
             </Viewport>
             <div className="absolute bottom-3.5 left-3.5 z-10 flex max-w-[60%] flex-col gap-2">
               {dropError !== null && (

@@ -108,7 +108,11 @@ export function Conversation({
   const inline = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
     const parent = threadShown ? inline.current : dock;
-    if (parent !== null && host.parentNode !== parent) parent.append(host);
+    if (parent === null || host.parentNode === parent) return;
+    // Moving a node blurs whatever it holds, so the focus goes back after the move.
+    const focused = host.contains(document.activeElement) ? document.activeElement : null;
+    parent.append(host);
+    if (focused instanceof HTMLElement) focused.focus();
   }, [host, threadShown, dock]);
   useLayoutEffect(() => () => host.remove(), [host]);
   const failure = Option.getOrNull(state.error);
