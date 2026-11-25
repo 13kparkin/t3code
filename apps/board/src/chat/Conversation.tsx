@@ -14,7 +14,7 @@ import {
   useSyncExternalStore,
 } from "react";
 
-import { dockSlotAtom } from "../browser/panel";
+import { dockSlotAtom, panelAtom } from "../browser/panel";
 import { environmentThreads, useEnvironmentThread } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
 import { useArtifacts } from "../artifacts/ArtifactsContext";
@@ -96,6 +96,21 @@ export function Conversation({
     [source, workflow, pending, live],
   );
   const dock = useAtomValue(dockSlotAtom);
+  const panel = useAtomValue(panelAtom);
+  const threadShown = panel.open && panel.tab === "chat";
+  // The composer renders once into this node, which moves between the dock and the panel, so a
+  // move keeps its draft (the reverse-portal pattern, github.com/httptoolkit/react-reverse-portal).
+  const [host] = useState(() => {
+    const node = document.createElement("div");
+    node.style.display = "contents";
+    return node;
+  });
+  const inline = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const parent = threadShown ? inline.current : dock;
+    if (parent !== null && host.parentNode !== parent) parent.append(host);
+  }, [host, threadShown, dock]);
+  useLayoutEffect(() => () => host.remove(), [host]);
   const failure = Option.getOrNull(state.error);
   const { all: artifacts, open: openArtifact } = useArtifacts();
   const lookup = useMemo(() => new ArtifactLookup(), []);
@@ -154,21 +169,24 @@ export function Conversation({
             <p className="text-faint">Thinking</p>
           )}
         </div>
-        {dock !== null &&
-          createPortal(
-            <Composer
-              project={project}
-              listed={listed}
-              threadId={threadId}
-              projection={projection}
-              live={live}
-              failed={failed}
-              queue={queue}
-              steer={workflow?.canPromoteToSteer === true ? (workflow.activeRun?.id ?? null) : null}
-              setSends={setSends}
-            />,
-            dock,
-          )}
+        <div
+          ref={inline}
+          className={threadShown ? "shrink-0 border-t border-line p-2" : "hidden"}
+        />
+        {createPortal(
+          <Composer
+            project={project}
+            listed={listed}
+            threadId={threadId}
+            projection={projection}
+            live={live}
+            failed={failed}
+            queue={queue}
+            steer={workflow?.canPromoteToSteer === true ? (workflow.activeRun?.id ?? null) : null}
+            setSends={setSends}
+          />,
+          host,
+        )}
       </ArtifactLookupContext>
     </SkillsContext>
   );
