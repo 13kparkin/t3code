@@ -12,14 +12,18 @@ import { AgentLog } from "./AgentLog";
 export function AgentPanel({
   environmentId,
   model,
+  freeAgents,
 }: {
   environmentId: EnvironmentId;
   model: BoardModel;
+  /** The thread ids of the board's free agents, which the orchestrator's family does not hold. */
+  freeAgents: ReadonlyArray<string>;
 }) {
   const registry = useContext(RegistryContext);
   const threadId = useAtomValue(agentPanelAtom);
   const agent = allAgents(model).find((entry) => entry.threadId === threadId);
   if (threadId === null) return null;
+  const free = agent === undefined && freeAgents.includes(threadId);
   return (
     <aside
       aria-label="Agent activity"
@@ -28,7 +32,7 @@ export function AgentPanel({
     >
       <header className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3">
         <h2 className="min-w-0 flex-1 truncate font-semibold">
-          {agent?.title ?? "Agent activity"}
+          {agent?.title ?? (free ? "Agent" : "Agent activity")}
         </h2>
         {agent?.ticketKey != null && (
           <button
@@ -50,10 +54,17 @@ export function AgentPanel({
           <X className="size-4" aria-hidden />
         </button>
       </header>
-      {agent === undefined ? (
+      {free ? (
+        <AgentLog key={threadId} environmentId={environmentId} threadId={threadId} role="Agent" />
+      ) : agent === undefined ? (
         <p className="px-3 py-3 text-faint">This agent is no longer on the board</p>
       ) : (
-        <AgentLog key={agent.threadId} environmentId={environmentId} agent={agent} />
+        <AgentLog
+          key={agent.threadId}
+          environmentId={environmentId}
+          threadId={agent.threadId}
+          role={agent.role}
+        />
       )}
     </aside>
   );

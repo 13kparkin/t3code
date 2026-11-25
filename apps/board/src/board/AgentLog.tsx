@@ -5,18 +5,19 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import { timelineSource } from "../chat/projectionSource";
 import { timelineRows } from "../chat/timeline";
 import { TimelineRowView } from "../chat/TimelineRowView";
-import type { AgentView } from "../state/boardModel";
 import { useEnvironmentThread } from "../state/threads";
 
-/** The read-only log of one agent's thread. It has no box to send into, because only the orchestrator takes the user's messages. */
+/** The read-only log of one agent's thread. */
 export function AgentLog({
   environmentId,
-  agent,
+  threadId,
+  role,
 }: {
   environmentId: EnvironmentId;
-  agent: AgentView;
+  threadId: string;
+  role: string;
 }) {
-  const state = useEnvironmentThread(environmentId, ThreadId.make(agent.threadId));
+  const state = useEnvironmentThread(environmentId, ThreadId.make(threadId));
   const projection = Option.getOrNull(state.data);
   const rows = useMemo(
     () => (projection === null ? [] : timelineRows(timelineSource(projection))),
@@ -34,7 +35,7 @@ export function AgentLog({
       ref={scroller}
       data-testid="ticket-log"
       role="log"
-      aria-label={`${agent.role} thread log`}
+      aria-label={`${role} thread log`}
       onScroll={(event) => {
         const element = event.currentTarget;
         atBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 48;

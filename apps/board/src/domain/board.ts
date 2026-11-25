@@ -19,6 +19,12 @@ const RoleOverride = Schema.Struct({
 });
 export type RoleOverride = typeof RoleOverride.Type;
 
+const FreeAgent = Schema.Struct({ threadId: Text, x: Schema.Finite, y: Schema.Finite });
+export type FreeAgent = typeof FreeAgent.Type;
+
+export const CardState = Schema.Literals(["done", "archived"]);
+export type CardState = typeof CardState.Type;
+
 export const Board = Schema.Struct({
   id: Text,
   slug: Text,
@@ -39,6 +45,10 @@ export const Board = Schema.Struct({
   roleTargets: Schema.optionalKey(Schema.Record(Text, RoleOverride)),
   /** Each resolved `role_target` item's result, `Applied: ...` or `Rejected: ...`, by item id. Only the app writes this. */
   roleRequests: Schema.optionalKey(Schema.Record(Text, Text)),
+  /** Agents the user started from the canvas, outside the orchestrator, at their place on it. Only the app writes this. */
+  freeAgents: Schema.optionalKey(Schema.Array(FreeAgent)),
+  /** Cards the user moved to Done or archived, by ticket key or thread id. Only the app writes this. */
+  cardStates: Schema.optionalKey(Schema.Record(Text, CardState)),
 });
 export type Board = typeof Board.Type;
 

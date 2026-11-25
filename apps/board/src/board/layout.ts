@@ -236,3 +236,25 @@ export function clampDrag(lane: LaneBox, frame: FrameBox, dy: number): number {
   const max = lane.y + lane.height - LANE_PAD - frame.height - frame.y;
   return Math.min(Math.max(dy, min), Math.max(min, max));
 }
+
+/** The canvas content grown to cover cards placed freely on it. */
+export function withCards(
+  content: Rect,
+  cards: ReadonlyArray<{ readonly x: number; readonly y: number }>,
+  size: { readonly width: number; readonly height: number },
+): Rect {
+  if (cards.length === 0) return content;
+  const xs = cards.map((card) => card.x);
+  const ys = cards.map((card) => card.y);
+  const x = Math.min(content.x, ...xs.map((value) => value - LEFT));
+  const y = Math.min(content.y, ...ys.map((value) => value - LEFT));
+  const right = Math.max(
+    content.x + content.width,
+    ...xs.map((value) => value + size.width + LEFT),
+  );
+  const bottom = Math.max(
+    content.y + content.height,
+    ...ys.map((value) => value + size.height + LEFT),
+  );
+  return { x, y, width: right - x, height: bottom - y };
+}

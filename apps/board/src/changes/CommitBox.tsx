@@ -10,7 +10,8 @@ import { useContext, useState } from "react";
 
 import { openInBrowser } from "../browser/browserTabs";
 import { runGitAction, tellOrchestrator, vcsActionManager } from "../state/changes";
-import { PopMenu, type PopMenuItem } from "../ui/PopMenu";
+import type { PopMenuItem } from "../ui/MenuList";
+import { PopMenu } from "../ui/PopMenu";
 import { commitSummary } from "./commitSummary";
 
 /** Set for a ticket worktree, where the orchestrator can be told what was committed. */

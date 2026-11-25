@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { type MouseEvent, useRef } from "react";
 
 import { missingPlan, STAGE_LABEL } from "../domain/ticket";
 import { waitingOn } from "../domain/ticketOverlay";
@@ -21,6 +21,7 @@ export function TicketFrame({
   onDrag,
   onDrop,
   onOpen,
+  onMenu,
 }: {
   view: TicketView;
   box: FrameBox;
@@ -30,6 +31,7 @@ export function TicketFrame({
   onDrag: (dy: number) => void;
   onDrop: () => void;
   onOpen: () => void;
+  onMenu: (event: MouseEvent) => void;
 }) {
   const { ticket, agents } = view;
   const scale = useViewScale();
@@ -89,6 +91,7 @@ export function TicketFrame({
       }}
       onPointerUp={end}
       onPointerCancel={end}
+      onContextMenu={onMenu}
       onClick={() => {
         if (!dragged.current) onOpen();
         dragged.current = false;
