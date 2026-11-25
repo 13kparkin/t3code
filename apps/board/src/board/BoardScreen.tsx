@@ -325,6 +325,7 @@ export function BoardScreen({
                 onUnarchive={(key) => saveCard(key, null)}
               />
               <CallCards
+                boardId={board.id}
                 calls={calls}
                 states={cardStates}
                 onAdd={() => setEditing("new")}
