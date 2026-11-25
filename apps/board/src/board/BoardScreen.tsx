@@ -28,7 +28,7 @@ import { setHiddenAdditions } from "../state/reviews";
 import type { ValidBoard } from "../store/boardFiles";
 import { openAgentPanel } from "../state/agentPanel";
 import { moveFreeAgent, setCardState, startFreeAgent } from "../state/boardCards";
-import { freeAgentLabel, splitCards } from "../state/cardStates";
+import { splitCards } from "../state/cardStates";
 import { ContextMenu } from "../ui/ContextMenu";
 import type { PopMenuItem } from "../ui/MenuList";
 import { FREE_CARD } from "./FreeAgentCard";
@@ -108,10 +108,7 @@ export function BoardScreen({
     const file = () =>
       view === undefined
         ? agentFile(
-            allAgents(fullModel).find((agent) => agent.threadId === key) ?? {
-              threadId: key,
-              title: freeAgentLabel(key),
-            },
+            allAgents(fullModel).find((agent) => agent.threadId === key) ?? { threadId: key },
           )
         : cardFile(view.ticket);
     setMenu({

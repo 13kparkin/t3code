@@ -59,7 +59,7 @@ describe("cardFile", () => {
     ]);
   });
 
-  it("names an agent's file by its thread", async () => {
+  it("names an agent's file by its thread, and a free agent by its label", async () => {
     const file = agentFile({
       threadId: "thread-0123456789abcdef",
       title: "Research the redirect",
@@ -70,5 +70,8 @@ describe("cardFile", () => {
       "agent-89abcdef.md",
       "# Research the redirect\n\n- Agent thread: `thread-0123456789abcdef`\n- Role: scout\n",
     ]);
+    expect(await agentFile({ threadId: "thread-0123456789abcdef" }).text()).toBe(
+      "# Agent 89abcdef\n\n- Agent thread: `thread-0123456789abcdef`\n",
+    );
   });
 });

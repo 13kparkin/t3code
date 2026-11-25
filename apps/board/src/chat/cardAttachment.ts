@@ -2,12 +2,13 @@ import { type DragEvent, useEffect, useEffectEvent, useRef } from "react";
 
 import { STAGE_LABEL, type Ticket } from "../domain/ticket";
 import type { AgentView } from "../state/boardModel";
+import { freeAgentLabel } from "../state/cardStates";
 
 const DROP_ATTRIBUTE = "data-composer-drop";
 const ATTACH_EVENT = "board:attach-card";
 
-type AgentCard = Pick<AgentView, "threadId" | "title"> &
-  Partial<Pick<AgentView, "role" | "ticketKey">>;
+type AgentCard = Pick<AgentView, "threadId"> &
+  Partial<Pick<AgentView, "title" | "role" | "ticketKey">>;
 
 const FACTS: ReadonlyArray<readonly [string, (ticket: Ticket) => string | undefined]> = [
   ["Stage", (ticket) => STAGE_LABEL[ticket.stage]],
@@ -51,12 +52,12 @@ export function cardMarkdown(ticket: Ticket): string {
 export const cardFile = (ticket: Ticket): File =>
   markdownFile([ticket.key, slug(ticket.title)].filter(Boolean).join("-"), cardMarkdown(ticket));
 
-/** An agent row or free agent card, named by its thread so the orchestrator can read it. */
+/** An agent row or free agent card, named by its thread so the orchestrator can read it. A free agent has no title here. */
 export const agentFile = (agent: AgentCard): File =>
   markdownFile(
     `agent-${agent.threadId.slice(-8)}`,
     [
-      `# ${agent.title}`,
+      `# ${agent.title ?? freeAgentLabel(agent.threadId)}`,
       "",
       ...facts([
         ["Agent thread", `\`${agent.threadId}\``],

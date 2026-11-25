@@ -17,7 +17,6 @@ import { isRunLive } from "../chat/timeline";
 import type { FreeAgent } from "../domain/board";
 import { failureText } from "../settings/failureText";
 import { newId } from "../state/boards";
-import { freeAgentLabel } from "../state/cardStates";
 import { interruptTurn, startTurn, useEnvironmentThread } from "../state/threads";
 import { AgentLog } from "./AgentLog";
 import type { CardStatus } from "./ticketStatus";
@@ -90,11 +89,7 @@ export function FreeAgentCard({
     const attached =
       release !== null &&
       offset !== null &&
-      dropOnComposer(
-        release.clientX,
-        release.clientY,
-        agentFile({ threadId: agent.threadId, title: freeAgentLabel(agent.threadId) }),
-      );
+      dropOnComposer(release.clientX, release.clientY, agentFile(agent));
     if (offset !== null && !attached) {
       const next = { x: at.x + offset.dx, y: at.y + offset.dy };
       setPlaced(next);
