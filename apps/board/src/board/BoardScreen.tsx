@@ -5,13 +5,15 @@ import { type MouseEvent, useContext, useLayoutEffect, useMemo, useState } from 
 import { createPortal } from "react-dom";
 
 import { ArtifactsProvider } from "../artifacts/ArtifactsContext";
+import { CallCards } from "../calls/CallCards";
+import { CallEditor } from "../calls/CallEditor";
 import { useBoardArtifacts } from "../artifacts/useBoardArtifacts";
 import { chatSlotAtom, chooseTicket, ticketChoiceAtom, ticketSlotAtom } from "../browser/panel";
 import { agentFile, cardFile, sendToChatError, sendToComposer } from "../chat/cardAttachment";
 import { OrchestratorPanel } from "../chat/OrchestratorPanel";
 import { MainTabs } from "../files/MainTabs";
 import { visibleAdditions } from "../domain/additions";
-import type { CardState, FreeAgent } from "../domain/board";
+import type { CallEvent, CardState, FreeAgent } from "../domain/board";
 import { mergeTicketKey } from "../domain/readiness";
 import { applyThreadShown, threadKey, threadShownAtom } from "../state/chatThread";
 import { filterFlipsAtom, frameOrderAtom } from "../state/boardUi";
@@ -27,7 +29,13 @@ import { keptWorktreesAtom } from "../state/mergeCleanup";
 import { setHiddenAdditions } from "../state/reviews";
 import type { ValidBoard } from "../store/boardFiles";
 import { openAgentPanel } from "../state/agentPanel";
-import { moveFreeAgent, setCardState, startFreeAgent } from "../state/boardCards";
+import {
+  deleteCall,
+  moveFreeAgent,
+  saveCall,
+  setCardState,
+  startFreeAgent,
+} from "../state/boardCards";
 import { splitCards } from "../state/cardStates";
 import { ContextMenu } from "../ui/ContextMenu";
 import type { PopMenuItem } from "../ui/MenuList";
@@ -46,6 +54,7 @@ const NO_ORDER = {};
 const NO_IDS: ReadonlyArray<string> = [];
 const NO_STATES: Readonly<{ [key: string]: CardState }> = {};
 const NO_FREE: ReadonlyArray<FreeAgent> = [];
+const NO_CALLS: ReadonlyArray<CallEvent> = [];
 
 interface CardMenu {
   readonly at: { readonly x: number; readonly y: number };
@@ -75,6 +84,7 @@ export function BoardScreen({
   const [cardError, setCardError] = useState<string | null>(null);
   const [sendFailed, setSendFailed] = useState(false);
   const [menu, setMenu] = useState<CardMenu | null>(null);
+  const [editing, setEditing] = useState<CallEvent | "new" | null>(null);
   const { board } = listed;
   const cardNotice = cardError ?? sendToChatError(sendFailed, board.orchestratorThreadId);
   const {
@@ -87,6 +97,7 @@ export function BoardScreen({
   } = useBoardView(project, listed);
   const cardStates = board.cardStates ?? NO_STATES;
   const freeAgents = board.freeAgents ?? NO_FREE;
+  const calls = board.calls ?? NO_CALLS;
   const now = useAtomValue(clockAtom);
   const cards = useMemo(
     () => splitCards(fullModel, freeAgents, cardStates, now),
@@ -138,6 +149,34 @@ export function BoardScreen({
       ],
     });
   };
+  const openCallMenu = (event: MouseEvent, call: CallEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setMenu({
+      at: { x: event.clientX, y: event.clientY },
+      label: `${call.title} actions`,
+      items: [
+        { label: "Edit", onSelect: () => setEditing(call) },
+        cardStates[call.id] === "done"
+          ? { label: "Move out of Done", onSelect: () => saveCard(call.id, null) }
+          : { label: "Move to Done", onSelect: () => saveCard(call.id, "done") },
+        { label: "Archive", onSelect: () => saveCard(call.id, "archived") },
+        {
+          label: "Delete",
+          onSelect: () => void deleteCall(registry, project, listed, call.id).then(setCardError),
+        },
+      ],
+    });
+  };
+  const archived = useMemo(
+    () => [
+      ...cards.archived,
+      ...calls
+        .filter((call) => cardStates[call.id] === "archived")
+        .map((call) => ({ key: call.id, label: call.title })),
+    ],
+    [cards.archived, calls, cardStates],
+  );
   useAtomValue(issuePullAtom(`${project.id}/${listed.folder}`));
   const hiddenAdditions = board.hiddenAdditions ?? NO_IDS;
   const visible = useMemo(
@@ -267,6 +306,7 @@ export function BoardScreen({
                       onSelect: () =>
                         void startFreeAgent(registry, project, listed, point).then(setCardError),
                     },
+                    { label: "Add call", onSelect: () => setEditing("new") },
                   ],
                 })
               }
@@ -281,8 +321,14 @@ export function BoardScreen({
                 onChangeHidden={changeHidden}
                 doneCount={doneCount + model.lanes.merged.length + model.lanes.off_path.length}
                 todoAgents={model.unassigned.length}
-                archived={cards.archived}
+                archived={archived}
                 onUnarchive={(key) => saveCard(key, null)}
+              />
+              <CallCards
+                calls={calls}
+                states={cardStates}
+                onAdd={() => setEditing("new")}
+                onMenu={openCallMenu}
               />
               <Lanes
                 layout={layout}
@@ -397,6 +443,13 @@ export function BoardScreen({
               label={menu.label}
               items={menu.items}
               onClose={() => setMenu(null)}
+            />
+          )}
+          {editing !== null && (
+            <CallEditor
+              call={editing === "new" ? null : editing}
+              onSave={(call) => saveCall(registry, project, listed, call)}
+              onClose={() => setEditing(null)}
             />
           )}
           {chatSlot !== null &&

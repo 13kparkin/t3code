@@ -6,9 +6,12 @@ import { archiveBoard, type BoardThreads, type FamilyThread, restoreBoard } from
 import {
   changeHiddenAdditions,
   createBoard,
+  changeCardState,
   listBoards,
   type ProjectFiles,
+  putCall,
   refreshRoles,
+  removeCall,
   setBuilderCap,
   sha256,
   updateBoard,
@@ -336,6 +339,44 @@ describe("hiding additions", () => {
     await changeHiddenAdditions(files, CWD, target.folder, (ids) => [...ids, "a"]);
     await changeHiddenAdditions(files, CWD, target.folder, (ids) => [...ids, "a"]);
     expect(savedBoard(store)).toMatchObject({ hiddenAdditions: ["a"] });
+  });
+});
+
+describe("call events", () => {
+  const sync = {
+    id: "c1",
+    title: "Design sync",
+    start: "2026-11-26T15:00:00.000Z",
+    app: "zoom",
+  } as const;
+  const standup = {
+    id: "c2",
+    title: "Standup",
+    start: "2026-11-27T09:30:00.000Z",
+    app: "teams",
+  } as const;
+
+  it("Given two calls put together, when both are saved, then both persist", async () => {
+    const { files, store, target } = await boardWith("orchestrator");
+    await Promise.all([
+      putCall(files, CWD, target.folder, sync),
+      putCall(files, CWD, target.folder, standup),
+    ]);
+    expect(savedBoard(store)?.calls).toEqual([sync, standup]);
+  });
+
+  it("Given a saved call, when it is put with a new time and then removed, then it is replaced in place and its card state goes with it", async () => {
+    const { files, store, target } = await boardWith("orchestrator");
+    await putCall(files, CWD, target.folder, sync);
+    await putCall(files, CWD, target.folder, standup);
+    await putCall(files, CWD, target.folder, { ...sync, start: "2026-11-26T16:00:00.000Z" });
+    expect(savedBoard(store)?.calls?.map((call) => call.start)).toEqual([
+      "2026-11-26T16:00:00.000Z",
+      standup.start,
+    ]);
+    await changeCardState(files, CWD, target.folder, sync.id, "done");
+    await removeCall(files, CWD, target.folder, sync.id);
+    expect(savedBoard(store)).toMatchObject({ calls: [standup], cardStates: {} });
   });
 });
 

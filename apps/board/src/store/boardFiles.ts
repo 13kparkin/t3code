@@ -7,6 +7,7 @@ import {
   BOARD_FILE,
   BOARDS_DIR,
   type BoardIssue,
+  type CallEvent,
   type CardState,
   type FreeAgent,
   DEFAULT_BUILDER_CAP,
@@ -258,6 +259,25 @@ export const placeFreeAgent = (
       agent,
     ],
   }));
+
+/** Adds a call event, or replaces the one with the same id in its place. */
+export const putCall = (files: ProjectFiles, cwd: string, folder: string, call: CallEvent) =>
+  changeBoard(files, cwd, folder, (board) => {
+    const calls = board.calls ?? [];
+    return {
+      ...board,
+      calls: calls.some((entry) => entry.id === call.id)
+        ? calls.map((entry) => (entry.id === call.id ? call : entry))
+        : [...calls, call],
+    };
+  });
+
+/** Removes a call event and its card state. */
+export const removeCall = (files: ProjectFiles, cwd: string, folder: string, id: string) =>
+  changeBoard(files, cwd, folder, (board) => {
+    const { [id]: _removed, ...cardStates } = board.cardStates ?? {};
+    return { ...board, calls: (board.calls ?? []).filter((call) => call.id !== id), cardStates };
+  });
 
 function withRoleTarget(board: Board, role: string, target: RoleOverride | null): Board {
   const { [role]: _replaced, ...others } = board.roleTargets ?? {};
