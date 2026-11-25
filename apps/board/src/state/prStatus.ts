@@ -19,6 +19,7 @@ import {
   type Smoke,
 } from "../domain/readiness";
 import { connectionAtomRuntime } from "../connection/runtime";
+import { noteText } from "../domain/ticket";
 import type { Overlay } from "../domain/ticketOverlay";
 import type { Addition } from "../domain/additions";
 import { locate } from "../files/target";
@@ -233,23 +234,25 @@ export function useTicketSmoke(view: TicketView | null): Smoke | null {
   );
 }
 
-const NO_NOTE = Atom.make<LoadedArtifact>({
-  status: "done",
-  contents: { kind: "missing" },
-}).pipe(Atom.withLabel("board-note:none"));
+const NO_NOTE = Atom.make<LoadedArtifact>({ status: "loading" }).pipe(
+  Atom.withLabel("board-note:none"),
+);
 
-/** The text of one of a ticket's evidence notes, null when it has none, undefined until read. */
+/**
+ * The text of one of a ticket's evidence notes, null when it has none, undefined until read.
+ * shortcut: read once per mount, so a note fixed while its card shows clears on the next mount;
+ * re-read on a timer like `smokeAtom` if a stale flag confuses users.
+ */
 function useTicketNote(view: TicketView, name: string): string | null | undefined {
-  const { groups, files } = useArtifacts();
+  const { groups, files, loaded } = useArtifacts();
   const file = groups.byTicket.get(view.ticket.key)?.find((artifact) => artifact.name === name);
   const at = file === undefined ? null : locate(files.roots, file.absolutePath);
-  const loaded = useAtomValue(
+  const read = useAtomValue(
     at === null
       ? NO_NOTE
       : artifactContentsAtom(artifactContentsKey(files.environmentId, at.root.cwd, at.path)),
   );
-  if (loaded.status !== "done") return undefined;
-  return loaded.contents.kind === "text" ? loaded.contents.contents : null;
+  return noteText(loaded, at === null ? null : read);
 }
 
 /** A ticket's `design.md` and `diagnosis.md` texts, for the Sources flag. */

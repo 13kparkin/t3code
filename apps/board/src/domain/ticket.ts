@@ -121,6 +121,25 @@ export function missingSources(
   return notes.design != null && !SOURCES.test(notes.design);
 }
 
+/** A note's text from the evidence listing and its read: undefined until both answer, null when it is missing or not text. */
+export function noteText(
+  listed: boolean,
+  read:
+    | { readonly status: "loading" | "failed" }
+    | {
+        readonly status: "done";
+        readonly contents:
+          | { readonly kind: "text"; readonly contents: string }
+          | { readonly kind: "binary" | "missing" };
+      }
+    | null,
+): string | null | undefined {
+  if (!listed) return undefined;
+  if (read === null) return null;
+  if (read.status !== "done") return undefined;
+  return read.contents.kind === "text" ? read.contents.contents : null;
+}
+
 export function stepProgress(ticket: Ticket) {
   const steps = ticket.steps ?? [];
   if (steps.length === 0) return null;

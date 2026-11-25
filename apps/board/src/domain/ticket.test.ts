@@ -1,7 +1,14 @@
 import * as Result from "effect/Result";
 import { describe, expect, it } from "vite-plus/test";
 
-import { missingPlan, missingSources, parseTickets, stepProgress, type Ticket } from "./ticket";
+import {
+  missingPlan,
+  missingSources,
+  noteText,
+  parseTickets,
+  stepProgress,
+  type Ticket,
+} from "./ticket";
 
 const issueOf = (text: string) => {
   const parsed = parseTickets(text);
@@ -147,6 +154,23 @@ describe("plans and steps", () => {
     ],
   ] as const)("Given %s, when checked, then missingSources is %s", (_, fields, notes, expected) => {
     expect(missingSources(ticket(fields), notes)).toBe(expected);
+  });
+
+  it.each([
+    ["the evidence list still loading", false, null, undefined],
+    ["a listed note still reading", true, { status: "loading" }, undefined],
+    ["no note in a loaded list", true, null, null],
+    [
+      "a read note",
+      true,
+      {
+        status: "done",
+        contents: { kind: "text", contents: "# D", byteLength: 3, truncated: false },
+      },
+      "# D",
+    ],
+  ] as const)("Given %s, when read, then the note text matches", (_, listed, read, expected) => {
+    expect(noteText(listed, read)).toBe(expected);
   });
 
   it("Given steps, when counted, then done and skipped are totalled, and no steps gives null", () => {

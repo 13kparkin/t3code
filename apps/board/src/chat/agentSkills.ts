@@ -5,8 +5,23 @@ export const AGENTS_SCOPE = ".agents";
 
 const RECORD = "\u001e";
 
-const field = (head: string, name: string) =>
-  new RegExp(`^${name}:\\s*["']?(.+?)["']?\\s*$`, "m").exec(head)?.[1];
+/** A front-matter field, with a `|` or `>` block's indented lines joined into one line. */
+function field(head: string, name: string): string | undefined {
+  const lines = head.split("\n");
+  const at = lines.findIndex((line) => line.startsWith(`${name}:`));
+  if (at === -1) return undefined;
+  const value = (lines[at] ?? "")
+    .slice(name.length + 1)
+    .trim()
+    .replace(/^["']|["']$/g, "");
+  if (!/^[|>][-+]?$/.test(value)) return value === "" ? undefined : value;
+  const block: string[] = [];
+  for (const line of lines.slice(at + 1)) {
+    if (!/^\s+\S/.test(line)) break;
+    block.push(line.trim());
+  }
+  return block.length === 0 ? undefined : block.join(" ");
+}
 
 /** Reads the main process's listing into skills. The first folder to name a skill wins, so the project's beats the home's. */
 export function parseAgentSkills(listing: string): ReadonlyArray<ServerProviderSkill> {

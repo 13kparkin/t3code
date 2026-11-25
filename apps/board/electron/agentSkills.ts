@@ -1,6 +1,4 @@
-import type { LinuxHost } from "./wslEngine";
-
-const quote = (text: string) => `'${text.replaceAll("'", `'\\''`)}'`;
+import { type LinuxHost, shellQuote } from "./wslEngine";
 
 /**
  * The SKILL.md files under `<project>/.agents/skills` and `~/.agents/skills` in WSL, project first.
@@ -11,7 +9,7 @@ export async function listAgentSkills(
   projectRoot: string,
 ): Promise<string> {
   const roots = [
-    ...(projectRoot.startsWith("/") ? [`${quote(projectRoot)}/.agents/skills`] : []),
+    ...(projectRoot.startsWith("/") ? [`${shellQuote(projectRoot)}/.agents/skills`] : []),
     `"$HOME/.agents/skills"`,
   ];
   const script = [

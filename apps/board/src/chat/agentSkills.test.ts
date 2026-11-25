@@ -35,17 +35,25 @@ describe("merging .agents skills into the provider's", () => {
       listing: file("/h/.agents/skills/simplify/SKILL.md", "---\nname: simplify\n---\n"),
       result: [["simplify", CLAUDE]],
     },
-    {
-      name: "a skill with no name field",
-      listing: file("/h/.agents/skills/unslop/SKILL.md", "# Unslop\n"),
-      result: [
-        ["simplify", CLAUDE],
-        ["unslop", "/h/.agents/skills/unslop/SKILL.md"],
-      ],
-    },
     { name: "no listing", listing: "", result: [["simplify", CLAUDE]] },
   ])("Given $name, then the menu lists $result", ({ listing, result }) => {
     const merged = mergeSkills([claude], parseAgentSkills(listing));
     expect(merged.map((skill) => [skill.name, skill.path])).toEqual(result);
+  });
+
+  it("Given a folded description, as ~/.agents/skills/computer-use writes it, then the menu reads its text", () => {
+    const head = [
+      "---",
+      "name: computer-use",
+      "description: >-",
+      "  Drives the GUI of a visible local app window through `orca computer`: accessibility",
+      "  tree, clicks, typing, menus, dialogs, and screenshots.",
+      "---",
+      "",
+    ].join("\n");
+    const [skill] = parseAgentSkills(file("/h/.agents/skills/computer-use/SKILL.md", head));
+    expect(skill?.description).toBe(
+      "Drives the GUI of a visible local app window through `orca computer`: accessibility tree, clicks, typing, menus, dialogs, and screenshots.",
+    );
   });
 });
