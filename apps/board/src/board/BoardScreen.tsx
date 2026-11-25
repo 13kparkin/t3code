@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import { ArtifactsProvider } from "../artifacts/ArtifactsContext";
 import { useBoardArtifacts } from "../artifacts/useBoardArtifacts";
 import { chatSlotAtom, chooseTicket, ticketChoiceAtom, ticketSlotAtom } from "../browser/panel";
+import { agentFile, cardFile, sendToChatError, sendToComposer } from "../chat/cardAttachment";
 import { OrchestratorPanel } from "../chat/OrchestratorPanel";
 import { MainTabs } from "../files/MainTabs";
 import { visibleAdditions } from "../domain/additions";
@@ -18,7 +19,7 @@ import { useThreadFamily } from "../state/family";
 import { clockAtom, PrProvider } from "../state/prStatus";
 import { focusedCardAtom, useBoardForYou } from "../state/forYou";
 import { addDocs } from "../state/attachmentUploads";
-import { countBuilders } from "../state/boardModel";
+import { allAgents, countBuilders } from "../state/boardModel";
 import { FreeAgents } from "./FreeAgents";
 import { useBoardView } from "../state/boardView";
 import { issuePullAtom } from "../state/issuePull";
@@ -72,8 +73,10 @@ export function BoardScreen({
   const [dropError, setDropError] = useState<string | null>(null);
   const [hideError, setHideError] = useState<string | null>(null);
   const [cardError, setCardError] = useState<string | null>(null);
+  const [sendFailed, setSendFailed] = useState(false);
   const [menu, setMenu] = useState<CardMenu | null>(null);
   const { board } = listed;
+  const cardNotice = cardError ?? sendToChatError(sendFailed, board.orchestratorThreadId);
   const {
     model: fullModel,
     issue,
@@ -99,10 +102,28 @@ export function BoardScreen({
       (agent) => agent.threadId === key,
     );
     const ticketless = fullModel.unassigned.some((agent) => agent.threadId === key);
+    const view = ticket
+      ? Object.values(fullModel.lanes)
+          .flat()
+          .find((entry) => entry.ticket.key === key)
+      : undefined;
+    const file = () =>
+      view === undefined
+        ? agentFile(
+            allAgents(fullModel).find((agent) => agent.threadId === key) ?? { threadId: key },
+          )
+        : cardFile(view.ticket);
     setMenu({
       at: { x: event.clientX, y: event.clientY },
       label: `${label} actions`,
       items: [
+        {
+          label: "Send to chat",
+          onSelect: () => {
+            setCardError(null);
+            setSendFailed(!sendToComposer(file()));
+          },
+        },
         ...(ticket
           ? []
           : [
@@ -312,13 +333,13 @@ export function BoardScreen({
                   {dropError}
                 </p>
               )}
-              {cardError !== null && (
+              {cardNotice !== null && (
                 <p
                   role="alert"
                   data-testid="card-error"
                   className="rounded-lg border border-red-400/40 bg-panel px-3 py-2 break-words text-red-300 shadow-panel"
                 >
-                  {cardError}
+                  {cardNotice}
                 </p>
               )}
               {hideError !== null && (

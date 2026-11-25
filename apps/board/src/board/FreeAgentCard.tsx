@@ -3,8 +3,16 @@ import { runAtomCommand } from "@t3tools/client-runtime/state/runtime";
 import { type EnvironmentId, MessageId, ThreadId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import { ArrowUp, MoreHorizontal, Square } from "lucide-react";
-import { type FormEvent, type MouseEvent, useContext, useRef, useState } from "react";
+import {
+  type FormEvent,
+  type MouseEvent,
+  type PointerEvent,
+  useContext,
+  useRef,
+  useState,
+} from "react";
 
+import { agentFile, dropOnComposer } from "../chat/cardAttachment";
 import { isRunLive } from "../chat/timeline";
 import type { FreeAgent } from "../domain/board";
 import { failureText } from "../settings/failureText";
@@ -77,8 +85,12 @@ export function FreeAgentCard({
     );
   };
 
-  const end = () => {
-    if (offset !== null) {
+  const end = (release: PointerEvent | null) => {
+    const attached =
+      release !== null &&
+      offset !== null &&
+      dropOnComposer(release.clientX, release.clientY, agentFile(agent));
+    if (offset !== null && !attached) {
       const next = { x: at.x + offset.dx, y: at.y + offset.dy };
       setPlaced(next);
       onMove(next);
@@ -119,7 +131,7 @@ export function FreeAgentCard({
           setOffset({ dx: dx / scale, dy: dy / scale });
         }}
         onPointerUp={end}
-        onPointerCancel={end}
+        onPointerCancel={() => end(null)}
       >
         <h3 className="min-w-0 flex-1 truncate font-semibold">
           {projection?.thread.title ?? "Agent"}

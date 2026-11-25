@@ -39,6 +39,7 @@ import { threadKey, setThreadShown } from "../state/chatThread";
 import { cancelQueued, interruptTurn, startTurn, steerQueued } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
 import { attachmentInputs, pastedFiles } from "./attachments";
+import { useComposerDrop } from "./cardAttachment";
 import { mergeSkills } from "./agentSkills";
 import { agentSkillsAtom } from "./skills";
 import { prepareSend } from "./prepareSend";
@@ -199,6 +200,7 @@ export function Composer({
       setFiles([...files, ...added]);
     }
   };
+  const dropTarget = useComposerDrop(addFiles);
 
   const edit = (value: string, at: number) => {
     const next = trigger === null ? detectSlashTrigger(value, at) : null;
@@ -417,17 +419,8 @@ export function Composer({
 
   return (
     <form
+      {...dropTarget}
       onSubmit={send}
-      onDragOver={(event) => {
-        if (event.dataTransfer.types.includes("Files")) event.preventDefault();
-      }}
-      onDrop={(event) => {
-        if (event.dataTransfer.files.length === 0) return;
-        event.preventDefault();
-        event.stopPropagation();
-        performance.mark("board:attach-drop");
-        addFiles(Array.from(event.dataTransfer.files));
-      }}
       // Only the text box opens the input, as T3 web skips its resting controls; a button that moved it would miss its click.
       onFocus={(event) => event.target instanceof HTMLTextAreaElement && setFocused(true)}
       onBlur={(event) => {

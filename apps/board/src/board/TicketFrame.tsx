@@ -1,5 +1,6 @@
-import { type MouseEvent, useRef } from "react";
+import { type MouseEvent, type PointerEvent, useRef } from "react";
 
+import { cardFile, dropOnComposer } from "../chat/cardAttachment";
 import { missingPlan, missingSources, STAGE_LABEL } from "../domain/ticket";
 import { waitingOn } from "../domain/ticketOverlay";
 import { usePrContext, useTicketNotes } from "../state/prStatus";
@@ -14,6 +15,7 @@ const DRAG_THRESHOLD_PX = 4;
 const EDGE_TICK_MS = 80;
 
 interface Press {
+  readonly startX: number;
   readonly startY: number;
   readonly lane: HTMLElement | null;
   readonly startScroll: number;
@@ -32,6 +34,7 @@ export function TicketFrame({
   selected,
   onDrag,
   onDrop,
+  onSentToChat,
   onOpen,
   onMenu,
 }: {
@@ -43,6 +46,7 @@ export function TicketFrame({
   selected: boolean;
   onDrag: (dy: number) => void;
   onDrop: () => void;
+  onSentToChat: () => void;
   onOpen: () => void;
   onMenu: (event: MouseEvent) => void;
 }) {
@@ -69,11 +73,13 @@ export function TicketFrame({
     active.reportedScroll = active.lane?.scrollTop ?? 0;
     onDrag((active.clientY - active.startY) / scale + active.reportedScroll - active.startScroll);
   };
-  const end = () => {
+  const end = (release: PointerEvent | null) => {
     stopEdgeScroll();
     if (press.current?.dragging) {
       dragged.current = true;
-      onDrop();
+      if (release !== null && dropOnComposer(release.clientX, release.clientY, cardFile(ticket)))
+        onSentToChat();
+      else onDrop();
     }
     press.current = null;
   };
@@ -101,6 +107,7 @@ export function TicketFrame({
         dragged.current = false;
         const lane = event.currentTarget.closest<HTMLElement>("[data-lane-scroll]");
         press.current = {
+          startX: event.clientX,
           startY: event.clientY,
           lane,
           startScroll: lane?.scrollTop ?? 0,
@@ -114,7 +121,8 @@ export function TicketFrame({
         const active = press.current;
         if (active === null) return;
         active.clientY = event.clientY;
-        if (!active.dragging && Math.abs(event.clientY - active.startY) < DRAG_THRESHOLD_PX) return;
+        const moved = Math.hypot(event.clientX - active.startX, event.clientY - active.startY);
+        if (!active.dragging && moved < DRAG_THRESHOLD_PX) return;
         if (!active.dragging) {
           active.dragging = true;
           event.currentTarget.setPointerCapture(event.pointerId);
@@ -135,7 +143,7 @@ export function TicketFrame({
         }, EDGE_TICK_MS);
       }}
       onPointerUp={end}
-      onPointerCancel={end}
+      onPointerCancel={() => end(null)}
       onContextMenu={onMenu}
       onClick={() => {
         if (!dragged.current) onOpen();
