@@ -248,12 +248,6 @@ export function Lanes({
           </header>
           <div
             data-lane-scroll
-            // A press on the scrollbar drags it, not the canvas.
-            onPointerDown={(event) => {
-              if (event.nativeEvent.offsetX >= event.currentTarget.clientWidth) {
-                event.stopPropagation();
-              }
-            }}
             className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {lane.id === "for_you" ? (
