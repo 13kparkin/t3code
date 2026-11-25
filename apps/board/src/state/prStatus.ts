@@ -267,7 +267,7 @@ export const useTicketNotes = (view: TicketView) => ({
  */
 export function useTicketReadiness(view: TicketView | null): ReadonlyArray<ConditionState> | null {
   const { tickets, mergeOrderNotes } = usePrContext();
-  const { groups } = useArtifacts();
+  const { groups, loaded } = useArtifacts();
   const { live, now } = useTicketPr(view);
   const evidence = view === null ? undefined : groups.byTicket.get(view.ticket.key);
   // Only a pull request whose host reports no checks reads the file, so no other card polls it.
@@ -284,7 +284,7 @@ export function useTicketReadiness(view: TicketView | null): ReadonlyArray<Condi
         : evaluateReadiness({
             ticket: view.ticket,
             tickets: tickets.map((entry) => entry.ticket),
-            evidence: (evidence ?? []).map((artifact) => artifact.path),
+            evidence: loaded ? (evidence ?? []).map((artifact) => artifact.path) : null,
             live,
             ciLocal,
             smoke,
@@ -292,6 +292,6 @@ export function useTicketReadiness(view: TicketView | null): ReadonlyArray<Condi
             reviewRoles: REVIEW_ROLES,
             now,
           }),
-    [view, tickets, evidence, live, ciLocal, smoke, mergeOrderNotes, now],
+    [view, tickets, evidence, loaded, live, ciLocal, smoke, mergeOrderNotes, now],
   );
 }

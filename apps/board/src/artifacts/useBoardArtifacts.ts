@@ -43,7 +43,7 @@ export function useBoardArtifacts(
     [project, board.id, board.orchestratorThreadId, tickets],
   );
   const open = useCallback(
-    (artifact: Artifact) => {
+    (artifact: Pick<Artifact, "absolutePath">) => {
       const located = locate(files.roots, artifact.absolutePath);
       if (located !== null) openFile(registry, { cwd: located.root.cwd, path: located.path });
     },

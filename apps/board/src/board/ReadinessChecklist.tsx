@@ -1,4 +1,4 @@
-import { Check, Circle } from "lucide-react";
+import { Check, Circle, CircleDashed } from "lucide-react";
 
 import { CheckRows } from "../checks/CheckRows";
 import type { MergeCondition } from "../domain/forYou";
@@ -23,7 +23,7 @@ export function ReadinessChecklist({
     <ul aria-label="Merge readiness" data-testid="readiness" className="flex flex-col gap-2">
       {conditions.map((condition) => {
         const claim = claims?.[condition.key];
-        const disagrees = claim !== undefined && claim.met !== condition.met;
+        const disagrees = claim !== undefined && !condition.checking && claim.met !== condition.met;
         return (
           <li
             key={condition.key}
@@ -34,15 +34,21 @@ export function ReadinessChecklist({
           >
             {condition.met ? (
               <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-400" aria-label="Met" />
+            ) : condition.checking ? (
+              <CircleDashed className="mt-0.5 size-3.5 shrink-0 text-faint" aria-label="Checking" />
             ) : (
               <Circle className="mt-0.5 size-3.5 shrink-0 text-amber-400" aria-label="Missing" />
             )}
             <div className="min-w-0 flex-1">
               <p className="text-[12px] leading-4 text-fg">{condition.label}</p>
               <p
-                className={`text-[11px] break-words ${condition.met ? "text-emerald-300/80" : "text-amber-300"}`}
+                className={`text-[11px] break-words ${condition.met ? "text-emerald-300/80" : condition.checking ? "text-faint" : "text-amber-300"}`}
               >
-                {condition.met ? "Met" : `Missing: ${condition.missing}`}
+                {condition.met
+                  ? "Met"
+                  : condition.checking
+                    ? "Checking the evidence"
+                    : `Missing: ${condition.missing}`}
               </p>
               {condition.notes.map((note) => (
                 <p
