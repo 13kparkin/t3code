@@ -25,6 +25,8 @@ const bridge: BoardBridge = {
   writeLocalState: (text) => ipcRenderer.invoke("board:local-state-write", text),
   ensurePstack: () => ipcRenderer.invoke("board:ensure-pstack"),
   listAgentSkills: (projectRoot) => ipcRenderer.invoke("board:list-agent-skills", projectRoot),
+  migrateLegacyEvidence: (artifactsDir, worktrees) =>
+    ipcRenderer.invoke("board:migrate-legacy-evidence", artifactsDir, worktrees),
   browser: {
     open: (id, url) => ipcRenderer.send("board:browser-open", id, url),
     close: (id) => ipcRenderer.send("board:browser-close", id),

@@ -94,7 +94,7 @@ describe("the orchestrator's standing rules and board facts", () => {
       "written straight there by its absolute path and never inside the worktree",
     );
     expect(rules).toContain("<board folder>/artifacts/<ticket key>/");
-    expect(rules).toContain("Only a legacy worktree that still holds `<worktree>/.omp/artifacts/`");
+    expect(rules).not.toContain(".omp/artifacts");
     expect(rules).toContain("`met`, `evidence`, and `note` are all required");
     expect(rules).toContain("- `todo`: captured, no plan yet.");
     expect(rules).toContain(

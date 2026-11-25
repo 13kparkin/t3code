@@ -12,6 +12,7 @@ type EngineBridge = Pick<
   | "writeLocalState"
   | "ensurePstack"
   | "listAgentSkills"
+  | "migrateLegacyEvidence"
   | "logConnection"
 >;
 
@@ -60,6 +61,7 @@ function webBridge(): EngineBridge {
     writeLocalState: (text) => Promise.resolve(localStorage.setItem(LOCAL_STATE_KEY, text)),
     // Without the main process there is no WSL home to read.
     listAgentSkills: () => Promise.resolve(""),
+    migrateLegacyEvidence: () => Promise.resolve(""),
     ensurePstack: () => {
       const dir = import.meta.env.AGENT_BOARD_PSTACK_DIR;
       return Promise.resolve(

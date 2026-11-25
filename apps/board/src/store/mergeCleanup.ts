@@ -4,7 +4,6 @@ import * as Result from "effect/Result";
 import { BOARDS_DIR } from "../domain/board";
 import { parseTickets, type Ticket } from "../domain/ticket";
 import { trimSlashes } from "../files/target";
-import { walk, WORKTREE_ARTIFACTS } from "./artifacts";
 import type { ProjectFiles } from "./boardFiles";
 
 type KeepReason =
@@ -25,7 +24,7 @@ type Plan =
   | { readonly kind: "remove"; readonly path: string }
   | { readonly kind: "gone" }
   | { readonly kind: "keep"; readonly reason: KeepReason }
-  /** The next check needs `status`, or then `evidence`, which the facts have not read yet. */
+  /** The next check needs `status`, which the facts have not read yet. */
   | { readonly kind: "read" };
 
 export interface LiveThread {
@@ -45,17 +44,6 @@ export type WorktreeStatus = Pick<
   | "aheadOfDefaultCount"
 >;
 
-/**
- * File names under a legacy `.omp/artifacts/` and the board's `artifacts/`, each starting with its
- * ticket key. `worktree` is null when the worktree has no `.omp/artifacts` key folder at all.
- */
-interface Evidence {
-  readonly worktree: ReadonlyArray<string> | null;
-  readonly board: ReadonlyArray<string>;
-  /** An `artifacts/<key>.partial/` exists, so an orchestrator copy has not finished. */
-  readonly partial: boolean;
-}
-
 /** Reads for one worktree of a merged ticket. A null field is a read that failed; undefined is not read yet. */
 export interface WorktreeFacts {
   readonly ticket: Ticket;
@@ -66,7 +54,8 @@ export interface WorktreeFacts {
   readonly listed: ReadonlyArray<string> | null;
   readonly threads: ReadonlyArray<LiveThread> | null;
   readonly status?: WorktreeStatus | null;
-  readonly evidence?: Evidence | null;
+  /** This session's migration reported the worktree's legacy evidence on the board, or found none. */
+  readonly migrated: boolean;
 }
 
 const ABSOLUTE = /^(\/|[A-Za-z]:[\\/])/;
@@ -83,20 +72,13 @@ const branchSafe = (status: WorktreeStatus) =>
   status.refName !== null &&
   ((status.hasUpstream && status.aheadCount === 0) || status.aheadOfDefaultCount === 0);
 
-const evidenceCopied = ({ worktree, board, partial }: Evidence) => {
-  if (worktree === null) return true;
-  if (partial) return false;
-  const copied = new Set(board);
-  return worktree.every((name) => copied.has(name));
-};
-
 /**
  * Whether a merged ticket's worktree can go. Every check fails closed. The first one that fails,
  * or whose input did not read, keeps the worktree with its reason. Checks that need no engine call
  * come first.
  */
 export function planCleanup(facts: WorktreeFacts): Plan {
-  const { ticket, path, listed, threads, status, evidence } = facts;
+  const { ticket, path, listed, threads, status } = facts;
   const keep = (reason: KeepReason): Plan => ({ kind: "keep", reason });
   if (facts.projectTickets === null) return keep("store-unreadable");
   if (ticket.stage !== "merged") return keep("not-merged");
@@ -128,12 +110,11 @@ export function planCleanup(facts: WorktreeFacts): Plan {
   if (!status.isRepo) return { kind: "gone" };
   if (status.hasWorkingTreeChanges) return keep("dirty");
   if (!branchSafe(status)) return keep("unpushed");
-  if (evidence === undefined) return { kind: "read" };
-  if (evidence === null || !evidenceCopied(evidence)) return keep("evidence-missing");
+  if (!facts.migrated) return keep("evidence-missing");
   return { kind: "remove", path: worktree };
 }
 
-function ticketWorktrees(ticket: Ticket, threads: ReadonlyArray<LiveThread>): string[] {
+export function ticketWorktrees(ticket: Ticket, threads: ReadonlyArray<LiveThread>): string[] {
   const own = ownThreadIds(ticket);
   const paths = [
     ticket.worktreePath,
@@ -143,6 +124,16 @@ function ticketWorktrees(ticket: Ticket, threads: ReadonlyArray<LiveThread>): st
 }
 
 const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
+
+/** The worktrees a migration report says hold no legacy evidence that is not on the board. */
+export function migratedWorktrees(report: string): ReadonlySet<string> {
+  return new Set(
+    report.split("\n").flatMap((line) => {
+      const [status, path] = line.split("\t");
+      return (status === "migrated" || status === "nothing") && path ? [trimSlashes(path)] : [];
+    }),
+  );
+}
 
 /**
  * Every board's tickets by folder, or null when any board's `tickets.json` is missing or invalid.
@@ -187,7 +178,6 @@ export function runOnePerKey(key: string, job: () => Promise<void>): void {
 }
 
 export interface CleanupPorts {
-  readonly files: ProjectFiles;
   readonly tickets: () => Promise<ReadonlyMap<string, ReadonlyArray<Ticket>> | null>;
   readonly worktrees: () => Promise<ReadonlyArray<string> | null>;
   /** The project's live threads, or null before the engine's snapshot loads. */
@@ -203,52 +193,6 @@ export interface CleanupTarget {
   readonly folder: string;
 }
 
-async function readEvidence(
-  files: ProjectFiles,
-  target: CleanupTarget,
-  path: string,
-): Promise<Evidence | null> {
-  const copies = `${BOARDS_DIR}/${target.folder}/artifacts`;
-  const under = (root: string) => (names: string[]) =>
-    names.map((name) => name.slice(root.length + 1));
-  try {
-    const folders = await files.list(path, WORKTREE_ARTIFACTS);
-    // A null listing is a missing folder or a failed read. Only a `.omp` that lists without `artifacts` proves it missing.
-    if (folders === null) {
-      const omp = await files.list(path, ".omp");
-      if (omp?.some((entry) => baseName(entry.path) === "artifacts")) return null;
-      // Neither lists: a worktree root that lists with no `.omp` is a bare one, an unreadable root is a failed read.
-      if (omp === null) {
-        const root = await files.list(path, "");
-        if (root === null || root.some((entry) => baseName(entry.path) === ".omp")) return null;
-      }
-    }
-    const keys = (folders ?? [])
-      .filter((entry) => entry.kind === "directory")
-      .map((entry) => baseName(entry.path));
-    // Loose files with no ticket folder have no board copy to compare, so they keep the worktree.
-    if (keys.length === 0) {
-      return folders?.length ? null : { worktree: null, board: [], partial: false };
-    }
-    const worktree = under(WORKTREE_ARTIFACTS)(
-      await walk(files, path, WORKTREE_ARTIFACTS, { strict: true }),
-    );
-    const board: string[] = [];
-    let partial = false;
-    for (const each of keys) {
-      board.push(
-        ...under(copies)(
-          await walk(files, target.workspaceRoot, `${copies}/${each}`, { strict: true }),
-        ),
-      );
-      partial ||= (await files.list(target.workspaceRoot, `${copies}/${each}.partial`)) !== null;
-    }
-    return { worktree, board, partial };
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Deletes the merged tickets' worktrees that pass every check in `planCleanup`, then archives the
  * ticket's own threads once its worktrees are gone. Each run reads the world again and stores
@@ -259,6 +203,7 @@ export async function cleanupMerged(
   ports: CleanupPorts,
   target: CleanupTarget,
   merged: ReadonlyArray<Ticket>,
+  migrated: ReadonlySet<string>,
 ): Promise<ReadonlyMap<string, string>> {
   const kept = new Map<string, string>();
   const [boards, listed] = await Promise.all([
@@ -268,13 +213,7 @@ export async function cleanupMerged(
   const plan = async (facts: WorktreeFacts): Promise<Exclude<Plan, { kind: "read" }>> => {
     const next = planCleanup(facts);
     if (next.kind !== "read") return next;
-    if (facts.status === undefined) {
-      return plan({ ...facts, status: await ports.status(facts.path).catch(() => null) });
-    }
-    return plan({
-      ...facts,
-      evidence: await readEvidence(ports.files, target, facts.path),
-    });
+    return plan({ ...facts, status: await ports.status(facts.path).catch(() => null) });
   };
   const facts = (
     ticket: Ticket,
@@ -287,6 +226,7 @@ export async function cleanupMerged(
     projectTickets: read === null ? null : [...read.values()].flat(),
     listed,
     threads: ports.threads(),
+    migrated: migrated.has(trimSlashes(path)),
   });
   for (const ticket of merged) {
     let done = true;

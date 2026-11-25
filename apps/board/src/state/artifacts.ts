@@ -46,7 +46,7 @@ const decodeCiLocalKey = Schema.decodeUnknownSync(
   ),
 );
 const decodeBoardKey = Schema.decodeUnknownSync(
-  Schema.fromJsonString(Schema.Tuple([Schema.String, Schema.String, Schema.Array(Schema.String)])),
+  Schema.fromJsonString(Schema.Tuple([Schema.String, Schema.String])),
 );
 
 /** The pause between one listing finishing and the next starting, which bounds how late a new file shows. */
@@ -63,13 +63,13 @@ const sameList = (left: ReadonlyArray<Artifact>, right: ReadonlyArray<Artifact>)
   left.every((a, index) => a.absolutePath === right[index]?.absolutePath);
 
 /**
- * The artifacts of one board, keyed by `[projectId, folder, worktreePaths]` as JSON. The agents
+ * The artifacts of one board, keyed by `[projectId, folder]` as JSON. The agents
  * write them with their own tools, so the app lists them again every moment while a board shows them.
  * The value is null until the first listing answers.
  */
 export const boardArtifactsAtom = Atom.family((key: string) =>
   Atom.make<ReadonlyArray<Artifact> | null>((get) => {
-    const [projectId, folder, worktreePaths] = decodeBoardKey(key);
+    const [projectId, folder] = decodeBoardKey(key);
     const environmentId = get.once(engineEnvironmentIdAtom);
     const project = get
       .once(environmentProjects.projectsAtom)
@@ -88,7 +88,6 @@ export const boardArtifactsAtom = Atom.family((key: string) =>
           const next = await listArtifacts(files, {
             workspaceRoot: project.workspaceRoot,
             folder,
-            worktreePaths,
           });
           performance.mark("board:artifacts-listed", {
             detail: { files: next.length, ms: performance.now() - started },
@@ -110,11 +109,8 @@ export const boardArtifactsAtom = Atom.family((key: string) =>
   }).pipe(Atom.withLabel(`board-artifacts:${key}`)),
 );
 
-export const boardArtifactsKey = (
-  projectId: string,
-  folder: string,
-  worktreePaths: ReadonlyArray<string>,
-) => JSON.stringify([projectId, folder, worktreePaths]);
+export const boardArtifactsKey = (projectId: string, folder: string) =>
+  JSON.stringify([projectId, folder]);
 
 /** One artifact's text, or why the viewer cannot show it as text. */
 export async function readArtifact(

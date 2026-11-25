@@ -23,16 +23,7 @@ export function useBoardArtifacts(
     () => Object.values(model.lanes).flatMap((lane) => lane.map((view) => view.ticket)),
     [model],
   );
-  const worktreeKey = tickets.flatMap((ticket) => ticket.worktreePath ?? []).join("\n");
-  const listing = useAtomValue(
-    boardArtifactsAtom(
-      boardArtifactsKey(
-        project.id,
-        listed.folder,
-        worktreeKey === "" ? [] : worktreeKey.split("\n"),
-      ),
-    ),
-  );
+  const listing = useAtomValue(boardArtifactsAtom(boardArtifactsKey(project.id, listed.folder)));
   const all = listing ?? NO_ARTIFACTS;
   const groups = useMemo(
     () =>
