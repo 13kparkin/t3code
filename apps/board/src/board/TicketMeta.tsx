@@ -3,6 +3,7 @@ import { GitBranch } from "lucide-react";
 import { IssueChip } from "../issues/IssueChip";
 import type { TicketView } from "../state/boardModel";
 import { usePrContext } from "../state/prStatus";
+import { keptLabel } from "../store/mergeCleanup";
 import { PrChip } from "./PrChip";
 import { RemoveWorktree } from "./RemoveWorktree";
 import { ReviewChanges } from "./ReviewChanges";
@@ -38,7 +39,7 @@ export function TicketMeta({
       {ticket.issue != null && <IssueChip ticket={ticket} onOpenThread={onOpenThread} />}
       {kept != null && (
         <span data-testid="worktree-kept" className="truncate text-amber-300">
-          Kept: {kept}
+          Kept: {keptLabel(kept)}
         </span>
       )}
     </div>

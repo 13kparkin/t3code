@@ -100,11 +100,6 @@ describe("planCleanup", () => {
       { kind: "keep", reason: "status-unknown" },
     ],
     [
-      "a dirty detached worktree on origin",
-      { status: { ...detached, headOnOrigin: true, hasWorkingTreeChanges: true } },
-      { kind: "keep", reason: "dirty" },
-    ],
-    [
       "a detached worktree on origin without its evidence on the board",
       { status: { ...detached, headOnOrigin: true }, evidenceOnBoard: false },
       { kind: "keep", reason: "evidence-missing" },

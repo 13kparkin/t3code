@@ -8,6 +8,7 @@ import type { TicketView } from "../state/boardModel";
 import { usePrContext } from "../state/prStatus";
 import { serverEnvironment } from "../state/server";
 import { deleteWorktree, worktreesOnDiskAtom } from "../state/vcs";
+import { keptLabel } from "../store/mergeCleanup";
 import { worktreeBytes, worktreeKeptReason } from "./worktreeRow";
 
 export function RemoveWorktree({ view }: { view: TicketView }) {
@@ -57,7 +58,7 @@ export function RemoveWorktree({ view }: { view: TicketView }) {
       </button>
       <span data-testid="worktree-state" className="truncate">
         {bytes === null ? "size unknown" : formatBytes(bytes)} ·{" "}
-        {reason !== null ? `kept: ${reason}` : checking ? "checking" : "safe to remove"}
+        {reason !== null ? `kept: ${keptLabel(reason)}` : checking ? "checking" : "safe to remove"}
       </span>
       {(confirming || failure !== null) && (
         <div

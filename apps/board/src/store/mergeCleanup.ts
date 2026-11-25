@@ -21,6 +21,26 @@ type KeepReason =
   | "detached-unpushed"
   | "evidence-missing";
 
+const KEEP_LABELS = {
+  "store-unreadable": "tickets unreadable",
+  "not-merged": "not merged",
+  "relative-path": "relative path",
+  "main-checkout": "main checkout",
+  unlisted: "not listed by git",
+  shared: "shared with other work",
+  running: "agent running",
+  "threads-unknown": "threads not loaded",
+  "status-unknown": "status unknown",
+  dirty: "uncommitted changes",
+  unpushed: "commits not pushed",
+  "detached-unpushed": "commits not on origin",
+  "evidence-missing": "evidence not on the board",
+} as const satisfies Record<KeepReason, string>;
+const keepLabels = new Map<string, string>(Object.entries(KEEP_LABELS));
+
+/** A kept reason in plain words. Git's own refusal text, the other kind of kept value, shows as is. */
+export const keptLabel = (kept: string): string => keepLabels.get(kept) ?? kept;
+
 type Plan =
   | { readonly kind: "remove"; readonly path: string }
   | { readonly kind: "gone" }
