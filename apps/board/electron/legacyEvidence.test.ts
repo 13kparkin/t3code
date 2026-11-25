@@ -59,18 +59,32 @@ describe("migrateLegacyEvidence", () => {
       { "T-1/proof.txt": "ok\n", "T-1/smoke.png": PNG },
     ],
     [
-      "a key already on the board keeps its files and gains only the missing ones",
+      "a board file with other content is kept and the worktree fails",
       { ".omp/artifacts/T-1/README.txt": "worktree\n", ".omp/artifacts/T-1/extra.txt": "new\n" },
       { "T-1/README.txt": "board\n" },
-      ["migrated"],
+      ["failed", "T-1: ./README.txt differs on the board"],
       { "T-1/README.txt": "board\n", "T-1/extra.txt": "new\n" },
+    ],
+    [
+      "a board file torn by a crash is kept and the worktree fails",
+      { ".omp/artifacts/T-1/smoke.png": PNG },
+      { "T-1/smoke.png": PNG.subarray(0, 3) },
+      ["failed", "T-1: ./smoke.png differs on the board"],
+      { "T-1/smoke.png": PNG.subarray(0, 3) },
+    ],
+    [
+      "a .partial left by a crash after the merge is removed",
+      { ".omp/artifacts/T-1/proof.txt": "ok\n" },
+      { "T-1/proof.txt": "ok\n", "T-1.partial/proof.txt": "ok\n" },
+      ["migrated"],
+      { "T-1/proof.txt": "ok\n" },
     ],
     ["an empty worktree has nothing to migrate", { "src/app.ts": "" }, {}, ["nothing"], {}],
     [
       "a loose file with no ticket folder fails and copies nothing",
       { ".omp/artifacts/notes.md": "x\n" },
       {},
-      ["failed", "notes.md is not in a ticket folder"],
+      ["failed", "notes.md is not a ticket folder"],
       {},
     ],
   ])(
@@ -95,4 +109,38 @@ describe("migrateLegacyEvidence", () => {
       }
     },
   );
+
+  it("Given a symlinked key folder, when it migrates, then it fails and copies nothing", async () => {
+    const temp = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "board-legacy-"));
+    try {
+      const tree = NodePath.join(temp, "wt");
+      const artifacts = NodePath.join(temp, "board", "artifacts");
+      plant(tree, { "elsewhere/secret.txt": "x\n" });
+      NodeFS.mkdirSync(NodePath.join(tree, ".omp", "artifacts"), { recursive: true });
+      NodeFS.symlinkSync(
+        NodePath.join(tree, "elsewhere"),
+        NodePath.join(tree, ".omp", "artifacts", "T-3"),
+      );
+
+      expect(await migrateLegacyEvidence(host, artifacts, [tree])).toBe(
+        `failed\t${tree}\tT-3 is not a ticket folder\n`,
+      );
+      expect(read(artifacts)).toEqual({});
+    } finally {
+      NodeFS.rmSync(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("Given a worktree path holding a newline, when it migrates, then the report has no line for it", async () => {
+    const temp = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "board-legacy-"));
+    try {
+      const victim = NodePath.join(temp, "victim");
+      const forged = `${temp}/x\nmigrated\t${victim}`;
+      expect(
+        await migrateLegacyEvidence(host, NodePath.join(temp, "board", "artifacts"), [forged]),
+      ).toBe("");
+    } finally {
+      NodeFS.rmSync(temp, { recursive: true, force: true });
+    }
+  });
 });
