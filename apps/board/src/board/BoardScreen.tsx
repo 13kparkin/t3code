@@ -119,7 +119,10 @@ export function BoardScreen({
       items: [
         {
           label: "Send to chat",
-          onSelect: () => setSendFailed(!sendToComposer(file())),
+          onSelect: () => {
+            setCardError(null);
+            setSendFailed(!sendToComposer(file()));
+          },
         },
         ...(ticket
           ? []
