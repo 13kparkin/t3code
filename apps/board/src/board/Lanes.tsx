@@ -17,11 +17,14 @@ import {
   ADDITION_KEY,
   additionLaneId,
   clampDrag,
+  type FrameBox,
   type LaneBox,
   type LaneId,
   type Layout,
   LANE_HEAD,
   LANE_LABEL,
+  LANE_MAX_HEIGHT,
+  LANE_PAD,
   laneCount,
   reorderByDrag,
   UNASSIGNED_HEAD,
@@ -34,6 +37,11 @@ import {
 import { RemoveAddition } from "./RemoveAddition";
 import { TicketFrame } from "./TicketFrame";
 import { ticketStatus } from "./ticketStatus";
+
+const framesHeight = (lane: LaneBox) => {
+  const last = lane.frames.at(-1);
+  return last === undefined ? 0 : last.y + last.height + LANE_PAD - lane.y - 1 - LANE_HEAD;
+};
 
 const LANE_TONE = {
   for_you: "bg-amber-500 text-black",
@@ -89,6 +97,108 @@ export function Lanes({
     void saveFrameOrder(registry, boardId, lane.id, order);
   };
 
+  const renderFrame = (lane: LaneBox, frame: FrameBox) => {
+    // Frames sit in the lane's scroll box, so they draw from its corner inside the lane's border.
+    const box = { ...frame, x: frame.x - lane.x - 1, y: frame.y - lane.y - 1 - LANE_HEAD };
+    const added = box.key.startsWith(ADDITION_KEY)
+      ? additions.get(box.key.slice(ADDITION_KEY.length))
+      : undefined;
+    if (added !== undefined) {
+      return (
+        <section
+          key={box.key}
+          aria-label={added.title}
+          data-testid="addition-card"
+          className="absolute flex flex-col rounded-lg border border-line bg-panel shadow-panel"
+          style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
+        >
+          <header className="flex shrink-0 items-center gap-1.5 px-2.5 pt-1.5">
+            <h4 className="min-w-0 flex-1 truncate text-[12px] font-semibold">{added.title}</h4>
+            <RemoveAddition title={added.title} onRemove={() => onRemoveAddition(added.id)} />
+          </header>
+          <div
+            data-scroll
+            onPointerDown={(event) => event.stopPropagation()}
+            className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-2 text-[12px]"
+          >
+            <AdditionBlocks item={added} />
+          </div>
+        </section>
+      );
+    }
+    if (box.key === UNASSIGNED_KEY || box.key === DONE_AGENTS_KEY) {
+      const isDone = box.key === DONE_AGENTS_KEY;
+      const rows = [
+        ...(isDone ? done.agents : model.unassigned).map((agent) => ({
+          threadId: agent.threadId,
+          title: agent.title,
+          status: ticketStatus([agent], now),
+          detail: `${agent.role} · ${ago(agent.updatedAt)}`,
+        })),
+        ...(isDone ? done.free : []).map((agent) => ({
+          threadId: agent.threadId,
+          title: freeAgentLabel(agent.threadId),
+          status: null,
+          detail: "Started on the canvas",
+        })),
+      ];
+      return (
+        <section
+          key={box.key}
+          aria-label={isDone ? "Done agents" : "Unassigned agents"}
+          data-testid={isDone ? "done-agents" : "unassigned"}
+          className="absolute rounded-lg border border-line bg-panel shadow-panel"
+          style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
+        >
+          <p className="px-2.5 pt-2 text-[11px] text-faint" style={{ height: UNASSIGNED_HEAD }}>
+            {isDone ? "Agents moved to Done" : "Started with no ticket"}
+          </p>
+          <div
+            className="flex flex-col"
+            style={{ gap: CARD_GAP, padding: `0 ${FRAME_PAD}px ${FRAME_PAD}px` }}
+          >
+            {rows.map((row) => (
+              <button
+                key={row.threadId}
+                type="button"
+                aria-pressed={row.threadId === choice?.threadId}
+                // A press that starts on a row is a click, not the start of a pan.
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={() => onOpenAgent(row.threadId, null)}
+                onContextMenu={(event) => onCardMenu(event, row.threadId, row.title, false)}
+                style={{ height: CARD_HEIGHT }}
+                className={`flex shrink-0 flex-col justify-center gap-1 rounded-md border bg-bg px-2.5 text-left hover:bg-hover ${row.threadId === choice?.threadId ? "border-focus" : "border-line"}`}
+              >
+                <CardLine tag={null} title={row.title} status={row.status} detail={row.detail} />
+              </button>
+            ))}
+          </div>
+        </section>
+      );
+    }
+    const view = views.get(box.key);
+    if (view === undefined) return null;
+    return (
+      <TicketFrame
+        key={box.key}
+        view={view}
+        box={box}
+        now={now}
+        offset={drag?.key === box.key ? drag.dy : 0}
+        selected={choice?.ticketKey === box.key}
+        onDrag={(dy) => setDrag({ key: box.key, dy: clampDrag(lane, frame, dy) })}
+        onDrop={() => drop(lane)}
+        onMenu={(event) => onCardMenu(event, box.key, box.key, true)}
+        onOpen={() => {
+          const active = activeAgentOf(view.agents);
+          if (active === undefined) {
+            onChoose({ threadId: view.agents[0]?.threadId ?? null, ticketKey: box.key });
+          } else onOpenAgent(active.threadId, box.key);
+        }}
+      />
+    );
+  };
+
   return (
     <>
       {layout.lanes.map((lane) => (
@@ -97,16 +207,18 @@ export function Lanes({
           aria-label={`${LANE_LABEL[lane.id]} lane`}
           data-testid="lane"
           data-lane={lane.id}
-          className="absolute rounded-xl border border-dashed border-line"
+          className="absolute flex flex-col rounded-xl border border-dashed border-line"
           style={{
             left: lane.x,
             top: lane.y,
             width: lane.width,
             // The For-you lane grows with its cards, whose heights the layout only estimates.
-            ...(lane.id === "for_you" ? { minHeight: lane.height } : { height: lane.height }),
+            ...(lane.id === "for_you"
+              ? { minHeight: lane.height, maxHeight: LANE_MAX_HEIGHT }
+              : { height: lane.height }),
           }}
         >
-          <header className="flex items-center gap-1.5 px-3" style={{ height: LANE_HEAD }}>
+          <header className="flex shrink-0 items-center gap-1.5 px-3" style={{ height: LANE_HEAD }}>
             <span
               className={`rounded-md px-2 text-[11px] leading-5 font-semibold ${LANE_TONE[lane.id]}`}
             >
@@ -132,7 +244,24 @@ export function Lanes({
               </Tooltip>
             )}
           </header>
-          {lane.id === "for_you" && forYouLane}
+          <div
+            data-lane-scroll
+            // A press on the scrollbar drags it, not the canvas.
+            onPointerDown={(event) => {
+              if (event.nativeEvent.offsetX >= event.currentTarget.clientWidth) {
+                event.stopPropagation();
+              }
+            }}
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          >
+            {lane.id === "for_you" ? (
+              forYouLane
+            ) : (
+              <div className="relative" style={{ height: framesHeight(lane) }}>
+                {lane.frames.map((frame) => renderFrame(lane, frame))}
+              </div>
+            )}
+          </div>
         </section>
       ))}
       {layout.additionLanes.map((box) => {
@@ -181,117 +310,6 @@ export function Lanes({
           </section>
         );
       })}
-      {layout.lanes.flatMap((lane) =>
-        lane.frames.map((box) => {
-          const added = box.key.startsWith(ADDITION_KEY)
-            ? additions.get(box.key.slice(ADDITION_KEY.length))
-            : undefined;
-          if (added !== undefined) {
-            return (
-              <section
-                key={box.key}
-                aria-label={added.title}
-                data-testid="addition-card"
-                className="absolute flex flex-col rounded-lg border border-line bg-panel shadow-panel"
-                style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
-              >
-                <header className="flex shrink-0 items-center gap-1.5 px-2.5 pt-1.5">
-                  <h4 className="min-w-0 flex-1 truncate text-[12px] font-semibold">
-                    {added.title}
-                  </h4>
-                  <RemoveAddition title={added.title} onRemove={() => onRemoveAddition(added.id)} />
-                </header>
-                <div
-                  data-scroll
-                  onPointerDown={(event) => event.stopPropagation()}
-                  className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-2 text-[12px]"
-                >
-                  <AdditionBlocks item={added} />
-                </div>
-              </section>
-            );
-          }
-          if (box.key === UNASSIGNED_KEY || box.key === DONE_AGENTS_KEY) {
-            const isDone = box.key === DONE_AGENTS_KEY;
-            const rows = [
-              ...(isDone ? done.agents : model.unassigned).map((agent) => ({
-                threadId: agent.threadId,
-                title: agent.title,
-                status: ticketStatus([agent], now),
-                detail: `${agent.role} · ${ago(agent.updatedAt)}`,
-              })),
-              ...(isDone ? done.free : []).map((agent) => ({
-                threadId: agent.threadId,
-                title: freeAgentLabel(agent.threadId),
-                status: null,
-                detail: "Started on the canvas",
-              })),
-            ];
-            return (
-              <section
-                key={box.key}
-                aria-label={isDone ? "Done agents" : "Unassigned agents"}
-                data-testid={isDone ? "done-agents" : "unassigned"}
-                className="absolute rounded-lg border border-line bg-panel shadow-panel"
-                style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
-              >
-                <p
-                  className="px-2.5 pt-2 text-[11px] text-faint"
-                  style={{ height: UNASSIGNED_HEAD }}
-                >
-                  {isDone ? "Agents moved to Done" : "Started with no ticket"}
-                </p>
-                <div
-                  className="flex flex-col"
-                  style={{ gap: CARD_GAP, padding: `0 ${FRAME_PAD}px ${FRAME_PAD}px` }}
-                >
-                  {rows.map((row) => (
-                    <button
-                      key={row.threadId}
-                      type="button"
-                      aria-pressed={row.threadId === choice?.threadId}
-                      // A press that starts on a row is a click, not the start of a pan.
-                      onPointerDown={(event) => event.stopPropagation()}
-                      onClick={() => onOpenAgent(row.threadId, null)}
-                      onContextMenu={(event) => onCardMenu(event, row.threadId, row.title, false)}
-                      style={{ height: CARD_HEIGHT }}
-                      className={`flex shrink-0 flex-col justify-center gap-1 rounded-md border bg-bg px-2.5 text-left hover:bg-hover ${row.threadId === choice?.threadId ? "border-focus" : "border-line"}`}
-                    >
-                      <CardLine
-                        tag={null}
-                        title={row.title}
-                        status={row.status}
-                        detail={row.detail}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </section>
-            );
-          }
-          const view = views.get(box.key);
-          if (view === undefined) return null;
-          return (
-            <TicketFrame
-              key={box.key}
-              view={view}
-              box={box}
-              now={now}
-              offset={drag?.key === box.key ? drag.dy : 0}
-              selected={choice?.ticketKey === box.key}
-              onDrag={(dy) => setDrag({ key: box.key, dy: clampDrag(lane, box, dy) })}
-              onDrop={() => drop(lane)}
-              onMenu={(event) => onCardMenu(event, box.key, box.key, true)}
-              onOpen={() => {
-                const active = activeAgentOf(view.agents);
-                if (active === undefined) {
-                  onChoose({ threadId: view.agents[0]?.threadId ?? null, ticketKey: box.key });
-                } else onOpenAgent(active.threadId, box.key);
-              }}
-            />
-          );
-        }),
-      )}
     </>
   );
 }

@@ -80,6 +80,8 @@ export const LANE_GAP = 16;
 export const LANE_HEAD = 34;
 export const LANE_PAD = 12;
 export const LANE_MIN_HEIGHT = 160;
+/** A taller lane scrolls its cards. 720 canvas px fits about eleven ticket cards or one merge card. */
+export const LANE_MAX_HEIGHT = 720;
 export const FRAME_WIDTH = LANE_WIDTH - LANE_PAD * 2;
 export const FRAME_GAP = 8;
 /** Every ticket card, and every unassigned agent row, is two lines this tall. */
@@ -198,7 +200,7 @@ export function layoutBoard(
       x,
       y: top,
       width: LANE_WIDTH,
-      height: Math.max(LANE_MIN_HEIGHT, bottom - top),
+      height: Math.min(LANE_MAX_HEIGHT, Math.max(LANE_MIN_HEIGHT, bottom - top)),
       frames,
     });
   });
@@ -231,10 +233,11 @@ export function reorderByDrag(lane: LaneBox, key: string, dy: number): ReadonlyA
   return [...others.slice(0, before), moved, ...others.slice(before)].map((frame) => frame.key);
 }
 
-/** How far a frame may be dragged and stay inside its lane. */
+/** How far a frame may be dragged and stay among its lane's frames, which may run past a scrolling lane. */
 export function clampDrag(lane: LaneBox, frame: FrameBox, dy: number): number {
   const min = lane.y + LANE_HEAD - frame.y;
-  const max = lane.y + lane.height - LANE_PAD - frame.height - frame.y;
+  const last = lane.frames.at(-1) ?? frame;
+  const max = last.y + last.height - frame.height - frame.y;
   return Math.min(Math.max(dy, min), Math.max(min, max));
 }
 
