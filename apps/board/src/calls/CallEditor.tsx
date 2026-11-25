@@ -103,7 +103,7 @@ export function CallEditor({
         {CALL_APPS[app].browser && (
           <p data-testid="browser-warning" className="flex items-start gap-1.5 text-amber-300">
             <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />A browser recording
-            takes every tab, not only the call's.
+            takes every tab in that browser.
           </p>
         )}
         {error !== null && (

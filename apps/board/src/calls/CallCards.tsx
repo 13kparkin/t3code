@@ -5,7 +5,6 @@ import { LANE_GAP, LANE_HEAD, LANE_WIDTH, ORCHESTRATOR_BOX } from "../board/layo
 import type { CallEvent, CardState } from "../domain/board";
 import { CALL_APPS } from "./CallEditor";
 
-/** Right of the orchestrator card, above the lanes, so the lanes keep their places. */
 const CALLS_BOX = {
   x: ORCHESTRATOR_BOX.x + ORCHESTRATOR_BOX.width + LANE_GAP,
   y: ORCHESTRATOR_BOX.y,
