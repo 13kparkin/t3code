@@ -171,9 +171,9 @@ describe("merge readiness", () => {
     ],
     [
       "the listing has loaded but smoke.txt has not been read yet",
-      { evidence: [], smoke: undefined },
+      { evidence: [], smoke: undefined, ciLocal: undefined },
       [
-        ["ci_green", false, false, "No checks reported and no ci-local.txt"],
+        ["ci_green", false, true, null],
         ["reviews_fixed", true, false, null],
         ["delta_rereviewed", true, false, null],
         ["readmes_pass", false, false, "No README check in the evidence"],
