@@ -25,6 +25,8 @@ const bridge: BoardBridge = {
   writeLocalState: (text) => ipcRenderer.invoke("board:local-state-write", text),
   ensurePstack: () => ipcRenderer.invoke("board:ensure-pstack"),
   listAgentSkills: (projectRoot) => ipcRenderer.invoke("board:list-agent-skills", projectRoot),
+  listGitWorktrees: (projectRoot) => ipcRenderer.invoke("board:list-git-worktrees", projectRoot),
+  headOnOrigin: (worktree) => ipcRenderer.invoke("board:head-on-origin", worktree),
   migrateLegacyEvidence: (artifactsDir, worktrees) =>
     ipcRenderer.invoke("board:migrate-legacy-evidence", artifactsDir, worktrees),
   browser: {

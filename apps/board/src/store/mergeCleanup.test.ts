@@ -36,6 +36,14 @@ const clean: WorktreeStatus = {
   aheadOfDefaultCount: 0,
 };
 
+const detached: WorktreeStatus = {
+  ...clean,
+  refName: null,
+  hasUpstream: false,
+  aheadCount: 0,
+  aheadOfDefaultCount: 0,
+};
+
 const facts = (patch: Partial<WorktreeFacts> = {}): WorktreeFacts => ({
   ticket: ticket(),
   path: WT,
@@ -77,9 +85,24 @@ describe("planCleanup", () => {
       { kind: "keep", reason: "unpushed" },
     ],
     [
-      "the worktree detached after git listed it, with a commit no ref holds",
-      { status: { ...clean, refName: null, hasUpstream: false, aheadCount: 0 } },
-      { kind: "keep", reason: "unpushed" },
+      "a detached worktree whose HEAD no origin branch holds",
+      { status: { ...detached, headOnOrigin: false } },
+      { kind: "keep", reason: "detached-unpushed" },
+    ],
+    [
+      "a detached worktree whose HEAD an origin branch holds",
+      { status: { ...detached, headOnOrigin: true } },
+      { kind: "remove", path: WT },
+    ],
+    [
+      "a detached worktree whose origin check did not run",
+      { status: { ...detached, headOnOrigin: null } },
+      { kind: "keep", reason: "status-unknown" },
+    ],
+    [
+      "a detached worktree on origin without its evidence on the board",
+      { status: { ...detached, headOnOrigin: true }, evidenceOnBoard: false },
+      { kind: "keep", reason: "evidence-missing" },
     ],
     [
       "ASK T-2: one untracked file",

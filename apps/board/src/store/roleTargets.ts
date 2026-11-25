@@ -22,16 +22,18 @@ export async function setRoleTarget(
   }
 }
 
-/** The `role_target` items in `foryou.jsonl` text with no result in `roleRequests` yet. */
-const openRoleTargets = (
+/** The `role_target` items in `foryou.jsonl` text with no result in `roleRequests` yet, oldest first, so the newest is applied last. */
+export const openRoleTargets = (
   text: string | null,
   roleRequests: Readonly<Record<string, string>> | undefined,
 ) =>
-  mergeForYou(text, [], roleRequests).cards.flatMap((card) =>
-    card.origin === "file" && card.item.kind === "role_target" && card.item.status === "open"
-      ? [card.item]
-      : [],
-  );
+  mergeForYou(text, [], roleRequests)
+    .cards.flatMap((card) =>
+      card.origin === "file" && card.item.kind === "role_target" && card.item.status === "open"
+        ? [card.item]
+        : [],
+    )
+    .toSorted((a, b) => (Date.parse(a.createdAt) || 0) - (Date.parse(b.createdAt) || 0));
 
 /**
  * Applies each open `role_target` item and records its result in `board.json`, which the app owns,

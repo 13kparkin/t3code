@@ -23,7 +23,7 @@ import { Tooltip } from "../ui/Tooltip";
 import { BuilderCap } from "./BuilderCap";
 import { useOrchestratorStatus } from "./useOrchestratorStatus";
 import type { ArchivedCard } from "../state/cardStates";
-import { additionLaneId, DONE_TAG, ORCHESTRATOR_BOX, stageTagId } from "./layout";
+import { additionLaneId, DONE_TAG, ORCHESTRATOR_BOX, stageTagCount, stageTagId } from "./layout";
 
 /** Mounts the board's usage watch, which messages the orchestrator when a usage window passes a level. */
 function UsageWatch({ instanceId, threadId }: { instanceId: string; threadId: string }) {
@@ -43,6 +43,7 @@ export function OrchestratorCard({
   additions,
   onChangeHidden,
   doneCount,
+  todoAgents,
   archived,
   onUnarchive,
 }: {
@@ -57,6 +58,8 @@ export function OrchestratorCard({
   onChangeHidden: (change: (ids: ReadonlyArray<string>) => ReadonlyArray<string>) => void;
   /** Cards in the Done lane, shown or not. */
   doneCount: number;
+  /** Agent rows in the To do lane, which its tag counts. */
+  todoAgents: number;
   archived: ReadonlyArray<ArchivedCard>;
   onUnarchive: (key: string) => void;
 }) {
@@ -84,7 +87,7 @@ export function OrchestratorCard({
     ...TICKET_STAGES.map((stage) => ({
       id: stageTagId(stage),
       label: STAGE_LABEL[stage],
-      count: stats.stages[stage],
+      count: stageTagCount(stage, stats.stages, todoAgents),
     })),
     { id: DONE_TAG, label: "Done", count: doneCount },
     { id: "for_you", label: "For you", count: stats.forYouOpen },

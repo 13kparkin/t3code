@@ -226,7 +226,7 @@ const createdAtOf = (card: ForYouCard): number => {
 /**
  * The file's items, where the latest line for an id wins, then the engine's requests, with a
  * repeated id dropped. A `role_target` item with a result in `board.json`'s `roleRequests` is
- * resolved with it. Open cards come first, then held, then resolved, each oldest first.
+ * resolved with it. Open cards come first, then held, then resolved, each newest first.
  */
 export function mergeForYou(
   fileText: string | null,
@@ -283,7 +283,7 @@ export function mergeForYou(
       .toSorted(
         (a, b) =>
           STATUS_RANK[statusOf(a.card)] - STATUS_RANK[statusOf(b.card)] ||
-          createdAtOf(a.card) - createdAtOf(b.card) ||
+          createdAtOf(b.card) - createdAtOf(a.card) ||
           a.order - b.order,
       )
       .map(({ card }) => card),

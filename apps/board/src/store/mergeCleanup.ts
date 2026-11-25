@@ -18,7 +18,28 @@ type KeepReason =
   | "status-unknown"
   | "dirty"
   | "unpushed"
+  | "detached-unpushed"
   | "evidence-missing";
+
+const KEEP_LABELS = {
+  "store-unreadable": "tickets unreadable",
+  "not-merged": "not merged",
+  "relative-path": "relative path",
+  "main-checkout": "main checkout",
+  unlisted: "not listed by git",
+  shared: "shared with other work",
+  running: "agent running",
+  "threads-unknown": "threads not loaded",
+  "status-unknown": "status unknown",
+  dirty: "uncommitted changes",
+  unpushed: "commits not pushed",
+  "detached-unpushed": "commits not on origin",
+  "evidence-missing": "evidence not on the board",
+} as const satisfies Record<KeepReason, string>;
+const keepLabels = new Map<string, string>(Object.entries(KEEP_LABELS));
+
+/** A kept reason in plain words. Git's own refusal text, the other kind of kept value, shows as is. */
+export const keptLabel = (kept: string): string => keepLabels.get(kept) ?? kept;
 
 type Plan =
   | { readonly kind: "remove"; readonly path: string }
@@ -41,7 +62,10 @@ export type WorktreeStatus = Pick<
   | "hasUpstream"
   | "aheadCount"
   | "aheadOfDefaultCount"
->;
+> & {
+  /** For a detached worktree, whether an `origin` branch holds its HEAD. Null when that did not read. */
+  readonly headOnOrigin?: boolean | null;
+};
 
 /** Reads for one worktree of a merged ticket. A null field is a read that failed; undefined is not read yet. */
 export interface WorktreeFacts {
@@ -65,10 +89,8 @@ const ownThreadIds = (ticket: Ticket) => new Set((ticket.threads ?? []).map((t) 
 const samePath = (a: string | null | undefined, b: string) =>
   a != null && trimSlashes(a) === trimSlashes(b);
 
-// A worktree that detached since git listed it reports no ahead count, so it is never safe.
 const branchSafe = (status: WorktreeStatus) =>
-  status.refName !== null &&
-  ((status.hasUpstream && status.aheadCount === 0) || status.aheadOfDefaultCount === 0);
+  (status.hasUpstream && status.aheadCount === 0) || status.aheadOfDefaultCount === 0;
 
 /**
  * Whether a merged ticket's worktree can go. Every check fails closed. The first one that fails,
@@ -107,7 +129,11 @@ export function planCleanup(facts: WorktreeFacts): Plan {
   if (status === null) return keep("status-unknown");
   if (!status.isRepo) return { kind: "gone" };
   if (status.hasWorkingTreeChanges) return keep("dirty");
-  if (!branchSafe(status)) return keep("unpushed");
+  // A detached worktree reports no ahead count, so only origin holding its HEAD makes it safe.
+  if (status.refName === null) {
+    if (status.headOnOrigin == null) return keep("status-unknown");
+    if (!status.headOnOrigin) return keep("detached-unpushed");
+  } else if (!branchSafe(status)) return keep("unpushed");
   if (!facts.evidenceOnBoard) return keep("evidence-missing");
   return { kind: "remove", path: worktree };
 }

@@ -38,6 +38,13 @@ export function ticketLane(stage: TicketStage, live: boolean): StageLane {
   return stage === "todo" || stage === "planned" ? "todo" : "waiting";
 }
 
+/** A stage tag's count. The To do tag also counts the agent rows that lead the To do lane, as its header does. */
+export const stageTagCount = (
+  stage: TicketStage,
+  stages: Readonly<Record<TicketStage, number>>,
+  todoAgents: number,
+) => stages[stage] + (stage === "todo" ? todoAgents : 0);
+
 /** The filter id of the Done lane, which starts hidden. */
 export const DONE_TAG = "done";
 export const stageTagId = (stage: TicketStage) => `stage:${stage}`;
@@ -66,7 +73,7 @@ export function hiddenFilters(
 
 /** The key of the one frame that holds the agents no ticket claims. */
 export const UNASSIGNED_KEY = "__unassigned";
-/** The key of the Done lane's frame of agent cards the user moved to Done. */
+/** The key of the Done lane's frame of agent cards that finished or that the user moved to Done. */
 export const DONE_AGENTS_KEY = "__done_agents";
 /** A lane card's frame key is this and the addition's id. */
 export const ADDITION_KEY = "__add:";
@@ -126,12 +133,12 @@ export interface Layout {
 export const unassignedHeight = (agents: number): number =>
   UNASSIGNED_HEAD + FRAME_PAD + agents * CARD_HEIGHT + (agents - 1) * CARD_GAP;
 
-/** Frames in the order the user dragged them to, and any the saved order lacks after them, in file order. */
+/** Frames the user never dragged on top, in the order given, then the rest in the order the user dragged them to. */
 export function orderedKeys(keys: ReadonlyArray<string>, saved: ReadonlyArray<string> = []) {
   const present = new Set(keys);
   const kept = saved.filter((key) => present.has(key));
   const placed = new Set(kept);
-  return [...kept, ...keys.filter((key) => !placed.has(key))];
+  return [...keys.filter((key) => !placed.has(key)), ...kept];
 }
 
 /**
@@ -181,12 +188,14 @@ export function layoutBoard(
       if (id === "done" && doneAgents > 0) {
         items.push({ key: DONE_AGENTS_KEY, height: unassignedHeight(doneAgents) });
       }
-      const keys = TICKET_STAGES.filter((stage) => !hidden.has(stageTagId(stage))).flatMap(
-        (stage) =>
-          model.lanes[stage]
-            .filter((view) => ticketLane(stage, isWorking(view.agents, now)) === id)
-            .map((view) => view.ticket.key),
-      );
+      const keys = TICKET_STAGES.filter((stage) => !hidden.has(stageTagId(stage)))
+        .flatMap((stage) =>
+          model.lanes[stage].filter(
+            (view) => ticketLane(stage, isWorking(view.agents, now)) === id,
+          ),
+        )
+        .toSorted((a, b) => b.position - a.position)
+        .map((view) => view.ticket.key);
       for (const key of orderedKeys(keys, order[id])) items.push({ key, height: CARD_HEIGHT });
     }
     let y = top + LANE_HEAD;
@@ -307,17 +316,18 @@ export function besideLanes(
   return covers ? { x: at.x, y: bottom + LEFT } : { x: at.x, y: at.y };
 }
 
-/** The number a lane's header shows: its ticket frames and the agents moved to Done, or the For you lane's open items. */
+/** The number a lane's header shows: its ticket frames and the agent rows in To do or Done, or the For you lane's open items. */
 export function laneCount(
   lane: LaneBox,
   views: ReadonlyMap<string, unknown>,
   forYouOpen: number,
-  doneAgents: number,
+  agents: { readonly todo: number; readonly done: number },
 ) {
   if (lane.id === "for_you") return forYouOpen;
-  return lane.frames.reduce(
-    (count, frame) =>
-      count + (frame.key === DONE_AGENTS_KEY ? doneAgents : views.has(frame.key) ? 1 : 0),
-    0,
-  );
+  const rows = (key: string) => {
+    if (key === UNASSIGNED_KEY) return agents.todo;
+    if (key === DONE_AGENTS_KEY) return agents.done;
+    return views.has(key) ? 1 : 0;
+  };
+  return lane.frames.reduce((count, frame) => count + rows(frame.key), 0);
 }

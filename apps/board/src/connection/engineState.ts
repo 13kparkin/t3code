@@ -39,6 +39,10 @@ export interface BoardBridge {
   readonly ensurePstack: () => Promise<PstackResult>;
   /** The raw `.agents/skills` SKILL.md listing for a project and the WSL home. */
   readonly listAgentSkills: (projectRoot: string) => Promise<string>;
+  /** `git worktree list --porcelain -z` for a project root, or null when it cannot run. */
+  readonly listGitWorktrees: (projectRoot: string) => Promise<string | null>;
+  /** Whether an `origin` branch holds a worktree's HEAD, or null when it cannot tell. */
+  readonly headOnOrigin: (worktree: string) => Promise<boolean | null>;
   readonly migrateLegacyEvidence: (
     artifactsDir: string,
     worktrees: ReadonlyArray<string>,

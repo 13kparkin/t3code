@@ -24,17 +24,21 @@ export function agentActivity(agent: AgentView, now: number): AgentActivity {
 /** T3 releases an idle provider session after this long by itself, so an older agent needs no stop. */
 const ENGINE_IDLE_RELEASE_MS = 30 * 60_000;
 
-/** Whether the board ends this agent's session: a finished run that waits on nothing, never the orchestrator's. */
+/** Whether the agent's latest run ended, by success, failure or cancel, and it waits on no question or child. */
+export function hasFinished(agent: AgentView, now: number): boolean {
+  const activity = agentActivity(agent, now);
+  return agent.latestRunId !== null && (activity === "stopped" || activity === "failed");
+}
+
+/** Whether the board ends this agent's session: a finished run, never the orchestrator's. */
 export function shouldAutoStop(
   agent: AgentView,
   orchestratorThreadId: string | null,
   now: number,
 ): boolean {
-  const activity = agentActivity(agent, now);
   return (
     agent.threadId !== orchestratorThreadId &&
-    agent.latestRunId !== null &&
-    (activity === "stopped" || activity === "failed") &&
+    hasFinished(agent, now) &&
     now - Date.parse(agent.updatedAt) <= ENGINE_IDLE_RELEASE_MS
   );
 }

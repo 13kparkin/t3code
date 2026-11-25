@@ -11,10 +11,10 @@ import {
   createEnvironmentShellAtoms,
   createEnvironmentSnapshotAtom,
 } from "@t3tools/client-runtime/state/shell";
-import { isListedThreadLineage } from "@t3tools/contracts";
 import { AsyncResult, Atom } from "effect/reactivity";
 
 import { connectionAtomRuntime } from "../connection/runtime";
+import { type ProjectWorktree, worktreesByProject } from "./projectWorktrees";
 
 export const environmentCatalog = createEnvironmentCatalogAtoms(connectionAtomRuntime);
 export const environmentShell = createEnvironmentShellAtoms(connectionAtomRuntime);
@@ -36,38 +36,15 @@ export const engineEnvironmentIdAtom = Atom.make(
     null,
 ).pipe(Atom.withLabel("engine-environment-id"));
 
-export interface ProjectWorktree {
-  readonly path: string;
-  readonly branch: string | null;
-  readonly title: string;
-}
-
 const NO_WORKTREES: ReadonlyMap<string, ReadonlyArray<ProjectWorktree>> = new Map();
 
-/** The worktrees that listed threads use, per project, which the settings screen offers to delete. */
-export const projectWorktreesAtom = Atom.make(
-  (get): ReadonlyMap<string, ReadonlyArray<ProjectWorktree>> => {
-    const environmentId = get(engineEnvironmentIdAtom);
-    const threads =
-      environmentId === null ? undefined : get(environmentSnapshotAtom(environmentId))?.threads;
-    if (threads === undefined) return NO_WORKTREES;
-    const byProject = new Map<string, Map<string, ProjectWorktree>>();
-    for (const thread of threads) {
-      if (thread.worktreePath === null || thread.deletedAt !== null) continue;
-      if (!isListedThreadLineage(thread.lineage)) continue;
-      const worktrees = byProject.get(thread.projectId) ?? new Map<string, ProjectWorktree>();
-      worktrees.set(thread.worktreePath, {
-        path: thread.worktreePath,
-        branch: thread.branch,
-        title: thread.title,
-      });
-      byProject.set(thread.projectId, worktrees);
-    }
-    return new Map(
-      [...byProject].map(([projectId, worktrees]) => [projectId, [...worktrees.values()]]),
-    );
-  },
-).pipe(Atom.withLabel("project-worktrees"));
+/** The worktrees threads use, per project, which the settings screen offers to delete. */
+export const projectWorktreesAtom = Atom.make((get) => {
+  const environmentId = get(engineEnvironmentIdAtom);
+  const threads =
+    environmentId === null ? undefined : get(environmentSnapshotAtom(environmentId))?.threads;
+  return threads === undefined ? NO_WORKTREES : worktreesByProject(threads);
+}).pipe(Atom.withLabel("project-worktrees"));
 
 export interface EngineConnection {
   readonly state: SupervisorConnectionState;

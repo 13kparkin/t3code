@@ -15,6 +15,7 @@ import {
   ticketWorktrees,
 } from "../store/mergeCleanup";
 import { boardEngine, familyThread } from "./boards";
+import { parseWorktreeList } from "./gitWorktrees";
 import { environmentSnapshotAtom } from "./projects";
 import { deleteWorktree, vcsEnvironment } from "./vcs";
 
@@ -33,6 +34,9 @@ function cleanupPorts(registry: AtomRegistry.AtomRegistry, project: CleanupProje
   return {
     tickets: () => readBoardTickets(files, workspaceRoot),
     worktrees: async () => {
+      const listed = await engineBridge.listGitWorktrees(workspaceRoot);
+      if (listed !== null) return parseWorktreeList(listed).map((worktree) => worktree.path);
+      // Without the desktop shell, as in `dev:web`, only worktrees on a local branch are listed.
       const result = await runAtomCommand(
         registry,
         vcsEnvironment.readRefs,
@@ -62,7 +66,11 @@ function cleanupPorts(registry: AtomRegistry.AtomRegistry, project: CleanupProje
         { environmentId, input: { cwd: path } },
         { reportFailure: false },
       );
-      return result._tag === "Success" ? result.value : null;
+      if (result._tag !== "Success") return null;
+      const status = result.value;
+      return status.refName === null
+        ? { ...status, headOnOrigin: await engineBridge.headOnOrigin(path) }
+        : status;
     },
     remove: (path) =>
       deleteWorktree(registry, { environmentId, cwd: workspaceRoot }, path, { force: false }),

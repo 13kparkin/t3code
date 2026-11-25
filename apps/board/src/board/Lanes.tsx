@@ -72,7 +72,6 @@ export function Lanes({
   onChoose: (choice: TicketChoice) => void;
   onOpenAgent: (threadId: string, ticketKey: string | null) => void;
   onRemoveAddition: (id: string) => void;
-  /** The agent cards the user moved to Done. */
   done: { readonly agents: ReadonlyArray<AgentView>; readonly free: ReadonlyArray<FreeAgent> };
   onCardMenu: (event: MouseEvent, key: string, label: string, ticket: boolean) => void;
   now: number;
@@ -151,7 +150,7 @@ export function Lanes({
           style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
         >
           <p className="px-2.5 pt-2 text-[11px] text-faint" style={{ height: UNASSIGNED_HEAD }}>
-            {isDone ? "Agents moved to Done" : "Started with no ticket"}
+            {isDone ? "Agents finished or moved to Done" : "Started with no ticket"}
           </p>
           <div
             className="flex flex-col"
@@ -226,7 +225,10 @@ export function Lanes({
               {lane.id === "todo" && queued ? " · queued" : ""}
             </span>
             <span className="text-[11px] text-faint">
-              {laneCount(lane, views, forYouOpen, done.agents.length + done.free.length)}
+              {laneCount(lane, views, forYouOpen, {
+                todo: model.unassigned.length,
+                done: done.agents.length + done.free.length,
+              })}
             </span>
             <span className="flex-1" />
             {lane.id === "for_you" && (
@@ -246,13 +248,7 @@ export function Lanes({
           </header>
           <div
             data-lane-scroll
-            // A press on the scrollbar drags it, not the canvas.
-            onPointerDown={(event) => {
-              if (event.nativeEvent.offsetX >= event.currentTarget.clientWidth) {
-                event.stopPropagation();
-              }
-            }}
-            className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-width:thin]"
+            className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {lane.id === "for_you" ? (
               forYouLane

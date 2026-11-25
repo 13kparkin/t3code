@@ -28,6 +28,7 @@ const row = (
     activityRunStatus: null,
     pendingBackgroundTasks: [],
     pendingRuntimeRequest: null,
+    createdAt: DateTime.makeUnsafe(0),
     updatedAt: DateTime.makeUnsafe(0),
     ...rest,
   } as FamilyRow;
@@ -105,6 +106,24 @@ describe("joining tickets with the thread family", () => {
         ["th-e", "wizard", false],
       ],
     );
+  });
+
+  it("Given children no ticket claims, started at different times, when joined, then the newest leads", () => {
+    const started = joinBoard({
+      tickets: [],
+      family: [
+        row("th-old", "[board] scout", { createdAt: DateTime.makeUnsafe(1) }),
+        row("th-new", "[board] scout", { createdAt: DateTime.makeUnsafe(3) }),
+        row("th-mid", "[board] scout", { createdAt: DateTime.makeUnsafe(2) }),
+      ],
+      orchestratorThreadId: ORCHESTRATOR,
+      driverOf,
+    });
+    expect(started.unassigned.map((agent) => agent.threadId)).toEqual([
+      "th-new",
+      "th-mid",
+      "th-old",
+    ]);
   });
 
   it("Given an agent's shell row, when joined, then the card fields come from it", () => {
