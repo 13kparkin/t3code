@@ -55,10 +55,10 @@ When Actions is available on the repo, `gh workflow run agent-board.yml -f versi
 The fork runs no CI on pull requests, so local CI stands in. `scripts/gates.mjs` lists the release gates, and `release.mjs` and `ci-local.mjs` both run that list.
 
 ```sh
-node apps/board/scripts/ci-local.mjs T-13
+node apps/board/scripts/ci-local.mjs T-13 <board folder>/artifacts/T-13
 ```
 
-It needs a clean checkout. It fetches upstream, runs `vp run check:changed` and every release gate, and writes `.omp/artifacts/<ticket key>/ci-local.txt`. Line 1 is the head SHA, and each step ends with a line such as `engine-exit=0`. The file keeps the last 32,000 characters of each step's output.
+It needs a clean checkout. It fetches upstream, runs `vp run check:changed` and every release gate, and writes `ci-local.txt` into the evidence folder named by its second argument, whose last segment must be the ticket key. A builder's worktree does not hold the board folder, so the path comes from the caller. Line 1 is the head SHA, and each step ends with a line such as `engine-exit=0`. The file keeps the last 32,000 characters of each step's output.
 
 ## omp rules for Claude Code
 

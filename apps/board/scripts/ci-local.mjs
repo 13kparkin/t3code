@@ -1,17 +1,17 @@
 #!/usr/bin/env node
-// Runs local CI on HEAD for a fork with no CI on pull requests, and writes the ticket's ci-local.txt,
-// which the board reads for the ci_green condition. Line 1 is the head SHA, and each step's output
-// ends in `<step>-exit=<code>`. It runs every step, even after one fails.
-// Usage: node apps/board/scripts/ci-local.mjs <ticket key>
+// Runs local CI on HEAD and writes ci-local.txt, which the board reads for ci_green. Line 1 is the
+// head SHA, and each step ends in `<step>-exit=<code>`. It runs every step, even after one fails.
+// Usage: node apps/board/scripts/ci-local.mjs <ticket key> <evidence folder>, where the folder is the
+// board's `artifacts/<ticket key>/`, since a builder's worktree does not hold the board folder.
 import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
 import { addUpstreamRemote, GATES, UPSTREAM_FETCH } from "./gates.mjs";
 
-const key = process.argv[2];
-if (!/^[A-Za-z][\w-]*$/.test(key ?? "")) {
-  console.error("Usage: node apps/board/scripts/ci-local.mjs <ticket key>");
+const [key, evidence] = process.argv.slice(2);
+if (!/^[A-Za-z][\w-]*$/.test(key ?? "") || NodePath.basename(evidence ?? "") !== key) {
+  console.error("Usage: node apps/board/scripts/ci-local.mjs <ticket key> <evidence folder>");
   process.exit(1);
 }
 
@@ -56,7 +56,7 @@ for (const step of steps) {
   lines.push(block);
 }
 
-const output = NodePath.join(root, ".omp", "artifacts", key, "ci-local.txt");
+const output = NodePath.resolve(evidence, "ci-local.txt");
 NodeFS.mkdirSync(NodePath.dirname(output), { recursive: true });
 // Written whole at the end, so a run cut short never leaves a file whose exit lines all pass.
 NodeFS.writeFileSync(`${output}.tmp`, `${lines.join("\n")}\n`);
