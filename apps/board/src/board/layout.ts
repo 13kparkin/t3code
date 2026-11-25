@@ -307,17 +307,18 @@ export function besideLanes(
   return covers ? { x: at.x, y: bottom + LEFT } : { x: at.x, y: at.y };
 }
 
-/** The number a lane's header shows: its ticket frames and the agents in Done, or the For you lane's open items. */
+/** The number a lane's header shows: its ticket frames and the agent rows in To do or Done, or the For you lane's open items. */
 export function laneCount(
   lane: LaneBox,
   views: ReadonlyMap<string, unknown>,
   forYouOpen: number,
-  doneAgents: number,
+  agents: { readonly todo: number; readonly done: number },
 ) {
   if (lane.id === "for_you") return forYouOpen;
-  return lane.frames.reduce(
-    (count, frame) =>
-      count + (frame.key === DONE_AGENTS_KEY ? doneAgents : views.has(frame.key) ? 1 : 0),
-    0,
-  );
+  const rows = (key: string) => {
+    if (key === UNASSIGNED_KEY) return agents.todo;
+    if (key === DONE_AGENTS_KEY) return agents.done;
+    return views.has(key) ? 1 : 0;
+  };
+  return lane.frames.reduce((count, frame) => count + rows(frame.key), 0);
 }

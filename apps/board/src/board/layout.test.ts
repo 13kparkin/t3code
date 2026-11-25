@@ -156,13 +156,26 @@ describe("laying out the lanes", () => {
     },
   );
 
-  it("Given the Done lane shown and two agents moved to Done, when laid out, then the agents frame leads it, merged and off-path tickets follow, and the header counts all four, as the Done tag does", () => {
-    const shown = layoutBoard(model, {}, 0, hiddenFilters(new Set(["done"]), []), [], 0, 2);
-    expect(keys("done", shown)).toEqual([DONE_AGENTS_KEY, "T-5", "T-6"]);
-    const views = new Map(
-      [...model.lanes.merged, ...model.lanes.off_path].map((v) => [v.ticket.key, v]),
+  it("Given the Done lane shown, one ticketless agent in To do and two in Done, when laid out, then each agents frame leads its lane, and each header counts its tickets and its agents, as the Done tag does", () => {
+    const shown = layoutBoard(
+      { ...model, unassigned: [agent("orphan")] },
+      {},
+      0,
+      hiddenFilters(new Set(["done"]), []),
+      [],
+      0,
+      2,
     );
-    expect(laneCount(lane("done", shown)!, views, 0, 2)).toBe(4);
+    expect(keys("done", shown)).toEqual([DONE_AGENTS_KEY, "T-5", "T-6"]);
+    expect(keys("todo", shown)).toEqual([UNASSIGNED_KEY, "T-3"]);
+    const views = new Map(
+      Object.values(model.lanes).flatMap((all) => all.map((v) => [v.ticket.key, v])),
+    );
+    const agents = { todo: 1, done: 2 };
+    expect([
+      laneCount(lane("done", shown)!, views, 0, agents),
+      laneCount(lane("todo", shown)!, views, 0, agents),
+    ]).toEqual([4, 2]);
   });
 
   it("Given a hidden tag, when laid out, then its cards leave the lane and the lane stays", () => {

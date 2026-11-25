@@ -225,7 +225,10 @@ export function Lanes({
               {lane.id === "todo" && queued ? " · queued" : ""}
             </span>
             <span className="text-[11px] text-faint">
-              {laneCount(lane, views, forYouOpen, done.agents.length + done.free.length)}
+              {laneCount(lane, views, forYouOpen, {
+                todo: model.unassigned.length,
+                done: done.agents.length + done.free.length,
+              })}
             </span>
             <span className="flex-1" />
             {lane.id === "for_you" && (
