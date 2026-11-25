@@ -1,8 +1,8 @@
 import { type MouseEvent, useRef } from "react";
 
-import { missingPlan, STAGE_LABEL } from "../domain/ticket";
+import { missingPlan, missingSources, STAGE_LABEL } from "../domain/ticket";
 import { waitingOn } from "../domain/ticketOverlay";
-import { usePrContext } from "../state/prStatus";
+import { usePrContext, useTicketNotes } from "../state/prStatus";
 import type { TicketView } from "../state/boardModel";
 import { ago } from "../ui/ago";
 import { CardLine } from "./CardLine";
@@ -42,6 +42,7 @@ export function TicketFrame({
   const newest = newestAgent(agents);
   const tag = STAGE_TAGS[ticket.stage];
   const { tickets } = usePrContext();
+  const notes = useTicketNotes(view);
   const waiting =
     ticket.stage === "merged" || ticket.stage === "off_path"
       ? []
@@ -117,6 +118,11 @@ export function TicketFrame({
               </span>
             )}
             {missingPlan(ticket) && <span className="text-amber-300">No plan · </span>}
+            {missingSources(ticket, notes) && (
+              <span data-testid="no-sources" className="text-amber-300">
+                No sources ·{" "}
+              </span>
+            )}
             {newest === undefined ? "No agents" : `${newest.role} · ${ago(newest.updatedAt)}`}
           </>
         }

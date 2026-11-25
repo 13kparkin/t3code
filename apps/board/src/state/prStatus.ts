@@ -25,7 +25,14 @@ import { locate } from "../files/target";
 import { ROLES } from "../orchestrator/roles";
 import type { Artifact } from "../store/artifacts";
 import type { FamilyRow, TicketView } from "./boardModel";
-import { artifactContentsKey, ciLocalAtom, ciLocalKey, smokeAtom } from "./artifacts";
+import {
+  artifactContentsAtom,
+  artifactContentsKey,
+  ciLocalAtom,
+  ciLocalKey,
+  type LoadedArtifact,
+  smokeAtom,
+} from "./artifacts";
 import { threadFamilies } from "./family";
 import { buildLive, sameRef, ticketPrRef, trackRunning } from "./prLive";
 
@@ -225,6 +232,31 @@ export function useTicketSmoke(view: TicketView | null): Smoke | null {
       : smokeAtom(artifactContentsKey(files.environmentId, smokeAt.root.cwd, smokeAt.path)),
   );
 }
+
+const NO_NOTE = Atom.make<LoadedArtifact>({
+  status: "done",
+  contents: { kind: "missing" },
+}).pipe(Atom.withLabel("board-note:none"));
+
+/** The text of one of a ticket's evidence notes, null when it has none, undefined until read. */
+function useTicketNote(view: TicketView, name: string): string | null | undefined {
+  const { groups, files } = useArtifacts();
+  const file = groups.byTicket.get(view.ticket.key)?.find((artifact) => artifact.name === name);
+  const at = file === undefined ? null : locate(files.roots, file.absolutePath);
+  const loaded = useAtomValue(
+    at === null
+      ? NO_NOTE
+      : artifactContentsAtom(artifactContentsKey(files.environmentId, at.root.cwd, at.path)),
+  );
+  if (loaded.status !== "done") return undefined;
+  return loaded.contents.kind === "text" ? loaded.contents.contents : null;
+}
+
+/** A ticket's `design.md` and `diagnosis.md` texts, for the Sources flag. */
+export const useTicketNotes = (view: TicketView) => ({
+  design: useTicketNote(view, "design.md"),
+  diagnosis: useTicketNote(view, "diagnosis.md"),
+});
 
 /**
  * The six merge-ready conditions for a ticket, computed from the board's files and the host's
