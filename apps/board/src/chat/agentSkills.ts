@@ -1,7 +1,4 @@
 import type { ServerProviderSkill } from "@t3tools/contracts";
-import { Atom } from "effect/reactivity";
-
-import { engineBridge } from "../connection/bridge";
 
 /** The scope the board gives a skill from an `.agents/skills` folder, which the provider never lists. */
 export const AGENTS_SCOPE = ".agents";
@@ -45,13 +42,3 @@ export function mergeSkills(
 /** What a picked `.agents` skill inserts, because Claude Code loads skills by name only from `.claude`. */
 export const agentSkillPrompt = (skill: ServerProviderSkill) =>
   `Read ${skill.path} in full and follow it as the ${skill.name} skill.`;
-
-/** A project's `.agents` skills, then the WSL home's, read once per project root. */
-export const agentSkillsAtom = Atom.family((projectRoot: string) =>
-  Atom.make((get): ReadonlyArray<ServerProviderSkill> => {
-    void engineBridge
-      .listAgentSkills(projectRoot)
-      .then((listing) => get.setSelf(parseAgentSkills(listing)));
-    return [];
-  }).pipe(Atom.keepAlive, Atom.withLabel(`agent-skills:${projectRoot}`)),
-);

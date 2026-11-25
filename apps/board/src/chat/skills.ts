@@ -5,10 +5,22 @@ import {
 } from "@t3tools/client-runtime/providerSkills";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import type { ServerProviderSkill } from "@t3tools/contracts";
+import { Atom } from "effect/reactivity";
 import { createContext, useMemo } from "react";
 
+import { engineBridge } from "../connection/bridge";
 import { engineProvidersAtom } from "../state/server";
-import { agentSkillsAtom, mergeSkills } from "./agentSkills";
+import { mergeSkills, parseAgentSkills } from "./agentSkills";
+
+/** A project's `.agents` skills, then the WSL home's, read once per project root. */
+export const agentSkillsAtom = Atom.family((projectRoot: string) =>
+  Atom.make((get): ReadonlyArray<ServerProviderSkill> => {
+    void engineBridge
+      .listAgentSkills(projectRoot)
+      .then((listing) => get.setSelf(parseAgentSkills(listing)));
+    return [];
+  }).pipe(Atom.keepAlive, Atom.withLabel(`agent-skills:${projectRoot}`)),
+);
 
 const NO_SKILLS: ReadonlyArray<ServerProviderSkill> = [];
 
