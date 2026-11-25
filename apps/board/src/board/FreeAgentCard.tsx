@@ -105,6 +105,7 @@ export function FreeAgentCard({
         className="flex h-9 shrink-0 cursor-grab touch-none items-center gap-2 border-b border-line px-3 select-none"
         onPointerDown={(event) => {
           if (event.button !== 0) return;
+          event.currentTarget.setPointerCapture(event.pointerId);
           press.current = { x: event.clientX, y: event.clientY };
         }}
         onPointerMove={(event) => {
@@ -112,10 +113,7 @@ export function FreeAgentCard({
           if (start === null) return;
           const dx = event.clientX - start.x;
           const dy = event.clientY - start.y;
-          if (offset === null) {
-            if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
-            event.currentTarget.setPointerCapture(event.pointerId);
-          }
+          if (offset === null && Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
           setOffset({ dx: dx / scale, dy: dy / scale });
         }}
         onPointerUp={end}

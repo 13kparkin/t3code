@@ -21,7 +21,7 @@ export interface CardSplit {
   readonly archived: ReadonlyArray<ArchivedCard>;
 }
 
-export const freeAgentLabel = (threadId: string) => `Agent ${threadId.slice(0, 8)}`;
+export const freeAgentLabel = (threadId: string) => `Agent ${threadId.slice(-8)}`;
 
 /** Sorts the board's cards by the state the user gave them in `board.json`. */
 export function splitCards(

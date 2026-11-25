@@ -70,7 +70,7 @@ describe("splitting cards by their saved state", () => {
       archived: [
         { key: "T-2", label: "T-2 t-2" },
         { key: "a-gone", label: "title a-gone" },
-        { key: "f-gone-0123456789", label: "Agent f-gone-0" },
+        { key: "f-gone-0123456789", label: "Agent 23456789" },
       ],
     });
   });
