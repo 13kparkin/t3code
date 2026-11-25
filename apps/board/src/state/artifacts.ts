@@ -215,11 +215,11 @@ function ciLocalOf(contents: ArtifactContents): CiLocal | null {
 
 /**
  * A ticket's `ci-local.txt` judged against a pull request head, keyed by `ciLocalKey`. It reads
- * the file again on a timer until the run meets that head, and a new head is a new key. It is null
- * until the first read answers or when the file is gone.
+ * the file again on a timer until the run meets that head, and a new head is a new key. It is
+ * undefined until the first read answers, and null when the file is gone.
  */
 export const ciLocalAtom = Atom.family((key: string) =>
-  Atom.make<CiLocal | null>((get) => {
+  Atom.make<CiLocal | null | undefined>((get) => {
     const [environmentId, cwd, path, head] = decodeCiLocalKey(key);
     let stopped = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -230,8 +230,10 @@ export const ciLocalAtom = Atom.family((key: string) =>
           kind: "unreadable",
           reason: `ci-local.txt could not be read: ${error instanceof Error ? error.message : String(error)}`,
         }));
-      const before = Option.getOrNull(get.self<CiLocal | null>()) ?? null;
-      if (!stopped && JSON.stringify(next) !== JSON.stringify(before)) get.setSelf(next);
+      const before = Option.getOrUndefined(get.self<CiLocal | null | undefined>());
+      if (!stopped && (before === undefined || JSON.stringify(next) !== JSON.stringify(before))) {
+        get.setSelf(next);
+      }
       if (!stopped && localCiState(next, head) !== null) {
         timer = setTimeout(() => void read(), CI_LOCAL_POLL_MS);
       }
@@ -241,7 +243,7 @@ export const ciLocalAtom = Atom.family((key: string) =>
       stopped = true;
       clearTimeout(timer);
     });
-    return Option.getOrElse(get.self<CiLocal | null>(), () => null);
+    return Option.getOrElse(get.self<CiLocal | null | undefined>(), () => undefined);
   }).pipe(Atom.withLabel(`board-ci-local:${key}`)),
 );
 
@@ -263,11 +265,11 @@ function smokeOf(contents: ArtifactContents): Smoke | null {
 
 /**
  * A ticket's `smoke.txt`, keyed by `artifactContentsKey`. It reads the file again on a timer until
- * the card is closed, since a verifier writes it in place. It slows once the file names a surface. It is null until the first read
- * answers or when the file is gone.
+ * the card is closed, since a verifier writes it in place. It slows once the file names a surface. It is undefined until the first
+ * read answers, and null when the file is gone.
  */
 export const smokeAtom = Atom.family((key: string) =>
-  Atom.make<Smoke | null>((get) => {
+  Atom.make<Smoke | null | undefined>((get) => {
     const [environmentId, cwd, path] = decodeContentsKey(key);
     let stopped = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -278,8 +280,10 @@ export const smokeAtom = Atom.family((key: string) =>
           kind: "unreadable",
           reason: `smoke.txt could not be read: ${error instanceof Error ? error.message : String(error)}`,
         }));
-      const before = Option.getOrNull(get.self<Smoke | null>()) ?? null;
-      if (!stopped && JSON.stringify(next) !== JSON.stringify(before)) get.setSelf(next);
+      const before = Option.getOrUndefined(get.self<Smoke | null | undefined>());
+      if (!stopped && (before === undefined || JSON.stringify(next) !== JSON.stringify(before))) {
+        get.setSelf(next);
+      }
       if (!stopped) {
         timer = setTimeout(
           () => void read(),
@@ -292,6 +296,6 @@ export const smokeAtom = Atom.family((key: string) =>
       stopped = true;
       clearTimeout(timer);
     });
-    return Option.getOrElse(get.self<Smoke | null>(), () => null);
+    return Option.getOrElse(get.self<Smoke | null | undefined>(), () => undefined);
   }).pipe(Atom.withLabel(`board-smoke:${key}`)),
 );

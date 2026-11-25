@@ -128,10 +128,10 @@ export interface ReadinessInput {
   readonly evidence: ReadonlyArray<string> | null;
   /** Null when the ticket has no pull request, or the host has not answered. */
   readonly live: PrLive | null;
-  /** The ticket's `ci-local.txt`, which stands in for checks when the host reports none. Null when there is none. */
-  readonly ciLocal: CiLocal | null;
-  /** The ticket's `smoke.txt`. Null when there is none. */
-  readonly smoke: Smoke | null;
+  /** The ticket's `ci-local.txt`, which stands in for checks when the host reports none. Null when there is none, undefined until read. */
+  readonly ciLocal: CiLocal | null | undefined;
+  /** The ticket's `smoke.txt`. Null when there is none, undefined until read. */
+  readonly smoke: Smoke | null | undefined;
   /** The orchestrator's note on the merge order, which only a parent that is ready and not yet merged needs. */
   readonly mergeOrderNote: string | null;
   /** The names of the roles that review, whose threads re-review a fix round. */
@@ -193,7 +193,7 @@ function ciState(input: ReadinessInput): Verdict {
   if (live.checks.length > real.length) return "Some checks could not be listed";
   if (real.length === 0) {
     if (live.checksState !== null) return "Checks are loading";
-    return input.evidence === null
+    return input.evidence === null || input.ciLocal === undefined
       ? undefined
       : localCiState(input.ciLocal, live.headSha ?? ticket.headSha ?? null);
   }
@@ -260,7 +260,8 @@ export function evaluateReadiness(input: ReadinessInput): ReadonlyArray<Conditio
       "No README check in the evidence",
     ),
     parent_ready: parentState(input),
-    smoke_named: input.evidence === null ? undefined : smokeState(input.smoke),
+    smoke_named:
+      input.evidence === null || input.smoke === undefined ? undefined : smokeState(input.smoke),
   } satisfies Record<ConditionKey, Verdict>;
   const smokeNotes = input.smoke?.kind === "read" ? input.smoke.flagged : [];
   return MERGE_CONDITIONS.map(({ key, label }) => ({
