@@ -80,6 +80,10 @@ export const LANE_GAP = 16;
 export const LANE_HEAD = 34;
 export const LANE_PAD = 12;
 export const LANE_MIN_HEIGHT = 160;
+/** The lane's dashed border, which its border-box height includes on both edges. */
+export const LANE_BORDER = 1;
+/** A taller lane scrolls its cards. 720 canvas px fits about eleven ticket cards or one merge card. */
+export const LANE_MAX_HEIGHT = 720;
 export const FRAME_WIDTH = LANE_WIDTH - LANE_PAD * 2;
 export const FRAME_GAP = 8;
 /** Every ticket card, and every unassigned agent row, is two lines this tall. */
@@ -198,7 +202,7 @@ export function layoutBoard(
       x,
       y: top,
       width: LANE_WIDTH,
-      height: Math.max(LANE_MIN_HEIGHT, bottom - top),
+      height: Math.min(LANE_MAX_HEIGHT, Math.max(LANE_MIN_HEIGHT, bottom - top)),
       frames,
     });
   });
@@ -231,10 +235,36 @@ export function reorderByDrag(lane: LaneBox, key: string, dy: number): ReadonlyA
   return [...others.slice(0, before), moved, ...others.slice(before)].map((frame) => frame.key);
 }
 
-/** How far a frame may be dragged and stay inside its lane. */
+/** The height of a lane's cards in its scroll box, which equals the box when the lane is not capped. */
+export function laneCardsHeight(lane: LaneBox): number {
+  const last = lane.frames.at(-1);
+  if (last === undefined) return 0;
+  return last.y + last.height + LANE_PAD - lane.y - 2 * LANE_BORDER - LANE_HEAD;
+}
+
+const EDGE_PX = 24;
+const EDGE_STEP_MAX = 24;
+
+/** Local px to scroll a lane per tick while a dragged card's pointer is within `EDGE_PX` of its top or bottom. */
+export function edgeScrollStep(clientY: number, top: number, bottom: number): number {
+  const depth =
+    clientY < top + EDGE_PX
+      ? clientY - top - EDGE_PX
+      : clientY > bottom - EDGE_PX
+        ? clientY - bottom + EDGE_PX
+        : 0;
+  if (depth === 0) return 0;
+  return (
+    Math.sign(depth) *
+    Math.max(1, Math.round(Math.min(1, Math.abs(depth) / EDGE_PX) * EDGE_STEP_MAX))
+  );
+}
+
+/** How far a frame may be dragged and stay among its lane's frames, which may run past a scrolling lane. */
 export function clampDrag(lane: LaneBox, frame: FrameBox, dy: number): number {
   const min = lane.y + LANE_HEAD - frame.y;
-  const max = lane.y + lane.height - LANE_PAD - frame.height - frame.y;
+  const last = lane.frames.at(-1) ?? frame;
+  const max = last.y + last.height - frame.height - frame.y;
   return Math.min(Math.max(dy, min), Math.max(min, max));
 }
 

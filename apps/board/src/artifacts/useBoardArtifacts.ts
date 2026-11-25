@@ -23,16 +23,7 @@ export function useBoardArtifacts(
     () => Object.values(model.lanes).flatMap((lane) => lane.map((view) => view.ticket)),
     [model],
   );
-  const worktreeKey = tickets.flatMap((ticket) => ticket.worktreePath ?? []).join("\n");
-  const listing = useAtomValue(
-    boardArtifactsAtom(
-      boardArtifactsKey(
-        project.id,
-        listed.folder,
-        worktreeKey === "" ? [] : worktreeKey.split("\n"),
-      ),
-    ),
-  );
+  const listing = useAtomValue(boardArtifactsAtom(boardArtifactsKey(project.id, listed.folder)));
   const all = listing ?? NO_ARTIFACTS;
   const groups = useMemo(
     () =>
@@ -52,7 +43,7 @@ export function useBoardArtifacts(
     [project, board.id, board.orchestratorThreadId, tickets],
   );
   const open = useCallback(
-    (artifact: Artifact) => {
+    (artifact: Pick<Artifact, "absolutePath">) => {
       const located = locate(files.roots, artifact.absolutePath);
       if (located !== null) openFile(registry, { cwd: located.root.cwd, path: located.path });
     },

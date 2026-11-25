@@ -8,7 +8,7 @@ import type { SectionProps } from "./sectionProps";
 export function TicketGlance({ view }: SectionProps) {
   const { tickets, decisions, additions } = usePrContext();
   const size = useTicketPr(view).live?.size ?? null;
-  const smoke = useTicketSmoke(view);
+  const smoke = useTicketSmoke(view) ?? null;
   const lines = useMemo(() => {
     const all = tickets.map((entry) => entry.ticket);
     const added = additions.flatMap((item) =>

@@ -10,7 +10,7 @@ export function TicketCiLocal({ view }: { view: TicketView }) {
   const file = (groups.byTicket.get(view.ticket.key) ?? NO_ARTIFACTS).find(
     (artifact) => artifact.name === "ci-local.txt",
   );
-  const ciLocal = useCiLocal(file, view.ticket.headSha ?? null);
+  const ciLocal = useCiLocal(file, view.ticket.headSha ?? null) ?? null;
   if (ciLocal === null) return <p className="text-faint">No pull request yet</p>;
   if (ciLocal.kind === "unreadable") return <p className="text-red-300">{ciLocal.reason}</p>;
   const failure = localCiState(ciLocal, ciLocal.headSha);

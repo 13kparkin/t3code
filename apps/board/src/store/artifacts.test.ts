@@ -4,7 +4,6 @@ import type { ProjectFiles } from "./boardFiles";
 import { type Artifact, listArtifacts, readmeTarget } from "./artifacts";
 
 const ROOT = "/p/app";
-const WORKTREE = "/w/t-1";
 
 /** An engine that lists a tree by `cwd` and project-relative directory, and refuses an absolute one as the real engine does. */
 function engine(tree: Readonly<Record<string, ReadonlyArray<string>>>) {
@@ -44,17 +43,12 @@ const tree = {
     `${BOARD}/review/T-1/round-1.md`,
     `${BOARD}/inbox/note.md`,
   ],
-  [WORKTREE]: [".omp/artifacts/T-1/worktree-proof.txt", "src/app.ts"],
 };
 
 describe("listArtifacts", () => {
   it("Given a store with evidence, when it is listed, then each artifact has its kind, ticket, and absolute path", async () => {
-    const { files } = engine(tree);
-    const listed = await listArtifacts(files, {
-      workspaceRoot: ROOT,
-      folder: "main",
-      worktreePaths: [],
-    });
+    const { files, calls } = engine(tree);
+    const listed = await listArtifacts(files, { workspaceRoot: ROOT, folder: "main" });
     expect(listed.map((a) => [a.path, a.kind, a.ticketKey, a.absolutePath])).toEqual([
       [
         "artifacts/T-1/fix1/proof.txt",
@@ -68,49 +62,12 @@ describe("listArtifacts", () => {
       ["inbox/note.md", "brief", null, `${ROOT}/${BOARD}/inbox/note.md`],
       ["review/T-1/round-1.md", "review", "T-1", `${ROOT}/${BOARD}/review/T-1/round-1.md`],
     ]);
-  });
-
-  it("Given a ticket worktree with evidence, when it is listed, then the worktree is the cwd and no absolute path is sent", async () => {
-    const { files, calls } = engine(tree);
-    const listed = await listArtifacts(files, {
-      workspaceRoot: ROOT,
-      folder: "main",
-      worktreePaths: [WORKTREE, `${WORKTREE}/`],
-    });
-    expect(listed.find((a) => a.name === "worktree-proof.txt")).toMatchObject({
-      kind: "proof",
-      ticketKey: "T-1",
-      absolutePath: `${WORKTREE}/.omp/artifacts/T-1/worktree-proof.txt`,
-    });
-    expect(calls.filter((call) => call.cwd === WORKTREE).map((call) => call.directory)).toEqual([
-      ".omp/artifacts",
-      ".omp/artifacts/T-1",
-    ]);
     expect(calls.every((call) => !call.directory.startsWith("/"))).toBe(true);
-  });
-
-  it("Given a worktree the engine cannot list, when the board is listed, then the board's own artifacts still come back", async () => {
-    const { files } = engine(tree);
-    const failing: ProjectFiles = {
-      ...files,
-      list: (cwd, directory) =>
-        cwd === "/w/gone"
-          ? Promise.reject(new Error("workspace root not found"))
-          : files.list(cwd, directory),
-    };
-    const listed = await listArtifacts(failing, {
-      workspaceRoot: ROOT,
-      folder: "main",
-      worktreePaths: ["/w/gone"],
-    });
-    expect(listed).toHaveLength(6);
   });
 
   it("Given a board folder that does not exist, when it is listed, then there are no artifacts", async () => {
     const { files } = engine({});
-    expect(
-      await listArtifacts(files, { workspaceRoot: ROOT, folder: "none", worktreePaths: [] }),
-    ).toEqual([]);
+    expect(await listArtifacts(files, { workspaceRoot: ROOT, folder: "none" })).toEqual([]);
   });
 });
 

@@ -22,6 +22,10 @@ describe("locate", () => {
     expect(locate(roots, "/work/demo/b.md")?.path).toBe("b.md");
   });
 
+  it("Given a path that climbs out of a root with .., when it is located, then it is null", () => {
+    expect(locate(roots, "/work/demo/../../home/me/secret.png")).toBeNull();
+  });
+
   it("Given a path outside every root, when it is located, then it is null", () => {
     expect(locate(roots, "/elsewhere/a.md")).toBeNull();
   });

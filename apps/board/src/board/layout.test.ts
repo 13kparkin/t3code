@@ -11,7 +11,11 @@ import {
   FRAME_GAP,
   LANE_GAP,
   LANE_HEAD,
+  LANE_BORDER,
+  LANE_MAX_HEIGHT,
   LANE_PAD,
+  edgeScrollStep,
+  laneCardsHeight,
   LANE_WIDTH,
   LANES_TOP,
   hiddenFilters,
@@ -191,6 +195,45 @@ describe("laying out the lanes", () => {
     expect(besideLanes(at, { width: 320, height: 380 }, layout)).toEqual(to);
   });
 
+  it("Given more To do cards than a lane holds, when laid out, then the lane is capped, its cards run on to scroll, and free cards and the content sit below the cap", () => {
+    const many = Array.from({ length: 20 }, (_, at) =>
+      view({ key: `T-${at + 10}`, title: "x", stage: "todo" }),
+    );
+    const tall = layoutBoard({ ...model, lanes: { ...empty, todo: many } }, {}, 0, defaults);
+    const todo = lane("todo", tall)!;
+    expect(todo.height).toBe(LANE_MAX_HEIGHT);
+    expect(todo.frames.at(-1)!.y).toBe(todo.y + LANE_HEAD + 19 * (CARD_HEIGHT + FRAME_GAP));
+    expect(tall.content.height).toBe(todo.y + LANE_MAX_HEIGHT + 40);
+    expect(besideLanes({ x: 100, y: todo.y }, { width: 320, height: 380 }, tall)).toEqual({
+      x: 100,
+      y: todo.y + LANE_MAX_HEIGHT + 40,
+    });
+  });
+
+  it("Given 3 To do cards, when laid out, then the cards fit the lane's scroll box exactly", () => {
+    const cards = Array.from({ length: 3 }, (_, at) =>
+      view({ key: `T-${at + 10}`, title: "x", stage: "todo" }),
+    );
+    const todo = lane(
+      "todo",
+      layoutBoard({ ...model, lanes: { ...empty, todo: cards } }, {}, 0, defaults),
+    )!;
+    expect(laneCardsHeight(todo)).toBeLessThanOrEqual(todo.height - 2 * LANE_BORDER - LANE_HEAD);
+  });
+
+  it.each([
+    ["mid lane", 300, 0],
+    ["just inside the bottom edge zone", 580, 4],
+    ["at the bottom edge", 600, 24],
+    ["past the bottom edge", 640, 24],
+    ["at the top edge", 100, -24],
+  ])(
+    "Given a dragged card's pointer %s (y %i) of a lane from 100 to 600, then the lane scrolls %i px a tick",
+    (_name, y, step) => {
+      expect(edgeScrollStep(y, 100, 600)).toBe(step);
+    },
+  );
+
   it("Given a saved order, when laid out, then it wins and new tickets follow", () => {
     expect(orderedKeys(["T-1", "T-2", "T-4"], ["T-2", "T-9", "T-1"])).toEqual([
       "T-2",
@@ -274,8 +317,7 @@ describe("dragging a frame", () => {
 
   it("Given a drag past the lane, when clamped, then the frame stays inside it", () => {
     expect(clampDrag(building, first, -500)).toBe(0);
-    expect(clampDrag(building, first, 5000)).toBe(
-      building.y + building.height - LANE_PAD - first.height - first.y,
-    );
+    const last = building.frames.at(-1)!;
+    expect(clampDrag(building, first, 5000)).toBe(last.y - first.y);
   });
 });

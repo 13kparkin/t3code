@@ -151,8 +151,10 @@ export const prLiveAtom = Atom.family((key: string) => {
 });
 
 const NO_PR = Atom.make<PrLive | null>(null).pipe(Atom.withLabel("board-pr:none"));
-const NO_CI_LOCAL = Atom.make<CiLocal | null>(null).pipe(Atom.withLabel("board-ci-local:none"));
-const NO_SMOKE = Atom.make<Smoke | null>(null).pipe(Atom.withLabel("board-smoke:none"));
+const NO_CI_LOCAL = Atom.make<CiLocal | null | undefined>(null).pipe(
+  Atom.withLabel("board-ci-local:none"),
+);
+const NO_SMOKE = Atom.make<Smoke | null | undefined>(null).pipe(Atom.withLabel("board-smoke:none"));
 
 export interface PrContextValue {
   readonly project: EnvironmentProject;
@@ -209,8 +211,11 @@ const REVIEW_ROLES: ReadonlySet<string> = new Set(
   ROLES.filter((role) => role.t3Role === "review").map((role) => role.name),
 );
 
-/** A `ci-local.txt` evidence file read for `head`, or null with no file. */
-export function useCiLocal(file: Artifact | undefined, head: string | null): CiLocal | null {
+/** A `ci-local.txt` evidence file read for `head`, null with no file, or undefined until read. */
+export function useCiLocal(
+  file: Artifact | undefined,
+  head: string | null,
+): CiLocal | null | undefined {
   const { files } = useArtifacts();
   const located = file === undefined ? null : locate(files.roots, file.absolutePath);
   return useAtomValue(
@@ -220,7 +225,7 @@ export function useCiLocal(file: Artifact | undefined, head: string | null): CiL
   );
 }
 
-export function useTicketSmoke(view: TicketView | null): Smoke | null {
+export function useTicketSmoke(view: TicketView | null): Smoke | null | undefined {
   const { groups, files } = useArtifacts();
   const smokeFile =
     view === null
@@ -267,7 +272,7 @@ export const useTicketNotes = (view: TicketView) => ({
  */
 export function useTicketReadiness(view: TicketView | null): ReadonlyArray<ConditionState> | null {
   const { tickets, mergeOrderNotes } = usePrContext();
-  const { groups } = useArtifacts();
+  const { groups, loaded } = useArtifacts();
   const { live, now } = useTicketPr(view);
   const evidence = view === null ? undefined : groups.byTicket.get(view.ticket.key);
   // Only a pull request whose host reports no checks reads the file, so no other card polls it.
@@ -284,7 +289,7 @@ export function useTicketReadiness(view: TicketView | null): ReadonlyArray<Condi
         : evaluateReadiness({
             ticket: view.ticket,
             tickets: tickets.map((entry) => entry.ticket),
-            evidence: (evidence ?? []).map((artifact) => artifact.path),
+            evidence: loaded ? (evidence ?? []).map((artifact) => artifact.path) : null,
             live,
             ciLocal,
             smoke,
@@ -292,6 +297,6 @@ export function useTicketReadiness(view: TicketView | null): ReadonlyArray<Condi
             reviewRoles: REVIEW_ROLES,
             now,
           }),
-    [view, tickets, evidence, live, ciLocal, smoke, mergeOrderNotes, now],
+    [view, tickets, evidence, loaded, live, ciLocal, smoke, mergeOrderNotes, now],
   );
 }

@@ -1,5 +1,7 @@
+import { useArtifacts } from "../artifacts/ArtifactsContext";
 import { openInBrowser } from "../browser/browserTabs";
 import type { MergeCondition } from "../domain/forYou";
+import { locate } from "../files/target";
 
 const isLink = (evidence: string) => /^https?:\/\//.test(evidence);
 
@@ -8,6 +10,7 @@ const chip =
 
 /** The orchestrator's note on a condition and the files or links it names as evidence. */
 export function ClaimEvidence({ condition }: { condition: MergeCondition }) {
+  const { files, open } = useArtifacts();
   return (
     <>
       {condition.note != null && (
@@ -32,6 +35,17 @@ export function ClaimEvidence({ condition }: { condition: MergeCondition }) {
             >
               {evidence}
             </a>
+          ) : locate(files.roots, evidence) !== null ? (
+            <button
+              key={evidence}
+              type="button"
+              data-testid="evidence"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={() => open({ absolutePath: evidence })}
+              className={`${chip} text-left text-sky-300 hover:underline`}
+            >
+              {evidence}
+            </button>
           ) : (
             <span key={evidence} data-testid="evidence" className={chip}>
               {evidence}

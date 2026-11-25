@@ -3,12 +3,16 @@ import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { Atom, type AtomRegistry } from "effect/reactivity";
 import * as Result from "effect/Result";
 
+import { engineBridge } from "../connection/bridge";
+import { BOARDS_DIR } from "../domain/board";
 import { parseTickets } from "../domain/ticket";
 import {
   type CleanupPorts,
   cleanupMerged,
+  evidenceOnBoardWorktrees,
   readBoardTickets,
   runOnePerKey,
+  ticketWorktrees,
 } from "../store/mergeCleanup";
 import { boardEngine, familyThread } from "./boards";
 import { environmentSnapshotAtom } from "./projects";
@@ -27,7 +31,6 @@ function cleanupPorts(registry: AtomRegistry.AtomRegistry, project: CleanupProje
   const { environmentId, workspaceRoot } = project;
   const { files, threads } = boardEngine(registry, environmentId);
   return {
-    files,
     tickets: () => readBoardTickets(files, workspaceRoot),
     worktrees: async () => {
       const result = await runAtomCommand(
@@ -67,7 +70,6 @@ function cleanupPorts(registry: AtomRegistry.AtomRegistry, project: CleanupProje
   };
 }
 
-/** Starts a cleanup of the board's merged tickets, after the one already running for it ends. */
 export function runMergeCleanup(
   registry: AtomRegistry.AtomRegistry,
   project: CleanupProject,
@@ -79,13 +81,25 @@ export function runMergeCleanup(
   if (parsed === null || Result.isFailure(parsed)) return;
   const merged = parsed.success.filter((ticket) => ticket.stage === "merged");
   runOnePerKey(storeKey, async () => {
+    const ports = cleanupPorts(registry, project);
+    const threads = ports.threads() ?? [];
+    const worktrees = [
+      ...new Set(parsed.success.flatMap((ticket) => ticketWorktrees(ticket, threads))),
+    ];
+    const report = await engineBridge
+      .migrateLegacyEvidence(
+        `${project.workspaceRoot}/${BOARDS_DIR}/${folder}/artifacts`,
+        worktrees,
+      )
+      .catch(() => "");
     const kept =
       merged.length === 0
         ? NONE
         : await cleanupMerged(
-            cleanupPorts(registry, project),
+            ports,
             { workspaceRoot: project.workspaceRoot, folder },
             merged,
+            evidenceOnBoardWorktrees(report),
           );
     registry.set(
       keptWorktreesAtom(storeKey),

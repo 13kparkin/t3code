@@ -11,7 +11,7 @@ export interface ArtifactsValue {
   /** The listing has answered at least once, so a missing file is really missing. */
   readonly loaded: boolean;
   readonly groups: ArtifactGroups<Artifact>;
-  readonly open: (artifact: Artifact) => void;
+  readonly open: (artifact: Pick<Artifact, "absolutePath">) => void;
 }
 
 const ArtifactsContext = createContext<ArtifactsValue | null>(null);

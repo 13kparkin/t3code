@@ -12,6 +12,7 @@ import { createEngine, type EngineConfig, type TokenStore } from "./engine";
 import { createLocalStateFile } from "./localState";
 import { pickFolder, resolveFolder } from "./pickFolder";
 import { listAgentSkills } from "./agentSkills";
+import { migrateLegacyEvidence } from "./legacyEvidence";
 import { ensurePstack } from "./pstack";
 import {
   createLinuxHost,
@@ -30,6 +31,7 @@ const sinceStart = (epochMs: number) => Math.round(epochMs - performance.timeOri
 const Settings = Schema.Struct({ wslDistro: Schema.optional(Schema.String) });
 const TokenFile = Schema.Record(Schema.String, Schema.String);
 const decodeText = Schema.decodeUnknownOption(Schema.String);
+const decodeTexts = Schema.decodeUnknownOption(Schema.Array(Schema.String));
 const decodeSettings = Schema.decodeUnknownOption(Schema.fromJsonString(Settings));
 const decodeTokenFile = Schema.decodeUnknownOption(Schema.fromJsonString(TokenFile));
 
@@ -177,6 +179,13 @@ export function registerEngineIpc(options: {
       host,
       Option.getOrElse(decodeText(text), () => ""),
     ),
+  );
+  ipcMain.handle("board:migrate-legacy-evidence", (_event, artifactsDir, worktrees) =>
+    migrateLegacyEvidence(
+      host,
+      Option.getOrElse(decodeText(artifactsDir), () => ""),
+      Option.getOrElse(decodeTexts(worktrees), () => []),
+    ).catch(() => ""),
   );
   const connectionLog = createConnectionLog(
     NodePath.join(userData, "logs", "board-connection.log"),

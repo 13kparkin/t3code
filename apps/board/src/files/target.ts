@@ -67,6 +67,7 @@ export function locate(
   roots: ReadonlyArray<FilesRoot>,
   absolutePath: string,
 ): { readonly root: FilesRoot; readonly path: string } | null {
+  if (absolutePath.split("/").includes("..")) return null;
   const root = roots.find((candidate) => absolutePath.startsWith(`${candidate.cwd}/`));
   return root === undefined ? null : { root, path: absolutePath.slice(root.cwd.length + 1) };
 }

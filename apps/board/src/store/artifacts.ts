@@ -22,12 +22,6 @@ export type ArtifactContents =
 /** The file read the viewer goes through, which takes an absolute path. */
 export type ReadArtifact = (cwd: string, absolutePath: string) => Promise<ArtifactContents>;
 
-/**
- * Where an agent leaves its evidence inside its own worktree. The folder holds one folder per
- * ticket key, as the store's `artifacts/` does.
- */
-export const WORKTREE_ARTIFACTS = ".omp/artifacts";
-
 /** The store folders that hold artifacts, which keeps the listing out of `roles/` and the like. */
 const ARTIFACT_FOLDERS: ReadonlyArray<string> = ["artifacts", "review", "inbox"];
 
@@ -49,27 +43,14 @@ async function inBatches<T, R>(
   return results;
 }
 
-/**
- * Every file under a directory, which `projects.listEntries` lists one level at a time. Paths are
- * relative to `cwd`. `strict` also lists hidden files, and throws when a folder below `directory`
- * does not list, because the engine answers a failed read the same way as a missing folder.
- */
-export async function walk(
-  files: ProjectFiles,
-  cwd: string,
-  directory: string,
-  { strict = false } = {},
-): Promise<string[]> {
+async function walk(files: ProjectFiles, cwd: string, directory: string): Promise<string[]> {
   const found: string[] = [];
   let level = [directory];
-  for (let depth = 0; level.length > 0; depth += 1) {
+  while (level.length > 0) {
     const next: string[] = [];
     const listings = await inBatches(level, (path) => files.list(cwd, path));
-    if (strict && depth > 0 && listings.includes(null)) {
-      throw new Error(`A folder under ${directory} did not list.`);
-    }
     for (const entry of listings.flatMap((listing) => listing ?? [])) {
-      if (!strict && baseName(entry.path).startsWith(".")) continue;
+      if (baseName(entry.path).startsWith(".")) continue;
       (entry.kind === "directory" ? next : found).push(entry.path);
     }
     level = next;
@@ -77,11 +58,11 @@ export async function walk(
   return found;
 }
 
-async function listBoardFolder(
+/** Every `projects.listEntries` call takes a path relative to its `cwd`, because the engine refuses an absolute one. */
+export async function listArtifacts(
   files: ProjectFiles,
-  workspaceRoot: string,
-  folder: string,
-): Promise<Artifact[]> {
+  { workspaceRoot, folder }: { readonly workspaceRoot: string; readonly folder: string },
+): Promise<ReadonlyArray<Artifact>> {
   const root = `${BOARDS_DIR}/${folder}`;
   const top = (await files.list(workspaceRoot, root)) ?? [];
   const nested = await inBatches(
@@ -94,44 +75,14 @@ async function listBoardFolder(
     ...top.filter((entry) => entry.kind === "file").map((entry) => entry.path),
     ...nested.flat(),
   ];
-  return paths.flatMap((path): Artifact[] => {
-    const under = path.slice(root.length + 1);
-    const ref = classifyArtifact(under);
-    return ref === null ? [] : [{ ...ref, absolutePath: `${trimSlashes(workspaceRoot)}/${path}` }];
-  });
-}
-
-async function listWorktree(files: ProjectFiles, worktreePath: string): Promise<Artifact[]> {
-  // The folder is outside the project, so the worktree is the `cwd` and the folder is relative to it.
-  const paths = await walk(files, worktreePath, WORKTREE_ARTIFACTS).catch(
-    // A worktree that was deleted or never created has no evidence, and must not hide the board's.
-    () => [],
-  );
-  return paths.flatMap((path): Artifact[] => {
-    const ref = classifyArtifact(`artifacts/${path.slice(WORKTREE_ARTIFACTS.length + 1)}`);
-    return ref === null ? [] : [{ ...ref, absolutePath: `${trimSlashes(worktreePath)}/${path}` }];
-  });
-}
-
-/**
- * The artifacts in a board's store folder and in the ticket worktrees, ordered by path. Every
- * `projects.listEntries` call takes a path relative to its `cwd`, because the engine refuses an
- * absolute one.
- */
-export async function listArtifacts(
-  files: ProjectFiles,
-  input: {
-    readonly workspaceRoot: string;
-    readonly folder: string;
-    readonly worktreePaths: ReadonlyArray<string>;
-  },
-): Promise<ReadonlyArray<Artifact>> {
-  const worktrees = [...new Set(input.worktreePaths.map(trimSlashes))];
-  const board = await listBoardFolder(files, input.workspaceRoot, input.folder);
-  const fromWorktrees = await inBatches(worktrees, (path) => listWorktree(files, path));
-  return [...board, ...fromWorktrees.flat()].toSorted((a, b) =>
-    a.absolutePath.localeCompare(b.absolutePath),
-  );
+  return paths
+    .flatMap((path): Artifact[] => {
+      const ref = classifyArtifact(path.slice(root.length + 1));
+      return ref === null
+        ? []
+        : [{ ...ref, absolutePath: `${trimSlashes(workspaceRoot)}/${path}` }];
+    })
+    .toSorted((a, b) => a.absolutePath.localeCompare(b.absolutePath));
 }
 
 /** The listed artifact a README's file line names, or undefined when the README lists a file that is not listed. */

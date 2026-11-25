@@ -112,7 +112,9 @@ export interface ConditionState {
   readonly key: ConditionKey;
   readonly label: string;
   readonly met: boolean;
-  /** What is missing, in a few words, or null when the condition holds. */
+  /** The evidence it reads has not been listed yet, so it is neither met nor missing. */
+  readonly checking: boolean;
+  /** What is missing, in a few words, or null when the condition holds or is checking. */
   readonly missing: string | null;
   /** Lines the card shows under the condition, such as the smoke items that were only proxied or not run. */
   readonly notes: ReadonlyArray<string>;
@@ -122,14 +124,14 @@ export interface ReadinessInput {
   readonly ticket: Ticket;
   /** Every ticket on the board, which says what the ticket's parents are doing. */
   readonly tickets: ReadonlyArray<Ticket>;
-  /** The paths of the ticket's evidence files, relative to the board folder or its worktree. */
-  readonly evidence: ReadonlyArray<string>;
+  /** The paths of the ticket's evidence files, relative to the board folder, or null until the listing loads. */
+  readonly evidence: ReadonlyArray<string> | null;
   /** Null when the ticket has no pull request, or the host has not answered. */
   readonly live: PrLive | null;
-  /** The ticket's `ci-local.txt`, which stands in for checks when the host reports none. Null when there is none. */
-  readonly ciLocal: CiLocal | null;
-  /** The ticket's `smoke.txt`. Null when there is none. */
-  readonly smoke: Smoke | null;
+  /** The ticket's `ci-local.txt`, which stands in for checks when the host reports none. Null when there is none, undefined until read. */
+  readonly ciLocal: CiLocal | null | undefined;
+  /** The ticket's `smoke.txt`. Null when there is none, undefined until read. */
+  readonly smoke: Smoke | null | undefined;
   /** The orchestrator's note on the merge order, which only a parent that is ready and not yet merged needs. */
   readonly mergeOrderNote: string | null;
   /** The names of the roles that review, whose threads re-review a fix round. */
@@ -173,7 +175,10 @@ export function localCiState(ciLocal: CiLocal | null, head: string | null): stri
     : `ci-local.txt has ${failed.map((exit) => `${exit.label}=${exit.code}`).join(", ")}`;
 }
 
-function ciState(input: ReadinessInput): string | null {
+/** What is missing, null when met, or undefined while the evidence it reads is still listing. */
+type Verdict = string | null | undefined;
+
+function ciState(input: ReadinessInput): Verdict {
   const { ticket, live, now } = input;
   if (ticket.pr == null) return "No pull request yet";
   if (live === null) return "CI has not answered";
@@ -187,9 +192,10 @@ function ciState(input: ReadinessInput): string | null {
   if (waiting.length > 0) return `${plural(waiting.length, "check")} still running`;
   if (live.checks.length > real.length) return "Some checks could not be listed";
   if (real.length === 0) {
-    return live.checksState === null
-      ? localCiState(input.ciLocal, live.headSha ?? ticket.headSha ?? null)
-      : "Checks are loading";
+    if (live.checksState !== null) return "Checks are loading";
+    return input.evidence === null || input.ciLocal === undefined
+      ? undefined
+      : localCiState(input.ciLocal, live.headSha ?? ticket.headSha ?? null);
   }
   if (
     ticket.headSha != null &&
@@ -226,8 +232,8 @@ function deltaState(ticket: Ticket, reviewRoles: ReadonlySet<string>): string | 
   return reviewed ? null : `Fix round ${rounds} has no review after it`;
 }
 
-const evidenceState = (evidence: ReadonlyArray<string>, pattern: RegExp, none: string) =>
-  evidence.some((path) => pattern.test(path)) ? null : none;
+const evidenceState = (evidence: ReadonlyArray<string> | null, pattern: RegExp, none: string) =>
+  evidence === null ? undefined : evidence.some((path) => pattern.test(path)) ? null : none;
 
 function parentState(input: ReadinessInput): string | null {
   const { ticket, tickets, mergeOrderNote } = input;
@@ -254,14 +260,16 @@ export function evaluateReadiness(input: ReadinessInput): ReadonlyArray<Conditio
       "No README check in the evidence",
     ),
     parent_ready: parentState(input),
-    smoke_named: smokeState(input.smoke),
-  } satisfies Record<ConditionKey, string | null>;
+    smoke_named:
+      input.evidence === null || input.smoke === undefined ? undefined : smokeState(input.smoke),
+  } satisfies Record<ConditionKey, Verdict>;
   const smokeNotes = input.smoke?.kind === "read" ? input.smoke.flagged : [];
   return MERGE_CONDITIONS.map(({ key, label }) => ({
     key,
     label,
     met: missing[key] === null,
-    missing: missing[key],
+    checking: missing[key] === undefined,
+    missing: missing[key] ?? null,
     notes: key === "smoke_named" ? smokeNotes : [],
   }));
 }

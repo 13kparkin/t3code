@@ -25,6 +25,12 @@ const WHEEL_ZOOM_RATE = 0.01;
 const REVEAL_MARGIN = 24;
 const PAN_THRESHOLD_PX = 3;
 
+/** The lane around `target` when its cards overflow it, so the wheel scrolls the lane. */
+function overflowingLane(target: EventTarget | null): HTMLElement | null {
+  const lane = target instanceof Element ? target.closest<HTMLElement>("[data-lane-scroll]") : null;
+  return lane !== null && lane.scrollHeight > lane.clientHeight ? lane : null;
+}
+
 const ViewScaleContext = createContext(1);
 const RevealContext = createContext<(card: HTMLElement | null) => void>(() => undefined);
 
@@ -60,6 +66,17 @@ export function Viewport({
   const reveal = useCallback((card: HTMLElement | null) => {
     const surface = surfaceRef.current;
     if (card === null || surface === null) return;
+    const scroller = overflowingLane(card);
+    if (scroller !== null) {
+      // Bring the card into its lane's scroll box first; the rects are screen px, scrollTop is not.
+      const box = scroller.getBoundingClientRect();
+      const rect = card.getBoundingClientRect();
+      const scale = box.height / scroller.offsetHeight || 1;
+      if (rect.top < box.top) scroller.scrollTop -= (box.top - rect.top) / scale;
+      else if (rect.bottom > box.bottom) {
+        scroller.scrollTop += Math.min(rect.top - box.top, rect.bottom - box.bottom) / scale;
+      }
+    }
     const { dx, dy } = revealDelta(
       card.getBoundingClientRect(),
       surface.getBoundingClientRect(),
@@ -73,6 +90,12 @@ export function Viewport({
     surfaceRef.current = surface;
     const onWheel = (event: WheelEvent) => {
       if (event.target instanceof Element && event.target.closest("[data-scroll]") !== null) return;
+      const scrollsLane =
+        overflowingLane(event.target) !== null &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        Math.abs(event.deltaY) >= Math.abs(event.deltaX);
+      if (scrollsLane) return;
       event.preventDefault();
       const rect = surface.getBoundingClientRect();
       setView((current) =>
