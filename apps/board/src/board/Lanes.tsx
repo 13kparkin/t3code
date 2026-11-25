@@ -82,7 +82,6 @@ export function Lanes({
   const registry = useContext(RegistryContext);
   const additions = new Map(usePrContext().additions.map((item) => [item.id, item]));
   const [drag, setDrag] = useState<{ key: string; dy: number } | null>(null);
-  // An agent row has no place to drag to but the chat, so it only tracks whether a press moved.
   const rowPress = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const views = new Map(
     Object.values(model.lanes)
@@ -167,7 +166,7 @@ export function Lanes({
                 key={row.threadId}
                 type="button"
                 aria-pressed={row.threadId === choice?.threadId}
-                // A press that starts on a row is a click or a drag into the chat, not the start of a pan.
+                // A press on a row never pans the canvas.
                 onPointerDown={(event) => {
                   event.stopPropagation();
                   if (event.button === 0)
@@ -214,7 +213,7 @@ export function Lanes({
         selected={choice?.ticketKey === box.key}
         onDrag={(dy) => setDrag({ key: box.key, dy: clampDrag(lane, frame, dy) })}
         onDrop={() => drop(lane)}
-        onCancel={() => setDrag(null)}
+        onSentToChat={() => setDrag(null)}
         onMenu={(event) => onCardMenu(event, box.key, box.key, true)}
         onOpen={() => {
           const active = activeAgentOf(view.agents);

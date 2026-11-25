@@ -39,7 +39,6 @@ const slug = (text: string) =>
 const markdownFile = (base: string, text: string) =>
   new File([text], `${base}.md`, { type: "text/markdown" });
 
-/** A ticket card as the Markdown the orchestrator reads. */
 export function cardMarkdown(ticket: Ticket): string {
   const sections = SECTIONS.flatMap(([heading, field]) => {
     const text = ticket[field]?.trim();
@@ -52,7 +51,6 @@ export function cardMarkdown(ticket: Ticket): string {
 export const cardFile = (ticket: Ticket): File =>
   markdownFile([ticket.key, slug(ticket.title)].filter(Boolean).join("-"), cardMarkdown(ticket));
 
-/** An agent row or free agent card, named by its thread so the orchestrator can read it. A free agent falls back to its label. */
 export const agentFile = (agent: AgentCard): File =>
   markdownFile(
     `agent-${agent.threadId.slice(-8)}`,
@@ -74,15 +72,12 @@ const attach = (target: Element | null | undefined, file: File) => {
   return true;
 };
 
-/** Attaches `file` when the point is over the orchestrator's composer. False leaves the drag to its card. */
 export const dropOnComposer = (clientX: number, clientY: number, file: File): boolean =>
   attach(document.elementFromPoint(clientX, clientY)?.closest(`[${DROP_ATTRIBUTE}]`), file);
 
-/** Attaches `file` to the composer wherever it rests. False when the board has no orchestrator chat. */
 export const sendToComposer = (file: File): boolean =>
   attach(document.querySelector(`[${DROP_ATTRIBUTE}]`), file);
 
-/** Props for the composer form, which takes files dropped from the desktop and cards dropped from the canvas. */
 export function useComposerDrop(addFiles: (files: File[]) => void) {
   const ref = useRef<HTMLFormElement | null>(null);
   const add = (files: File[]) => {

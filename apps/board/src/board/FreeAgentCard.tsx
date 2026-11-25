@@ -25,7 +25,7 @@ import { useViewScale } from "./Viewport";
 export const FREE_CARD = { width: 320, height: 380 } as const;
 const DRAG_THRESHOLD_PX = 4;
 
-/** An agent the user started on the canvas and talks to here, not through the orchestrator. Its header drags it around the canvas or into the chat. */
+/** An agent the user started on the canvas and talks to here, not through the orchestrator. Its header drags it. */
 export function FreeAgentCard({
   environmentId,
   agent,

@@ -25,7 +25,7 @@ interface Press {
   timer: ReturnType<typeof setInterval> | null;
 }
 
-/** A ticket on its lane as two lines. The whole card drags to reorder or into the chat; a press that did not drag opens the ticket. */
+/** A ticket on its lane as two lines. The whole card drags; a press that did not drag opens the ticket. */
 export function TicketFrame({
   view,
   box,
@@ -34,7 +34,7 @@ export function TicketFrame({
   selected,
   onDrag,
   onDrop,
-  onCancel,
+  onSentToChat,
   onOpen,
   onMenu,
 }: {
@@ -46,8 +46,7 @@ export function TicketFrame({
   selected: boolean;
   onDrag: (dy: number) => void;
   onDrop: () => void;
-  /** Ends a drag without a reorder, once the card went into the chat. */
-  onCancel: () => void;
+  onSentToChat: () => void;
   onOpen: () => void;
   onMenu: (event: MouseEvent) => void;
 }) {
@@ -79,7 +78,7 @@ export function TicketFrame({
     if (press.current?.dragging) {
       dragged.current = true;
       if (release !== null && dropOnComposer(release.clientX, release.clientY, cardFile(ticket)))
-        onCancel();
+        onSentToChat();
       else onDrop();
     }
     press.current = null;
@@ -122,7 +121,6 @@ export function TicketFrame({
         const active = press.current;
         if (active === null) return;
         active.clientY = event.clientY;
-        // Sideways counts too, so a card dragged across to the chat in the side panel still drags.
         const moved = Math.hypot(event.clientX - active.startX, event.clientY - active.startY);
         if (!active.dragging && moved < DRAG_THRESHOLD_PX) return;
         if (!active.dragging) {
