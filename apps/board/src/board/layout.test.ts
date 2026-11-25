@@ -5,6 +5,7 @@ import type { Ticket } from "../domain/ticket";
 import type { AgentView, BoardModel, TicketView } from "../state/boardModel";
 import {
   clampDrag,
+  DONE_AGENTS_KEY,
   FRAME_WIDTH,
   CARD_HEIGHT,
   FRAME_GAP,
@@ -17,10 +18,11 @@ import {
   layoutBoard,
   orderedKeys,
   reorderByDrag,
+  ticketLane,
   UNASSIGNED_KEY,
 } from "./layout";
 
-const agent = (threadId: string): AgentView => ({
+const agent = (threadId: string, runState: AgentView["runState"] = "idle"): AgentView => ({
   threadId,
   title: threadId,
   role: "task",
@@ -28,7 +30,7 @@ const agent = (threadId: string): AgentView => ({
   outsideRegistry: false,
   ticketKey: null,
   driver: null,
-  runState: "idle",
+  runState,
   pendingRequest: false,
   branch: null,
   parentThreadId: null,
@@ -36,9 +38,13 @@ const agent = (threadId: string): AgentView => ({
   updatedAt: "2026-11-20T10:00:00.000Z",
 });
 
-const view = (ticket: Ticket, agents = 0): TicketView => ({
+const view = (
+  ticket: Ticket,
+  agents = 0,
+  runState: AgentView["runState"] = "idle",
+): TicketView => ({
   ticket,
-  agents: Array.from({ length: agents }, (_, index) => agent(`${ticket.key}-${index}`)),
+  agents: Array.from({ length: agents }, (_, index) => agent(`${ticket.key}-${index}`, runState)),
 });
 const empty: BoardModel["lanes"] = {
   todo: [],
@@ -57,8 +63,13 @@ const model: BoardModel = {
     ...empty,
     planned: [view({ key: "T-3", title: "c", stage: "planned", dependsOn: ["T-1"] })],
     building: [
-      view({ key: "T-1", title: "a", stage: "building" }, 2),
-      view({ key: "T-2", title: "b", stage: "building", dependsOn: ["T-1", "T-404"] }),
+      view({ key: "T-1", title: "a", stage: "building" }, 2, "working"),
+      view(
+        { key: "T-2", title: "b", stage: "building", dependsOn: ["T-1", "T-404"] },
+        1,
+        "waiting",
+      ),
+      view({ key: "T-4", title: "d", stage: "building" }, 1),
     ],
     merged: [view({ key: "T-5", title: "e", stage: "merged" })],
     off_path: [view({ key: "T-6", title: "f", stage: "off_path" })],
@@ -66,15 +77,41 @@ const model: BoardModel = {
   unassigned: [],
 };
 
+describe("placing a ticket by its stage and its agents", () => {
+  it.each([
+    { stage: "merged", live: false, lane: "done" },
+    { stage: "off_path", live: true, lane: "done" },
+    { stage: "building", live: false, lane: "waiting" },
+    { stage: "awaiting_approval", live: false, lane: "waiting" },
+    { stage: "reviewing", live: true, lane: "running" },
+    { stage: "planned", live: true, lane: "running" },
+    { stage: "todo", live: false, lane: "todo" },
+  ] as const)(
+    "Given a $stage ticket with live $live, then it sits in $lane",
+    ({ stage, live, lane }) => {
+      expect(ticketLane(stage, live)).toBe(lane);
+    },
+  );
+});
+
 describe("laying out the lanes", () => {
   const defaults = hiddenFilters(new Set(), []);
   const layout = layoutBoard(model, {}, 0, defaults);
   const lane = (id: string, from = layout) => from.lanes.find((entry) => entry.id === id);
   const keys = (id: string, from = layout) => lane(id, from)?.frames.map((frame) => frame.key);
 
-  it("Given tickets in four stages, when laid out with the default tags, then three lanes show and merged and off-path cards are hidden", () => {
-    expect(layout.lanes.map((entry) => entry.id)).toEqual(["for_you", "todo", "running"]);
-    expect([keys("todo"), keys("running")]).toEqual([["T-3"], ["T-1", "T-2"]]);
+  it("Given tickets in four stages, when laid out with the default tags, then four lanes show, live tickets run, an idle one waits, and the Done lane is hidden", () => {
+    expect(layout.lanes.map((entry) => entry.id)).toEqual([
+      "for_you",
+      "todo",
+      "running",
+      "waiting",
+    ]);
+    expect([keys("todo"), keys("running"), keys("waiting")]).toEqual([
+      ["T-3"],
+      ["T-1", "T-2"],
+      ["T-4"],
+    ]);
     const running = lane("running");
     expect(running?.x).toBe(40 + 2 * (LANE_WIDTH + LANE_GAP));
     expect(running?.frames.map((frame) => [frame.x, frame.y])).toEqual([
@@ -85,10 +122,10 @@ describe("laying out the lanes", () => {
   });
 
   it.each([
-    { flipped: [], hidden: ["stage:merged", "stage:off_path"] },
+    { flipped: [], hidden: ["done"] },
     {
-      flipped: ["for_you", "stage:building", "stage:merged", "add:wait"],
-      hidden: ["for_you", "stage:building", "stage:off_path", "add:wait"],
+      flipped: ["for_you", "done", "stage:building", "add:wait"],
+      hidden: ["for_you", "stage:building", "add:wait"],
     },
   ])(
     "Given the flips $flipped, when the filters resolve, then $hidden hide",
@@ -98,15 +135,18 @@ describe("laying out the lanes", () => {
     },
   );
 
-  it("Given merged shown and a saved order that puts it first, when laid out, then the merged card still follows the active ones", () => {
-    const shown = hiddenFilters(new Set(["stage:merged"]), []);
-    const moved = layoutBoard(model, { running: ["T-5", "T-2", "T-1"] }, 0, shown);
-    expect(keys("running", moved)).toEqual(["T-2", "T-1", "T-5"]);
+  it("Given the Done lane shown and two agents moved to Done, when laid out, then the agents frame leads it and merged and off-path tickets follow", () => {
+    const shown = layoutBoard(model, {}, 0, hiddenFilters(new Set(["done"]), []), [], 0, 2);
+    expect(keys("done", shown)).toEqual([DONE_AGENTS_KEY, "T-5", "T-6"]);
   });
 
   it("Given a hidden tag, when laid out, then its cards leave the lane and the lane stays", () => {
     const hidden = layoutBoard(model, {}, 0, new Set(["stage:planned", "stage:building"]));
-    expect([keys("todo", hidden), keys("running", hidden)]).toEqual([[], ["T-5", "T-6"]]);
+    expect([keys("todo", hidden), keys("running", hidden), keys("done", hidden)]).toEqual([
+      [],
+      [],
+      ["T-5", "T-6"],
+    ]);
   });
 
   it("Given the For you lane hidden, when laid out, then the lanes after it pack left", () => {
@@ -114,6 +154,7 @@ describe("laying out the lanes", () => {
     expect(hidden.lanes.map((entry) => [entry.id, entry.x])).toEqual([
       ["todo", 40],
       ["running", 40 + LANE_WIDTH + LANE_GAP],
+      ["waiting", 40 + 2 * (LANE_WIDTH + LANE_GAP)],
     ]);
   });
 
@@ -168,14 +209,14 @@ describe("laying out additions", () => {
   it("Given a canvas addition, when laid out, then it is a lane after the stage lanes and widens the canvas", () => {
     const layout = layoutBoard(model, {}, 0, new Set(), [wait]);
     expect([layout.additionLanes, layout.content.width]).toEqual([
-      [{ key: "wait", x: 952, y: 390, width: 288, height: 314 }],
-      1280,
+      [{ key: "wait", x: 1560, y: 390, width: 288, height: 314 }],
+      1888,
     ]);
   });
 
   it("Given a hidden canvas addition lane, when laid out, then it is left out", () => {
     const layout = layoutBoard(model, {}, 0, new Set(["add:wait"]), [wait]);
-    expect([layout.additionLanes, layout.content.width]).toEqual([[], 976]);
+    expect([layout.additionLanes, layout.content.width]).toEqual([[], 1584]);
   });
 });
 
