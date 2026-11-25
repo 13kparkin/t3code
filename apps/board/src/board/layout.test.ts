@@ -19,6 +19,7 @@ import {
   orderedKeys,
   reorderByDrag,
   ticketLane,
+  besideLanes,
   UNASSIGNED_KEY,
 } from "./layout";
 import { isWorking, ticketStatus } from "./ticketStatus";
@@ -176,6 +177,13 @@ describe("laying out the lanes", () => {
   it("Given agents no ticket claims, when laid out, then their frame leads the To do lane", () => {
     const withOrphan = layoutBoard({ ...model, unassigned: [agent("orphan")] }, {}, 0, defaults);
     expect(keys("todo", withOrphan)).toEqual([UNASSIGNED_KEY, "T-3"]);
+  });
+
+  it.each([
+    { name: "over a lane", at: { x: 367.5, y: 431.5 }, to: { x: 367.5, y: 590 } },
+    { name: "clear of the lanes", at: { x: 1600, y: 40 }, to: { x: 1600, y: 40 } },
+  ])("Given a free card $name, then it sits at $to", ({ at, to }) => {
+    expect(besideLanes(at, { width: 320, height: 380 }, layout)).toEqual(to);
   });
 
   it("Given a saved order, when laid out, then it wins and new tickets follow", () => {

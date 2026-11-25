@@ -238,12 +238,7 @@ export function BoardScreen({
                     {
                       label: "Start agent",
                       onSelect: () =>
-                        void startFreeAgent(
-                          registry,
-                          project,
-                          listed,
-                          besideLanes(point, FREE_CARD, layout),
-                        ).then(setCardError),
+                        void startFreeAgent(registry, project, listed, point).then(setCardError),
                     },
                   ],
                 })

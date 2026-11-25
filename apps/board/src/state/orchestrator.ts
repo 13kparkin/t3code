@@ -37,7 +37,7 @@ export const launchThread = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "board:thread:launch",
   tag: ORCHESTRATION_V2_WS_METHODS.launchThread,
 });
-export const threadProjection = createEnvironmentRpcCommand(connectionAtomRuntime, {
+const threadProjection = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "board:thread:projection",
   tag: ORCHESTRATION_V2_WS_METHODS.getThreadProjection,
 });

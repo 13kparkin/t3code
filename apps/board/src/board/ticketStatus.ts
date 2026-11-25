@@ -56,10 +56,6 @@ export function ticketStatus(agents: ReadonlyArray<AgentView>, now: number): Car
   return { word: "Stopped", tone: "bg-faint" };
 }
 
-/** Whether a thread still holds a provider session the engine has not stopped. */
-export const hasLiveSession = (sessions: ReadonlyArray<{ readonly status: string }>) =>
-  sessions.some((session) => session.status !== "stopped" && session.status !== "error");
-
 /** The orchestrator's word, by the same rule as a card's, or "Not started" before its thread exists. */
 export function orchestratorStatus(
   threadId: string | null,

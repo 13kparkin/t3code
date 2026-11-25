@@ -34,7 +34,7 @@ export function FreeAgents({
   shown: ReadonlyArray<FreeAgent>;
   orchestratorThreadId: string | null;
   now: number;
-  /** Where a dropped card lands, off the lanes. */
+  /** Where a card draws, moved off the lanes. */
   place: (at: { x: number; y: number }) => { x: number; y: number };
   onMove: (agent: FreeAgent) => void;
   onMenu: (event: MouseEvent, threadId: string) => void;

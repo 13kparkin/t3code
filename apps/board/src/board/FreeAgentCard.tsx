@@ -45,7 +45,7 @@ export function FreeAgentCard({
   const [offset, setOffset] = useState<{ dx: number; dy: number } | null>(null);
   // Holds the dropped place until the saved board comes back with it.
   const [placed, setPlaced] = useState<{ x: number; y: number } | null>(null);
-  const at = placed ?? agent;
+  const at = place(placed ?? agent);
 
   const settle = async (pending: ReturnType<typeof runAtomCommand>) => {
     setError(null);
@@ -79,7 +79,7 @@ export function FreeAgentCard({
 
   const end = () => {
     if (offset !== null) {
-      const next = place({ x: at.x + offset.dx, y: at.y + offset.dy });
+      const next = { x: at.x + offset.dx, y: at.y + offset.dy };
       setPlaced(next);
       onMove(next);
     }
