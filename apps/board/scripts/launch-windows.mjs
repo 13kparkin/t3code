@@ -20,6 +20,17 @@ const localAppData = windowsRun("wslpath", [
   windowsRun("cmd.exe", ["/c", "echo %LOCALAPPDATA%"]),
 ]);
 const installRoot = NodePath.join(localAppData, "agent-board");
+const helper = NodePath.join(
+  boardDir,
+  "native/call-capture/target/x86_64-pc-windows-msvc/release/agent-board-call-capture.exe",
+);
+if (!NodeFS.existsSync(helper)) {
+  console.error(
+    "The call capture helper is not built. Run this from the repo root, then try again:\n" +
+      "cargo xwin build --locked --release --target x86_64-pc-windows-msvc --manifest-path apps/board/native/call-capture/Cargo.toml",
+  );
+  process.exit(1);
+}
 
 async function ensureWindowsElectron() {
   const electronPackagePath = require.resolve("electron/package.json");
@@ -62,6 +73,8 @@ function stageApp() {
     NodePath.join(appDir, "package.json"),
     JSON.stringify({ name: "agent-board", main: "dist-electron/electron/main.cjs" }),
   );
+  // Main finds the helper at app.getAppPath() in dev.
+  NodeFS.copyFileSync(helper, NodePath.join(appDir, NodePath.basename(helper)));
   if (!devServerUrl) {
     NodeFS.cpSync(NodePath.join(boardDir, "dist"), NodePath.join(appDir, "dist"), {
       recursive: true,

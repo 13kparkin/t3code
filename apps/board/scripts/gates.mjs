@@ -24,6 +24,8 @@ export const UPSTREAM_FETCH = {
   args: ["fetch", "--no-tags", "--filter=blob:none", "upstream", "main"],
 };
 
+const CALL_CAPTURE = ["--manifest-path", "apps/board/native/call-capture/Cargo.toml"];
+
 /** The same gates as the agent-board job. */
 export const GATES = [
   { name: "engine", command: "node", args: ["apps/board/scripts/check-engine-untouched.mjs"] },
@@ -41,4 +43,10 @@ export const GATES = [
   },
   { name: "typecheck", command: "vp", args: ["run", "--filter", "@agent-board/app", "typecheck"] },
   { name: "board-suite", command: "vp", args: ["test", "run"], cwd: "apps/board" },
+  { name: "call-capture-test", command: "cargo", args: ["test", "--locked", ...CALL_CAPTURE] },
+  {
+    name: "call-capture-check",
+    command: "cargo",
+    args: ["check", "--locked", "--target", "x86_64-pc-windows-msvc", ...CALL_CAPTURE],
+  },
 ];
