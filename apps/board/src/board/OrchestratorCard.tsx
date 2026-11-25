@@ -7,7 +7,6 @@ import { useContext, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useArtifacts } from "../artifacts/ArtifactsContext";
-import { isRunLive } from "../chat/timeline";
 import { type Addition, lineText } from "../domain/additions";
 import { pickTemplate, SYSTEM_TEMPLATE } from "../domain/reviewTemplate";
 import { STAGE_LABEL, TICKET_STAGES } from "../domain/ticket";
@@ -22,6 +21,7 @@ import type { ValidBoard } from "../store/boardFiles";
 import { PopMenu } from "../ui/PopMenu";
 import { Tooltip } from "../ui/Tooltip";
 import { BuilderCap } from "./BuilderCap";
+import { useOrchestratorStatus } from "./useOrchestratorStatus";
 import type { ArchivedCard } from "../state/cardStates";
 import { additionLaneId, DONE_TAG, ORCHESTRATOR_BOX, stageTagId } from "./layout";
 
@@ -94,12 +94,7 @@ export function OrchestratorCard({
         : [],
     ),
   ];
-  const status =
-    board.orchestratorThreadId === null
-      ? "Not started"
-      : projection !== null && isRunLive(projection)
-        ? "Working"
-        : "Idle";
+  const status = useOrchestratorStatus(board.orchestratorThreadId);
 
   return (
     <section

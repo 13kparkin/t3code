@@ -35,7 +35,7 @@ import { AgentPanel } from "./AgentPanel";
 import { ForYouLane } from "./ForYouLane";
 import { ForYouPage } from "./ForYouPage";
 import { Lanes } from "./Lanes";
-import { forYouHeight, hiddenFilters, layoutBoard, withCards } from "./layout";
+import { besideLanes, forYouHeight, hiddenFilters, layoutBoard, withCards } from "./layout";
 import { OrchestratorCard } from "./OrchestratorCard";
 import { TicketPanel } from "./TicketPanel";
 import { useStoreErrorReports } from "./useStoreErrorReports";
@@ -238,7 +238,12 @@ export function BoardScreen({
                     {
                       label: "Start agent",
                       onSelect: () =>
-                        void startFreeAgent(registry, project, listed, point).then(setCardError),
+                        void startFreeAgent(
+                          registry,
+                          project,
+                          listed,
+                          besideLanes(point, FREE_CARD, layout),
+                        ).then(setCardError),
                     },
                   ],
                 })
@@ -288,6 +293,7 @@ export function BoardScreen({
                 shown={cards.free}
                 orchestratorThreadId={board.orchestratorThreadId}
                 now={now}
+                place={(at) => besideLanes(at, FREE_CARD, layout)}
                 onMove={(agent) =>
                   void moveFreeAgent(registry, project, listed, agent).then(setCardError)
                 }

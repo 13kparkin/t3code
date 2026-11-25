@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import type { AgentView, RunState } from "../state/boardModel";
-import { newestAgent, shouldAutoStop, ticketStatus } from "./ticketStatus";
+import { newestAgent, orchestratorStatus, shouldAutoStop, ticketStatus } from "./ticketStatus";
 
 const agent = (
   threadId: string,
@@ -78,5 +78,18 @@ describe("which agents the board stops", () => {
     },
   ])("Given $name, then stop is $stop", ({ agent: subject, stop }) => {
     expect(shouldAutoStop(subject, "orch", now)).toBe(stop);
+  });
+});
+
+describe("the orchestrator's status", () => {
+  const now = Date.parse("2026-11-20T10:10:00.000Z");
+  it.each([
+    { threadId: null, row: undefined, word: "Not started" },
+    { threadId: "orch", row: undefined, word: "Connecting" },
+    { threadId: "orch", row: agent("orch", "idle"), word: "Stopped" },
+    { threadId: "orch", row: agent("orch", "working"), word: "Working" },
+    { threadId: "orch", row: agent("orch", "idle", { waitingOnChildren: true }), word: "Idle" },
+  ])("Given thread $threadId, then it reads $word", ({ threadId, row, word }) => {
+    expect(orchestratorStatus(threadId, row, now)).toBe(word);
   });
 });

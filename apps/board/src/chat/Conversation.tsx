@@ -15,6 +15,7 @@ import {
 } from "react";
 
 import { dockSlotAtom, panelAtom } from "../browser/panel";
+import { useOrchestratorStatus } from "../board/useOrchestratorStatus";
 import { environmentThreads, useEnvironmentThread } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
 import { useArtifacts } from "../artifacts/ArtifactsContext";
@@ -37,16 +38,6 @@ import { MARK_TOKENS, watchTokens } from "./tokenMarks";
 
 const NO_UNSUBSCRIBE = () => undefined;
 const EMPTY: TimelineSource = { runs: [], messages: [], items: [] };
-
-function statusOf(
-  runs: ReadonlyArray<{ readonly id: string; readonly status: string }> | undefined,
-): string {
-  if (runs === undefined) return "Connecting";
-  const last = runs.at(-1)?.status;
-  if (isRunLive({ runs })) return "Working";
-  if (last === "failed") return "Failed";
-  return last === "interrupted" || last === "cancelled" ? "Stopped" : "Idle";
-}
 
 /** The orchestrator's thread, streamed, with the box that sends a follow-up or stops the turn. */
 export function Conversation({
@@ -95,6 +86,7 @@ export function Conversation({
       ),
     [source, workflow, pending, live],
   );
+  const status = useOrchestratorStatus(threadId);
   const dock = useAtomValue(dockSlotAtom);
   const panel = useAtomValue(panelAtom);
   const threadShown = panel.open && panel.tab === "chat";
@@ -143,7 +135,7 @@ export function Conversation({
   return (
     <SkillsContext value={skills}>
       <ArtifactLookupContext value={lookup}>
-        <PanelHeader title={listed.board.name} status={statusOf(projection?.runs)} />
+        <PanelHeader title={listed.board.name} status={status} />
         <div
           ref={scroller}
           data-testid="orchestrator-timeline"

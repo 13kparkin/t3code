@@ -210,14 +210,19 @@ describe("laying out additions", () => {
     expect([moved?.y, moved?.frames[0]?.y]).toEqual([444, 478]);
   });
 
-  it("Given a lane card for the building stage, when laid out, then it is the Running lane's first frame and the tickets follow it", () => {
-    const lane = building(
-      layoutBoard(model, {}, 0, new Set(["stage:merged", "stage:off_path"]), [ci]),
-    );
-    expect(lane?.frames.map((frame) => [frame.key, frame.y, frame.height])).toEqual([
-      ["__add:ci", 424, 140],
-      ["T-1", 572, 52],
-      ["T-2", 632, 52],
+  it("Given a lane card for the building stage, when laid out, then it leads the Waiting lane, because no agent runs it", () => {
+    const laid = layoutBoard(model, {}, 0, new Set(["stage:merged", "stage:off_path"]), [ci]);
+    const frames = (id: string) =>
+      laid.lanes.find((entry) => entry.id === id)?.frames.map((frame) => [frame.key, frame.y]);
+    expect([frames("running"), frames("waiting")]).toEqual([
+      [
+        ["T-1", 424],
+        ["T-2", 484],
+      ],
+      [
+        ["__add:ci", 424],
+        ["T-4", 572],
+      ],
     ]);
   });
 

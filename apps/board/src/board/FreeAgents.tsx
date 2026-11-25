@@ -21,6 +21,7 @@ export function FreeAgents({
   shown,
   orchestratorThreadId,
   now,
+  place,
   onMove,
   onMenu,
 }: {
@@ -33,6 +34,8 @@ export function FreeAgents({
   shown: ReadonlyArray<FreeAgent>;
   orchestratorThreadId: string | null;
   now: number;
+  /** Where a dropped card lands, off the lanes. */
+  place: (at: { x: number; y: number }) => { x: number; y: number };
   onMove: (agent: FreeAgent) => void;
   onMenu: (event: MouseEvent, threadId: string) => void;
 }) {
@@ -56,6 +59,7 @@ export function FreeAgents({
         environmentId={environmentId}
         agent={agent}
         status={ticketStatus(view === undefined ? [] : [view], now)}
+        place={place}
         onMove={(at) => onMove({ threadId: agent.threadId, ...at })}
         onMenu={(event) => onMenu(event, agent.threadId)}
       />

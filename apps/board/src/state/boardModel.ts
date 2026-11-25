@@ -42,7 +42,7 @@ export interface AgentView {
   readonly runState: RunState;
   /** The agent waits on a question or an approval from the user. */
   readonly pendingRequest: boolean;
-  /** The agent waits on its own children or background work. */
+  /** The agent waits on another thread, such as a child it delegated to. */
   readonly waitingOnChildren: boolean;
   /** The thread's latest run, or null before its first. */
   readonly latestRunId: string | null;
@@ -109,8 +109,7 @@ export function agentOf(
     driver: driverOf(row.providerInstanceId),
     runState: runStateOf(row),
     pendingRequest: row.pendingRuntimeRequest !== null,
-    waitingOnChildren:
-      row.blockedOnThreadWait === true || (row.pendingBackgroundTasks?.length ?? 0) > 0,
+    waitingOnChildren: row.blockedOnThreadWait === true,
     latestRunId: row.latestRunId,
     branch: row.branch,
     parentThreadId: row.lineage.parentThreadId,

@@ -22,6 +22,7 @@ export function FreeAgentCard({
   environmentId,
   agent,
   status,
+  place,
   onMove,
   onMenu,
 }: {
@@ -29,6 +30,7 @@ export function FreeAgentCard({
   agent: FreeAgent;
   /** The card's status word, from the thread's row in the engine's shell. */
   status: CardStatus | null;
+  place: (at: { x: number; y: number }) => { x: number; y: number };
   onMove: (at: { readonly x: number; readonly y: number }) => void;
   onMenu: (event: MouseEvent) => void;
 }) {
@@ -77,7 +79,7 @@ export function FreeAgentCard({
 
   const end = () => {
     if (offset !== null) {
-      const next = { x: at.x + offset.dx, y: at.y + offset.dy };
+      const next = place({ x: at.x + offset.dx, y: at.y + offset.dy });
       setPlaced(next);
       onMove(next);
     }
@@ -97,7 +99,7 @@ export function FreeAgentCard({
         left: at.x,
         top: at.y,
         width: FREE_CARD.width,
-        height: FREE_CARD.height,
+        maxHeight: FREE_CARD.height,
         transform: offset === null ? undefined : `translate(${offset.dx}px, ${offset.dy}px)`,
       }}
     >
@@ -135,7 +137,7 @@ export function FreeAgentCard({
           <MoreHorizontal className="size-3.5" aria-hidden />
         </button>
       </header>
-      <div data-scroll className="flex min-h-0 flex-1 flex-col">
+      <div data-scroll className="flex min-h-0 flex-auto flex-col">
         <AgentLog environmentId={environmentId} threadId={agent.threadId} role="Agent" />
       </div>
       {error !== null && (

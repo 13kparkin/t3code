@@ -4,8 +4,9 @@ import { type EnvironmentId, RunId, ThreadId } from "@t3tools/contracts";
 import { useContext, useEffect, useRef } from "react";
 
 import type { AgentView } from "../state/boardModel";
+import { threadProjection } from "../state/orchestrator";
 import { forceStopThread } from "../state/threads";
-import { shouldAutoStop } from "./ticketStatus";
+import { hasLiveSession, shouldAutoStop } from "./ticketStatus";
 
 /**
  * Ends the provider session of each card's agent that runs no turn and waits on nothing, once per
@@ -25,19 +26,24 @@ export function useAutoStop(
       const key = `${agent.threadId}:${agent.latestRunId}`;
       if (stopped.current.has(key)) continue;
       stopped.current.add(key);
-      // The run id makes the engine refuse the stop once a newer run has started.
+      const threadId = ThreadId.make(agent.threadId);
+      const runId = RunId.make(agent.latestRunId);
+      // A session the engine already released, or another client stopped, leaves the projection.
       void runAtomCommand(
         registry,
-        forceStopThread,
-        {
-          environmentId,
-          input: {
-            threadId: ThreadId.make(agent.threadId),
-            runId: RunId.make(agent.latestRunId),
-          },
-        },
+        threadProjection,
+        { environmentId, input: { threadId } },
         { reportFailure: false },
-      );
+      ).then((read) => {
+        if (read._tag !== "Success" || !hasLiveSession(read.value.providerSessions)) return;
+        // The run id makes the engine refuse the stop once a newer run has started.
+        return runAtomCommand(
+          registry,
+          forceStopThread,
+          { environmentId, input: { threadId, runId } },
+          { reportFailure: false },
+        );
+      });
     }
   }, [registry, environmentId, agents, orchestratorThreadId, now]);
 }

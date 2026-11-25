@@ -18,18 +18,18 @@ export const LANE_LABEL = {
   done: "Done",
 } as const satisfies Record<LaneId, string>;
 
-/** Each stage's tag colour, and the lane an `additions.json` lane card for that stage sits in. */
+/** Each stage's tag colour. */
 export const STAGE_TAGS = {
-  todo: { lane: "todo", tone: "text-zinc-300" },
-  planned: { lane: "todo", tone: "text-zinc-400" },
-  building: { lane: "running", tone: "text-blue-300" },
-  reviewing: { lane: "running", tone: "text-violet-300" },
-  verifying: { lane: "running", tone: "text-cyan-300" },
-  pr: { lane: "running", tone: "text-indigo-300" },
-  awaiting_approval: { lane: "running", tone: "text-orange-300" },
-  merged: { lane: "done", tone: "text-emerald-300" },
-  off_path: { lane: "done", tone: "text-red-300" },
-} as const satisfies Record<TicketStage, { readonly lane: StageLane; readonly tone: string }>;
+  todo: { tone: "text-zinc-300" },
+  planned: { tone: "text-zinc-400" },
+  building: { tone: "text-blue-300" },
+  reviewing: { tone: "text-violet-300" },
+  verifying: { tone: "text-cyan-300" },
+  pr: { tone: "text-indigo-300" },
+  awaiting_approval: { tone: "text-orange-300" },
+  merged: { tone: "text-emerald-300" },
+  off_path: { tone: "text-red-300" },
+} as const satisfies Record<TicketStage, { readonly tone: string }>;
 
 /** A ticket sits in Running only while one of its agents is live, and an open ticket with none waits. */
 export function ticketLane(stage: TicketStage, live: boolean): StageLane {
@@ -167,7 +167,7 @@ export function layoutBoard(
     const items: Array<{ key: string; height: number }> = [];
     if (id !== "for_you") {
       for (const card of additions) {
-        if (card.place === "lane" && STAGE_TAGS[card.lane].lane === id) {
+        if (card.place === "lane" && ticketLane(card.lane, false) === id) {
           items.push({ key: ADDITION_KEY + card.id, height: ADDITION_FRAME });
         }
       }
@@ -258,4 +258,21 @@ export function withCards(
     ...ys.map((value) => value + size.height + LEFT),
   );
   return { x, y, width: right - x, height: bottom - y };
+}
+
+/** A free card's place, moved to just below the lanes when the card would cover one. */
+export function besideLanes(
+  at: { readonly x: number; readonly y: number },
+  size: { readonly width: number; readonly height: number },
+  layout: Layout,
+): { x: number; y: number } {
+  const boxes = [...layout.lanes, ...layout.additionLanes];
+  if (boxes.length === 0) return at;
+  const left = Math.min(...boxes.map((box) => box.x));
+  const right = Math.max(...boxes.map((box) => box.x + box.width));
+  const top = Math.min(...boxes.map((box) => box.y));
+  const bottom = Math.max(...boxes.map((box) => box.y + box.height));
+  const covers =
+    at.x < right && at.x + size.width > left && at.y < bottom && at.y + size.height > top;
+  return covers ? { x: at.x, y: bottom + LEFT } : { x: at.x, y: at.y };
 }
