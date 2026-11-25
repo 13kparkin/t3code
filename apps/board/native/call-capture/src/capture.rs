@@ -43,7 +43,7 @@ const BUFFER_HNS: i64 = 2_000_000;
 const WAKE_MS: u32 = 100;
 const HEADER_EVERY: Duration = Duration::from_secs(5);
 const MIC_RETRY: Duration = Duration::from_secs(2);
-const MIC_GONE: &str = "The microphone is unavailable, so only the app's audio is recorded";
+const MIC_GONE: &str = "The microphone is unavailable, so the helper records only the app's audio";
 
 fn build() -> u32 {
     let mut info = OSVERSIONINFOW {

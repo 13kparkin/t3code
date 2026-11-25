@@ -25,7 +25,7 @@ vp run --filter @agent-board/app start    # production build, loaded from agentb
 
 On a Windows machine, run the same commands from WSL with `dev:windows` and `start:windows` (after `build`) to get Windows' own window frame. They download Electron for `win32-x64` once into `%LOCALAPPDATA%\agent-board\` and copy the bundle there, so Electron never runs from a `\\wsl.localhost` path. This needs WSL mirrored networking, so the Windows app can reach the dev server on `127.0.0.1`.
 
-`dev:windows` and `start:windows` also copy the call capture helper into the staged app, and stop when it is not built. Build it once per change from the repo root.
+`dev:windows` and `start:windows` also copy the call capture helper into the staged app, and stop when it is not built. Build it from the repo root, and again after you change it.
 
 ```sh
 rustup target add x86_64-pc-windows-msvc
