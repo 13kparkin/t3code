@@ -43,6 +43,7 @@ const BUFFER_HNS: i64 = 2_000_000;
 const WAKE_MS: u32 = 100;
 const HEADER_EVERY: Duration = Duration::from_secs(5);
 const MIC_RETRY: Duration = Duration::from_secs(2);
+const MIC_GONE: &str = "The microphone is unavailable, so only the app's audio is recorded";
 
 fn build() -> u32 {
     let mut info = OSVERSIONINFOW {
@@ -386,10 +387,7 @@ pub fn record(pid: u32, them_path: &Path, me_path: &Path) -> i32 {
     };
     let mut mic = Stream::microphone().ok();
     if mic.is_none() {
-        warning(
-            "mic_unavailable",
-            "The microphone is unavailable, so only the app's audio is recorded",
-        );
+        warning("mic_unavailable", MIC_GONE);
     }
 
     let stdin = stdin_watch();
@@ -399,7 +397,7 @@ pub fn record(pid: u32, them_path: &Path, me_path: &Path) -> i32 {
     let mut packet = Vec::new();
     emit(json!({ "event": "started", "protocol": PROTOCOL, "sampleRate": SAMPLE_RATE }));
 
-    let ended: Result<&str, serde_json::Value> = loop {
+    let ended = loop {
         let mut handles = vec![target, loopback.event];
         handles.extend(mic.as_ref().map(|mic| mic.event));
         if unsafe { WaitForMultipleObjects(&handles, false, WAKE_MS) } == WAIT_OBJECT_0 {
@@ -431,10 +429,7 @@ pub fn record(pid: u32, them_path: &Path, me_path: &Path) -> i32 {
                         "The microphone is back, and the gap is silence",
                     );
                 } else if mic_lost {
-                    warning(
-                        "mic_unavailable",
-                        "The microphone was lost, so only the app's audio is recorded",
-                    );
+                    warning("mic_unavailable", MIC_GONE);
                 }
             }
         }
@@ -456,8 +451,6 @@ pub fn record(pid: u32, them_path: &Path, me_path: &Path) -> i32 {
         }
     };
 
-    drop(mic);
-    drop(loopback);
     let _ = unsafe { CloseHandle(target) };
     let end = now().max(them.wav.samples()).max(me.wav.samples());
     let finished = [&mut them, &mut me].into_iter().try_for_each(|track| {
