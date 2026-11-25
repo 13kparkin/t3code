@@ -78,23 +78,43 @@ mod capture {
     }
 }
 
+fn usage() -> i32 {
+    eprintln!("{USAGE}");
+    2
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let args: Vec<&str> = args.iter().map(String::as_str).collect();
     let code = match args.as_slice() {
         ["list"] => capture::list(),
-        ["record", rest @ ..] => match parse_record(rest) {
-            Some((pid, them, me)) => capture::record(pid, &them, &me),
-            None => {
-                eprintln!("{USAGE}");
-                2
-            }
-        },
+        ["record", rest @ ..] => parse_record(rest)
+            .map_or_else(usage, |(pid, them, me)| capture::record(pid, &them, &me)),
         ["repair", path] => repair(path),
-        _ => {
-            eprintln!("{USAGE}");
-            2
-        }
+        _ => usage(),
     };
     std::process::exit(code);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_record_takes_the_three_flags_in_any_order() {
+        assert_eq!(
+            parse_record(&["--me", "me.wav", "--pid", "42", "--them", "them.wav"]),
+            Some((42, "them.wav".into(), "me.wav".into()))
+        );
+        for bad in [
+            &["--pid", "abc", "--them", "a.wav", "--me", "b.wav"][..],
+            &["--pid", "42", "--them", "a.wav"],
+            &["--pid", "42", "--them", "a.wav", "--me"],
+            &[
+                "--pid", "42", "--them", "a.wav", "--me", "b.wav", "--mic", "x",
+            ],
+        ] {
+            assert_eq!(parse_record(bad), None, "{bad:?}");
+        }
+    }
 }

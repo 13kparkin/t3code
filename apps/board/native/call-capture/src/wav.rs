@@ -128,6 +128,7 @@ mod tests {
         assert_eq!(bytes[..44], HEADER_ONE_SECOND);
         assert_eq!(bytes[44..48], [1, 0, 0xfe, 0xff]);
         assert!(bytes[48..].iter().all(|&b| b == 0));
+        std::fs::remove_file(&path).unwrap();
     }
 
     #[test]
@@ -140,15 +141,21 @@ mod tests {
         let bytes = std::fs::read(&path).unwrap();
         assert_eq!(bytes.len(), 44 + 32_000);
         assert_eq!(bytes[..44], HEADER_ONE_SECOND);
+        std::fs::remove_file(&path).unwrap();
     }
 
     #[test]
-    fn repair_refuses_a_file_that_is_not_a_wav() {
-        let path = temp("short.wav");
-        std::fs::write(&path, b"RIFF").unwrap();
+    fn repair_leaves_a_wav_in_another_format_untouched() {
+        let path = temp("other.wav");
+        let mut bytes = header(0).to_vec();
+        bytes[24..28].copy_from_slice(&48_000u32.to_le_bytes());
+        bytes.extend([7u8; 101]);
+        std::fs::write(&path, &bytes).unwrap();
         assert_eq!(
             repair(&path).unwrap_err().kind(),
             io::ErrorKind::InvalidData
         );
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+        std::fs::remove_file(&path).unwrap();
     }
 }

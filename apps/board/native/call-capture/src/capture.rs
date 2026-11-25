@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::io::{self, BufRead};
 use std::mem::ManuallyDrop;
 use std::path::Path;
-use std::sync::{Arc, Condvar, Mutex, mpsc};
+use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 use windows::Wdk::System::SystemServices::RtlGetVersion;
@@ -124,29 +124,25 @@ fn window_titles() -> HashMap<u32, String> {
     titles
 }
 
-fn free_bytes(path: &Path) -> u64 {
+fn free_bytes(path: &Path) -> windows_core::Result<u64> {
     let dir = path
         .parent()
         .filter(|dir| !dir.as_os_str().is_empty())
         .unwrap_or(Path::new("."));
     let mut free = 0;
-    match unsafe { GetDiskFreeSpaceExW(&HSTRING::from(dir), Some(&mut free), None, None) } {
-        Ok(()) => free,
-        Err(_) => u64::MAX,
-    }
+    unsafe { GetDiskFreeSpaceExW(&HSTRING::from(dir), Some(&mut free), None, None) }?;
+    Ok(free)
 }
 
 #[implement(IActivateAudioInterfaceCompletionHandler)]
-struct Activated(Arc<(Mutex<bool>, Condvar)>);
+struct Activated(mpsc::SyncSender<()>);
 
 impl IActivateAudioInterfaceCompletionHandler_Impl for Activated_Impl {
     fn ActivateCompleted(
         &self,
         _operation: Ref<IActivateAudioInterfaceAsyncOperation>,
     ) -> windows_core::Result<()> {
-        let (done, signal) = &*self.0;
-        *done.lock().unwrap() = true;
-        signal.notify_one();
+        let _ = self.0.try_send(());
         Ok(())
     }
 }
@@ -183,8 +179,8 @@ impl Stream {
                 }),
             },
         });
-        let done = Arc::new((Mutex::new(false), Condvar::new()));
-        let handler: IActivateAudioInterfaceCompletionHandler = Activated(done.clone()).into();
+        let (done, activated) = mpsc::sync_channel(1);
+        let handler: IActivateAudioInterfaceCompletionHandler = Activated(done).into();
         let client = unsafe {
             let operation = ActivateAudioInterfaceAsync(
                 VIRTUAL_AUDIO_DEVICE_PROCESS_LOOPBACK,
@@ -192,12 +188,7 @@ impl Stream {
                 Some(&*prop),
                 &handler,
             )?;
-            let (lock, signal) = &*done;
-            drop(
-                signal
-                    .wait_while(lock.lock().unwrap(), |done| !*done)
-                    .unwrap(),
-            );
+            let _ = activated.recv();
             let mut result = Default::default();
             let mut unknown = None;
             operation.GetActivateResult(&mut result, &mut unknown)?;
@@ -364,12 +355,19 @@ pub fn record(pid: u32, them_path: &Path, me_path: &Path) -> i32 {
             return 1;
         }
     };
-    if free_bytes(them_path) < MIN_FREE_BYTES {
-        emit(error(
-            "disk_full",
-            "Recording needs 2 GB free on the drive that holds it",
-        ));
-        return 1;
+    match free_bytes(them_path) {
+        Ok(free) if free >= MIN_FREE_BYTES => {}
+        Ok(_) => {
+            emit(error(
+                "disk_full",
+                "Recording needs 2 GB free on the drive that holds it",
+            ));
+            return 1;
+        }
+        Err(err) => {
+            emit(error("write_failed", err));
+            return 1;
+        }
     }
     let loopback = match unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) }
         .ok()
@@ -382,16 +380,15 @@ pub fn record(pid: u32, them_path: &Path, me_path: &Path) -> i32 {
         }
     };
     let mut mic = Stream::microphone().ok();
-    if mic.is_none() {
-        warning("mic_unavailable", MIC_GONE);
-    }
-
     let stdin = stdin_watch();
     let start = Instant::now();
     let now = || (start.elapsed().as_secs_f64() * f64::from(SAMPLE_RATE)) as u64;
     let (mut next_level, mut next_header, mut next_mic) = (1, HEADER_EVERY, MIC_RETRY);
     let mut packet = Vec::new();
     emit(json!({ "event": "started", "protocol": PROTOCOL, "sampleRate": SAMPLE_RATE }));
+    if mic.is_none() {
+        warning("mic_unavailable", MIC_GONE);
+    }
 
     let ended = loop {
         let mut handles = vec![target, loopback.event];
@@ -449,13 +446,16 @@ pub fn record(pid: u32, them_path: &Path, me_path: &Path) -> i32 {
 
     let _ = unsafe { CloseHandle(target) };
     let end = now().max(them.wav.samples()).max(me.wav.samples());
-    let finished = [&mut them, &mut me].into_iter().try_for_each(|track| {
-        track.wav.pad(end - track.wav.samples())?;
-        track.wav.sync_header()
-    });
+    let finished = [&mut them, &mut me]
+        .map(|track| {
+            track.wav.pad(end - track.wav.samples())?;
+            track.wav.sync_header()
+        })
+        .into_iter()
+        .collect::<io::Result<Vec<()>>>();
     let seconds = round1(end as f64 / f64::from(SAMPLE_RATE));
     let failure = match (ended, finished) {
-        (Ok(reason), Ok(())) => {
+        (Ok(reason), Ok(_)) => {
             emit(json!({ "event": "stopped", "reason": reason, "seconds": seconds }));
             return 0;
         }

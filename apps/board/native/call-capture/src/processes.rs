@@ -69,16 +69,16 @@ mod tests {
     }
 
     #[test]
-    fn prefers_the_root_with_a_window_over_an_orphaned_child() {
+    fn prefers_the_root_with_a_window_when_an_exe_has_two_trees() {
         let processes = [
             process(900, 4, "explorer.exe", ""),
-            process(1100, 8888, "chrome.exe", ""),
-            process(1200, 900, "chrome.exe", "Inbox - Chrome"),
-            process(1210, 1200, "chrome.exe", ""),
+            process(1100, 700, "Zoom.exe", ""),
+            process(1200, 900, "Zoom.exe", "Zoom Meeting"),
+            process(1210, 1200, "Zoom.exe", ""),
         ];
         assert_eq!(
             picked(&processes),
-            [("chrome.exe", 1200), ("explorer.exe", 900)]
+            [("Zoom.exe", 1200), ("explorer.exe", 900)]
         );
     }
 }
