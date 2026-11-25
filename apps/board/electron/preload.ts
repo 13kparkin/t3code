@@ -64,7 +64,7 @@ const bridge: BoardBridge = {
     },
     start: (request) => ipcRenderer.send("board:recorder-start", request),
     stop: () => ipcRenderer.send("board:recorder-stop"),
-    deleteAudio: (callId) => ipcRenderer.send("board:recording-delete", callId),
+    deleteAudio: (callId) => ipcRenderer.send("board:recorder-delete", callId),
   },
 };
 

@@ -1,4 +1,4 @@
-import type { CallApp } from "../domain/board";
+import type { Recording, RecordRequest } from "../domain/recording";
 
 export type EngineState =
   | { readonly phase: "connecting" }
@@ -54,31 +54,6 @@ export interface BoardBridge {
   readonly recorder: RecorderHost;
 }
 
-/** One take of a call, kept beside its `me.wav` and `them.wav` as `recording.json`. */
-export interface Recording {
-  readonly callId: string;
-  readonly boardId: string;
-  readonly title: string;
-  readonly app: CallApp;
-  readonly exe: string;
-  readonly targetPid: number;
-  readonly startedAt: string;
-  /** Null while recording, or after the board quit mid-call until the next launch recovers it. */
-  readonly endedAt: string | null;
-  readonly endReason:
-    | "stopped"
-    | "target_exited"
-    | "max_duration"
-    | "error"
-    | "crashed"
-    | "app_quit"
-    | null;
-  readonly error: string | null;
-  /** 16 kHz mono s16le WAV files on one clock. */
-  readonly tracks: ReadonlyArray<{ readonly who: "me" | "them"; readonly file: string }>;
-  readonly deleteAfter: string;
-}
-
 export type RecorderState =
   | {
       readonly status: "idle";
@@ -99,16 +74,10 @@ export interface RecorderSnapshot {
   readonly recordings: ReadonlyArray<Recording>;
 }
 
-export interface RecordRequest {
-  readonly callId: string;
-  readonly boardId: string;
-  readonly title: string;
-  readonly app: CallApp;
-}
-
 /** The call recorder, which the main process runs. Main refuses to start until consent is saved. */
 export interface RecorderHost {
-  readonly snapshot: () => Promise<RecorderSnapshot>;
+  /** Null off Windows, where there is no helper to record with. */
+  readonly snapshot: () => Promise<RecorderSnapshot | null>;
   readonly onSnapshot: (listener: (snapshot: RecorderSnapshot) => void) => () => void;
   readonly start: (request: RecordRequest) => void;
   readonly stop: () => void;

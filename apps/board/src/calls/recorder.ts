@@ -1,4 +1,4 @@
-import type { Recording } from "../connection/engineState";
+import type { Recording } from "../domain/recording";
 
 export const CONSENT_LINE = "I'm recording this call to take notes. Is everyone OK with that?";
 
@@ -17,15 +17,15 @@ export function callAudio(
   callId: string,
 ): { readonly minutes: number; readonly note: string | null } | null {
   const ended = recordings
-    .filter((recording) => recording.callId === callId && recording.endedAt !== null)
+    .filter(
+      (recording): recording is Recording & { readonly endedAt: string } =>
+        recording.callId === callId && recording.endedAt !== null,
+    )
     .toSorted((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt));
   const last = ended.at(-1);
   if (last === undefined) return null;
   const ms = ended.reduce(
-    (total, recording) =>
-      total +
-      Date.parse(recording.endedAt ?? recording.startedAt) -
-      Date.parse(recording.startedAt),
+    (total, recording) => total + Date.parse(recording.endedAt) - Date.parse(recording.startedAt),
     0,
   );
   const reason = last.endReason === null ? null : END_NOTES[last.endReason];

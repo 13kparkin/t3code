@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { Recording } from "../connection/engineState";
+import type { Recording } from "../domain/recording";
 
 import { callAudio, elapsed } from "./recorder";
 

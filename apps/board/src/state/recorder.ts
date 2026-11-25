@@ -1,13 +1,14 @@
 import { Atom } from "effect/reactivity";
 
-import type { RecorderHost, RecorderSnapshot, RecordRequest } from "../connection/engineState";
+import type { RecorderSnapshot } from "../connection/engineState";
+import type { RecordRequest } from "../domain/recording";
 import { localState } from "./boards";
 
 /** Undefined in `dev:web`, which has no main process to record with. */
-const host = (): RecorderHost | undefined => window.board?.recorder;
+const recorder = window.board?.recorder;
 
+/** Null in `dev:web` and off Windows, where the call cards offer no Record. */
 export const recorderAtom = Atom.make((get): RecorderSnapshot | null => {
-  const recorder = host();
   if (recorder === undefined) return null;
   // Subscribe before the read so a change between the two is not lost.
   get.addFinalizer(recorder.onSnapshot((snapshot) => get.setSelf(snapshot)));
@@ -25,12 +26,12 @@ export const secondAtom = Atom.make((get): number => {
 /** Starts recording once consent is saved. False when the notice has to ask first. */
 export async function record(request: RecordRequest): Promise<boolean> {
   if (!(await localState.read()).recordingConsent) return false;
-  host()?.start(request);
+  recorder?.start(request);
   return true;
 }
 
 export const acceptConsent = () =>
   localState.update((state) => ({ ...state, recordingConsent: true }));
 
-export const stopRecording = () => host()?.stop();
-export const deleteAudio = (callId: string) => host()?.deleteAudio(callId);
+export const stopRecording = () => recorder?.stop();
+export const deleteAudio = (callId: string) => recorder?.deleteAudio(callId);

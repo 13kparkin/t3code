@@ -1,9 +1,9 @@
 import { useAtomValue } from "@effect/atom-react";
-import { useState } from "react";
 
 import type { RecorderState } from "../connection/engineState";
 import { secondAtom, stopRecording } from "../state/recorder";
-import { CONSENT_LINE, elapsed } from "./recorder";
+import { CopyConsentLine } from "./CopyConsentLine";
+import { elapsed } from "./recorder";
 
 /** Mount only while recording, because its timer ticks once a second while mounted. */
 export function RecordingBar({
@@ -12,7 +12,6 @@ export function RecordingBar({
   state: Extract<RecorderState, { status: "recording" }>;
 }) {
   const now = useAtomValue(secondAtom);
-  const [copied, setCopied] = useState(false);
   return (
     <div
       role="status"
@@ -25,13 +24,7 @@ export function RecordingBar({
       {state.micMissing && (
         <span className="text-amber-300">Microphone off, recording the call only</span>
       )}
-      <button
-        type="button"
-        onClick={() => void navigator.clipboard.writeText(CONSENT_LINE).then(() => setCopied(true))}
-        className="rounded-full px-2 py-0.5 text-muted hover:bg-hover hover:text-fg"
-      >
-        {copied ? "Copied" : "Copy consent line"}
-      </button>
+      <CopyConsentLine className="rounded-full px-2 py-0.5 text-muted hover:bg-hover hover:text-fg" />
       <button
         type="button"
         onClick={stopRecording}

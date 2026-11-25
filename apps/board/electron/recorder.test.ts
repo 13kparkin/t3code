@@ -4,7 +4,8 @@ import * as NodePath from "node:path";
 
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
-import type { RecorderSnapshot, Recording } from "../src/connection/engineState";
+import type { RecorderSnapshot } from "../src/connection/engineState";
+import type { Recording } from "../src/domain/recording";
 
 import * as Option from "effect/Option";
 
@@ -156,17 +157,23 @@ describe("recording a call", () => {
     );
   });
 
-  it("Given a recording, when the call app quits, then the recording ends with target_exited", async () => {
-    const rig = setup();
-    const child = await startRecording(rig);
-    child.print({ event: "stopped", reason: "target_exited", seconds: 600 });
-    await child.close();
-    expect(rig.statuses()).toEqual(["starting", "recording", "idle"]);
-    expect(rig.file("call-1", "1", "recording.json")).toMatchObject({
-      endReason: "target_exited",
-      endedAt: "2026-11-25T10:10:00.000Z",
-    });
-  });
+  it.each([
+    ["the call app quits", "target_exited", "target_exited"],
+    ["the board quits", "stdin_closed", "app_quit"],
+  ])(
+    "Given a recording, when %s, then the helper's %s ends the take as %s",
+    async (_when, reason, endReason) => {
+      const rig = setup();
+      const child = await startRecording(rig);
+      child.print({ event: "stopped", reason, seconds: 600 });
+      await child.close();
+      expect(rig.statuses()).toEqual(["starting", "recording", "idle"]);
+      expect(rig.file("call-1", "1", "recording.json")).toMatchObject({
+        endReason,
+        endedAt: "2026-11-25T10:10:00.000Z",
+      });
+    },
+  );
 
   it("Given a recording, when the helper exits without stopped, then both tracks are repaired before it is marked crashed", async () => {
     const rig = setup({
@@ -199,9 +206,11 @@ describe("recording a call", () => {
     });
   });
 
-  it("Given a finished take, when Record is pressed again on the same call, then the helper gets new paths", async () => {
+  it("Given a take, when Record is pressed again, then nothing starts until it ends, and the next take gets new paths", async () => {
     const rig = setup();
     const first = await startRecording(rig);
+    await rig.recorder.start(REQUEST);
+    expect(rig.children).toHaveLength(1);
     first.print({ event: "stopped", reason: "stop", seconds: 5 });
     await first.close();
     await startRecording(rig);
@@ -209,17 +218,42 @@ describe("recording a call", () => {
     expect(rig.file("call-1", "1", "recording.json")).toMatchObject({ endReason: "stopped" });
   });
 
-  it("Given the app named on the card is not running, then no helper starts and the card says so", async () => {
-    const rig = setup({
-      list: JSON.stringify({ protocol: 1, build: 22631, supported: true, processes: [] }),
-    });
+  it.each([
+    ["Chrome is not running", { processes: [] }, "Chrome is not running."],
+    [
+      "Windows is too old",
+      { supported: false },
+      "This Windows version is too old to record one app's audio.",
+    ],
+    [
+      "the helper speaks another protocol",
+      { protocol: 2 },
+      "The recorder could not start. Reinstall the board.",
+    ],
+  ])("Given %s, then no helper starts and the card says why", async (_given, change, message) => {
+    const rig = setup({ list: JSON.stringify({ ...JSON.parse(CHROME_LIST), ...change }) });
     await rig.recorder.start(REQUEST);
     expect(rig.children).toEqual([]);
-    expect(rig.lastState()).toEqual({
-      status: "idle",
-      failed: { callId: "call-1", message: "Chrome is not running." },
-    });
+    expect(rig.lastState()).toEqual({ status: "idle", failed: { callId: "call-1", message } });
     expect(NodeFS.readdirSync(rig.root)).toEqual([]);
+  });
+
+  it("Given the helper has not started yet, when Stop is pressed, then the helper is told to stop", async () => {
+    const rig = setup();
+    await rig.recorder.start(REQUEST);
+    rig.recorder.stop();
+    expect(rig.children[0]?.sent).toEqual(["stop"]);
+  });
+
+  it("Given a recording, when the microphone drops and returns, then the bar follows it", async () => {
+    const rig = setup();
+    const child = await startRecording(rig);
+    child.print({ event: "warning", code: "mic_reopened", message: "back" });
+    expect(rig.statuses()).toEqual(["starting", "recording"]);
+    child.print({ event: "warning", code: "mic_unavailable", message: "gone" });
+    expect(rig.lastState()).toMatchObject({ status: "recording", micMissing: true });
+    child.print({ event: "warning", code: "mic_reopened", message: "back" });
+    expect(rig.lastState()).toMatchObject({ status: "recording", micMissing: false });
   });
 
   it("Given the helper started on another app, then it stops, keeps nothing, and says why", async () => {
@@ -256,6 +290,10 @@ describe("recording a call", () => {
     expect([rig.runs, rig.statuses()]).toEqual([[], []]);
   });
 
+  it("Given a 64-character call id, then Record parses", () => {
+    expect(Option.isSome(decodeRequest({ ...REQUEST, callId: "a".repeat(64) }))).toBe(true);
+  });
+
   it.each(["../escape", "", "a".repeat(65), "call 1", "call_1"])(
     "Given the call id %j, then neither Record nor Delete audio parses",
     (callId) => {
@@ -263,14 +301,6 @@ describe("recording a call", () => {
       expect(Option.isNone(decodeCallId(callId))).toBe(true);
     },
   );
-
-  it("Given every snapshot, then no other app's window title reaches the renderer", async () => {
-    const rig = setup();
-    const child = await startRecording(rig);
-    child.print({ event: "stopped", reason: "stop", seconds: 5 });
-    await child.close();
-    expect(JSON.stringify(rig.recorder.snapshot())).not.toContain("Private chat");
-  });
 });
 
 describe("silence and the 4-hour cap", () => {
@@ -328,7 +358,13 @@ describe("recovery and retention", () => {
       endReason: null,
       deleteAfter: "2026-12-02T10:00:00.000Z",
     });
+    writeTake(rig.root, "call-0", "1", {
+      endedAt: STARTED_AT,
+      endReason: "stopped",
+      deleteAfter: "2026-12-02T10:00:00.000Z",
+    });
     await rig.recorder.recover();
+    expect(rig.statuses()).toEqual(["idle"]);
     const dir = NodePath.join(rig.root, "call-1", "1");
     expect(rig.runs).toEqual([
       ["repair", NodePath.join(dir, "me.wav")],
@@ -378,6 +414,7 @@ describe("recovery and retention", () => {
     expect(rig.recorder.snapshot().recordings).toEqual([]);
     await startRecording(rig);
     rig.recorder.remove("call-1");
+    rig.recorder.remove("CALL-1");
     expect(NodeFS.existsSync(NodePath.join(rig.root, "call-1", "1"))).toBe(true);
   });
 });

@@ -7,13 +7,9 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { app, BrowserWindow, ipcMain, nativeImage, Notification } from "electron";
 
-import type {
-  RecorderSnapshot,
-  RecorderState,
-  Recording,
-  RecordRequest,
-} from "../src/connection/engineState";
-import { CallApp } from "../src/domain/board";
+import type { RecorderSnapshot, RecorderState } from "../src/connection/engineState";
+import type { CallApp } from "../src/domain/board";
+import { CallId, Recording, RecordRequest } from "../src/domain/recording";
 import { createLocalStateFile } from "./localState";
 
 const PROTOCOL = 1;
@@ -24,10 +20,11 @@ const SOUND_DBFS = -55;
 const NUDGE_AFTER_S = 10 * 60;
 const MAX_S = 4 * 60 * 60;
 const HELPER = "agent-board-call-capture.exe";
-const CALL_ID = /^[A-Za-z0-9-]{1,64}$/;
+const HELPER_TIMEOUT_MS = 10_000;
+const FILES = { me: "me.wav", them: "them.wav" } as const;
 const TRACKS: Recording["tracks"] = [
-  { who: "me", file: "me.wav" },
-  { who: "them", file: "them.wav" },
+  { who: "me", file: FILES.me },
+  { who: "them", file: FILES.them },
 ];
 
 const CALL_EXES = {
@@ -37,18 +34,9 @@ const CALL_EXES = {
   edge: { exe: "msedge.exe", name: "Edge" },
 } as const satisfies Record<CallApp, { readonly exe: string; readonly name: string }>;
 
-/** Every call id is checked against `CALL_ID` here, before any path is built from it. */
-export const decodeRequest = Schema.decodeUnknownOption(
-  Schema.Struct({
-    callId: Schema.String.check(Schema.isPattern(CALL_ID)),
-    boardId: Schema.String.check(Schema.isMaxLength(200)),
-    title: Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(80)),
-    app: CallApp,
-  }),
-);
-export const decodeCallId = Schema.decodeUnknownOption(
-  Schema.String.check(Schema.isPattern(CALL_ID)),
-);
+export const decodeRequest = Schema.decodeUnknownOption(RecordRequest);
+export const decodeCallId = Schema.decodeUnknownOption(CallId);
+const isCallId = Schema.is(CallId);
 // Struct drops keys it does not name, so every other app's window title ends here.
 const decodeList = Schema.decodeUnknownOption(
   Schema.fromJsonString(
@@ -83,35 +71,7 @@ const decodeEvent = Schema.decodeUnknownOption(
     ]),
   ),
 );
-const decodeRecording = Schema.decodeUnknownOption(
-  Schema.fromJsonString(
-    Schema.Struct({
-      callId: Schema.String,
-      boardId: Schema.String,
-      title: Schema.String,
-      app: CallApp,
-      exe: Schema.String,
-      targetPid: Schema.Number,
-      startedAt: Schema.String,
-      endedAt: Schema.NullOr(Schema.String),
-      endReason: Schema.NullOr(
-        Schema.Literals([
-          "stopped",
-          "target_exited",
-          "max_duration",
-          "error",
-          "crashed",
-          "app_quit",
-        ]),
-      ),
-      error: Schema.NullOr(Schema.String),
-      tracks: Schema.Array(
-        Schema.Struct({ who: Schema.Literals(["me", "them"]), file: Schema.String }),
-      ),
-      deleteAfter: Schema.String,
-    }),
-  ),
-);
+const decodeRecording = Schema.decodeUnknownOption(Schema.fromJsonString(Recording));
 const decodeConsent = Schema.decodeUnknownOption(
   Schema.fromJsonString(Schema.Struct({ recordingConsent: Schema.Literal(true) })),
 );
@@ -148,6 +108,13 @@ interface Session {
   nudged: boolean;
 }
 
+/** How a take ended, from the helper's `stopped` reason. Only quitting the board closes stdin. */
+function endReason(reason: string, capped: boolean): NonNullable<Recording["endReason"]> {
+  if (reason === "error" || reason === "target_exited") return reason;
+  if (reason === "stdin_closed") return "app_quit";
+  return capped ? "max_duration" : "stopped";
+}
+
 const sameExe = (a: string | null, b: string) => a?.toLowerCase() === b.toLowerCase();
 const plus = (iso: string, ms: number) => new Date(Date.parse(iso) + ms).toISOString();
 
@@ -159,9 +126,19 @@ const readDir = (dir: string): ReadonlyArray<string> => {
   }
 };
 
-const removeIfEmpty = (dir: string) => {
-  if (readDir(dir).length === 0) NodeFS.rmSync(dir, { recursive: true, force: true });
+const removeDir = (dir: string) => {
+  try {
+    NodeFS.rmSync(dir, { recursive: true, force: true });
+  } catch {
+    // Windows refuses while a player holds a WAV open. The next sweep or Delete audio retries.
+  }
 };
+
+const removeIfEmpty = (dir: string) => {
+  if (readDir(dir).length === 0) removeDir(dir);
+};
+
+const recordingFile = (dir: string) => createLocalStateFile(NodePath.join(dir, "recording.json"));
 
 /** Owns the one helper child and everything under `root`, one folder per call, one per take. */
 export function createRecorder(deps: {
@@ -178,18 +155,11 @@ export function createRecorder(deps: {
 
   const takes = (): ReadonlyArray<Take> =>
     readDir(root)
-      .filter((callId) => CALL_ID.test(callId))
+      .filter(isCallId)
       .flatMap((callId) =>
         readDir(NodePath.join(root, callId)).flatMap((take) => {
           const dir = NodePath.join(root, callId, take);
-          const text = (() => {
-            try {
-              return NodeFS.readFileSync(NodePath.join(dir, "recording.json"), "utf8");
-            } catch {
-              return "";
-            }
-          })();
-          return Option.match(decodeRecording(text), {
+          return Option.match(decodeRecording(recordingFile(dir).read()), {
             onNone: () => [],
             onSome: (recording) => [{ dir, recording }],
           });
@@ -203,11 +173,8 @@ export function createRecorder(deps: {
     state = next;
     deps.publish(snapshot());
   };
-  const save = ({ dir, recording }: Take) => {
-    const file = NodePath.join(dir, "recording.json");
-    NodeFS.writeFileSync(`${file}.tmp`, JSON.stringify(recording, null, 2));
-    NodeFS.renameSync(`${file}.tmp`, file);
-  };
+  const save = ({ dir, recording }: Take) =>
+    recordingFile(dir).write(JSON.stringify(recording, null, 2));
   const repair = async (dir: string) => {
     const seconds = await Promise.all(
       TRACKS.map(async ({ file }) =>
@@ -304,10 +271,10 @@ export function createRecorder(deps: {
 
   const onClose = async (current: Session) => {
     const { dir, recording, stopped, error } = current;
+    session = null;
     if (recording === null) {
-      NodeFS.rmSync(dir, { recursive: true, force: true });
+      removeDir(dir);
       removeIfEmpty(NodePath.dirname(dir));
-      session = null;
       const { name } = CALL_EXES[current.request.app];
       const message =
         current.wrongAppMessage ??
@@ -318,20 +285,20 @@ export function createRecorder(deps: {
       return;
     }
     const take = { dir, recording };
-    if (stopped === null) {
-      end(take, "crashed", await repair(dir), error?.message ?? null);
-    } else {
-      const reason =
-        stopped.reason === "error"
-          ? "error"
-          : stopped.reason === "target_exited"
-            ? "target_exited"
-            : current.capped
-              ? "max_duration"
-              : "stopped";
-      end(take, reason, stopped.seconds, error?.message ?? null);
+    try {
+      if (stopped === null) {
+        end(take, "crashed", await repair(dir), error?.message ?? null);
+      } else {
+        end(
+          take,
+          endReason(stopped.reason, current.capped),
+          stopped.seconds,
+          error?.message ?? null,
+        );
+      }
+    } catch {
+      // `recording.json` keeps `endedAt` null, so the next launch recovers the take.
     }
-    session = null;
     set({ status: "idle", failed: null });
   };
 
@@ -354,8 +321,7 @@ export function createRecorder(deps: {
     const take = Math.max(0, ...readDir(callDir).map(Number).filter(Number.isInteger)) + 1;
     const dir = NodePath.join(callDir, String(take));
     NodeFS.mkdirSync(dir, { recursive: true });
-    const track = (who: "me" | "them") => NodePath.join(dir, `${who}.wav`);
-    const pending: Omit<Session, "child"> = {
+    const current: Session = {
       request,
       dir,
       pid: target.pid,
@@ -367,11 +333,16 @@ export function createRecorder(deps: {
       capped: false,
       soundAt: 0,
       nudged: false,
-    };
-    const current: Session = {
-      ...pending,
       child: helper.spawn(
-        ["record", "--pid", String(target.pid), "--them", track("them"), "--me", track("me")],
+        [
+          "record",
+          "--pid",
+          String(target.pid),
+          "--them",
+          NodePath.join(dir, FILES.them),
+          "--me",
+          NodePath.join(dir, FILES.me),
+        ],
         (line) => onLine(current, line),
         () => onClose(current),
       ),
@@ -387,20 +358,24 @@ export function createRecorder(deps: {
         fail(request.callId, `The recorder could not start. ${String(cause)}`),
       );
     },
-    stop: () => {
-      if (state.status === "recording") session?.child.stop();
-    },
-    /** Closes the helper's stdin, which finalizes both files. The next launch marks the take `app_quit`. */
+    stop: () => session?.child.stop(),
+    /** Closes the helper's stdin, which finalizes both files and ends the take as `app_quit`. */
     quit: () => session?.child.end(),
     remove: (callId: string) => {
-      if (session?.request.callId === callId) return;
-      NodeFS.rmSync(NodePath.join(root, callId), { recursive: true, force: true });
+      // NTFS folder names ignore case, so `abc` and `ABC` share one folder.
+      if (session?.request.callId.toLowerCase() === callId.toLowerCase()) return;
+      removeDir(NodePath.join(root, callId));
       deps.publish(snapshot());
     },
     /** Ends every take a quit or crash of the board left open. Runs at launch, before any Record. */
     recover: async () => {
-      for (const take of takes()) {
-        if (take.recording.endedAt === null) end(take, "app_quit", await repair(take.dir), null);
+      for (const take of takes().filter(({ recording }) => recording.endedAt === null)) {
+        const seconds = await repair(take.dir);
+        try {
+          end(take, "app_quit", seconds, null);
+        } catch {
+          // The next launch tries this take again.
+        }
       }
       deps.publish(snapshot());
     },
@@ -410,7 +385,7 @@ export function createRecorder(deps: {
         ({ recording }) => recording.endedAt !== null && Date.parse(recording.deleteAfter) <= now,
       );
       for (const { dir } of expired) {
-        NodeFS.rmSync(dir, { recursive: true, force: true });
+        removeDir(dir);
         removeIfEmpty(NodePath.dirname(dir));
       }
       if (expired.length > 0) deps.publish(snapshot());
@@ -439,8 +414,11 @@ function nodeHelper(exe: string): Helper {
   return {
     run: (args) =>
       new Promise((resolve) => {
-        NodeChildProcess.execFile(exe, [...args], { windowsHide: true }, (_error, stdout) =>
-          resolve(String(stdout ?? "")),
+        NodeChildProcess.execFile(
+          exe,
+          [...args],
+          { windowsHide: true, timeout: HELPER_TIMEOUT_MS },
+          (_error, stdout) => resolve(stdout),
         );
       }),
     spawn: (args, onLine, onClose) => {
@@ -458,7 +436,10 @@ function nodeHelper(exe: string): Helper {
 }
 
 export function registerRecorder(platform: NodeJS.Platform) {
-  const win32 = platform === "win32";
+  if (platform !== "win32") {
+    ipcMain.handle("board:recorder-state", () => null);
+    return { quit: () => undefined };
+  }
   const userData = app.getPath("userData");
   const localState = createLocalStateFile(NodePath.join(userData, "local-state.json"));
   const exe = NodePath.join(app.isPackaged ? process.resourcesPath : app.getAppPath(), HELPER);
@@ -475,7 +456,6 @@ export function registerRecorder(platform: NodeJS.Platform) {
       const on = snapshot.state.status === "recording";
       for (const window of windows()) {
         window.webContents.send("board:recorder-state", snapshot);
-        if (!win32) continue;
         window.setOverlayIcon(on ? recording : null, on ? "Recording a call" : "");
         window.setThumbarButtons(
           on ? [{ tooltip: "Stop recording", icon: stopIcon, click: () => recorder.stop() }] : [],
@@ -486,7 +466,7 @@ export function registerRecorder(platform: NodeJS.Platform) {
       if (!Notification.isSupported()) return;
       const notice = new Notification({
         title: "Is the call still on?",
-        body: `${title} has had no call audio for 10 minutes. Recording continues until you press Stop.`,
+        body: `${title} has had no call audio for ${NUDGE_AFTER_S / 60} minutes. Recording continues until you press Stop.`,
       });
       notice.on("click", () => windows()[0]?.show());
       notice.show();
@@ -498,11 +478,11 @@ export function registerRecorder(platform: NodeJS.Platform) {
     Option.map(decodeRequest(request), (valid) => void recorder.start(valid)),
   );
   ipcMain.on("board:recorder-stop", () => recorder.stop());
-  ipcMain.on("board:recording-delete", (_event, callId) =>
+  ipcMain.on("board:recorder-delete", (_event, callId) =>
     Option.map(decodeCallId(callId), recorder.remove),
   );
 
-  void recorder.recover().then(() => recorder.sweep());
+  void recorder.recover().finally(() => recorder.sweep());
   setInterval(() => recorder.sweep(), SWEEP_EVERY_MS);
   return { quit: recorder.quit };
 }

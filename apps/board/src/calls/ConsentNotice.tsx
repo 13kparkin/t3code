@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { createPortal } from "react-dom";
 
-import { CONSENT_LINE } from "./recorder";
+import { CopyConsentLine } from "./CopyConsentLine";
 
 /** Portaled out of the panned canvas. */
 export function ConsentNotice({
@@ -11,7 +10,6 @@ export function ConsentNotice({
   onAccept: () => void;
   onClose: () => void;
 }) {
-  const [copied, setCopied] = useState(false);
   return createPortal(
     <div
       className="fixed inset-0 z-30 grid place-items-center bg-black/50"
@@ -42,15 +40,7 @@ export function ConsentNotice({
           <button type="button" onClick={onClose} className="text-muted hover:text-fg">
             Cancel
           </button>
-          <button
-            type="button"
-            onClick={() =>
-              void navigator.clipboard.writeText(CONSENT_LINE).then(() => setCopied(true))
-            }
-            className="rounded-md border border-line px-2.5 py-1 text-fg hover:bg-hover"
-          >
-            {copied ? "Copied" : "Copy consent line"}
-          </button>
+          <CopyConsentLine className="rounded-md border border-line px-2.5 py-1 text-fg hover:bg-hover" />
           <button
             type="button"
             autoFocus

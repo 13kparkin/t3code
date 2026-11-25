@@ -1,0 +1,37 @@
+import * as Schema from "effect/Schema";
+
+import { CallApp } from "./board";
+
+/** Every call id is checked against this before the main process builds a path from it. */
+export const CallId = Schema.String.check(Schema.isPattern(/^[A-Za-z0-9-]{1,64}$/));
+
+export const RecordRequest = Schema.Struct({
+  callId: CallId,
+  boardId: Schema.String.check(Schema.isMaxLength(200)),
+  title: Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(80)),
+  app: CallApp,
+});
+export type RecordRequest = typeof RecordRequest.Type;
+
+/** One take of a call, kept beside its `me.wav` and `them.wav` as `recording.json`. */
+export const Recording = Schema.Struct({
+  callId: Schema.String,
+  boardId: Schema.String,
+  title: Schema.String,
+  app: CallApp,
+  exe: Schema.String,
+  targetPid: Schema.Number,
+  startedAt: Schema.String,
+  /** Null while recording, or after the board quit mid-call until the next launch recovers it. */
+  endedAt: Schema.NullOr(Schema.String),
+  endReason: Schema.NullOr(
+    Schema.Literals(["stopped", "target_exited", "max_duration", "error", "crashed", "app_quit"]),
+  ),
+  error: Schema.NullOr(Schema.String),
+  /** 16 kHz mono s16le WAV files on one clock. */
+  tracks: Schema.Array(
+    Schema.Struct({ who: Schema.Literals(["me", "them"]), file: Schema.String }),
+  ),
+  deleteAfter: Schema.String,
+});
+export type Recording = typeof Recording.Type;
