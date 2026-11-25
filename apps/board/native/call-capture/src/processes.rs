@@ -7,8 +7,6 @@ pub struct Process {
     pub title: String,
 }
 
-/// One root per exe, sorted by exe. A root's parent is not the same exe. When an exe has several
-/// roots, such as a child orphaned by its parent, the one with a window wins.
 pub fn roots(processes: &[Process]) -> Vec<&Process> {
     let exe_of: HashMap<u32, &str> = processes.iter().map(|p| (p.pid, p.exe.as_str())).collect();
     let mut picked: BTreeMap<&str, &Process> = BTreeMap::new();

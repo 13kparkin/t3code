@@ -101,7 +101,6 @@ fn snapshot() -> Vec<Process> {
     out
 }
 
-/// The first visible, titled top-level window of each process.
 fn window_titles() -> HashMap<u32, String> {
     unsafe extern "system" fn each(hwnd: HWND, lparam: LPARAM) -> BOOL {
         let titles = unsafe { &mut *(lparam.0 as *mut HashMap<u32, String>) };
@@ -152,7 +151,6 @@ impl IActivateAudioInterfaceCompletionHandler_Impl for Activated_Impl {
     }
 }
 
-/// One shared-mode capture client delivering 16 kHz mono s16le through an event.
 struct Stream {
     client: IAudioClient,
     capture: IAudioCaptureClient,
@@ -281,7 +279,6 @@ impl Drop for Stream {
     }
 }
 
-/// One output file on the shared wall clock, with the energy since the last level line.
 struct Track {
     wav: WavWriter,
     energy: f64,
@@ -297,8 +294,7 @@ impl Track {
         }
     }
 
-    /// Writes a packet, first padding silence when the track has fallen behind the clock,
-    /// because process loopback may deliver nothing while the target is quiet.
+    // Process loopback may deliver nothing while the target is quiet, so a lagging track pads silence.
     fn append(&mut self, samples: &[i16], now: u64) -> io::Result<()> {
         let behind = now.saturating_sub(self.wav.samples() + samples.len() as u64);
         if behind > MAX_LAG {

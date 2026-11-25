@@ -6,7 +6,6 @@ pub const SAMPLE_RATE: u32 = 16_000;
 const HEADER_LEN: u64 = 44;
 const BYTES_PER_SAMPLE: u64 = 2;
 
-/// The canonical 44-byte header of a 16 kHz mono s16le WAV holding `data_bytes` of samples.
 pub fn header(data_bytes: u64) -> [u8; 44] {
     let data = u32::try_from(data_bytes).unwrap_or(u32::MAX - 36);
     let byte_rate = SAMPLE_RATE * BYTES_PER_SAMPLE as u32;
@@ -63,7 +62,6 @@ impl WavWriter {
         self.samples
     }
 
-    /// Makes the file on disk a valid WAV of everything written so far.
     pub fn sync_header(&mut self) -> io::Result<()> {
         self.file.flush()?;
         let file = self.file.get_mut();
@@ -74,7 +72,6 @@ impl WavWriter {
     }
 }
 
-/// Rewrites the sizes of a WAV whose writer died, from the file length cut to whole samples.
 pub fn repair(path: &Path) -> io::Result<f64> {
     let mut file = OpenOptions::new().read(true).write(true).open(path)?;
     let mut existing = [0u8; 44];

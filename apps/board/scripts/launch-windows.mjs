@@ -73,7 +73,6 @@ function stageApp() {
     NodePath.join(appDir, "package.json"),
     JSON.stringify({ name: "agent-board", main: "dist-electron/electron/main.cjs" }),
   );
-  // Main finds the helper at app.getAppPath() in dev.
   NodeFS.copyFileSync(helper, NodePath.join(appDir, NodePath.basename(helper)));
   if (!devServerUrl) {
     NodeFS.cpSync(NodePath.join(boardDir, "dist"), NodePath.join(appDir, "dist"), {
