@@ -84,18 +84,22 @@ export function BoardScreen({
   } = useBoardView(project, listed);
   const cardStates = board.cardStates ?? NO_STATES;
   const freeAgents = board.freeAgents ?? NO_FREE;
+  const now = useAtomValue(clockAtom);
   const cards = useMemo(
-    () => splitCards(fullModel, freeAgents, cardStates),
-    [fullModel, freeAgents, cardStates],
+    () => splitCards(fullModel, freeAgents, cardStates, now),
+    [fullModel, freeAgents, cardStates, now],
   );
   const { model } = cards;
-  const now = useAtomValue(clockAtom);
   const saveCard = (key: string, state: CardState | null) =>
     void setCardState(registry, project, listed, key, state).then(setCardError);
   const openCardMenu = (event: MouseEvent, key: string, label: string, ticket: boolean) => {
     event.preventDefault();
     event.stopPropagation();
-    const state = cardStates[key];
+    const inDone = [...cards.done.agents, ...cards.done.free].some(
+      (agent) => agent.threadId === key,
+    );
+    // A ticketless agent out of Done is pinned to To do, while a free agent goes back to the canvas.
+    const out = fullModel.unassigned.some((agent) => agent.threadId === key) ? "todo" : null;
     setMenu({
       at: { x: event.clientX, y: event.clientY },
       label: `${label} actions`,
@@ -103,8 +107,8 @@ export function BoardScreen({
         ...(ticket
           ? []
           : [
-              state === "done"
-                ? { label: "Move out of Done", onSelect: () => saveCard(key, null) }
+              inDone
+                ? { label: "Move out of Done", onSelect: () => saveCard(key, out) }
                 : { label: "Move to Done", onSelect: () => saveCard(key, "done") },
             ]),
         { label: "Archive", onSelect: () => saveCard(key, "archived") },

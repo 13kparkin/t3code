@@ -72,7 +72,7 @@ export function Lanes({
   onChoose: (choice: TicketChoice) => void;
   onOpenAgent: (threadId: string, ticketKey: string | null) => void;
   onRemoveAddition: (id: string) => void;
-  /** The agent cards the user moved to Done. */
+  /** The agent cards in Done. */
   done: { readonly agents: ReadonlyArray<AgentView>; readonly free: ReadonlyArray<FreeAgent> };
   onCardMenu: (event: MouseEvent, key: string, label: string, ticket: boolean) => void;
   now: number;
@@ -151,7 +151,7 @@ export function Lanes({
           style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
         >
           <p className="px-2.5 pt-2 text-[11px] text-faint" style={{ height: UNASSIGNED_HEAD }}>
-            {isDone ? "Agents moved to Done" : "Started with no ticket"}
+            {isDone ? "Agents finished or moved to Done" : "Started with no ticket"}
           </p>
           <div
             className="flex flex-col"

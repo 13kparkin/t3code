@@ -2,9 +2,9 @@ import { describe, expect, it } from "vite-plus/test";
 
 import type { Ticket } from "../domain/ticket";
 import type { AgentView, BoardModel } from "./boardModel";
-import { splitCards } from "./cardStates";
+import { agentLane, splitCards } from "./cardStates";
 
-const agent = (threadId: string): AgentView => ({
+const agent = (threadId: string, extra: Partial<AgentView> = {}): AgentView => ({
   threadId,
   title: `title ${threadId}`,
   role: "task",
@@ -20,6 +20,7 @@ const agent = (threadId: string): AgentView => ({
   parentThreadId: null,
   round: null,
   updatedAt: "2026-11-20T10:00:00.000Z",
+  ...extra,
 });
 const ticket = (key: string): Ticket => ({ key, title: key.toLowerCase(), stage: "building" });
 const model: BoardModel = {
@@ -47,13 +48,18 @@ const free = [
 
 describe("splitting cards by their saved state", () => {
   it("Given a done and an archived card of each kind, when split, then each lands in one place only", () => {
-    const split = splitCards(model, free, {
-      "T-2": "archived",
-      "a-done": "done",
-      "a-gone": "archived",
-      "f-done": "done",
-      "f-gone-0123456789": "archived",
-    });
+    const split = splitCards(
+      model,
+      free,
+      {
+        "T-2": "archived",
+        "a-done": "done",
+        "a-gone": "archived",
+        "f-done": "done",
+        "f-gone-0123456789": "archived",
+      },
+      0,
+    );
     expect({
       tickets: split.model.lanes.building.map((view) => view.ticket.key),
       unassigned: split.model.unassigned.map((entry) => entry.threadId),
@@ -73,5 +79,46 @@ describe("splitting cards by their saved state", () => {
         { key: "f-gone-0123456789", label: "Agent 23456789" },
       ],
     });
+  });
+});
+
+describe("an unclaimed agent's lane", () => {
+  const ran = { latestRunId: "run-1" };
+  it.each([
+    { name: "never ran", extra: {}, state: undefined, lane: "todo" },
+    { name: "running", extra: { ...ran, runState: "working" }, state: undefined, lane: "todo" },
+    { name: "finished", extra: ran, state: undefined, lane: "done" },
+    { name: "cancelled", extra: { ...ran, runState: "stopped" }, state: undefined, lane: "done" },
+    { name: "failed", extra: { ...ran, runState: "failed" }, state: undefined, lane: "done" },
+    { name: "asking", extra: { ...ran, pendingRequest: true }, state: undefined, lane: "todo" },
+    {
+      name: "waiting on children",
+      extra: { ...ran, waitingOnChildren: true },
+      state: undefined,
+      lane: "todo",
+    },
+    { name: "finished, moved out of Done", extra: ran, state: "todo", lane: "todo" },
+    {
+      name: "running, moved to Done",
+      extra: { ...ran, runState: "working" },
+      state: "done",
+      lane: "done",
+    },
+    { name: "finished, archived", extra: ran, state: "archived", lane: "archived" },
+  ] as const)("Given $name, then it sits in $lane", ({ extra, state, lane }) => {
+    expect(agentLane(agent("a", extra), state, 0)).toBe(lane);
+  });
+
+  it("Given a finished and a running agent with no saved state, when split, then only the finished one is in Done", () => {
+    const split = splitCards(
+      { ...model, unassigned: [agent("run", { ...ran, runState: "working" }), agent("end", ran)] },
+      [],
+      {},
+      0,
+    );
+    expect({
+      todo: split.model.unassigned.map((entry) => entry.threadId),
+      done: split.done.agents.map((entry) => entry.threadId),
+    }).toEqual({ todo: ["run"], done: ["end"] });
   });
 });

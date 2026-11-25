@@ -66,7 +66,7 @@ export function hiddenFilters(
 
 /** The key of the one frame that holds the agents no ticket claims. */
 export const UNASSIGNED_KEY = "__unassigned";
-/** The key of the Done lane's frame of agent cards the user moved to Done. */
+/** The key of the Done lane's frame of agent cards that finished or that the user moved to Done. */
 export const DONE_AGENTS_KEY = "__done_agents";
 /** A lane card's frame key is this and the addition's id. */
 export const ADDITION_KEY = "__add:";
@@ -307,7 +307,7 @@ export function besideLanes(
   return covers ? { x: at.x, y: bottom + LEFT } : { x: at.x, y: at.y };
 }
 
-/** The number a lane's header shows: its ticket frames and the agents moved to Done, or the For you lane's open items. */
+/** The number a lane's header shows: its ticket frames and the agents in Done, or the For you lane's open items. */
 export function laneCount(
   lane: LaneBox,
   views: ReadonlyMap<string, unknown>,

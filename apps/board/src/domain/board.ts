@@ -22,7 +22,7 @@ export type RoleOverride = typeof RoleOverride.Type;
 const FreeAgent = Schema.Struct({ threadId: Text, x: Schema.Finite, y: Schema.Finite });
 export type FreeAgent = typeof FreeAgent.Type;
 
-export const CardState = Schema.Literals(["done", "archived"]);
+export const CardState = Schema.Literals(["todo", "done", "archived"]);
 export type CardState = typeof CardState.Type;
 
 export const Board = Schema.Struct({
@@ -47,7 +47,7 @@ export const Board = Schema.Struct({
   roleRequests: Schema.optionalKey(Schema.Record(Text, Text)),
   /** Agents the user started from the canvas, outside the orchestrator, at their place on it. Only the app writes this. */
   freeAgents: Schema.optionalKey(Schema.Array(FreeAgent)),
-  /** Cards the user moved to Done or archived, by ticket key or thread id. Only the app writes this. */
+  /** Cards the user moved to To do or Done, or archived, by ticket key or thread id. Only the app writes this. */
   cardStates: Schema.optionalKey(Schema.Record(Text, CardState)),
 });
 export type Board = typeof Board.Type;
