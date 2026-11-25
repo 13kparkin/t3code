@@ -5,6 +5,7 @@ import type {
   BoardBridge,
   BrowserTabState,
   EngineState,
+  RecorderSnapshot,
 } from "../src/connection/engineState";
 
 const bridge: BoardBridge = {
@@ -53,6 +54,17 @@ const bridge: BoardBridge = {
     download: () => ipcRenderer.send("board:app-update-download"),
     restart: (activeRuns) => ipcRenderer.send("board:app-update-restart", activeRuns),
     setPrereleases: (enabled) => ipcRenderer.send("board:app-update-prereleases", enabled),
+  },
+  recorder: {
+    snapshot: () => ipcRenderer.invoke("board:recorder-state"),
+    onSnapshot: (listener) => {
+      const handler = (_event: IpcRendererEvent, snapshot: RecorderSnapshot) => listener(snapshot);
+      ipcRenderer.on("board:recorder-state", handler);
+      return () => void ipcRenderer.off("board:recorder-state", handler);
+    },
+    start: (request) => ipcRenderer.send("board:recorder-start", request),
+    stop: () => ipcRenderer.send("board:recorder-stop"),
+    deleteAudio: (callId) => ipcRenderer.send("board:recording-delete", callId),
   },
 };
 

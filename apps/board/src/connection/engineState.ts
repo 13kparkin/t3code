@@ -1,3 +1,5 @@
+import type { CallApp } from "../domain/board";
+
 export type EngineState =
   | { readonly phase: "connecting" }
   | { readonly phase: "starting" }
@@ -49,6 +51,69 @@ export interface BoardBridge {
   ) => Promise<string>;
   readonly browser: BrowserHost;
   readonly appUpdate: AppUpdateHost;
+  readonly recorder: RecorderHost;
+}
+
+/** One take of a call, kept beside its `me.wav` and `them.wav` as `recording.json`. */
+export interface Recording {
+  readonly callId: string;
+  readonly boardId: string;
+  readonly title: string;
+  readonly app: CallApp;
+  readonly exe: string;
+  readonly targetPid: number;
+  readonly startedAt: string;
+  /** Null while recording, or after the board quit mid-call until the next launch recovers it. */
+  readonly endedAt: string | null;
+  readonly endReason:
+    | "stopped"
+    | "target_exited"
+    | "max_duration"
+    | "error"
+    | "crashed"
+    | "app_quit"
+    | null;
+  readonly error: string | null;
+  /** 16 kHz mono s16le WAV files on one clock. */
+  readonly tracks: ReadonlyArray<{ readonly who: "me" | "them"; readonly file: string }>;
+  readonly deleteAfter: string;
+}
+
+export type RecorderState =
+  | {
+      readonly status: "idle";
+      /** Why the last Record press recorded nothing. */
+      readonly failed: { readonly callId: string; readonly message: string } | null;
+    }
+  | { readonly status: "starting"; readonly callId: string }
+  | {
+      readonly status: "recording";
+      readonly callId: string;
+      readonly title: string;
+      readonly startedAt: string;
+      readonly micMissing: boolean;
+    };
+
+export interface RecorderSnapshot {
+  readonly state: RecorderState;
+  readonly recordings: ReadonlyArray<Recording>;
+}
+
+export interface RecordRequest {
+  readonly callId: string;
+  readonly boardId: string;
+  readonly title: string;
+  readonly app: CallApp;
+}
+
+/** The call recorder, which the main process runs. Main refuses to start until consent is saved. */
+export interface RecorderHost {
+  readonly snapshot: () => Promise<RecorderSnapshot>;
+  readonly onSnapshot: (listener: (snapshot: RecorderSnapshot) => void) => () => void;
+  readonly start: (request: RecordRequest) => void;
+  readonly stop: () => void;
+  /** Removes every take of the call from this PC. */
+  readonly deleteAudio: (callId: string) => void;
 }
 
 /** The app's own release, which only the packaged app checks for and installs. */

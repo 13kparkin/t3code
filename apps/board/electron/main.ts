@@ -7,6 +7,7 @@ import { app, BrowserWindow, Menu, nativeTheme, net, protocol, shell } from "ele
 import { registerAppUpdater } from "./appUpdater";
 import { registerBrowserViews } from "./browserView";
 import { registerEngineIpc } from "./ipc";
+import { registerRecorder } from "./recorder";
 
 const SCHEME = "agentboard";
 // oxlint-disable-next-line t3code/no-global-process-runtime -- The board has no Effect runtime.
@@ -24,6 +25,10 @@ const MACOS_TOPBAR_HEIGHT = 52;
 const MACOS_WINDOW_BUTTON_RADIUS = 7;
 
 app.setName("Agent Board");
+// Windows shows a notification only for an app with an AppUserModelID. Packaged, it is the installer's appId.
+if (platform === "win32") {
+  app.setAppUserModelId(app.isPackaged ? "com.13kparkin.agentboard" : process.execPath);
+}
 nativeTheme.themeSource = "dark";
 if (cdpPort) {
   app.commandLine.appendSwitch("remote-debugging-port", cdpPort);
@@ -85,7 +90,12 @@ const engine = registerEngineIpc({ env: process.env, platform });
 
 app.on("window-all-closed", () => app.quit());
 
-app.on("before-quit", () => engine.release());
+let recorder: ReturnType<typeof registerRecorder> | null = null;
+
+app.on("before-quit", () => {
+  engine.release();
+  recorder?.quit();
+});
 
 void app.whenReady().then(() => {
   // macOS keeps its menu for the standard Cmd shortcuts.
@@ -93,6 +103,7 @@ void app.whenReady().then(() => {
   protocol.handle(SCHEME, serveRenderer);
   registerBrowserViews();
   registerAppUpdater();
+  recorder = registerRecorder(platform);
   engine.start();
   openWindow();
 });
