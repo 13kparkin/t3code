@@ -428,7 +428,8 @@ export function Composer({
         performance.mark("board:attach-drop");
         addFiles(Array.from(event.dataTransfer.files));
       }}
-      onFocus={() => setFocused(true)}
+      // Only the text box opens the input, as T3 web skips its resting controls; a button that moved it would miss its click.
+      onFocus={(event) => event.target instanceof HTMLTextAreaElement && setFocused(true)}
       onBlur={(event) => {
         if (
           !(

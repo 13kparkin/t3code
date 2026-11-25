@@ -38,11 +38,13 @@ export function zoomAt(view: View, k: number, px: number, py: number): View {
  * Never fits below FIT_FLOOR so content stays readable; content wider than the
  * screen at that zoom is aligned to its top left corner and panned instead.
  */
-export function fitToContent(content: Rect | null, size: Size): View {
+export function fitToContent(content: Rect | null, size: Size, floorFrom = content): View {
   if (!content) return INITIAL_VIEW;
   const availW = size.width - FIT_PADDING * 2;
   const availH = size.height - FIT_PADDING * 2;
-  const k = Math.max(FIT_FLOOR, Math.min(availW / content.width, availH / content.height));
+  const fit = (rect: Rect) => Math.min(availW / rect.width, availH / rect.height);
+  // The floor keeps lanes readable; once they fit above it, cards placed past them may zoom out further.
+  const k = floorFrom && fit(floorFrom) >= FIT_FLOOR ? Math.max(MIN_ZOOM, fit(content)) : FIT_FLOOR;
   const fitsW = content.width * k <= availW;
   const fitsH = content.height * k <= availH;
   return {

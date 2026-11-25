@@ -22,6 +22,7 @@ import {
   type Layout,
   LANE_HEAD,
   LANE_LABEL,
+  laneCount,
   reorderByDrag,
   UNASSIGNED_HEAD,
   UNASSIGNED_KEY,
@@ -112,7 +113,9 @@ export function Lanes({
               {LANE_LABEL[lane.id]}
               {lane.id === "todo" && queued ? " · queued" : ""}
             </span>
-            <span className="text-[11px] text-faint">{laneCount(lane, views, forYouOpen)}</span>
+            <span className="text-[11px] text-faint">
+              {laneCount(lane, views, forYouOpen, done.agents.length + done.free.length)}
+            </span>
             <span className="flex-1" />
             {lane.id === "for_you" && (
               <Tooltip text="Hide lane" side="bottom" align="end">
@@ -291,10 +294,4 @@ export function Lanes({
       )}
     </>
   );
-}
-
-function laneCount(lane: LaneBox, views: ReadonlyMap<string, unknown>, forYouOpen: number) {
-  return lane.id === "for_you"
-    ? forYouOpen
-    : lane.frames.filter((frame) => views.has(frame.key)).length;
 }

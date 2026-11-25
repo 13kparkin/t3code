@@ -11,6 +11,7 @@ import {
   zoomAt,
   type View,
 } from "./viewport";
+import { withCards } from "./layout";
 
 const worldPointAt = (view: View, px: number, py: number) => ({
   x: (px - view.x) / view.k,
@@ -68,6 +69,14 @@ describe("fitToContent", () => {
     expect(view.k).toBe(FIT_FLOOR);
     expect(view.x + 50 * view.k).toBeCloseTo(40, 6);
     expect(view.y + 20 * view.k).toBeCloseTo(40, 6);
+  });
+
+  it("Given lanes that fit and a free card dragged past them, when fit, then the card shows too", () => {
+    const lanes = { x: 0, y: 0, width: 1400, height: 700 };
+    const content = withCards(lanes, [{ x: 1475.39, y: -60.79 }], { width: 320, height: 380 });
+    const screen = { width: 1280, height: 800 };
+    const view = fitToContent(content, screen, lanes);
+    expect(view.x + (content.x + content.width) * view.k).toBeLessThanOrEqual(screen.width);
   });
 
   it("resets to the initial view when there is no content", () => {

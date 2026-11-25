@@ -276,3 +276,18 @@ export function besideLanes(
     at.x < right && at.x + size.width > left && at.y < bottom && at.y + size.height > top;
   return covers ? { x: at.x, y: bottom + LEFT } : { x: at.x, y: at.y };
 }
+
+/** The number a lane's header shows: its ticket frames and the agents moved to Done, or the For you lane's open items. */
+export function laneCount(
+  lane: LaneBox,
+  views: ReadonlyMap<string, unknown>,
+  forYouOpen: number,
+  doneAgents: number,
+) {
+  if (lane.id === "for_you") return forYouOpen;
+  return lane.frames.reduce(
+    (count, frame) =>
+      count + (frame.key === DONE_AGENTS_KEY ? doneAgents : views.has(frame.key) ? 1 : 0),
+    0,
+  );
+}

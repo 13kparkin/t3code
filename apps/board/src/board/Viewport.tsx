@@ -41,11 +41,14 @@ export const useRevealRef = () => useContext(RevealContext);
 
 export function Viewport({
   content,
+  floorFrom,
   onDropFiles,
   onEmptyMenu,
   children,
 }: {
   content?: Rect;
+  /** The part of `content` that Fit to content never shrinks below its readable floor. */
+  floorFrom?: Rect;
   /** Files dropped anywhere on the canvas. */
   onDropFiles?: (files: File[]) => void;
   /** A right-click on empty canvas, with the screen point and the canvas point under it. */
@@ -101,7 +104,7 @@ export function Viewport({
 
   const fit = () => {
     const rect = surfaceRef.current?.getBoundingClientRect();
-    if (rect) setView(fitToContent(content ?? null, rect));
+    if (rect) setView(fitToContent(content ?? null, rect, floorFrom ?? content));
   };
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
