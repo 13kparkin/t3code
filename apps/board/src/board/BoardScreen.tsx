@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import { ArtifactsProvider } from "../artifacts/ArtifactsContext";
 import { useBoardArtifacts } from "../artifacts/useBoardArtifacts";
 import { chatSlotAtom, chooseTicket, ticketChoiceAtom, ticketSlotAtom } from "../browser/panel";
+import { agentFile, cardFile, sendToComposer } from "../chat/cardAttachment";
 import { OrchestratorPanel } from "../chat/OrchestratorPanel";
 import { MainTabs } from "../files/MainTabs";
 import { visibleAdditions } from "../domain/additions";
@@ -18,7 +19,7 @@ import { useThreadFamily } from "../state/family";
 import { clockAtom, PrProvider } from "../state/prStatus";
 import { focusedCardAtom, useBoardForYou } from "../state/forYou";
 import { addDocs } from "../state/attachmentUploads";
-import { countBuilders } from "../state/boardModel";
+import { allAgents, countBuilders } from "../state/boardModel";
 import { FreeAgents } from "./FreeAgents";
 import { useBoardView } from "../state/boardView";
 import { issuePullAtom } from "../state/issuePull";
@@ -27,7 +28,7 @@ import { setHiddenAdditions } from "../state/reviews";
 import type { ValidBoard } from "../store/boardFiles";
 import { openAgentPanel } from "../state/agentPanel";
 import { moveFreeAgent, setCardState, startFreeAgent } from "../state/boardCards";
-import { splitCards } from "../state/cardStates";
+import { freeAgentLabel, splitCards } from "../state/cardStates";
 import { ContextMenu } from "../ui/ContextMenu";
 import type { PopMenuItem } from "../ui/MenuList";
 import { FREE_CARD } from "./FreeAgentCard";
@@ -99,10 +100,33 @@ export function BoardScreen({
       (agent) => agent.threadId === key,
     );
     const ticketless = fullModel.unassigned.some((agent) => agent.threadId === key);
+    const view = ticket
+      ? Object.values(fullModel.lanes)
+          .flat()
+          .find((entry) => entry.ticket.key === key)
+      : undefined;
+    const file = () =>
+      view === undefined
+        ? agentFile(
+            allAgents(fullModel).find((agent) => agent.threadId === key) ?? {
+              threadId: key,
+              title: freeAgentLabel(key),
+            },
+          )
+        : cardFile(view.ticket);
     setMenu({
       at: { x: event.clientX, y: event.clientY },
       label: `${label} actions`,
       items: [
+        {
+          label: "Send to chat",
+          onSelect: () =>
+            setCardError(
+              sendToComposer(file())
+                ? null
+                : "Start this board's orchestrator to send a card to chat.",
+            ),
+        },
         ...(ticket
           ? []
           : [

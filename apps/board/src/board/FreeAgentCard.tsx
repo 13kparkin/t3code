@@ -3,12 +3,21 @@ import { runAtomCommand } from "@t3tools/client-runtime/state/runtime";
 import { type EnvironmentId, MessageId, ThreadId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import { ArrowUp, MoreHorizontal, Square } from "lucide-react";
-import { type FormEvent, type MouseEvent, useContext, useRef, useState } from "react";
+import {
+  type FormEvent,
+  type MouseEvent,
+  type PointerEvent,
+  useContext,
+  useRef,
+  useState,
+} from "react";
 
+import { agentFile, dropOnComposer } from "../chat/cardAttachment";
 import { isRunLive } from "../chat/timeline";
 import type { FreeAgent } from "../domain/board";
 import { failureText } from "../settings/failureText";
 import { newId } from "../state/boards";
+import { freeAgentLabel } from "../state/cardStates";
 import { interruptTurn, startTurn, useEnvironmentThread } from "../state/threads";
 import { AgentLog } from "./AgentLog";
 import type { CardStatus } from "./ticketStatus";
@@ -17,7 +26,7 @@ import { useViewScale } from "./Viewport";
 export const FREE_CARD = { width: 320, height: 380 } as const;
 const DRAG_THRESHOLD_PX = 4;
 
-/** An agent the user started on the canvas and talks to here, not through the orchestrator. Its header drags it. */
+/** An agent the user started on the canvas and talks to here, not through the orchestrator. Its header drags it, or into the chat. */
 export function FreeAgentCard({
   environmentId,
   agent,
@@ -77,8 +86,16 @@ export function FreeAgentCard({
     );
   };
 
-  const end = () => {
-    if (offset !== null) {
+  const end = (release: PointerEvent | null) => {
+    const attached =
+      release !== null &&
+      offset !== null &&
+      dropOnComposer(
+        release.clientX,
+        release.clientY,
+        agentFile({ threadId: agent.threadId, title: freeAgentLabel(agent.threadId) }),
+      );
+    if (offset !== null && !attached) {
       const next = { x: at.x + offset.dx, y: at.y + offset.dy };
       setPlaced(next);
       onMove(next);
@@ -119,7 +136,7 @@ export function FreeAgentCard({
           setOffset({ dx: dx / scale, dy: dy / scale });
         }}
         onPointerUp={end}
-        onPointerCancel={end}
+        onPointerCancel={() => end(null)}
       >
         <h3 className="min-w-0 flex-1 truncate font-semibold">
           {projection?.thread.title ?? "Agent"}

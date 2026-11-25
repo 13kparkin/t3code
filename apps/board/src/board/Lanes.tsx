@@ -1,7 +1,8 @@
 import { RegistryContext } from "@effect/atom-react";
 import { EyeOff } from "lucide-react";
-import { type MouseEvent, type ReactNode, useContext, useState } from "react";
+import { type MouseEvent, type ReactNode, useContext, useRef, useState } from "react";
 
+import { agentFile, dropOnComposer } from "../chat/cardAttachment";
 import type { FreeAgent } from "../domain/board";
 import type { AgentView, BoardModel } from "../state/boardModel";
 import { freeAgentLabel } from "../state/cardStates";
@@ -38,6 +39,8 @@ import {
 import { RemoveAddition } from "./RemoveAddition";
 import { TicketFrame } from "./TicketFrame";
 import { ticketStatus } from "./ticketStatus";
+
+const DRAG_THRESHOLD_PX = 4;
 
 const LANE_TONE = {
   for_you: "bg-amber-500 text-black",
@@ -79,6 +82,8 @@ export function Lanes({
   const registry = useContext(RegistryContext);
   const additions = new Map(usePrContext().additions.map((item) => [item.id, item]));
   const [drag, setDrag] = useState<{ key: string; dy: number } | null>(null);
+  // An agent row has no place to drag to but the chat, so it only tracks whether a press moved.
+  const rowPress = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const views = new Map(
     Object.values(model.lanes)
       .flat()
@@ -131,6 +136,7 @@ export function Lanes({
         ...(isDone ? done.agents : model.unassigned).map((agent) => ({
           threadId: agent.threadId,
           title: agent.title,
+          role: agent.role,
           status: ticketStatus([agent], now),
           detail: `${agent.role} · ${ago(agent.updatedAt)}`,
         })),
@@ -161,9 +167,30 @@ export function Lanes({
                 key={row.threadId}
                 type="button"
                 aria-pressed={row.threadId === choice?.threadId}
-                // A press that starts on a row is a click, not the start of a pan.
-                onPointerDown={(event) => event.stopPropagation()}
-                onClick={() => onOpenAgent(row.threadId, null)}
+                // A press that starts on a row is a click or a drag into the chat, not the start of a pan.
+                onPointerDown={(event) => {
+                  event.stopPropagation();
+                  if (event.button === 0)
+                    rowPress.current = { x: event.clientX, y: event.clientY, moved: false };
+                }}
+                onPointerMove={(event) => {
+                  const press = rowPress.current;
+                  if (press === null || press.moved) return;
+                  if (
+                    Math.hypot(event.clientX - press.x, event.clientY - press.y) < DRAG_THRESHOLD_PX
+                  )
+                    return;
+                  press.moved = true;
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                }}
+                onPointerUp={(event) => {
+                  if (rowPress.current?.moved)
+                    dropOnComposer(event.clientX, event.clientY, agentFile(row));
+                }}
+                onClick={() => {
+                  if (!rowPress.current?.moved) onOpenAgent(row.threadId, null);
+                  rowPress.current = null;
+                }}
                 onContextMenu={(event) => onCardMenu(event, row.threadId, row.title, false)}
                 style={{ height: CARD_HEIGHT }}
                 className={`flex shrink-0 flex-col justify-center gap-1 rounded-md border bg-bg px-2.5 text-left hover:bg-hover ${row.threadId === choice?.threadId ? "border-focus" : "border-line"}`}
@@ -187,6 +214,7 @@ export function Lanes({
         selected={choice?.ticketKey === box.key}
         onDrag={(dy) => setDrag({ key: box.key, dy: clampDrag(lane, frame, dy) })}
         onDrop={() => drop(lane)}
+        onCancel={() => setDrag(null)}
         onMenu={(event) => onCardMenu(event, box.key, box.key, true)}
         onOpen={() => {
           const active = activeAgentOf(view.agents);
