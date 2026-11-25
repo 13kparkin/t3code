@@ -15,6 +15,8 @@ import type {
   ServerProviderSlashCommand,
 } from "@t3tools/contracts";
 
+import { AGENTS_SCOPE, agentSkillPrompt } from "./agentSkills";
+
 export type SlashGroup = "command" | "skill" | "action" | "file" | "pull-request";
 
 /** The composer actions T3's own chat offers, which the board runs itself. */
@@ -88,7 +90,7 @@ export function buildSlashItems(input: {
       group: "skill",
       name: skill.name,
       label: `$${skill.name}`,
-      insert: `$${skill.name}`,
+      insert: skill.scope === AGENTS_SCOPE ? agentSkillPrompt(skill) : `$${skill.name}`,
       description:
         skill.shortDescription ??
         skill.description ??

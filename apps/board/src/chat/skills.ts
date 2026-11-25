@@ -8,6 +8,7 @@ import type { ServerProviderSkill } from "@t3tools/contracts";
 import { createContext, useMemo } from "react";
 
 import { engineProvidersAtom } from "../state/server";
+import { agentSkillsAtom, mergeSkills } from "./agentSkills";
 
 const NO_SKILLS: ReadonlyArray<ServerProviderSkill> = [];
 
@@ -20,10 +21,14 @@ export function useThreadSkills(
 ): ReadonlyArray<ServerProviderSkill> {
   const providers = useAtomValue(engineProvidersAtom);
   const { workspaceRoot: cwd } = project;
+  const agents = useAtomValue(agentSkillsAtom(cwd));
   return useMemo(() => {
     const provider = resolveProvidersForCwd(providers, cwd).find(
       (entry) => entry.instanceId === instanceId,
     );
-    return provider === undefined ? NO_SKILLS : resolveProviderSkillsForCwd(provider, cwd);
-  }, [providers, cwd, instanceId]);
+    return mergeSkills(
+      provider === undefined ? NO_SKILLS : resolveProviderSkillsForCwd(provider, cwd),
+      agents,
+    );
+  }, [providers, cwd, instanceId, agents]);
 }

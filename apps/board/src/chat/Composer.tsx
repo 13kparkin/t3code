@@ -39,6 +39,7 @@ import { threadKey, setThreadShown } from "../state/chatThread";
 import { cancelQueued, interruptTurn, startTurn, steerQueued } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
 import { attachmentInputs, pastedFiles } from "./attachments";
+import { agentSkillsAtom, mergeSkills } from "./agentSkills";
 import { prepareSend } from "./prepareSend";
 import { AttachedFiles } from "./AttachedFiles";
 import { ComposerActions } from "./ComposerActions";
@@ -156,6 +157,7 @@ export function Composer({
       ? { reason: SWITCH_BLOCKED, stayOn: baseInstanceId(thread.modelSelection.instanceId) }
       : null;
 
+  const agentSkills = useAtomValue(agentSkillsAtom(cwd));
   const trigger = useMemo(() => detectSlashTrigger(draft, cursor), [draft, cursor]);
   const open = trigger !== null && closedFor !== draft;
   const restIsBlank = draft.slice(cursor).trim() === "";
@@ -167,13 +169,23 @@ export function Composer({
             trigger,
             restIsBlank,
             commands: resolveProviderSlashCommandsForCwd(provider, cwd),
-            skills: resolveProviderSkillsForCwd(provider, cwd),
+            skills: mergeSkills(resolveProviderSkillsForCwd(provider, cwd), agentSkills),
             canClear: canFresh,
             files: found.files,
             pullRequests: found.pullRequests,
           })
         : [],
-    [open, trigger, restIsBlank, provider, cwd, canFresh, found.files, found.pullRequests],
+    [
+      open,
+      trigger,
+      restIsBlank,
+      provider,
+      cwd,
+      canFresh,
+      found.files,
+      found.pullRequests,
+      agentSkills,
+    ],
   );
   const highlighted = Math.min(active, Math.max(ranked.length - 1, 0));
   const highlightedItem = open ? ranked[highlighted] : undefined;
