@@ -3,43 +3,49 @@ import type { CardView } from "../domain/forYou";
 import { TICKET_STAGES, type TicketStage } from "../domain/ticket";
 import type { BoardModel } from "../state/boardModel";
 import type { FrameOrder } from "../state/boardUi";
+import { isWorking } from "./ticketStatus";
 import type { Rect } from "./viewport";
 
-type StageLane = "todo" | "running";
+type StageLane = "todo" | "running" | "waiting" | "done";
 export type LaneId = "for_you" | StageLane;
-const LANE_IDS: ReadonlyArray<LaneId> = ["for_you", "todo", "running"];
+const LANE_IDS: ReadonlyArray<LaneId> = ["for_you", "todo", "running", "waiting", "done"];
 
 export const LANE_LABEL = {
   for_you: "For you",
   todo: "To do",
   running: "Running",
+  waiting: "Waiting",
+  done: "Done",
 } as const satisfies Record<LaneId, string>;
 
-/**
- * Which lane holds each stage, in tag order. A dim stage's tag starts off, and once shown its
- * cards sit after the others in their lane, dimmed.
- */
+/** Each stage's tag colour. */
 export const STAGE_TAGS = {
-  todo: { lane: "todo", dim: false, tone: "text-zinc-300" },
-  planned: { lane: "todo", dim: false, tone: "text-zinc-400" },
-  building: { lane: "running", dim: false, tone: "text-blue-300" },
-  reviewing: { lane: "running", dim: false, tone: "text-violet-300" },
-  verifying: { lane: "running", dim: false, tone: "text-cyan-300" },
-  pr: { lane: "running", dim: false, tone: "text-indigo-300" },
-  awaiting_approval: { lane: "running", dim: false, tone: "text-orange-300" },
-  merged: { lane: "running", dim: true, tone: "text-emerald-300" },
-  off_path: { lane: "running", dim: true, tone: "text-red-300" },
-} as const satisfies Record<
-  TicketStage,
-  { readonly lane: StageLane; readonly dim: boolean; readonly tone: string }
->;
+  todo: { tone: "text-zinc-300" },
+  planned: { tone: "text-zinc-400" },
+  building: { tone: "text-blue-300" },
+  reviewing: { tone: "text-violet-300" },
+  verifying: { tone: "text-cyan-300" },
+  pr: { tone: "text-indigo-300" },
+  awaiting_approval: { tone: "text-orange-300" },
+  merged: { tone: "text-emerald-300" },
+  off_path: { tone: "text-red-300" },
+} as const satisfies Record<TicketStage, { readonly tone: string }>;
 
+/** A ticket sits in Running only while one of its agents is live, and an open ticket with none waits. */
+export function ticketLane(stage: TicketStage, live: boolean): StageLane {
+  if (stage === "merged" || stage === "off_path") return "done";
+  if (live) return "running";
+  return stage === "todo" || stage === "planned" ? "todo" : "waiting";
+}
+
+/** The filter id of the Done lane, which starts hidden. */
+export const DONE_TAG = "done";
 export const stageTagId = (stage: TicketStage) => `stage:${stage}`;
 export const additionLaneId = (id: string) => `add:${id}`;
 
 /**
- * The filter ids that hide their cards or lane: the For you lane, each stage's tag, and each
- * `canvas` addition's lane. The saved set holds the ids the user flipped from their default.
+ * The filter ids that hide their cards or lane: the For you and Done lanes, each stage's tag, and
+ * each `canvas` addition's lane. The saved set holds the ids the user flipped from their default.
  */
 export function hiddenFilters(
   flipped: ReadonlySet<string>,
@@ -47,7 +53,8 @@ export function hiddenFilters(
 ): ReadonlySet<string> {
   const filters = [
     { id: "for_you", starts: false },
-    ...TICKET_STAGES.map((stage) => ({ id: stageTagId(stage), starts: STAGE_TAGS[stage].dim })),
+    { id: DONE_TAG, starts: true },
+    ...TICKET_STAGES.map((stage) => ({ id: stageTagId(stage), starts: false })),
     ...additions.flatMap((item) =>
       item.place === "canvas" ? [{ id: additionLaneId(item.id), starts: false }] : [],
     ),
@@ -59,6 +66,8 @@ export function hiddenFilters(
 
 /** The key of the one frame that holds the agents no ticket claims. */
 export const UNASSIGNED_KEY = "__unassigned";
+/** The key of the Done lane's frame of agent cards the user moved to Done. */
+export const DONE_AGENTS_KEY = "__done_agents";
 /** A lane card's frame key is this and the addition's id. */
 export const ADDITION_KEY = "__add:";
 /** Each orchestrator line and problem line is one 18px row on the orchestrator card, so the lanes start that much lower. */
@@ -146,6 +155,8 @@ export function layoutBoard(
   hidden: ReadonlySet<string> = NO_HIDDEN,
   additions: ReadonlyArray<Addition> = [],
   problemLines = 0,
+  doneAgents = 0,
+  now = 0,
 ): Layout {
   const lines = additions.filter((item) => item.place === "orchestrator").length + problemLines;
   const top = LANES_TOP + lines * ADDITION_LINE;
@@ -156,22 +167,23 @@ export function layoutBoard(
     const items: Array<{ key: string; height: number }> = [];
     if (id !== "for_you") {
       for (const card of additions) {
-        if (card.place === "lane" && STAGE_TAGS[card.lane].lane === id) {
+        if (card.place === "lane" && ticketLane(card.lane, false) === id) {
           items.push({ key: ADDITION_KEY + card.id, height: ADDITION_FRAME });
         }
       }
       if (id === "todo" && model.unassigned.length > 0) {
         items.push({ key: UNASSIGNED_KEY, height: unassignedHeight(model.unassigned.length) });
       }
-      const shown = TICKET_STAGES.filter(
-        (stage) => STAGE_TAGS[stage].lane === id && !hidden.has(stageTagId(stage)),
-      );
-      for (const dim of [false, true]) {
-        const keys = shown
-          .filter((stage) => STAGE_TAGS[stage].dim === dim)
-          .flatMap((stage) => model.lanes[stage].map((view) => view.ticket.key));
-        for (const key of orderedKeys(keys, order[id])) items.push({ key, height: CARD_HEIGHT });
+      if (id === "done" && doneAgents > 0) {
+        items.push({ key: DONE_AGENTS_KEY, height: unassignedHeight(doneAgents) });
       }
+      const keys = TICKET_STAGES.filter((stage) => !hidden.has(stageTagId(stage))).flatMap(
+        (stage) =>
+          model.lanes[stage]
+            .filter((view) => ticketLane(stage, isWorking(view.agents, now)) === id)
+            .map((view) => view.ticket.key),
+      );
+      for (const key of orderedKeys(keys, order[id])) items.push({ key, height: CARD_HEIGHT });
     }
     let y = top + LANE_HEAD;
     const frames = items.map(({ key, height }): FrameBox => {
@@ -224,4 +236,58 @@ export function clampDrag(lane: LaneBox, frame: FrameBox, dy: number): number {
   const min = lane.y + LANE_HEAD - frame.y;
   const max = lane.y + lane.height - LANE_PAD - frame.height - frame.y;
   return Math.min(Math.max(dy, min), Math.max(min, max));
+}
+
+/** The canvas content grown to cover cards placed freely on it. */
+export function withCards(
+  content: Rect,
+  cards: ReadonlyArray<{ readonly x: number; readonly y: number }>,
+  size: { readonly width: number; readonly height: number },
+): Rect {
+  if (cards.length === 0) return content;
+  const xs = cards.map((card) => card.x);
+  const ys = cards.map((card) => card.y);
+  const x = Math.min(content.x, ...xs.map((value) => value - LEFT));
+  const y = Math.min(content.y, ...ys.map((value) => value - LEFT));
+  const right = Math.max(
+    content.x + content.width,
+    ...xs.map((value) => value + size.width + LEFT),
+  );
+  const bottom = Math.max(
+    content.y + content.height,
+    ...ys.map((value) => value + size.height + LEFT),
+  );
+  return { x, y, width: right - x, height: bottom - y };
+}
+
+/** A free card's place, moved to just below the lanes when the card would cover one. */
+export function besideLanes(
+  at: { readonly x: number; readonly y: number },
+  size: { readonly width: number; readonly height: number },
+  layout: Layout,
+): { x: number; y: number } {
+  const boxes = [...layout.lanes, ...layout.additionLanes];
+  if (boxes.length === 0) return at;
+  const left = Math.min(...boxes.map((box) => box.x));
+  const right = Math.max(...boxes.map((box) => box.x + box.width));
+  const top = Math.min(...boxes.map((box) => box.y));
+  const bottom = Math.max(...boxes.map((box) => box.y + box.height));
+  const covers =
+    at.x < right && at.x + size.width > left && at.y < bottom && at.y + size.height > top;
+  return covers ? { x: at.x, y: bottom + LEFT } : { x: at.x, y: at.y };
+}
+
+/** The number a lane's header shows: its ticket frames and the agents moved to Done, or the For you lane's open items. */
+export function laneCount(
+  lane: LaneBox,
+  views: ReadonlyMap<string, unknown>,
+  forYouOpen: number,
+  doneAgents: number,
+) {
+  if (lane.id === "for_you") return forYouOpen;
+  return lane.frames.reduce(
+    (count, frame) =>
+      count + (frame.key === DONE_AGENTS_KEY ? doneAgents : views.has(frame.key) ? 1 : 0),
+    0,
+  );
 }

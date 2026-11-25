@@ -1,8 +1,10 @@
 import { RegistryContext } from "@effect/atom-react";
 import { EyeOff } from "lucide-react";
-import { type ReactNode, useContext, useState } from "react";
+import { type MouseEvent, type ReactNode, useContext, useState } from "react";
 
-import type { BoardModel } from "../state/boardModel";
+import type { FreeAgent } from "../domain/board";
+import type { AgentView, BoardModel } from "../state/boardModel";
+import { freeAgentLabel } from "../state/cardStates";
 import { usePrContext } from "../state/prStatus";
 import type { TicketChoice } from "../browser/panel";
 import { laneKey, saveFrameOrder, toggleFolded } from "../state/boardUi";
@@ -20,11 +22,13 @@ import {
   type Layout,
   LANE_HEAD,
   LANE_LABEL,
+  laneCount,
   reorderByDrag,
   UNASSIGNED_HEAD,
   UNASSIGNED_KEY,
   CARD_GAP,
   CARD_HEIGHT,
+  DONE_AGENTS_KEY,
   FRAME_PAD,
 } from "./layout";
 import { RemoveAddition } from "./RemoveAddition";
@@ -35,6 +39,8 @@ const LANE_TONE = {
   for_you: "bg-amber-500 text-black",
   todo: "bg-zinc-700 text-white",
   running: "bg-blue-600 text-white",
+  waiting: "bg-amber-700 text-white",
+  done: "bg-emerald-700 text-white",
 } as const satisfies Record<LaneId, string>;
 
 export function Lanes({
@@ -48,6 +54,9 @@ export function Lanes({
   onChoose,
   onOpenAgent,
   onRemoveAddition,
+  done,
+  onCardMenu,
+  now,
 }: {
   layout: Layout;
   model: BoardModel;
@@ -59,6 +68,10 @@ export function Lanes({
   onChoose: (choice: TicketChoice) => void;
   onOpenAgent: (threadId: string, ticketKey: string | null) => void;
   onRemoveAddition: (id: string) => void;
+  /** The agent cards the user moved to Done. */
+  done: { readonly agents: ReadonlyArray<AgentView>; readonly free: ReadonlyArray<FreeAgent> };
+  onCardMenu: (event: MouseEvent, key: string, label: string, ticket: boolean) => void;
+  now: number;
 }) {
   const registry = useContext(RegistryContext);
   const additions = new Map(usePrContext().additions.map((item) => [item.id, item]));
@@ -100,7 +113,9 @@ export function Lanes({
               {LANE_LABEL[lane.id]}
               {lane.id === "todo" && queued ? " · queued" : ""}
             </span>
-            <span className="text-[11px] text-faint">{laneCount(lane, views, forYouOpen)}</span>
+            <span className="text-[11px] text-faint">
+              {laneCount(lane, views, forYouOpen, done.agents.length + done.free.length)}
+            </span>
             <span className="flex-1" />
             {lane.id === "for_you" && (
               <Tooltip text="Hide lane" side="bottom" align="end">
@@ -196,12 +211,27 @@ export function Lanes({
               </section>
             );
           }
-          if (box.key === UNASSIGNED_KEY) {
+          if (box.key === UNASSIGNED_KEY || box.key === DONE_AGENTS_KEY) {
+            const isDone = box.key === DONE_AGENTS_KEY;
+            const rows = [
+              ...(isDone ? done.agents : model.unassigned).map((agent) => ({
+                threadId: agent.threadId,
+                title: agent.title,
+                status: ticketStatus([agent], now),
+                detail: `${agent.role} · ${ago(agent.updatedAt)}`,
+              })),
+              ...(isDone ? done.free : []).map((agent) => ({
+                threadId: agent.threadId,
+                title: freeAgentLabel(agent.threadId),
+                status: null,
+                detail: "Started on the canvas",
+              })),
+            ];
             return (
               <section
                 key={box.key}
-                aria-label="Unassigned agents"
-                data-testid="unassigned"
+                aria-label={isDone ? "Done agents" : "Unassigned agents"}
+                data-testid={isDone ? "done-agents" : "unassigned"}
                 className="absolute rounded-lg border border-line bg-panel shadow-panel"
                 style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
               >
@@ -209,28 +239,29 @@ export function Lanes({
                   className="px-2.5 pt-2 text-[11px] text-faint"
                   style={{ height: UNASSIGNED_HEAD }}
                 >
-                  Started with no ticket
+                  {isDone ? "Agents moved to Done" : "Started with no ticket"}
                 </p>
                 <div
                   className="flex flex-col"
                   style={{ gap: CARD_GAP, padding: `0 ${FRAME_PAD}px ${FRAME_PAD}px` }}
                 >
-                  {model.unassigned.map((agent) => (
+                  {rows.map((row) => (
                     <button
-                      key={agent.threadId}
+                      key={row.threadId}
                       type="button"
-                      aria-pressed={agent.threadId === choice?.threadId}
+                      aria-pressed={row.threadId === choice?.threadId}
                       // A press that starts on a row is a click, not the start of a pan.
                       onPointerDown={(event) => event.stopPropagation()}
-                      onClick={() => onOpenAgent(agent.threadId, null)}
+                      onClick={() => onOpenAgent(row.threadId, null)}
+                      onContextMenu={(event) => onCardMenu(event, row.threadId, row.title, false)}
                       style={{ height: CARD_HEIGHT }}
-                      className={`flex shrink-0 flex-col justify-center gap-1 rounded-md border bg-bg px-2.5 text-left hover:bg-hover ${agent.threadId === choice?.threadId ? "border-focus" : "border-line"}`}
+                      className={`flex shrink-0 flex-col justify-center gap-1 rounded-md border bg-bg px-2.5 text-left hover:bg-hover ${row.threadId === choice?.threadId ? "border-focus" : "border-line"}`}
                     >
                       <CardLine
                         tag={null}
-                        title={agent.title}
-                        status={ticketStatus([agent])}
-                        detail={`${agent.role} · ${ago(agent.updatedAt)}`}
+                        title={row.title}
+                        status={row.status}
+                        detail={row.detail}
                       />
                     </button>
                   ))}
@@ -245,10 +276,12 @@ export function Lanes({
               key={box.key}
               view={view}
               box={box}
+              now={now}
               offset={drag?.key === box.key ? drag.dy : 0}
               selected={choice?.ticketKey === box.key}
               onDrag={(dy) => setDrag({ key: box.key, dy: clampDrag(lane, box, dy) })}
               onDrop={() => drop(lane)}
+              onMenu={(event) => onCardMenu(event, box.key, box.key, true)}
               onOpen={() => {
                 const active = activeAgentOf(view.agents);
                 if (active === undefined) {
@@ -261,10 +294,4 @@ export function Lanes({
       )}
     </>
   );
-}
-
-function laneCount(lane: LaneBox, views: ReadonlyMap<string, unknown>, forYouOpen: number) {
-  return lane.id === "for_you"
-    ? forYouOpen
-    : lane.frames.filter((frame) => views.has(frame.key)).length;
 }

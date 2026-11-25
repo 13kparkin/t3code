@@ -38,6 +38,23 @@ const PENDING = { kind: "command" } as FamilyRow["pendingRuntimeRequest"];
 
 const driverOf = (instanceId: string) => (instanceId === "claudeAgent" ? "claudeAgent" : null);
 
+describe("an agent waiting on its children", () => {
+  it.each([
+    { name: "a background shell task", extra: { pendingBackgroundTasks: [{}] }, waiting: false },
+    { name: "a wait on another thread", extra: { blockedOnThreadWait: true }, waiting: true },
+  ])("Given $name, then waiting on children is $waiting", ({ extra, waiting }) => {
+    // SAFETY: only the task count is read, never a task's fields.
+    const row_ = row("th-a", "[T-1] task", extra as Partial<FamilyRow>);
+    const model = joinBoard({
+      tickets: [],
+      family: [row_],
+      orchestratorThreadId: ORCHESTRATOR,
+      driverOf,
+    });
+    expect(model.unassigned[0]?.waitingOnChildren).toBe(waiting);
+  });
+});
+
 const tickets: ReadonlyArray<Ticket> = [
   {
     key: "T-1",

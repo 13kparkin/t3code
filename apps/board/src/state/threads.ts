@@ -40,8 +40,13 @@ export const steerQueued = createEnvironmentCommand(connectionAtomRuntime, {
 /** A thread's live state, which the engine streams while the thread is mounted. */
 export const environmentThreads = createEnvironmentThreadStateAtoms(connectionAtomRuntime);
 
+const orchestration = createOrchestrationEnvironmentAtoms(connectionAtomRuntime);
+
 /** One turn item as the engine holds it, with the command output and the diff that the thread's own copy leaves out. */
-export const turnItemAtom = createOrchestrationEnvironmentAtoms(connectionAtomRuntime).turnItem;
+export const turnItemAtom = orchestration.turnItem;
+
+/** T3's Force stop, which ends the thread's provider session. A later message starts a new one. */
+export const forceStopThread = orchestration.forceStopThread;
 
 const NO_THREAD = Atom.make(AsyncResult.success(EMPTY_ENVIRONMENT_THREAD_STATE)).pipe(
   Atom.withLabel("board-thread:none"),

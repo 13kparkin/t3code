@@ -14,7 +14,8 @@ import {
   useSyncExternalStore,
 } from "react";
 
-import { dockSlotAtom } from "../browser/panel";
+import { dockSlotAtom, panelAtom } from "../browser/panel";
+import { useOrchestratorStatus } from "../board/useOrchestratorStatus";
 import { environmentThreads, useEnvironmentThread } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
 import { useArtifacts } from "../artifacts/ArtifactsContext";
@@ -37,16 +38,6 @@ import { MARK_TOKENS, watchTokens } from "./tokenMarks";
 
 const NO_UNSUBSCRIBE = () => undefined;
 const EMPTY: TimelineSource = { runs: [], messages: [], items: [] };
-
-function statusOf(
-  runs: ReadonlyArray<{ readonly id: string; readonly status: string }> | undefined,
-): string {
-  if (runs === undefined) return "Connecting";
-  const last = runs.at(-1)?.status;
-  if (isRunLive({ runs })) return "Working";
-  if (last === "failed") return "Failed";
-  return last === "interrupted" || last === "cancelled" ? "Stopped" : "Idle";
-}
 
 /** The orchestrator's thread, streamed, with the box that sends a follow-up or stops the turn. */
 export function Conversation({
@@ -95,7 +86,27 @@ export function Conversation({
       ),
     [source, workflow, pending, live],
   );
+  const status = useOrchestratorStatus(threadId);
   const dock = useAtomValue(dockSlotAtom);
+  const panel = useAtomValue(panelAtom);
+  const threadShown = panel.open && panel.tab === "chat";
+  // The composer renders once into this node, which moves between the dock and the panel, so a
+  // move keeps its draft (the reverse-portal pattern, github.com/httptoolkit/react-reverse-portal).
+  const [host] = useState(() => {
+    const node = document.createElement("div");
+    node.style.display = "contents";
+    return node;
+  });
+  const inline = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const parent = threadShown ? inline.current : dock;
+    if (parent === null || host.parentNode === parent) return;
+    // Moving a node blurs whatever it holds, so the focus goes back after the move.
+    const focused = host.contains(document.activeElement) ? document.activeElement : null;
+    parent.append(host);
+    if (focused instanceof HTMLElement) focused.focus();
+  }, [host, threadShown, dock]);
+  useLayoutEffect(() => () => host.remove(), [host]);
   const failure = Option.getOrNull(state.error);
   const { all: artifacts, open: openArtifact } = useArtifacts();
   const lookup = useMemo(() => new ArtifactLookup(), []);
@@ -124,7 +135,7 @@ export function Conversation({
   return (
     <SkillsContext value={skills}>
       <ArtifactLookupContext value={lookup}>
-        <PanelHeader title={listed.board.name} status={statusOf(projection?.runs)} />
+        <PanelHeader title={listed.board.name} status={status} />
         <div
           ref={scroller}
           data-testid="orchestrator-timeline"
@@ -154,21 +165,24 @@ export function Conversation({
             <p className="text-faint">Thinking</p>
           )}
         </div>
-        {dock !== null &&
-          createPortal(
-            <Composer
-              project={project}
-              listed={listed}
-              threadId={threadId}
-              projection={projection}
-              live={live}
-              failed={failed}
-              queue={queue}
-              steer={workflow?.canPromoteToSteer === true ? (workflow.activeRun?.id ?? null) : null}
-              setSends={setSends}
-            />,
-            dock,
-          )}
+        <div
+          ref={inline}
+          className={threadShown ? "shrink-0 border-t border-line p-2" : "hidden"}
+        />
+        {createPortal(
+          <Composer
+            project={project}
+            listed={listed}
+            threadId={threadId}
+            projection={projection}
+            live={live}
+            failed={failed}
+            queue={queue}
+            steer={workflow?.canPromoteToSteer === true ? (workflow.activeRun?.id ?? null) : null}
+            setSends={setSends}
+          />,
+          host,
+        )}
       </ArtifactLookupContext>
     </SkillsContext>
   );

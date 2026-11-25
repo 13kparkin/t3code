@@ -1,8 +1,8 @@
-import { useRef } from "react";
+import { type MouseEvent, useRef } from "react";
 
-import { missingPlan, STAGE_LABEL } from "../domain/ticket";
+import { missingPlan, missingSources, STAGE_LABEL } from "../domain/ticket";
 import { waitingOn } from "../domain/ticketOverlay";
-import { usePrContext } from "../state/prStatus";
+import { usePrContext, useTicketNotes } from "../state/prStatus";
 import type { TicketView } from "../state/boardModel";
 import { ago } from "../ui/ago";
 import { CardLine } from "./CardLine";
@@ -16,20 +16,24 @@ const DRAG_THRESHOLD_PX = 4;
 export function TicketFrame({
   view,
   box,
+  now,
   offset,
   selected,
   onDrag,
   onDrop,
   onOpen,
+  onMenu,
 }: {
   view: TicketView;
   box: FrameBox;
+  now: number;
   /** How far the frame is dragged from its place, in canvas px. */
   offset: number;
   selected: boolean;
   onDrag: (dy: number) => void;
   onDrop: () => void;
   onOpen: () => void;
+  onMenu: (event: MouseEvent) => void;
 }) {
   const { ticket, agents } = view;
   const scale = useViewScale();
@@ -38,6 +42,7 @@ export function TicketFrame({
   const newest = newestAgent(agents);
   const tag = STAGE_TAGS[ticket.stage];
   const { tickets } = usePrContext();
+  const notes = useTicketNotes(view);
   const waiting =
     ticket.stage === "merged" || ticket.stage === "off_path"
       ? []
@@ -61,7 +66,7 @@ export function TicketFrame({
       data-stage={ticket.stage}
       aria-label={`${ticket.key} ${ticket.title}`}
       aria-pressed={selected}
-      className={`absolute flex cursor-grab touch-none flex-col justify-center gap-1 rounded-lg border bg-panel px-2.5 text-left shadow-panel select-none hover:bg-hover ${selected ? "border-focus" : "border-line"} ${offset === 0 ? "" : "z-10"} ${tag.dim ? "opacity-60" : offset === 0 ? "" : "opacity-95"}`}
+      className={`absolute flex cursor-grab touch-none flex-col justify-center gap-1 rounded-lg border bg-panel px-2.5 text-left shadow-panel select-none hover:bg-hover ${selected ? "border-focus" : "border-line"} ${offset === 0 ? "" : "z-10 opacity-95"}`}
       style={{
         left: box.x,
         top: box.y,
@@ -89,6 +94,7 @@ export function TicketFrame({
       }}
       onPointerUp={end}
       onPointerCancel={end}
+      onContextMenu={onMenu}
       onClick={() => {
         if (!dragged.current) onOpen();
         dragged.current = false;
@@ -97,7 +103,7 @@ export function TicketFrame({
       <CardLine
         tag={ticket.key}
         title={ticket.title}
-        status={ticketStatus(agents)}
+        status={ticketStatus(agents, now)}
         detail={
           <>
             <span
@@ -112,6 +118,11 @@ export function TicketFrame({
               </span>
             )}
             {missingPlan(ticket) && <span className="text-amber-300">No plan · </span>}
+            {missingSources(ticket, notes) && (
+              <span data-testid="no-sources" className="text-amber-300">
+                No sources ·{" "}
+              </span>
+            )}
             {newest === undefined ? "No agents" : `${newest.role} · ${ago(newest.updatedAt)}`}
           </>
         }

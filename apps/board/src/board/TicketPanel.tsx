@@ -143,7 +143,12 @@ export function TicketPanel({
       </header>
       {props === null ? (
         agent !== null && (
-          <AgentLog key={agent.threadId} environmentId={environmentId} agent={agent} />
+          <AgentLog
+            key={agent.threadId}
+            environmentId={environmentId}
+            threadId={agent.threadId}
+            role={agent.role}
+          />
         )
       ) : (
         <>

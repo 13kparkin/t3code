@@ -64,8 +64,7 @@ export function App() {
           <ArchivedPanel />
           <div
             ref={attachDockSlot}
-            // The agent slide-out is w-96 (24rem) over the board, so the dock stops at its left edge.
-            className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center pb-4 pl-4 *:pointer-events-auto ${agentPanelOpen ? "pr-[25rem]" : "pr-4"}`}
+            className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-end pb-6 pl-6 [container-type:inline-size] *:pointer-events-auto ${agentPanelOpen ? "pr-[calc(var(--agent-panel-width)+1.5rem)]" : "pr-6"}`}
           />
         </main>
         <PanelHost />

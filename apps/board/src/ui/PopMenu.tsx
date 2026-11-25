@@ -1,12 +1,6 @@
 import { type ReactNode, useId, useState } from "react";
 
-export interface PopMenuItem {
-  readonly label: string;
-  /** A dim note at the item's right edge, such as why it is off. */
-  readonly hint?: string | undefined;
-  readonly disabled?: boolean;
-  readonly onSelect: () => void;
-}
+import { MenuList, type PopMenuItem } from "./MenuList";
 
 /** A button that opens a menu of actions, shaped like Orca's menus: label left, hint right. Escape and a click away close it. */
 export function PopMenu({
@@ -56,31 +50,13 @@ export function PopMenu({
         {trigger}
       </button>
       {open && (
-        <div
+        <MenuList
           id={menuId}
-          role="menu"
-          aria-label={label}
-          className={`absolute top-full z-30 mt-1 flex w-max min-w-52 flex-col rounded-lg border border-line bg-panel p-1 shadow-panel ${align === "end" ? "right-0" : "left-0"}`}
-        >
-          {items.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              role="menuitem"
-              disabled={item.disabled === true}
-              onClick={() => {
-                setOpen(false);
-                item.onSelect();
-              }}
-              className="flex items-center justify-between gap-6 rounded-md px-2 py-1.5 text-left text-[12px] whitespace-nowrap enabled:hover:bg-hover enabled:focus-visible:bg-hover disabled:text-faint"
-            >
-              {item.label}
-              {item.hint !== undefined && (
-                <span className="text-[11px] text-faint">{item.hint}</span>
-              )}
-            </button>
-          ))}
-        </div>
+          label={label}
+          items={items}
+          onClose={() => setOpen(false)}
+          className={`absolute top-full mt-1 ${align === "end" ? "right-0" : "left-0"}`}
+        />
       )}
     </div>
   );

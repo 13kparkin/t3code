@@ -2,12 +2,11 @@ import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { ThreadId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
-import { Layers, ListChecks, Paperclip, Plus } from "lucide-react";
+import { Archive, Layers, ListChecks, Paperclip, Plus } from "lucide-react";
 import { useContext, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useArtifacts } from "../artifacts/ArtifactsContext";
-import { isRunLive } from "../chat/timeline";
 import { type Addition, lineText } from "../domain/additions";
 import { pickTemplate, SYSTEM_TEMPLATE } from "../domain/reviewTemplate";
 import { STAGE_LABEL, TICKET_STAGES } from "../domain/ticket";
@@ -22,7 +21,9 @@ import type { ValidBoard } from "../store/boardFiles";
 import { PopMenu } from "../ui/PopMenu";
 import { Tooltip } from "../ui/Tooltip";
 import { BuilderCap } from "./BuilderCap";
-import { additionLaneId, ORCHESTRATOR_BOX, stageTagId } from "./layout";
+import { useOrchestratorStatus } from "./useOrchestratorStatus";
+import type { ArchivedCard } from "../state/cardStates";
+import { additionLaneId, DONE_TAG, ORCHESTRATOR_BOX, stageTagId } from "./layout";
 
 /** Mounts the board's usage watch, which messages the orchestrator when a usage window passes a level. */
 function UsageWatch({ instanceId, threadId }: { instanceId: string; threadId: string }) {
@@ -41,6 +42,9 @@ export function OrchestratorCard({
   hidden,
   additions,
   onChangeHidden,
+  doneCount,
+  archived,
+  onUnarchive,
 }: {
   project: EnvironmentProject;
   listed: ValidBoard;
@@ -51,6 +55,10 @@ export function OrchestratorCard({
   /** Every `additions.json` item, hidden ones too, so the menu can show them again. */
   additions: ReadonlyArray<Addition>;
   onChangeHidden: (change: (ids: ReadonlyArray<string>) => ReadonlyArray<string>) => void;
+  /** Cards in the Done lane, shown or not. */
+  doneCount: number;
+  archived: ReadonlyArray<ArchivedCard>;
+  onUnarchive: (key: string) => void;
 }) {
   const { board } = listed;
   // The panel holds the same thread open, so this adds no second subscription.
@@ -78,6 +86,7 @@ export function OrchestratorCard({
       label: STAGE_LABEL[stage],
       count: stats.stages[stage],
     })),
+    { id: DONE_TAG, label: "Done", count: doneCount },
     { id: "for_you", label: "For you", count: stats.forYouOpen },
     ...shown.flatMap((item) =>
       item.place === "canvas"
@@ -85,12 +94,7 @@ export function OrchestratorCard({
         : [],
     ),
   ];
-  const status =
-    board.orchestratorThreadId === null
-      ? "Not started"
-      : projection !== null && isRunLive(projection)
-        ? "Working"
-        : "Idle";
+  const status = useOrchestratorStatus(board.orchestratorThreadId);
 
   return (
     <section
@@ -175,6 +179,23 @@ export function OrchestratorCard({
               },
               { label: "Show all", onSelect: () => onChangeHidden(() => []) },
             ]}
+          />
+        )}
+        {archived.length > 0 && (
+          <PopMenu
+            label="Archived cards"
+            triggerClass={ACTION}
+            trigger={
+              <>
+                <Archive className="size-3" aria-hidden />
+                {archived.length}
+              </>
+            }
+            items={archived.map((card) => ({
+              label: card.label,
+              hint: "Unarchive",
+              onSelect: () => onUnarchive(card.key),
+            }))}
           />
         )}
       </div>

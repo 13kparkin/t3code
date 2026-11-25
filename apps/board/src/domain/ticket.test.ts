@@ -1,7 +1,14 @@
 import * as Result from "effect/Result";
 import { describe, expect, it } from "vite-plus/test";
 
-import { missingPlan, parseTickets, stepProgress, type Ticket } from "./ticket";
+import {
+  missingPlan,
+  missingSources,
+  noteText,
+  parseTickets,
+  stepProgress,
+  type Ticket,
+} from "./ticket";
 
 const issueOf = (text: string) => {
   const parsed = parseTickets(text);
@@ -103,6 +110,67 @@ describe("plans and steps", () => {
     ["merged without a plan", { stage: "merged" }, false],
   ] as const)("Given %s, when checked, then missingPlan is %s", (_, fields, expected) => {
     expect(missingPlan(ticket(fields))).toBe(expected);
+  });
+
+  const cited = "# Design\n\n## Sources\n\n- https://example.org, the pattern\n";
+  it.each([
+    [
+      "a design note with sources",
+      { stage: "building" },
+      { design: cited, diagnosis: null },
+      false,
+    ],
+    [
+      "a design note without sources",
+      { stage: "building" },
+      { design: "# Design\n", diagnosis: null },
+      true,
+    ],
+    ["no design note", { stage: "building" }, { design: null, diagnosis: null }, false],
+    [
+      "a bug fix with no diagnosis",
+      { stage: "building", playbook: "bug-fix.md" },
+      { design: null, diagnosis: null },
+      true,
+    ],
+    [
+      "a bug fix whose diagnosis has no sources",
+      { stage: "verifying", playbook: "bug-fix.md" },
+      { design: null, diagnosis: "# Cause\n" },
+      true,
+    ],
+    [
+      "a bug fix whose diagnosis cites sources",
+      { stage: "building", playbook: "bug-fix.md" },
+      { design: null, diagnosis: cited },
+      false,
+    ],
+    ["a planned bug fix", { playbook: "bug-fix.md" }, { design: null, diagnosis: null }, false],
+    [
+      "a note not read yet",
+      { stage: "building", playbook: "bug-fix.md" },
+      { design: undefined, diagnosis: undefined },
+      false,
+    ],
+  ] as const)("Given %s, when checked, then missingSources is %s", (_, fields, notes, expected) => {
+    expect(missingSources(ticket(fields), notes)).toBe(expected);
+  });
+
+  it.each([
+    ["the evidence list still loading", false, null, undefined],
+    ["a listed note still reading", true, { status: "loading" }, undefined],
+    ["no note in a loaded list", true, null, null],
+    [
+      "a read note",
+      true,
+      {
+        status: "done",
+        contents: { kind: "text", contents: "# D", byteLength: 3, truncated: false },
+      },
+      "# D",
+    ],
+  ] as const)("Given %s, when read, then the note text matches", (_, listed, read, expected) => {
+    expect(noteText(listed, read)).toBe(expected);
   });
 
   it("Given steps, when counted, then done and skipped are totalled, and no steps gives null", () => {

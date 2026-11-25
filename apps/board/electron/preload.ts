@@ -24,6 +24,7 @@ const bridge: BoardBridge = {
   readLocalState: () => ipcRenderer.invoke("board:local-state-read"),
   writeLocalState: (text) => ipcRenderer.invoke("board:local-state-write", text),
   ensurePstack: () => ipcRenderer.invoke("board:ensure-pstack"),
+  listAgentSkills: (projectRoot) => ipcRenderer.invoke("board:list-agent-skills", projectRoot),
   browser: {
     open: (id, url) => ipcRenderer.send("board:browser-open", id, url),
     close: (id) => ipcRenderer.send("board:browser-close", id),

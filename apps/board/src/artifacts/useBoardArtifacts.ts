@@ -24,16 +24,16 @@ export function useBoardArtifacts(
     [model],
   );
   const worktreeKey = tickets.flatMap((ticket) => ticket.worktreePath ?? []).join("\n");
-  const all =
-    useAtomValue(
-      boardArtifactsAtom(
-        boardArtifactsKey(
-          project.id,
-          listed.folder,
-          worktreeKey === "" ? [] : worktreeKey.split("\n"),
-        ),
+  const listing = useAtomValue(
+    boardArtifactsAtom(
+      boardArtifactsKey(
+        project.id,
+        listed.folder,
+        worktreeKey === "" ? [] : worktreeKey.split("\n"),
       ),
-    ) ?? NO_ARTIFACTS;
+    ),
+  );
+  const all = listing ?? NO_ARTIFACTS;
   const groups = useMemo(
     () =>
       groupArtifacts(
@@ -58,5 +58,5 @@ export function useBoardArtifacts(
     },
     [registry, files.roots],
   );
-  return { files, all, groups, open };
+  return { files, all, loaded: listing !== null, groups, open };
 }

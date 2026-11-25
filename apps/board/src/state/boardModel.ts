@@ -18,6 +18,8 @@ export type FamilyRow = Pick<
   | "lineage"
   | "creationSource"
   | "activityRunStatus"
+  | "blockedOnThreadWait"
+  | "latestRunId"
   | "pendingBackgroundTasks"
   | "pendingRuntimeRequest"
   | "pullRequests"
@@ -40,6 +42,10 @@ export interface AgentView {
   readonly runState: RunState;
   /** The agent waits on a question or an approval from the user. */
   readonly pendingRequest: boolean;
+  /** The agent waits on another thread, such as a child it delegated to. */
+  readonly waitingOnChildren: boolean;
+  /** The thread's latest run, or null before its first. */
+  readonly latestRunId: string | null;
   readonly branch: string | null;
   readonly parentThreadId: string | null;
   readonly round: number | null;
@@ -82,7 +88,7 @@ function runStateOf(row: FamilyRow): RunState {
   return row.status === "interrupted" || row.status === "cancelled" ? "stopped" : "idle";
 }
 
-function agentOf(
+export function agentOf(
   row: FamilyRow,
   driverOf: (instanceId: string) => string | null,
   entry: { readonly role: string; readonly round?: number | null } | null,
@@ -103,6 +109,8 @@ function agentOf(
     driver: driverOf(row.providerInstanceId),
     runState: runStateOf(row),
     pendingRequest: row.pendingRuntimeRequest !== null,
+    waitingOnChildren: row.blockedOnThreadWait === true,
+    latestRunId: row.latestRunId,
     branch: row.branch,
     parentThreadId: row.lineage.parentThreadId,
     round: entry?.round ?? null,

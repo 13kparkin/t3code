@@ -7,6 +7,8 @@ import {
   BOARD_FILE,
   BOARDS_DIR,
   type BoardIssue,
+  type CardState,
+  type FreeAgent,
   DEFAULT_BUILDER_CAP,
   parseBoard,
   type RoleOverride,
@@ -227,6 +229,34 @@ export const changeHiddenAdditions = (
   changeBoard(files, cwd, folder, (board) => ({
     ...board,
     hiddenAdditions: [...new Set(change(board.hiddenAdditions ?? []))],
+  }));
+
+/** Sets one card's state; null puts it back on the canvas. */
+export const changeCardState = (
+  files: ProjectFiles,
+  cwd: string,
+  folder: string,
+  key: string,
+  state: CardState | null,
+) =>
+  changeBoard(files, cwd, folder, (board) => {
+    const { [key]: _replaced, ...others } = board.cardStates ?? {};
+    return { ...board, cardStates: state === null ? others : { ...others, [key]: state } };
+  });
+
+/** Adds a free agent, or moves the one with the same thread. */
+export const placeFreeAgent = (
+  files: ProjectFiles,
+  cwd: string,
+  folder: string,
+  agent: FreeAgent,
+) =>
+  changeBoard(files, cwd, folder, (board) => ({
+    ...board,
+    freeAgents: [
+      ...(board.freeAgents ?? []).filter((entry) => entry.threadId !== agent.threadId),
+      agent,
+    ],
   }));
 
 function withRoleTarget(board: Board, role: string, target: RoleOverride | null): Board {

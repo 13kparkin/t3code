@@ -42,11 +42,14 @@ export const useRevealRef = () => useContext(RevealContext);
 export function Viewport({
   content,
   onDropFiles,
+  onEmptyMenu,
   children,
 }: {
   content?: Rect;
   /** Files dropped anywhere on the canvas. */
   onDropFiles?: (files: File[]) => void;
+  /** A right-click on empty canvas, with the screen point and the canvas point under it. */
+  onEmptyMenu?: (screen: { x: number; y: number }, canvas: { x: number; y: number }) => void;
   children?: ReactNode;
 }) {
   const surfaceRef = useRef<HTMLDivElement | null>(null);
@@ -145,6 +148,20 @@ export function Viewport({
           if (onDropFiles !== undefined && event.dataTransfer.types.includes("Files")) {
             event.preventDefault();
           }
+        }}
+        onContextMenu={(event) => {
+          const surface = surfaceRef.current;
+          if (onEmptyMenu === undefined || surface === null) return;
+          if (event.target !== surface && event.target !== surface.firstElementChild) return;
+          event.preventDefault();
+          const rect = surface.getBoundingClientRect();
+          onEmptyMenu(
+            { x: event.clientX, y: event.clientY },
+            {
+              x: (event.clientX - rect.left - view.x) / view.k,
+              y: (event.clientY - rect.top - view.y) / view.k,
+            },
+          );
         }}
         onDrop={(event) => {
           if (onDropFiles === undefined || event.dataTransfer.files.length === 0) return;

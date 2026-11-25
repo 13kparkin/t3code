@@ -33,7 +33,7 @@ import { runRoleTargetRequests } from "./roleTargets";
 import { engineConnectionAtom, engineEnvironmentIdAtom, environmentProjects } from "./projects";
 import { engineProvidersAtom, engineSettingsAtom, serverEnvironment } from "./server";
 
-const launchThread = createEnvironmentRpcCommand(connectionAtomRuntime, {
+export const launchThread = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "board:thread:launch",
   tag: ORCHESTRATION_V2_WS_METHODS.launchThread,
 });

@@ -37,6 +37,8 @@ export interface BoardBridge {
   readonly writeLocalState: (text: string) => Promise<void>;
   /** Clones or refreshes the pstack-t3 checkout the board's Claude instances load, and returns its folder. */
   readonly ensurePstack: () => Promise<PstackResult>;
+  /** The raw `.agents/skills` SKILL.md listing for a project and the WSL home. */
+  readonly listAgentSkills: (projectRoot: string) => Promise<string>;
   readonly browser: BrowserHost;
   readonly appUpdate: AppUpdateHost;
 }

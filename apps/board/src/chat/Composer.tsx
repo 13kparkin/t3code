@@ -39,12 +39,14 @@ import { threadKey, setThreadShown } from "../state/chatThread";
 import { cancelQueued, interruptTurn, startTurn, steerQueued } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
 import { attachmentInputs, pastedFiles } from "./attachments";
+import { mergeSkills } from "./agentSkills";
+import { agentSkillsAtom } from "./skills";
 import { prepareSend } from "./prepareSend";
 import { AttachedFiles } from "./AttachedFiles";
 import { ComposerActions } from "./ComposerActions";
 import { FailedSends } from "./FailedSends";
 import { FreshNotice } from "./FreshNotice";
-import { SuggestionChips } from "./SuggestionChips";
+import { type ComposerPlacement, composerPlacement } from "./composerPlacement";
 import { ModelPicker } from "./ModelPicker";
 import {
   detectSlashTrigger,
@@ -62,6 +64,13 @@ import type { PendingSend } from "./timeline";
 import { useTriggerLookup } from "./triggerLookup";
 import { emptyText } from "./triggerLookup.logic";
 import { useWorkspaceSnapshot } from "./workspaceSnapshot";
+
+const SLIDE = "transition-[width,transform] duration-200 ease-out motion-reduce:transition-none";
+const PLACEMENT_CLASS = {
+  sidebar: "w-full",
+  corner: `w-[38%] min-w-72 ${SLIDE}`,
+  center: `w-[min(36rem,100%)] ${SLIDE}`,
+} as const satisfies Record<ComposerPlacement, string>;
 
 const SWITCH_BLOCKED =
   "This thread does not support switching providers after it has started. Start a new thread to use this model.";
@@ -106,6 +115,7 @@ export function Composer({
   const [fresh, setFresh] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [files, setFiles] = useState<File[]>([]);
+  const [focused, setFocused] = useState(false);
   const picker = useRef<HTMLInputElement | null>(null);
   const shell = useRef<HTMLDivElement | null>(null);
   const deleted = useRef(new Set<string>());
@@ -117,6 +127,11 @@ export function Composer({
   const connected = useAtomValue(engineConnectionAtom).state.phase === "connected";
   const panel = useAtomValue(panelAtom);
   const threadShown = panel.open && panel.tab === "chat";
+  const placement = composerPlacement({
+    threadShown,
+    focused,
+    filled: draft !== "" || files.length > 0 || modelOpen,
+  });
   const providers = useAtomValue(engineProvidersAtom);
   const providersForCwd = useMemo(() => resolveProvidersForCwd(providers, cwd), [providers, cwd]);
   const instances = useMemo(() => pickableInstances(providersForCwd), [providersForCwd]);
@@ -143,6 +158,7 @@ export function Composer({
       ? { reason: SWITCH_BLOCKED, stayOn: baseInstanceId(thread.modelSelection.instanceId) }
       : null;
 
+  const agentSkills = useAtomValue(agentSkillsAtom(cwd));
   const trigger = useMemo(() => detectSlashTrigger(draft, cursor), [draft, cursor]);
   const open = trigger !== null && closedFor !== draft;
   const restIsBlank = draft.slice(cursor).trim() === "";
@@ -154,13 +170,23 @@ export function Composer({
             trigger,
             restIsBlank,
             commands: resolveProviderSlashCommandsForCwd(provider, cwd),
-            skills: resolveProviderSkillsForCwd(provider, cwd),
+            skills: mergeSkills(resolveProviderSkillsForCwd(provider, cwd), agentSkills),
             canClear: canFresh,
             files: found.files,
             pullRequests: found.pullRequests,
           })
         : [],
-    [open, trigger, restIsBlank, provider, cwd, canFresh, found.files, found.pullRequests],
+    [
+      open,
+      trigger,
+      restIsBlank,
+      provider,
+      cwd,
+      canFresh,
+      found.files,
+      found.pullRequests,
+      agentSkills,
+    ],
   );
   const highlighted = Math.min(active, Math.max(ranked.length - 1, 0));
   const highlightedItem = open ? ranked[highlighted] : undefined;
@@ -402,7 +428,20 @@ export function Composer({
         performance.mark("board:attach-drop");
         addFiles(Array.from(event.dataTransfer.files));
       }}
-      className="relative flex w-full max-w-xl flex-col gap-1.5"
+      // Only the text box opens the input, as T3 web skips its resting controls; a button that moved it would miss its click.
+      onFocus={(event) => event.target instanceof HTMLTextAreaElement && setFocused(true)}
+      onBlur={(event) => {
+        if (
+          !(
+            event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)
+          )
+        )
+          setFocused(false);
+      }}
+      data-placement={placement}
+      // In the dock the form sits at the right edge, and center moves it half the dock's width left.
+      style={placement === "center" ? { transform: "translateX(calc(50% - 50cqw))" } : undefined}
+      className={`relative flex flex-col gap-1.5 ${PLACEMENT_CLASS[placement]}`}
     >
       {open && (
         <SlashMenu
@@ -428,14 +467,6 @@ export function Composer({
         </p>
       )}
       {fresh && <FreshNotice onCancel={() => setFresh(false)} />}
-      {draft === "" && files.length === 0 && (
-        <SuggestionChips
-          onPick={(text) => {
-            edit(text, text.length);
-            input.current?.focus();
-          }}
-        />
-      )}
       <div
         ref={shell}
         data-testid="composer-shell"
@@ -463,7 +494,7 @@ export function Composer({
               event.preventDefault();
               addFiles(pasted);
             }}
-            rows={2}
+            rows={placement === "corner" ? 1 : 2}
             placeholder="Message the orchestrator"
             aria-label="Message the orchestrator"
             role="combobox"
@@ -473,7 +504,7 @@ export function Composer({
             aria-activedescendant={
               highlightedItem === undefined ? undefined : slashOptionId(menuId, highlightedItem)
             }
-            className="field-sizing-content max-h-40 min-h-10 min-w-0 flex-1 resize-none bg-transparent text-fg outline-none placeholder:text-faint"
+            className={`field-sizing-content max-h-40 min-w-0 ${placement === "corner" ? "min-h-6" : "min-h-10"} flex-1 resize-none bg-transparent text-fg outline-none placeholder:text-faint`}
           />
           <ComposerActions
             picker={picker}
@@ -487,17 +518,19 @@ export function Composer({
             onStop={() => void stop()}
           />
         </div>
-        <ModelPicker
-          instances={instances}
-          value={shown}
-          onChange={setOverride}
-          switchBlocked={switchBlocked}
-          open={modelOpen}
-          onOpenChange={(next) => {
-            setModelOpen(next);
-            if (!next) input.current?.focus();
-          }}
-        />
+        {placement !== "corner" && (
+          <ModelPicker
+            instances={instances}
+            value={shown}
+            onChange={setOverride}
+            switchBlocked={switchBlocked}
+            open={modelOpen}
+            onOpenChange={(next) => {
+              setModelOpen(next);
+              if (!next) input.current?.focus();
+            }}
+          />
+        )}
       </div>
     </form>
   );

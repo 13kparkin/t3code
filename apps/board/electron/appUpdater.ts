@@ -149,13 +149,21 @@ export function createAppUpdater(deps: {
 }
 
 export function registerAppUpdater() {
+  // Reading `autoUpdater` builds the updater, which throws on a dev build's version; electron-updater skips unpackaged apps too.
+  if (!app.isPackaged) {
+    ipcMain.handle("board:app-update-state", () => ({
+      current: app.getVersion(),
+      status: "disabled",
+    }));
+    return;
+  }
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.allowDowngrade = false;
   const updates = createAppUpdater({
     updater: autoUpdater,
     current: app.getVersion(),
-    packaged: app.isPackaged,
+    packaged: true,
     fetchReleases: async () => {
       const response = await fetch(
         `https://api.github.com/repos/${REPOSITORY}/releases?per_page=100`,
@@ -183,8 +191,6 @@ export function registerAppUpdater() {
   ipcMain.on("board:app-update-prereleases", (_event, enabled) =>
     updates.setPrereleases(enabled === true),
   );
-  if (app.isPackaged) {
-    setTimeout(() => void updates.check(), FIRST_CHECK_MS);
-    setInterval(() => void updates.check(), CHECK_EVERY_MS);
-  }
+  setTimeout(() => void updates.check(), FIRST_CHECK_MS);
+  setInterval(() => void updates.check(), CHECK_EVERY_MS);
 }

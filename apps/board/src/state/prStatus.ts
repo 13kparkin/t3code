@@ -19,13 +19,21 @@ import {
   type Smoke,
 } from "../domain/readiness";
 import { connectionAtomRuntime } from "../connection/runtime";
+import { noteText } from "../domain/ticket";
 import type { Overlay } from "../domain/ticketOverlay";
 import type { Addition } from "../domain/additions";
 import { locate } from "../files/target";
 import { ROLES } from "../orchestrator/roles";
 import type { Artifact } from "../store/artifacts";
 import type { FamilyRow, TicketView } from "./boardModel";
-import { artifactContentsKey, ciLocalAtom, ciLocalKey, smokeAtom } from "./artifacts";
+import {
+  artifactContentsAtom,
+  artifactContentsKey,
+  ciLocalAtom,
+  ciLocalKey,
+  type LoadedArtifact,
+  smokeAtom,
+} from "./artifacts";
 import { threadFamilies } from "./family";
 import { buildLive, sameRef, ticketPrRef, trackRunning } from "./prLive";
 
@@ -225,6 +233,33 @@ export function useTicketSmoke(view: TicketView | null): Smoke | null {
       : smokeAtom(artifactContentsKey(files.environmentId, smokeAt.root.cwd, smokeAt.path)),
   );
 }
+
+const NO_NOTE = Atom.make<LoadedArtifact>({ status: "loading" }).pipe(
+  Atom.withLabel("board-note:none"),
+);
+
+/**
+ * The text of one of a ticket's evidence notes, null when it has none, undefined until read.
+ * shortcut: read once per mount, so a note fixed while its card shows clears on the next mount;
+ * re-read on a timer like `smokeAtom` if a stale flag confuses users.
+ */
+function useTicketNote(view: TicketView, name: string): string | null | undefined {
+  const { groups, files, loaded } = useArtifacts();
+  const file = groups.byTicket.get(view.ticket.key)?.find((artifact) => artifact.name === name);
+  const at = file === undefined ? null : locate(files.roots, file.absolutePath);
+  const read = useAtomValue(
+    at === null
+      ? NO_NOTE
+      : artifactContentsAtom(artifactContentsKey(files.environmentId, at.root.cwd, at.path)),
+  );
+  return noteText(loaded, at === null ? null : read);
+}
+
+/** A ticket's `design.md` and `diagnosis.md` texts, for the Sources flag. */
+export const useTicketNotes = (view: TicketView) => ({
+  design: useTicketNote(view, "design.md"),
+  diagnosis: useTicketNote(view, "diagnosis.md"),
+});
 
 /**
  * The six merge-ready conditions for a ticket, computed from the board's files and the host's

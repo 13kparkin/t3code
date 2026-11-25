@@ -11,6 +11,7 @@ import { createConnectionLog } from "./connectionLog";
 import { createEngine, type EngineConfig, type TokenStore } from "./engine";
 import { createLocalStateFile } from "./localState";
 import { pickFolder, resolveFolder } from "./pickFolder";
+import { listAgentSkills } from "./agentSkills";
 import { ensurePstack } from "./pstack";
 import {
   createLinuxHost,
@@ -170,6 +171,12 @@ export function registerEngineIpc(options: {
     env["AGENT_BOARD_PSTACK_DIR"]
       ? { ok: true, dir: env["AGENT_BOARD_PSTACK_DIR"] }
       : ensurePstack(host),
+  );
+  ipcMain.handle("board:list-agent-skills", (_event, text) =>
+    listAgentSkills(
+      host,
+      Option.getOrElse(decodeText(text), () => ""),
+    ),
   );
   const connectionLog = createConnectionLog(
     NodePath.join(userData, "logs", "board-connection.log"),

@@ -97,6 +97,49 @@ export const missingPlan = (ticket: Ticket): boolean =>
   !UNPLANNED_STAGES.has(ticket.stage) &&
   (ticket.playbook == null || (ticket.steps ?? []).length === 0);
 
+const UNSTARTED_STAGES: ReadonlySet<TicketStage> = new Set([...UNPLANNED_STAGES, "planned"]);
+const SOURCES = /^## Sources\s*$/m;
+
+/**
+ * Whether a ticket's research note lacks its `## Sources` section. A bug fix under way needs
+ * `diagnosis.md`; any other ticket is checked only when it has a `design.md`. A note's text is
+ * null when the file is missing and undefined until it is read.
+ */
+export function missingSources(
+  ticket: Ticket,
+  notes: {
+    readonly design: string | null | undefined;
+    readonly diagnosis: string | null | undefined;
+  },
+): boolean {
+  if (ticket.playbook === "bug-fix.md") {
+    if (UNSTARTED_STAGES.has(ticket.stage)) return false;
+    return (
+      notes.diagnosis === null || (notes.diagnosis !== undefined && !SOURCES.test(notes.diagnosis))
+    );
+  }
+  return notes.design != null && !SOURCES.test(notes.design);
+}
+
+/** A note's text from the evidence listing and its read: undefined until both answer, null when it is missing or not text. */
+export function noteText(
+  listed: boolean,
+  read:
+    | { readonly status: "loading" | "failed" }
+    | {
+        readonly status: "done";
+        readonly contents:
+          | { readonly kind: "text"; readonly contents: string }
+          | { readonly kind: "binary" | "missing" };
+      }
+    | null,
+): string | null | undefined {
+  if (!listed) return undefined;
+  if (read === null) return null;
+  if (read.status !== "done") return undefined;
+  return read.contents.kind === "text" ? read.contents.contents : null;
+}
+
 export function stepProgress(ticket: Ticket) {
   const steps = ticket.steps ?? [];
   if (steps.length === 0) return null;
