@@ -7,9 +7,9 @@ export interface CardStatus {
 }
 
 /** An agent waiting on its children this long with no change reads as Idle. */
-export const IDLE_AFTER_MS = 3 * 60_000;
+const IDLE_AFTER_MS = 3 * 60_000;
 
-export type AgentActivity = "asking" | "working" | "idle" | "failed" | "stopped";
+type AgentActivity = "asking" | "working" | "idle" | "failed" | "stopped";
 
 /** What one agent is doing at `now`. */
 export function agentActivity(agent: AgentView, now: number): AgentActivity {

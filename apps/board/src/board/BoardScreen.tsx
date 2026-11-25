@@ -233,7 +233,7 @@ export function BoardScreen({
           <AgentPanel
             environmentId={project.environmentId}
             model={fullModel}
-            freeAgents={freeAgents.map((agent) => agent.threadId)}
+            freeAgents={freeAgents}
           />
           <MainTabs
             files={artifacts.files}
@@ -269,9 +269,7 @@ export function BoardScreen({
                 hidden={hidden}
                 additions={additions}
                 onChangeHidden={changeHidden}
-                doneCount={
-                  doneCount + fullModel.lanes.merged.length + fullModel.lanes.off_path.length
-                }
+                doneCount={doneCount + model.lanes.merged.length + model.lanes.off_path.length}
                 archived={cards.archived}
                 onUnarchive={(key) => saveCard(key, null)}
               />

@@ -162,7 +162,7 @@ export function layoutBoard(
   const top = LANES_TOP + lines * ADDITION_LINE;
   const lanes: LaneBox[] = [];
   LANE_IDS.forEach((id) => {
-    if (hidden.has(id === "done" ? DONE_TAG : id)) return;
+    if (hidden.has(id)) return;
     const x = LEFT + lanes.length * (LANE_WIDTH + LANE_GAP);
     const items: Array<{ key: string; height: number }> = [];
     if (id !== "for_you") {

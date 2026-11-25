@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import { useContext } from "react";
 
 import { chooseTicket } from "../browser/panel";
+import type { FreeAgent } from "../domain/board";
 import { iconButton } from "../browser/styles";
 import { agentPanelAtom, closeAgentPanel } from "../state/agentPanel";
 import { allAgents, type BoardModel } from "../state/boardModel";
@@ -16,14 +17,14 @@ export function AgentPanel({
 }: {
   environmentId: EnvironmentId;
   model: BoardModel;
-  /** The thread ids of the board's free agents, which the orchestrator's family does not hold. */
-  freeAgents: ReadonlyArray<string>;
+  /** The board's free agents, which the orchestrator's family does not hold. */
+  freeAgents: ReadonlyArray<FreeAgent>;
 }) {
   const registry = useContext(RegistryContext);
   const threadId = useAtomValue(agentPanelAtom);
   const agent = allAgents(model).find((entry) => entry.threadId === threadId);
   if (threadId === null) return null;
-  const free = agent === undefined && freeAgents.includes(threadId);
+  const free = agent === undefined && freeAgents.some((entry) => entry.threadId === threadId);
   return (
     <aside
       aria-label="Agent activity"
