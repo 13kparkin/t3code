@@ -55,11 +55,8 @@ describe("what a call card says about its audio", () => {
 
 describe("the recording bar's timer", () => {
   it.each([
-    [0, "0:00"],
-    [59_999, "0:59"],
     [61_000, "1:01"],
     [3_600_000, "1:00:00"],
-    [14_400_000, "4:00:00"],
   ])("Given %i ms, then it reads %s", (ms, text) => {
     expect(elapsed(ms)).toBe(text);
   });

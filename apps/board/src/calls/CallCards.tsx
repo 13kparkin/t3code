@@ -112,7 +112,9 @@ export function CallCards({
                     {state?.status === "starting" ? "Starting" : "Recording"}
                   </span>
                 ) : (
-                  recorder !== null && (
+                  // v1 records Chrome only, the one app verified on Windows.
+                  recorder !== null &&
+                  call.app === "chrome" && (
                     <button
                       type="button"
                       disabled={state?.status !== "idle"}

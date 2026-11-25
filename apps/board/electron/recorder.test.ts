@@ -290,17 +290,17 @@ describe("recording a call", () => {
     expect([rig.runs, rig.statuses()]).toEqual([[], []]);
   });
 
-  it("Given a 64-character call id, then Record parses", () => {
-    expect(Option.isSome(decodeRequest({ ...REQUEST, callId: "a".repeat(64) }))).toBe(true);
+  it.each([
+    ["a".repeat(64), true],
+    ["../escape", false],
+    ["", false],
+    ["a".repeat(65), false],
+    ["call 1", false],
+    ["call_1", false],
+  ])("Given the call id %j, then Record and Delete audio parse it: %s", (callId, parses) => {
+    expect(Option.isSome(decodeRequest({ ...REQUEST, callId }))).toBe(parses);
+    expect(Option.isSome(decodeCallId(callId))).toBe(parses);
   });
-
-  it.each(["../escape", "", "a".repeat(65), "call 1", "call_1"])(
-    "Given the call id %j, then neither Record nor Delete audio parses",
-    (callId) => {
-      expect(Option.isNone(decodeRequest({ ...REQUEST, callId }))).toBe(true);
-      expect(Option.isNone(decodeCallId(callId))).toBe(true);
-    },
-  );
 });
 
 describe("silence and the 4-hour cap", () => {
@@ -390,9 +390,26 @@ describe("recovery and retention", () => {
       endReason: null,
       deleteAfter: "2026-11-25T09:00:00.000Z",
     });
-    rig.recorder.sweep();
+    writeTake(rig.root, "held-call", "1", { ...ended, deleteAfter: "2026-11-25T09:00:00.000Z" });
+    const held = NodePath.join(rig.root, "held-call", "1");
+    NodeFS.writeFileSync(NodePath.join(held, "me.wav"), "");
+    // A folder whose child cannot be removed stands in for a WAV a player holds open on Windows.
+    NodeFS.mkdirSync(NodePath.join(held, "them.wav", "open"), { recursive: true });
+    NodeFS.writeFileSync(NodePath.join(held, "them.wav", "open", "data"), "");
+    NodeFS.chmodSync(NodePath.join(held, "them.wav", "open"), 0o555);
+    try {
+      rig.recorder.sweep();
+    } finally {
+      NodeFS.chmodSync(NodePath.join(held, "them.wav", "open"), 0o755);
+    }
     const left = NodeFS.readdirSync(rig.root, { recursive: true }).toSorted();
     expect(left).toEqual([
+      "held-call",
+      NodePath.join("held-call", "1"),
+      NodePath.join("held-call", "1", "recording.json"),
+      NodePath.join("held-call", "1", "them.wav"),
+      NodePath.join("held-call", "1", "them.wav", "open"),
+      NodePath.join("held-call", "1", "them.wav", "open", "data"),
       "mixed-call",
       NodePath.join("mixed-call", "2"),
       NodePath.join("mixed-call", "2", "recording.json"),

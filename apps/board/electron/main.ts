@@ -83,6 +83,8 @@ function openWindow(): void {
     if (/^https?:\/\//i.test(url)) void shell.openExternal(url);
     return { action: "deny" };
   });
+  // A dropped link or file would load a page that gets `window.board`. The board never navigates itself.
+  window.webContents.on("will-navigate", (event) => event.preventDefault());
   void window.loadURL(devServerUrl ?? `${SCHEME}://app/index.html`);
 }
 

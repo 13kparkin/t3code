@@ -130,12 +130,23 @@ const removeDir = (dir: string) => {
   try {
     NodeFS.rmSync(dir, { recursive: true, force: true });
   } catch {
-    // Windows refuses while a player holds a WAV open. The next sweep or Delete audio retries.
+    // Windows refuses while a player holds a file open. The next sweep or Delete audio retries.
   }
 };
 
 const removeIfEmpty = (dir: string) => {
   if (readDir(dir).length === 0) removeDir(dir);
+};
+
+/** The WAVs go before `recording.json`, so a WAV that cannot go keeps the take listed for the next retry. */
+const removeTake = (dir: string) => {
+  try {
+    for (const { file } of TRACKS) NodeFS.rmSync(NodePath.join(dir, file), { force: true });
+  } catch {
+    return;
+  }
+  removeDir(dir);
+  removeIfEmpty(NodePath.dirname(dir));
 };
 
 const recordingFile = (dir: string) => createLocalStateFile(NodePath.join(dir, "recording.json"));
@@ -364,7 +375,8 @@ export function createRecorder(deps: {
     remove: (callId: string) => {
       // NTFS folder names ignore case, so `abc` and `ABC` share one folder.
       if (session?.request.callId.toLowerCase() === callId.toLowerCase()) return;
-      removeDir(NodePath.join(root, callId));
+      const callDir = NodePath.join(root, callId);
+      for (const take of readDir(callDir)) removeTake(NodePath.join(callDir, take));
       deps.publish(snapshot());
     },
     /** Ends every take a quit or crash of the board left open. Runs at launch, before any Record. */
@@ -384,10 +396,7 @@ export function createRecorder(deps: {
       const expired = takes().filter(
         ({ recording }) => recording.endedAt !== null && Date.parse(recording.deleteAfter) <= now,
       );
-      for (const { dir } of expired) {
-        removeDir(dir);
-        removeIfEmpty(NodePath.dirname(dir));
-      }
+      for (const { dir } of expired) removeTake(dir);
       if (expired.length > 0) deps.publish(snapshot());
     },
   };
