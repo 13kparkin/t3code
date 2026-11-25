@@ -21,6 +21,7 @@ import {
   ticketLane,
   UNASSIGNED_KEY,
 } from "./layout";
+import { isWorking, ticketStatus } from "./ticketStatus";
 
 const agent = (threadId: string, runState: AgentView["runState"] = "idle"): AgentView => ({
   threadId,
@@ -32,6 +33,8 @@ const agent = (threadId: string, runState: AgentView["runState"] = "idle"): Agen
   driver: null,
   runState,
   pendingRequest: false,
+  waitingOnChildren: false,
+  latestRunId: null,
   branch: null,
   parentThreadId: null,
   round: null,
@@ -78,18 +81,30 @@ const model: BoardModel = {
 };
 
 describe("placing a ticket by its stage and its agents", () => {
+  const now = Date.parse("2026-11-20T10:10:00.000Z");
+  const recent = "2026-11-20T10:09:00.000Z";
+  const working = agent("w", "working");
+  const stopped = agent("s", "idle");
+  const childRecent = { ...agent("c", "idle"), waitingOnChildren: true, updatedAt: recent };
+  const childStale = { ...agent("c", "idle"), waitingOnChildren: true };
   it.each([
-    { stage: "merged", live: false, lane: "done" },
-    { stage: "off_path", live: true, lane: "done" },
-    { stage: "building", live: false, lane: "waiting" },
-    { stage: "awaiting_approval", live: false, lane: "waiting" },
-    { stage: "reviewing", live: true, lane: "running" },
-    { stage: "planned", live: true, lane: "running" },
-    { stage: "todo", live: false, lane: "todo" },
+    { stage: "merged", agents: [stopped], lane: "done", word: "Stopped" },
+    { stage: "off_path", agents: [working], lane: "done", word: "Working" },
+    { stage: "building", agents: [stopped], lane: "waiting", word: "Stopped" },
+    { stage: "awaiting_approval", agents: [], lane: "waiting", word: null },
+    { stage: "reviewing", agents: [working], lane: "running", word: "Working" },
+    { stage: "building", agents: [childRecent], lane: "running", word: "Working" },
+    { stage: "building", agents: [childStale], lane: "waiting", word: "Idle" },
+    { stage: "verifying", agents: [stopped, childStale], lane: "waiting", word: "Idle" },
+    { stage: "planned", agents: [working], lane: "running", word: "Working" },
+    { stage: "todo", agents: [], lane: "todo", word: null },
   ] as const)(
-    "Given a $stage ticket with live $live, then it sits in $lane",
-    ({ stage, live, lane }) => {
-      expect(ticketLane(stage, live)).toBe(lane);
+    "Given a $stage ticket whose agents read $word, then it sits in $lane",
+    ({ stage, agents, lane, word }) => {
+      expect([
+        ticketLane(stage, isWorking(agents, now)),
+        ticketStatus(agents, now)?.word ?? null,
+      ]).toEqual([lane, word]);
     },
   );
 });

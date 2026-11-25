@@ -17,6 +17,8 @@ const agent = (
   driver: null,
   runState,
   pendingRequest: false,
+  waitingOnChildren: false,
+  latestRunId: null,
   branch: null,
   parentThreadId: null,
   round: null,

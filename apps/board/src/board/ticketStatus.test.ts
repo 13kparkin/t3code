@@ -17,6 +17,8 @@ const agent = (
   driver: null,
   runState,
   pendingRequest: false,
+  waitingOnChildren: false,
+  latestRunId: null,
   branch: null,
   parentThreadId: null,
   round: null,
@@ -29,17 +31,17 @@ const LATER = "2026-11-21T10:00:00.000Z";
 describe("a card's status", () => {
   it.each([
     [[], null],
-    [[agent("a", "idle"), agent("b", "stopped")], "Idle"],
+    [[agent("a", "idle"), agent("b", "stopped")], "Stopped"],
     [[agent("a", "idle"), agent("b", "working")], "Working"],
     [[agent("a", "idle"), agent("b", "waiting")], "Working"],
     [[agent("a", "working"), agent("b", "failed")], "Working"],
-    [[agent("a", "failed"), agent("b", "idle", { updatedAt: LATER })], "Idle"],
+    [[agent("a", "failed"), agent("b", "idle", { updatedAt: LATER })], "Stopped"],
     [[agent("a", "idle"), agent("b", "failed", { updatedAt: LATER })], "Failed"],
     [[agent("a", "failed"), agent("b", "idle", { pendingRequest: true })], "Waiting on you"],
   ])(
     "Given agents %#, when read, then a live state wins, else the newest agent's",
     (agents, word) => {
-      expect(ticketStatus(agents)?.word ?? null).toBe(word);
+      expect(ticketStatus(agents, 0)?.word ?? null).toBe(word);
     },
   );
 

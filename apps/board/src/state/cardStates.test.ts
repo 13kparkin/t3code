@@ -14,6 +14,8 @@ const agent = (threadId: string): AgentView => ({
   driver: null,
   runState: "idle",
   pendingRequest: false,
+  waitingOnChildren: false,
+  latestRunId: null,
   branch: null,
   parentThreadId: null,
   round: null,

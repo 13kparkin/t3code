@@ -11,6 +11,7 @@ import { failureText } from "../settings/failureText";
 import { newId } from "../state/boards";
 import { interruptTurn, startTurn, useEnvironmentThread } from "../state/threads";
 import { AgentLog } from "./AgentLog";
+import type { CardStatus } from "./ticketStatus";
 import { useViewScale } from "./Viewport";
 
 export const FREE_CARD = { width: 320, height: 380 } as const;
@@ -20,11 +21,14 @@ const DRAG_THRESHOLD_PX = 4;
 export function FreeAgentCard({
   environmentId,
   agent,
+  status,
   onMove,
   onMenu,
 }: {
   environmentId: EnvironmentId;
   agent: FreeAgent;
+  /** The card's status word, from the thread's row in the engine's shell. */
+  status: CardStatus | null;
   onMove: (at: { readonly x: number; readonly y: number }) => void;
   onMenu: (event: MouseEvent) => void;
 }) {
@@ -121,7 +125,7 @@ export function FreeAgentCard({
           {projection?.thread.title ?? "Agent"}
         </h3>
         <span data-testid="card-status" className="shrink-0 text-[11px] text-muted">
-          {projection === null ? "Connecting" : live ? "Working" : "Idle"}
+          {status?.word ?? "Connecting"}
         </span>
         <button
           type="button"

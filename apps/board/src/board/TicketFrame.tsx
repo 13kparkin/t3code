@@ -16,6 +16,7 @@ const DRAG_THRESHOLD_PX = 4;
 export function TicketFrame({
   view,
   box,
+  now,
   offset,
   selected,
   onDrag,
@@ -25,6 +26,7 @@ export function TicketFrame({
 }: {
   view: TicketView;
   box: FrameBox;
+  now: number;
   /** How far the frame is dragged from its place, in canvas px. */
   offset: number;
   selected: boolean;
@@ -100,7 +102,7 @@ export function TicketFrame({
       <CardLine
         tag={ticket.key}
         title={ticket.title}
-        status={ticketStatus(agents)}
+        status={ticketStatus(agents, now)}
         detail={
           <>
             <span

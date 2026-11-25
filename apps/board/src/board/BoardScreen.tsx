@@ -15,10 +15,15 @@ import { mergeTicketKey } from "../domain/readiness";
 import { applyThreadShown, threadKey, threadShownAtom } from "../state/chatThread";
 import { filterFlipsAtom, frameOrderAtom } from "../state/boardUi";
 import { useThreadFamily } from "../state/family";
-import { PrProvider } from "../state/prStatus";
+import { clockAtom, PrProvider } from "../state/prStatus";
+import { agentOf, type AgentView, allAgents } from "../state/boardModel";
+import { useDriverOf } from "../state/family";
+import { environmentSnapshotAtom } from "../state/projects";
 import { focusedCardAtom, useBoardForYou } from "../state/forYou";
 import { addDocs } from "../state/attachmentUploads";
 import { countBuilders } from "../state/boardModel";
+import { ticketStatus } from "./ticketStatus";
+import { useAutoStop } from "./useAutoStop";
 import { useBoardView } from "../state/boardView";
 import { issuePullAtom } from "../state/issuePull";
 import { keptWorktreesAtom } from "../state/mergeCleanup";
@@ -88,6 +93,22 @@ export function BoardScreen({
     [fullModel, freeAgents, cardStates],
   );
   const { model } = cards;
+  const now = useAtomValue(clockAtom);
+  const driverOf = useDriverOf();
+  const shells = useAtomValue(environmentSnapshotAtom(project.environmentId))?.threads;
+  const freeViews = useMemo(() => {
+    const ids = new Set(freeAgents.map((agent) => agent.threadId));
+    return new Map<string, AgentView>(
+      (shells ?? [])
+        .filter((shell) => ids.has(shell.id))
+        .map((shell) => [shell.id, agentOf(shell, driverOf, null)]),
+    );
+  }, [shells, freeAgents, driverOf]);
+  const cardAgents = useMemo(
+    () => [...allAgents(fullModel), ...freeViews.values()],
+    [fullModel, freeViews],
+  );
+  useAutoStop(project.environmentId, cardAgents, board.orchestratorThreadId, now);
   const saveCard = (key: string, state: CardState | null) =>
     void setCardState(registry, project, listed, key, state).then(setCardError);
   const openCardMenu = (event: MouseEvent, key: string, label: string, ticket: boolean) => {
@@ -135,9 +156,20 @@ export function BoardScreen({
       visible,
       stats.problems.length,
       doneCount,
+      now,
     );
     return { ...laid, content: withCards(laid.content, cards.free, FREE_CARD) };
-  }, [model, order, forYou.views, hidden, visible, stats.problems.length, doneCount, cards.free]);
+  }, [
+    model,
+    order,
+    forYou.views,
+    hidden,
+    visible,
+    stats.problems.length,
+    doneCount,
+    cards.free,
+    now,
+  ]);
   const family = useThreadFamily(project.environmentId, board.orchestratorThreadId);
   const builders = useMemo(() => countBuilders(fullModel), [fullModel]);
   const tickets = useMemo(() => Object.values(fullModel.lanes).flat(), [fullModel]);
@@ -268,21 +300,26 @@ export function BoardScreen({
                 onRemoveAddition={(id) => changeHidden((ids) => [...ids, id])}
                 done={cards.done}
                 onCardMenu={openCardMenu}
+                now={now}
               />
-              {cards.free.map((agent) => (
-                <FreeAgentCard
-                  key={agent.threadId}
-                  environmentId={project.environmentId}
-                  agent={agent}
-                  onMove={(at) =>
-                    void moveFreeAgent(registry, project, listed, {
-                      threadId: agent.threadId,
-                      ...at,
-                    }).then(setCardError)
-                  }
-                  onMenu={(event) => openCardMenu(event, agent.threadId, "Agent", false)}
-                />
-              ))}
+              {cards.free.map((agent) => {
+                const view = freeViews.get(agent.threadId);
+                return (
+                  <FreeAgentCard
+                    key={agent.threadId}
+                    environmentId={project.environmentId}
+                    agent={agent}
+                    status={ticketStatus(view === undefined ? [] : [view], now)}
+                    onMove={(at) =>
+                      void moveFreeAgent(registry, project, listed, {
+                        threadId: agent.threadId,
+                        ...at,
+                      }).then(setCardError)
+                    }
+                    onMenu={(event) => openCardMenu(event, agent.threadId, "Agent", false)}
+                  />
+                );
+              })}
             </Viewport>
             <div className="absolute bottom-3.5 left-3.5 z-10 flex max-w-[60%] flex-col gap-2">
               {dropError !== null && (

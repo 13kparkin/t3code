@@ -55,6 +55,7 @@ export function Lanes({
   onRemoveAddition,
   done,
   onCardMenu,
+  now,
 }: {
   layout: Layout;
   model: BoardModel;
@@ -69,6 +70,7 @@ export function Lanes({
   /** The agent cards the user moved to Done. */
   done: { readonly agents: ReadonlyArray<AgentView>; readonly free: ReadonlyArray<FreeAgent> };
   onCardMenu: (event: MouseEvent, key: string, label: string, ticket: boolean) => void;
+  now: number;
 }) {
   const registry = useContext(RegistryContext);
   const additions = new Map(usePrContext().additions.map((item) => [item.id, item]));
@@ -212,7 +214,7 @@ export function Lanes({
               ...(isDone ? done.agents : model.unassigned).map((agent) => ({
                 threadId: agent.threadId,
                 title: agent.title,
-                status: ticketStatus([agent]),
+                status: ticketStatus([agent], now),
                 detail: `${agent.role} · ${ago(agent.updatedAt)}`,
               })),
               ...(isDone ? done.free : []).map((agent) => ({
@@ -271,6 +273,7 @@ export function Lanes({
               key={box.key}
               view={view}
               box={box}
+              now={now}
               offset={drag?.key === box.key ? drag.dy : 0}
               selected={choice?.ticketKey === box.key}
               onDrag={(dy) => setDrag({ key: box.key, dy: clampDrag(lane, box, dy) })}

@@ -3,7 +3,7 @@ import type { CardView } from "../domain/forYou";
 import { TICKET_STAGES, type TicketStage } from "../domain/ticket";
 import type { BoardModel } from "../state/boardModel";
 import type { FrameOrder } from "../state/boardUi";
-import { activeAgentOf } from "./activeAgent";
+import { isWorking } from "./ticketStatus";
 import type { Rect } from "./viewport";
 
 type StageLane = "todo" | "running" | "waiting" | "done";
@@ -156,6 +156,7 @@ export function layoutBoard(
   additions: ReadonlyArray<Addition> = [],
   problemLines = 0,
   doneAgents = 0,
+  now = 0,
 ): Layout {
   const lines = additions.filter((item) => item.place === "orchestrator").length + problemLines;
   const top = LANES_TOP + lines * ADDITION_LINE;
@@ -179,7 +180,7 @@ export function layoutBoard(
       const keys = TICKET_STAGES.filter((stage) => !hidden.has(stageTagId(stage))).flatMap(
         (stage) =>
           model.lanes[stage]
-            .filter((view) => ticketLane(stage, activeAgentOf(view.agents) !== undefined) === id)
+            .filter((view) => ticketLane(stage, isWorking(view.agents, now)) === id)
             .map((view) => view.ticket.key),
       );
       for (const key of orderedKeys(keys, order[id])) items.push({ key, height: CARD_HEIGHT });
