@@ -29,7 +29,11 @@ const CallEvent = Schema.Struct({
   id: Text,
   title: Text.check(Schema.isMaxLength(80)),
   /** ISO 8601 with an offset. */
-  start: Text,
+  start: Text.check(
+    Schema.makeFilter((start) => !Number.isNaN(Date.parse(start)), {
+      message: "must be a date and time",
+    }),
+  ),
   app: CallApp,
 });
 export type CallEvent = typeof CallEvent.Type;

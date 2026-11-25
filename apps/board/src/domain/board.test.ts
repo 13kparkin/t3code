@@ -61,11 +61,12 @@ describe("parseBoard", () => {
     expect(Result.isSuccess(result) && result.success.calls).toEqual(calls);
   });
 
-  it("Given a call with an unknown app, when decoded, then the error names the calls field", () => {
-    const calls = [
-      { id: "c1", title: "Design sync", start: "2026-11-26T15:00:00.000Z", app: "skype" },
-    ];
-    const result = parseBoard(JSON.stringify({ ...valid, calls }));
+  it.each([
+    ["an unknown app", { app: "skype" }],
+    ["a start that is not a date", { start: "tomorrow 10:00" }],
+  ])("Given a call with %s, when decoded, then the error names the calls field", (_case, bad) => {
+    const call = { id: "c1", title: "Design sync", start: "2026-11-26T15:00:00.000Z", app: "zoom" };
+    const result = parseBoard(JSON.stringify({ ...valid, calls: [{ ...call, ...bad }] }));
     expect(Result.isFailure(result) && result.failure.fields).toEqual(["calls"]);
   });
 

@@ -375,8 +375,10 @@ describe("call events", () => {
       standup.start,
     ]);
     await changeCardState(files, CWD, target.folder, sync.id, "done");
+    await changeCardState(files, CWD, target.folder, standup.id, "archived");
     await removeCall(files, CWD, target.folder, sync.id);
-    expect(savedBoard(store)).toMatchObject({ calls: [standup], cardStates: {} });
+    expect(savedBoard(store)?.calls).toEqual([standup]);
+    expect(savedBoard(store)?.cardStates).toEqual({ [standup.id]: "archived" });
   });
 });
 
