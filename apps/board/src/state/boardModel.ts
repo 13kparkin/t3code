@@ -23,6 +23,7 @@ export type FamilyRow = Pick<
   | "pendingBackgroundTasks"
   | "pendingRuntimeRequest"
   | "pullRequests"
+  | "createdAt"
   | "updatedAt"
 >;
 
@@ -55,12 +56,14 @@ export interface AgentView {
 
 export interface TicketView {
   readonly ticket: Ticket;
+  /** The ticket's place in `tickets.json`. The orchestrator appends, so a higher one is newer. */
+  readonly position: number;
   readonly agents: ReadonlyArray<AgentView>;
 }
 
 export interface BoardModel {
   readonly lanes: Readonly<Record<TicketStage, ReadonlyArray<TicketView>>>;
-  /** Agents no ticket claims. */
+  /** Agents no ticket claims, newest first. */
   readonly unassigned: ReadonlyArray<AgentView>;
 }
 
@@ -144,19 +147,20 @@ export function joinBoard(input: {
     }
     byTicket.set(ticket.key, agents);
   }
-  const unassigned: AgentView[] = [];
+  const unassigned: Array<{ readonly agent: AgentView; readonly createdAt: number }> = [];
   for (const row of rows.values()) {
     if (claimed.has(row.id)) continue;
     const agent = agentOf(row, input.driverOf, null);
     const owner = agent.ticketKey === null ? undefined : byTicket.get(agent.ticketKey);
-    if (owner === undefined) unassigned.push(agent);
-    else owner.push(agent);
+    if (owner === undefined) {
+      unassigned.push({ agent, createdAt: DateTime.toEpochMillis(row.createdAt) });
+    } else owner.push(agent);
   }
 
   const lane = (stage: TicketStage): ReadonlyArray<TicketView> =>
-    input.tickets
-      .filter((ticket) => ticket.stage === stage)
-      .map((ticket) => ({ ticket, agents: byTicket.get(ticket.key) ?? [] }));
+    input.tickets.flatMap((ticket, position) =>
+      ticket.stage === stage ? [{ ticket, position, agents: byTicket.get(ticket.key) ?? [] }] : [],
+    );
   return {
     lanes: {
       todo: lane("todo"),
@@ -169,7 +173,7 @@ export function joinBoard(input: {
       merged: lane("merged"),
       off_path: lane("off_path"),
     },
-    unassigned,
+    unassigned: unassigned.toSorted((a, b) => b.createdAt - a.createdAt).map(({ agent }) => agent),
   };
 }
 

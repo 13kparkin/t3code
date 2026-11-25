@@ -2,13 +2,12 @@ import type { OrchestrationV2ThreadShell } from "@t3tools/contracts";
 
 export interface ProjectWorktree {
   readonly path: string;
-  readonly branch: string | null;
   readonly title: string;
 }
 
 type WorktreeThread = Pick<
   OrchestrationV2ThreadShell,
-  "id" | "projectId" | "title" | "branch" | "worktreePath" | "deletedAt" | "lineage"
+  "id" | "projectId" | "title" | "worktreePath" | "deletedAt" | "lineage"
 >;
 
 /**
@@ -31,7 +30,7 @@ export function worktreesByProject(
       user.lineage.parentThreadId === null || !ids.has(user.lineage.parentThreadId);
     const owner = users.reduce((best, user) => (isTop(user) && !isTop(best) ? user : best));
     const worktrees = byProject.get(owner.projectId) ?? [];
-    worktrees.push({ path, branch: owner.branch, title: owner.title });
+    worktrees.push({ path, title: owner.title });
     byProject.set(owner.projectId, worktrees);
   }
   return byProject;

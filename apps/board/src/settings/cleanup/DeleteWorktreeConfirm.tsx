@@ -1,8 +1,11 @@
 /** The confirm before T3's manual worktree delete, which keeps the branch and loses uncommitted changes. */
 export function DeleteWorktreeConfirm({
+  detached = false,
   onConfirm,
   onCancel,
 }: {
+  /** The worktree has no branch, so its commits go with it. */
+  detached?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -12,7 +15,11 @@ export function DeleteWorktreeConfirm({
       aria-label="Delete the worktree?"
       className="flex flex-col gap-2 rounded-md border border-red-400/40 p-2.5"
     >
-      <p>Delete the worktree? Its branch stays, and uncommitted changes in it are lost.</p>
+      <p>
+        {detached
+          ? "Delete the worktree? It has no branch, so commits made only here are lost."
+          : "Delete the worktree? Its branch stays, and uncommitted changes in it are lost."}
+      </p>
       <div className="flex gap-2">
         <button
           type="button"

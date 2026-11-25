@@ -66,6 +66,7 @@ export function RemoveWorktree({ view }: { view: TicketView }) {
         >
           {confirming && (
             <DeleteWorktreeConfirm
+              detached={onDisk.get(path) === null}
               onConfirm={() => void remove()}
               onCancel={() => setConfirming(false)}
             />

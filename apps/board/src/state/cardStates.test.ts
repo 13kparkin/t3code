@@ -28,8 +28,8 @@ const model: BoardModel = {
     todo: [],
     planned: [],
     building: [
-      { ticket: ticket("T-1"), agents: [] },
-      { ticket: ticket("T-2"), agents: [] },
+      { ticket: ticket("T-1"), position: 0, agents: [] },
+      { ticket: ticket("T-2"), position: 1, agents: [] },
     ],
     reviewing: [],
     verifying: [],

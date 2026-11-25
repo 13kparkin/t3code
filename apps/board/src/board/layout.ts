@@ -133,12 +133,12 @@ export interface Layout {
 export const unassignedHeight = (agents: number): number =>
   UNASSIGNED_HEAD + FRAME_PAD + agents * CARD_HEIGHT + (agents - 1) * CARD_GAP;
 
-/** Frames in the order the user dragged them to, and any the saved order lacks after them, in file order. */
+/** Frames the user never dragged on top, in the order given, then the rest in the order the user dragged them to. */
 export function orderedKeys(keys: ReadonlyArray<string>, saved: ReadonlyArray<string> = []) {
   const present = new Set(keys);
   const kept = saved.filter((key) => present.has(key));
   const placed = new Set(kept);
-  return [...kept, ...keys.filter((key) => !placed.has(key))];
+  return [...keys.filter((key) => !placed.has(key)), ...kept];
 }
 
 /**
@@ -188,12 +188,14 @@ export function layoutBoard(
       if (id === "done" && doneAgents > 0) {
         items.push({ key: DONE_AGENTS_KEY, height: unassignedHeight(doneAgents) });
       }
-      const keys = TICKET_STAGES.filter((stage) => !hidden.has(stageTagId(stage))).flatMap(
-        (stage) =>
-          model.lanes[stage]
-            .filter((view) => ticketLane(stage, isWorking(view.agents, now)) === id)
-            .map((view) => view.ticket.key),
-      );
+      const keys = TICKET_STAGES.filter((stage) => !hidden.has(stageTagId(stage)))
+        .flatMap((stage) =>
+          model.lanes[stage].filter(
+            (view) => ticketLane(stage, isWorking(view.agents, now)) === id,
+          ),
+        )
+        .toSorted((a, b) => b.position - a.position)
+        .map((view) => view.ticket.key);
       for (const key of orderedKeys(keys, order[id])) items.push({ key, height: CARD_HEIGHT });
     }
     let y = top + LANE_HEAD;

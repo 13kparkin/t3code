@@ -47,37 +47,42 @@ export function ProjectWorktrees({
       {onDisk !== null && worktrees.length === 0 && (
         <p className="px-3 py-2.5 text-xs text-faint">No worktrees in use.</p>
       )}
-      {worktrees.map((worktree) => (
-        <SettingsRow
-          key={worktree.path}
-          title={worktree.path.split("/").findLast(Boolean) ?? worktree.path}
-          description={
-            <span className="break-all">
-              {worktree.path}
-              {worktree.branch !== null && ` · ${worktree.branch}`} · {worktree.title}
-            </span>
-          }
-          control={
-            confirming === worktree.path ? undefined : (
-              <button
-                type="button"
-                aria-label={`Delete worktree ${worktree.path}`}
-                onClick={() => setConfirming(worktree.path)}
-                className="rounded-md border border-line px-2.5 py-1 text-fg hover:bg-hover"
-              >
-                Delete
-              </button>
-            )
-          }
-        >
-          {confirming === worktree.path && (
-            <DeleteWorktreeConfirm
-              onConfirm={() => void remove(worktree.path)}
-              onCancel={() => setConfirming(null)}
-            />
-          )}
-        </SettingsRow>
-      ))}
+      {worktrees.map((worktree) => {
+        // Git's branch, which can differ from the one the thread recorded.
+        const branch = onDisk?.get(worktree.path) ?? null;
+        return (
+          <SettingsRow
+            key={worktree.path}
+            title={worktree.path.split("/").findLast(Boolean) ?? worktree.path}
+            description={
+              <span className="break-all">
+                {worktree.path}
+                {` · ${branch ?? "detached"}`} · {worktree.title}
+              </span>
+            }
+            control={
+              confirming === worktree.path ? undefined : (
+                <button
+                  type="button"
+                  aria-label={`Delete worktree ${worktree.path}`}
+                  onClick={() => setConfirming(worktree.path)}
+                  className="rounded-md border border-line px-2.5 py-1 text-fg hover:bg-hover"
+                >
+                  Delete
+                </button>
+              )
+            }
+          >
+            {confirming === worktree.path && (
+              <DeleteWorktreeConfirm
+                detached={branch === null}
+                onConfirm={() => void remove(worktree.path)}
+                onCancel={() => setConfirming(null)}
+              />
+            )}
+          </SettingsRow>
+        );
+      })}
       {failure !== null && (
         <p role="alert" className="px-3 py-2 break-words text-red-400">
           {failure}

@@ -12,7 +12,7 @@ import { createEngine, type EngineConfig, type TokenStore } from "./engine";
 import { createLocalStateFile } from "./localState";
 import { pickFolder, resolveFolder } from "./pickFolder";
 import { listAgentSkills } from "./agentSkills";
-import { listGitWorktrees } from "./gitWorktrees";
+import { headOnOrigin, listGitWorktrees } from "./gitWorktrees";
 import { migrateLegacyEvidence } from "./legacyEvidence";
 import { ensurePstack } from "./pstack";
 import {
@@ -183,6 +183,12 @@ export function registerEngineIpc(options: {
   );
   ipcMain.handle("board:list-git-worktrees", (_event, text) =>
     listGitWorktrees(
+      host,
+      Option.getOrElse(decodeText(text), () => ""),
+    ).catch(() => null),
+  );
+  ipcMain.handle("board:head-on-origin", (_event, text) =>
+    headOnOrigin(
       host,
       Option.getOrElse(decodeText(text), () => ""),
     ).catch(() => null),

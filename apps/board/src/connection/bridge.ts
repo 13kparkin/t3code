@@ -13,6 +13,7 @@ type EngineBridge = Pick<
   | "ensurePstack"
   | "listAgentSkills"
   | "listGitWorktrees"
+  | "headOnOrigin"
   | "migrateLegacyEvidence"
   | "logConnection"
 >;
@@ -63,6 +64,7 @@ function webBridge(): EngineBridge {
     // Without the main process there is no WSL home to read.
     listAgentSkills: () => Promise.resolve(""),
     listGitWorktrees: () => Promise.resolve(null),
+    headOnOrigin: () => Promise.resolve(null),
     migrateLegacyEvidence: () => Promise.resolve(""),
     ensurePstack: () => {
       const dir = import.meta.env.AGENT_BOARD_PSTACK_DIR;

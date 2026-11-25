@@ -8,7 +8,7 @@ import { AsyncResult, Atom, type AtomRegistry } from "effect/reactivity";
 import { engineBridge } from "../connection/bridge";
 import { connectionAtomRuntime } from "../connection/runtime";
 import { failureText } from "../settings/failureText";
-import { type GitWorktree, parseWorktreeList } from "./gitWorktrees";
+import { type GitWorktree, parseWorktreeList, worktreesOnDisk } from "./gitWorktrees";
 import { setupLine } from "./worktreeSetup";
 
 export const vcsEnvironment = createVcsEnvironmentAtoms(connectionAtomRuntime);
@@ -46,18 +46,17 @@ const gitWorktreesAtom = Atom.family((projectRoot: string) =>
 const decodeOnDiskKey = Schema.decodeUnknownSync(Schema.Tuple([EnvironmentId, Schema.String]));
 
 /**
- * The worktree folders on disk under a project, never its main checkout, or null while loading.
- * Without the desktop shell, as in `dev:web`, a worktree counts when a local branch points at it.
+ * The worktree folders on disk under a project, never its main checkout, each with git's branch or
+ * null when detached, or null while loading. Without the desktop shell, as in `dev:web`, a worktree
+ * counts when a local branch points at it.
  * Keyed by `[environmentId, workspaceRoot]` as JSON.
  */
 export const worktreesOnDiskAtom = Atom.family((key: string) => {
   const [environmentId, cwd] = decodeOnDiskKey(JSON.parse(key));
-  return Atom.make((get): ReadonlySet<string> | null => {
+  return Atom.make((get): ReadonlyMap<string, string | null> | null => {
     const listed = get(gitWorktreesAtom(cwd));
     if (listed === undefined) return null;
-    if (listed !== null) {
-      return new Set(listed.flatMap((worktree) => (worktree.main ? [] : [worktree.path])));
-    }
+    if (listed !== null) return worktreesOnDisk(listed);
     // `refresh` skips the engine's snapshot, which a worktree made by a thread does not update.
     const refs = AsyncResult.getOrElse(
       get(
@@ -69,9 +68,9 @@ export const worktreesOnDiskAtom = Atom.family((key: string) => {
       () => null,
     );
     if (refs === null) return null;
-    return new Set(
+    return new Map(
       refs.refs.flatMap((ref) =>
-        ref.worktreePath === null || ref.worktreePath === cwd ? [] : [ref.worktreePath],
+        ref.worktreePath === null || ref.worktreePath === cwd ? [] : [[ref.worktreePath, ref.name]],
       ),
     );
   }).pipe(Atom.withLabel(`worktrees-on-disk:${key}`));

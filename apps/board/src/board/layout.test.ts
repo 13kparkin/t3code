@@ -55,6 +55,8 @@ const view = (
   runState: AgentView["runState"] = "idle",
 ): TicketView => ({
   ticket,
+  // The fixtures' keys follow tickets.json order, as the orchestrator appends.
+  position: Number(ticket.key.slice(2)),
   agents: Array.from({ length: agents }, (_, index) => agent(`${ticket.key}-${index}`, runState)),
 });
 const empty: BoardModel["lanes"] = {
@@ -132,7 +134,7 @@ describe("laying out the lanes", () => {
     ]);
     expect([keys("todo"), keys("running"), keys("waiting")]).toEqual([
       ["T-3"],
-      ["T-1", "T-2"],
+      ["T-2", "T-1"],
       ["T-4"],
     ]);
     const running = lane("running");
@@ -168,7 +170,7 @@ describe("laying out the lanes", () => {
       0,
       2,
     );
-    expect(keys("done", shown)).toEqual([DONE_AGENTS_KEY, "T-5", "T-6"]);
+    expect(keys("done", shown)).toEqual([DONE_AGENTS_KEY, "T-6", "T-5"]);
     expect(keys("todo", shown)).toEqual([UNASSIGNED_KEY, "T-3"]);
     const views = new Map(
       Object.values(model.lanes).flatMap((all) => all.map((v) => [v.ticket.key, v])),
@@ -190,7 +192,7 @@ describe("laying out the lanes", () => {
     expect([keys("todo", hidden), keys("running", hidden), keys("done", hidden)]).toEqual([
       [],
       [],
-      ["T-5", "T-6"],
+      ["T-6", "T-5"],
     ]);
   });
 
@@ -254,11 +256,19 @@ describe("laying out the lanes", () => {
     },
   );
 
-  it("Given a saved order, when laid out, then it wins and new tickets follow", () => {
-    expect(orderedKeys(["T-1", "T-2", "T-4"], ["T-2", "T-9", "T-1"])).toEqual([
+  it("Given no saved order, when laid out, then the newest ticket in tickets.json leads each lane, across stages", () => {
+    expect([keys("running", layout), keys("done", layoutBoard(model, {}, 0, new Set()))]).toEqual([
+      ["T-2", "T-1"],
+      ["T-6", "T-5"],
+    ]);
+  });
+
+  it("Given a saved order, when laid out, then tickets the user never dragged sit on top, newest first, and the saved order follows", () => {
+    expect(orderedKeys(["T-5", "T-4", "T-2", "T-1"], ["T-2", "T-9", "T-1"])).toEqual([
+      "T-5",
+      "T-4",
       "T-2",
       "T-1",
-      "T-4",
     ]);
     expect(keys("running", layoutBoard(model, { running: ["T-2", "T-1"] }, 0, defaults))).toEqual([
       "T-2",
@@ -292,8 +302,8 @@ describe("laying out additions", () => {
       laid.lanes.find((entry) => entry.id === id)?.frames.map((frame) => [frame.key, frame.y]);
     expect([frames("running"), frames("waiting")]).toEqual([
       [
-        ["T-1", 424],
-        ["T-2", 484],
+        ["T-2", 424],
+        ["T-1", 484],
       ],
       [
         ["__add:ci", 424],
@@ -327,12 +337,12 @@ describe("dragging a frame", () => {
   if (first === undefined) throw new Error("the building lane has no frame");
 
   it("Given a frame dragged past its neighbor's center, when dropped, then it takes the neighbor's place", () => {
-    expect(reorderByDrag(building, "T-1", first.height + FRAME_GAP + 1)).toEqual(["T-2", "T-1"]);
-    expect(reorderByDrag(building, "T-2", -first.height - FRAME_GAP - 1)).toEqual(["T-2", "T-1"]);
+    expect(reorderByDrag(building, "T-2", first.height + FRAME_GAP + 1)).toEqual(["T-1", "T-2"]);
+    expect(reorderByDrag(building, "T-1", -first.height - FRAME_GAP - 1)).toEqual(["T-1", "T-2"]);
   });
 
   it("Given a short drag, when dropped, then the order stays", () => {
-    expect(reorderByDrag(building, "T-1", 10)).toEqual(["T-1", "T-2"]);
+    expect(reorderByDrag(building, "T-2", 10)).toEqual(["T-2", "T-1"]);
   });
 
   it("Given a drag past the lane, when clamped, then the frame stays inside it", () => {

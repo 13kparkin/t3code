@@ -17,7 +17,6 @@ const thread = (id: string, extra: Partial<Thread> = {}): Thread => ({
   id: ThreadId.make(id),
   projectId: ProjectId.make("p"),
   title: id,
-  branch: null,
   worktreePath: null,
   deletedAt: null,
   lineage: lineage("orch"),
@@ -28,8 +27,8 @@ describe("the worktrees a project's threads use", () => {
   it.each([
     {
       name: "a sub-agent thread's worktree",
-      threads: [thread("[T-1] task", { worktreePath: "/w/a", branch: "feat/a" })],
-      worktrees: [{ path: "/w/a", branch: "feat/a", title: "[T-1] task" }],
+      threads: [thread("[T-1] task", { worktreePath: "/w/a" })],
+      worktrees: [{ path: "/w/a", title: "[T-1] task" }],
     },
     {
       name: "a reviewer sharing the task thread's worktree, listed after it",
@@ -37,7 +36,7 @@ describe("the worktrees a project's threads use", () => {
         thread("[T-1] reviewer", { worktreePath: "/w/a", lineage: lineage("[T-1] task") }),
         thread("[T-1] task", { worktreePath: "/w/a" }),
       ],
-      worktrees: [{ path: "/w/a", branch: null, title: "[T-1] task" }],
+      worktrees: [{ path: "/w/a", title: "[T-1] task" }],
     },
     {
       name: "a side chat and a deleted thread",

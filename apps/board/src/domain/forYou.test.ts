@@ -57,12 +57,12 @@ describe("for-you list", () => {
     JSON.stringify({ id: "g-1", status: "resolved", resolution: "Approved" }),
   ].join("\n");
 
-  it("Given a file and two engine requests, when they are merged, then open cards come first by age, then held, then resolved", () => {
+  it("Given a file and two engine requests, when they are merged, then open cards come first, newest first, then held, then resolved", () => {
     const merged = mergeForYou(file, [
       request("secret", "sec-1", "2026-11-20T10:07:00Z"),
       request("approval", "req-1", "2026-11-20T10:02:00Z"),
     ]);
-    expect(idsOf(merged.cards)).toEqual(["q-1", "req-1", "mrg-1", "sec-1", "r-1", "g-1"]);
+    expect(idsOf(merged.cards)).toEqual(["sec-1", "mrg-1", "req-1", "q-1", "r-1", "g-1"]);
     expect(merged.problems).toEqual([]);
   });
 
@@ -115,7 +115,7 @@ describe("for-you list", () => {
       item("d", "read", "open", "2026-11-20T10:01:00Z"),
     ].join("\n");
     const merged = mergeForYou(text, []);
-    expect(idsOf(merged.cards)).toEqual(["a", "d"]);
+    expect(idsOf(merged.cards)).toEqual(["d", "a"]);
     expect(merged.problems.map((problem) => problem.line)).toEqual([3, 4, 5]);
     expect(merged.problems[1]?.message).toContain("conditions");
   });
@@ -128,7 +128,7 @@ describe("for-you list", () => {
 
   it("Given held and resolved items, when the open cards are counted, then only open ones count", () => {
     const merged = mergeForYou(file, [request("approval", "r", "2026-11-20T10:00:00Z")]);
-    expect(idsOf(openCards(merged.cards))).toEqual(["q-1", "r", "mrg-1"]);
+    expect(idsOf(openCards(merged.cards))).toEqual(["mrg-1", "q-1", "r"]);
   });
 });
 
@@ -226,8 +226,8 @@ describe("answering a card", () => {
       item("rt-3", "role_target", "open", "2026-11-21T10:02:00Z", { write: { model: "x" } }),
     ].join("\n");
     const merged = mergeForYou(lines, [], {});
-    expect(merged.cards.map((card) => card.id)).toEqual(["rt-1", "rt-2"]);
-    expect(merged.cards[0]).toMatchObject({ item: { kind: "role_target", write } });
+    expect(merged.cards.map((card) => card.id)).toEqual(["rt-2", "rt-1"]);
+    expect(merged.cards[1]).toMatchObject({ item: { kind: "role_target", write } });
     expect(merged.problems.map((problem) => problem.line)).toEqual([3]);
     expect(openCards(merged.cards)).toEqual([]);
     const recorded = mergeForYou(lines, [], { "rt-2": "Rejected: no." }).cards;
