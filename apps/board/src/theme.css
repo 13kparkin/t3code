@@ -3,6 +3,7 @@
 
 @theme static {
   --font-sans: "Inter Variable", system-ui, sans-serif;
+  --agent-panel-width: 24rem;
   --color-bg: #151618;
   --color-dot: #2d3036;
   --color-panel: #1e2023;

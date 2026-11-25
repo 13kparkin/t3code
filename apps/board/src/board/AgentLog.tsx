@@ -7,7 +7,6 @@ import { timelineRows } from "../chat/timeline";
 import { TimelineRowView } from "../chat/TimelineRowView";
 import { useEnvironmentThread } from "../state/threads";
 
-/** The read-only log of one agent's thread. */
 export function AgentLog({
   environmentId,
   threadId,

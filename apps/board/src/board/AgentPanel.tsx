@@ -28,7 +28,7 @@ export function AgentPanel({
     <aside
       aria-label="Agent activity"
       data-testid="agent-panel"
-      className="absolute inset-y-0 right-0 z-30 flex w-96 max-w-full flex-col border-l border-line bg-sidebar shadow-panel"
+      className="absolute inset-y-0 right-0 z-30 flex w-(--agent-panel-width) max-w-full flex-col border-l border-line bg-sidebar shadow-panel"
     >
       <header className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-3">
         <h2 className="min-w-0 flex-1 truncate font-semibold">

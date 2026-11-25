@@ -4,7 +4,6 @@ export type ComposerPlacement = "sidebar" | "corner" | "center";
 export function composerPlacement(input: {
   /** The side panel is open on the chat tab. */
   readonly threadShown: boolean;
-  /** Focus is inside the composer. */
   readonly focused: boolean;
   /** The composer holds text or files, or its model menu is open. */
   readonly filled: boolean;

@@ -11,7 +11,7 @@ export const IDLE_AFTER_MS = 3 * 60_000;
 
 export type AgentActivity = "asking" | "working" | "idle" | "failed" | "stopped";
 
-/** What one agent is doing at `now`. An agent running no turn and waiting on nothing has no session worth keeping. */
+/** What one agent is doing at `now`. */
 export function agentActivity(agent: AgentView, now: number): AgentActivity {
   if (agent.pendingRequest) return "asking";
   if (agent.waitingOnChildren) {
