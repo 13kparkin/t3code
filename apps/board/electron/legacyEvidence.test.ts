@@ -38,7 +38,7 @@ function read(root: string): Record<string, string> {
   const files = NodeFS.readdirSync(root, { recursive: true, encoding: "utf8" });
   return Object.fromEntries(
     files
-      .filter((path) => NodeFS.statSync(NodePath.join(root, path)).isFile())
+      .filter((path) => NodeFS.lstatSync(NodePath.join(root, path)).isFile())
       .toSorted()
       .map((path) => [path, NodeFS.readFileSync(NodePath.join(root, path)).toString("hex")]),
   );
@@ -126,6 +126,24 @@ describe("migrateLegacyEvidence", () => {
         `failed\t${tree}\tT-3 is not a ticket folder\n`,
       );
       expect(read(artifacts)).toEqual({});
+    } finally {
+      NodeFS.rmSync(temp, { recursive: true, force: true });
+    }
+  });
+
+  it("Given a dangling symlink beside a real file, when it migrates, then the file lands and the worktree is migrated", async () => {
+    const temp = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "board-legacy-"));
+    try {
+      const tree = NodePath.join(temp, "wt");
+      const artifacts = NodePath.join(temp, "board", "artifacts");
+      plant(tree, { ".omp/artifacts/T-2/proof.txt": "ok\n" });
+      NodeFS.symlinkSync(
+        NodePath.join(temp, "gone"),
+        NodePath.join(tree, ".omp", "artifacts", "T-2", "dang"),
+      );
+
+      expect(await migrateLegacyEvidence(host, artifacts, [tree])).toBe(`migrated\t${tree}\n`);
+      expect(read(artifacts)).toEqual(hex({ "T-2/proof.txt": "ok\n" }));
     } finally {
       NodeFS.rmSync(temp, { recursive: true, force: true });
     }

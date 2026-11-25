@@ -11,8 +11,11 @@ import {
   FRAME_GAP,
   LANE_GAP,
   LANE_HEAD,
+  LANE_BORDER,
   LANE_MAX_HEIGHT,
   LANE_PAD,
+  edgeScrollStep,
+  laneCardsHeight,
   LANE_WIDTH,
   LANES_TOP,
   hiddenFilters,
@@ -206,6 +209,33 @@ describe("laying out the lanes", () => {
       y: todo.y + LANE_MAX_HEIGHT + 40,
     });
   });
+
+  it.each([1, 3, 8])(
+    "Given %i To do cards, when laid out, then the cards fit the lane's scroll box exactly",
+    (count) => {
+      const cards = Array.from({ length: count }, (_, at) =>
+        view({ key: `T-${at + 10}`, title: "x", stage: "todo" }),
+      );
+      const todo = lane(
+        "todo",
+        layoutBoard({ ...model, lanes: { ...empty, todo: cards } }, {}, 0, defaults),
+      )!;
+      expect(laneCardsHeight(todo)).toBeLessThanOrEqual(todo.height - 2 * LANE_BORDER - LANE_HEAD);
+    },
+  );
+
+  it.each([
+    ["mid lane", 300, 0],
+    ["just inside the bottom edge zone", 580, 4],
+    ["at the bottom edge", 600, 24],
+    ["past the bottom edge", 640, 24],
+    ["at the top edge", 100, -24],
+  ])(
+    "Given a dragged card's pointer %s (y %i) of a lane from 100 to 600, then the lane scrolls %i px a tick",
+    (_name, y, step) => {
+      expect(edgeScrollStep(y, 100, 600)).toBe(step);
+    },
+  );
 
   it("Given a saved order, when laid out, then it wins and new tickets follow", () => {
     expect(orderedKeys(["T-1", "T-2", "T-4"], ["T-2", "T-9", "T-1"])).toEqual([

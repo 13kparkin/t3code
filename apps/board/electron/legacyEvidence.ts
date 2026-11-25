@@ -4,7 +4,7 @@ const BODY = String.raw`
 missing() {
   list=$(cd "$1" && find . ! -type d) || { echo "cannot list $1"; return; }
   printf '%s\n' "$list" | while IFS= read -r file; do
-    [ -z "$file" ] || cmp -s "$1/$file" "$2/$file" || { echo "$file differs on the board"; break; }
+    [ -z "$file" ] || { [ -L "$1/$file" ] && [ ! -e "$1/$file" ]; } || cmp -s "$1/$file" "$2/$file" || { echo "$file differs on the board"; break; }
   done
 }
 migrate() {

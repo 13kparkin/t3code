@@ -6,11 +6,21 @@ import { usePrContext, useTicketNotes } from "../state/prStatus";
 import type { TicketView } from "../state/boardModel";
 import { ago } from "../ui/ago";
 import { CardLine } from "./CardLine";
-import { type FrameBox, STAGE_TAGS } from "./layout";
+import { edgeScrollStep, type FrameBox, STAGE_TAGS } from "./layout";
 import { newestAgent, ticketStatus } from "./ticketStatus";
 import { useViewScale } from "./Viewport";
 
 const DRAG_THRESHOLD_PX = 4;
+const EDGE_TICK_MS = 80;
+
+interface Press {
+  readonly startY: number;
+  readonly lane: HTMLElement | null;
+  readonly startScroll: number;
+  clientY: number;
+  dragging: boolean;
+  timer: ReturnType<typeof setInterval> | null;
+}
 
 /** A ticket on its lane as two lines. The whole card drags; a press that did not drag opens the ticket. */
 export function TicketFrame({
@@ -37,7 +47,7 @@ export function TicketFrame({
 }) {
   const { ticket, agents } = view;
   const scale = useViewScale();
-  const press = useRef<{ startY: number; dragging: boolean } | null>(null);
+  const press = useRef<Press | null>(null);
   const dragged = useRef(false);
   const newest = newestAgent(agents);
   const tag = STAGE_TAGS[ticket.stage];
@@ -50,7 +60,17 @@ export function TicketFrame({
           ticket,
           tickets.map((entry) => entry.ticket),
         );
+  const stopEdgeScroll = () => {
+    if (press.current?.timer != null) clearInterval(press.current.timer);
+  };
+  // The lane may have scrolled since the press, so its scroll joins the pointer's travel.
+  const report = (active: Press) =>
+    onDrag(
+      (active.clientY - active.startY) / scale +
+        (active.lane === null ? 0 : active.lane.scrollTop - active.startScroll),
+    );
   const end = () => {
+    stopEdgeScroll();
     if (press.current?.dragging) {
       dragged.current = true;
       onDrop();
@@ -79,18 +99,40 @@ export function TicketFrame({
         if (event.button !== 0) return;
         event.stopPropagation();
         dragged.current = false;
-        press.current = { startY: event.clientY, dragging: false };
+        const lane = event.currentTarget.closest<HTMLElement>("[data-lane-scroll]");
+        press.current = {
+          startY: event.clientY,
+          lane,
+          startScroll: lane?.scrollTop ?? 0,
+          clientY: event.clientY,
+          dragging: false,
+          timer: null,
+        };
       }}
       onPointerMove={(event) => {
         const active = press.current;
         if (active === null) return;
-        const moved = event.clientY - active.startY;
-        if (!active.dragging && Math.abs(moved) < DRAG_THRESHOLD_PX) return;
+        active.clientY = event.clientY;
+        if (!active.dragging && Math.abs(event.clientY - active.startY) < DRAG_THRESHOLD_PX) return;
         if (!active.dragging) {
           active.dragging = true;
           event.currentTarget.setPointerCapture(event.pointerId);
         }
-        onDrag(moved / scale);
+        report(active);
+        const lane = active.lane;
+        const card = event.currentTarget;
+        if (lane === null || active.timer !== null) return;
+        active.timer = setInterval(() => {
+          if (!card.isConnected) {
+            if (active.timer !== null) clearInterval(active.timer);
+            return;
+          }
+          const rect = lane.getBoundingClientRect();
+          const step = edgeScrollStep(active.clientY, rect.top, rect.bottom);
+          if (step === 0) return;
+          lane.scrollTop += step;
+          report(active);
+        }, EDGE_TICK_MS);
       }}
       onPointerUp={end}
       onPointerCancel={end}

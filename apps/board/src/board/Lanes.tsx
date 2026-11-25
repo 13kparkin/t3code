@@ -21,10 +21,11 @@ import {
   type LaneBox,
   type LaneId,
   type Layout,
+  LANE_BORDER,
   LANE_HEAD,
   LANE_LABEL,
   LANE_MAX_HEIGHT,
-  LANE_PAD,
+  laneCardsHeight,
   laneCount,
   reorderByDrag,
   UNASSIGNED_HEAD,
@@ -37,11 +38,6 @@ import {
 import { RemoveAddition } from "./RemoveAddition";
 import { TicketFrame } from "./TicketFrame";
 import { ticketStatus } from "./ticketStatus";
-
-const framesHeight = (lane: LaneBox) => {
-  const last = lane.frames.at(-1);
-  return last === undefined ? 0 : last.y + last.height + LANE_PAD - lane.y - 1 - LANE_HEAD;
-};
 
 const LANE_TONE = {
   for_you: "bg-amber-500 text-black",
@@ -99,7 +95,11 @@ export function Lanes({
 
   const renderFrame = (lane: LaneBox, frame: FrameBox) => {
     // Frames sit in the lane's scroll box, so they draw from its corner inside the lane's border.
-    const box = { ...frame, x: frame.x - lane.x - 1, y: frame.y - lane.y - 1 - LANE_HEAD };
+    const box = {
+      ...frame,
+      x: frame.x - lane.x - LANE_BORDER,
+      y: frame.y - lane.y - LANE_BORDER - LANE_HEAD,
+    };
     const added = box.key.startsWith(ADDITION_KEY)
       ? additions.get(box.key.slice(ADDITION_KEY.length))
       : undefined;
@@ -252,12 +252,12 @@ export function Lanes({
                 event.stopPropagation();
               }
             }}
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+            className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-width:thin]"
           >
             {lane.id === "for_you" ? (
               forYouLane
             ) : (
-              <div className="relative" style={{ height: framesHeight(lane) }}>
+              <div className="relative" style={{ height: laneCardsHeight(lane) }}>
                 {lane.frames.map((frame) => renderFrame(lane, frame))}
               </div>
             )}

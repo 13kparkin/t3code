@@ -90,7 +90,12 @@ export function Viewport({
     surfaceRef.current = surface;
     const onWheel = (event: WheelEvent) => {
       if (event.target instanceof Element && event.target.closest("[data-scroll]") !== null) return;
-      if (overflowingLane(event.target) !== null && !event.ctrlKey && !event.metaKey) return;
+      const scrollsLane =
+        overflowingLane(event.target) !== null &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        Math.abs(event.deltaY) >= Math.abs(event.deltaX);
+      if (scrollsLane) return;
       event.preventDefault();
       const rect = surface.getBoundingClientRect();
       setView((current) =>
