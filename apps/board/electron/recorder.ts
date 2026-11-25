@@ -138,11 +138,9 @@ interface Session {
   readonly dir: string;
   readonly pid: number;
   readonly child: ReturnType<Helper["spawn"]>;
-  /** Null until the helper starts on the right app. */
   recording: Recording | null;
   micMissing: boolean;
-  /** Set when the helper started on the wrong process, so the take is thrown away. */
-  discard: string | null;
+  wrongAppMessage: string | null;
   error: { readonly code: string; readonly message: string } | null;
   stopped: { readonly reason: string; readonly seconds: number } | null;
   capped: boolean;
@@ -210,7 +208,6 @@ export function createRecorder(deps: {
     NodeFS.writeFileSync(`${file}.tmp`, JSON.stringify(recording, null, 2));
     NodeFS.renameSync(`${file}.tmp`, file);
   };
-  /** The longest track after `repair`, in seconds. A track the helper cannot read counts as 0. */
   const repair = async (dir: string) => {
     const seconds = await Promise.all(
       TRACKS.map(async ({ file }) =>
@@ -247,7 +244,7 @@ export function createRecorder(deps: {
     switch (event?.event) {
       case "started": {
         if (event.protocol !== PROTOCOL || !sameExe(event.exe, exe)) {
-          current.discard = `The recorder found ${event.exe ?? "no app"}, not ${name}.`;
+          current.wrongAppMessage = `The recorder found ${event.exe ?? "no app"}, not ${name}.`;
           current.child.stop();
           return;
         }
@@ -313,7 +310,7 @@ export function createRecorder(deps: {
       session = null;
       const { name } = CALL_EXES[current.request.app];
       const message =
-        current.discard ??
+        current.wrongAppMessage ??
         (error?.code === "target_not_found"
           ? `${name} is not running.`
           : (error?.message ?? "The recorder stopped before it started."));
@@ -364,7 +361,7 @@ export function createRecorder(deps: {
       pid: target.pid,
       recording: null,
       micMissing: false,
-      discard: null,
+      wrongAppMessage: null,
       error: null,
       stopped: null,
       capped: false,
@@ -421,7 +418,7 @@ export function createRecorder(deps: {
   };
 }
 
-/** A 16 px square bitmap, BGRA, filled where `inside` says. */
+/** `nativeImage.createFromBitmap` reads BGRA pixels. */
 function icon(
   inside: (x: number, y: number) => boolean,
   [r, g, b]: readonly [number, number, number],

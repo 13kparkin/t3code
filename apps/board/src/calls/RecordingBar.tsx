@@ -5,10 +5,7 @@ import type { RecorderState } from "../connection/engineState";
 import { secondAtom, stopRecording } from "../state/recorder";
 import { CONSENT_LINE, elapsed } from "./recorder";
 
-/**
- * The bar every board shows while a call records. Mount it only then, because its timer ticks once a second
- * for as long as it is mounted. The dot is static.
- */
+/** Mount only while recording, because its timer ticks once a second while mounted. */
 export function RecordingBar({
   state,
 }: {

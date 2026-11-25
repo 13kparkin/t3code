@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 
 import { CONSENT_LINE } from "./recorder";
 
-/** Shown on the first Record press. Nothing records until the user accepts. Portaled out of the panned canvas. */
+/** Portaled out of the panned canvas. */
 export function ConsentNotice({
   onAccept,
   onClose,

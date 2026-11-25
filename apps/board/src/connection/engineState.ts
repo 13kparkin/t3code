@@ -112,7 +112,7 @@ export interface RecorderHost {
   readonly onSnapshot: (listener: (snapshot: RecorderSnapshot) => void) => () => void;
   readonly start: (request: RecordRequest) => void;
   readonly stop: () => void;
-  /** Removes every take of the call from this PC. */
+  /** Removes every take of the call from this PC. Does nothing while that call records. */
   readonly deleteAudio: (callId: string) => void;
 }
 

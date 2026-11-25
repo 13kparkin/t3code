@@ -7,7 +7,7 @@ const END_NOTES = {
   target_exited: "Call ended",
   max_duration: "Stopped at 4 hours",
   error: "Recorder error",
-  crashed: "The recorder quit, audio kept",
+  crashed: "Recorder crashed",
   app_quit: "Recovered after the board closed",
 } as const satisfies Record<NonNullable<Recording["endReason"]>, string | null>;
 
