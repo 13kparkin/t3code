@@ -5,8 +5,10 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { AsyncResult, Atom, type AtomRegistry } from "effect/reactivity";
 
+import { engineBridge } from "../connection/bridge";
 import { connectionAtomRuntime } from "../connection/runtime";
 import { failureText } from "../settings/failureText";
+import { type GitWorktree, parseWorktreeList } from "./gitWorktrees";
 import { setupLine } from "./worktreeSetup";
 
 export const vcsEnvironment = createVcsEnvironmentAtoms(connectionAtomRuntime);
@@ -27,8 +29,53 @@ export async function deleteWorktree(
     { environmentId: target.environmentId, input: { cwd: target.cwd, path, force } },
     { reportFailure: false },
   );
+  registry.refresh(gitWorktreesAtom(target.cwd));
   return result._tag === "Failure" ? failureText(result) : null;
 }
+
+/** A project's `git worktree list`, read through the desktop shell. Undefined while it loads, null without a shell. */
+const gitWorktreesAtom = Atom.family((projectRoot: string) =>
+  Atom.make((get): ReadonlyArray<GitWorktree> | null | undefined => {
+    void engineBridge
+      .listGitWorktrees(projectRoot)
+      .then((stdout) => get.setSelf(stdout === null ? null : parseWorktreeList(stdout)));
+    return undefined;
+  }).pipe(Atom.withLabel(`git-worktrees:${projectRoot}`)),
+);
+
+const decodeOnDiskKey = Schema.decodeUnknownSync(Schema.Tuple([EnvironmentId, Schema.String]));
+
+/**
+ * The worktree folders on disk under a project, never its main checkout, or null while loading.
+ * Without the desktop shell, as in `dev:web`, a worktree counts when a local branch points at it.
+ * Keyed by `[environmentId, workspaceRoot]` as JSON.
+ */
+export const worktreesOnDiskAtom = Atom.family((key: string) => {
+  const [environmentId, cwd] = decodeOnDiskKey(JSON.parse(key));
+  return Atom.make((get): ReadonlySet<string> | null => {
+    const listed = get(gitWorktreesAtom(cwd));
+    if (listed === undefined) return null;
+    if (listed !== null) {
+      return new Set(listed.flatMap((worktree) => (worktree.main ? [] : [worktree.path])));
+    }
+    // `refresh` skips the engine's snapshot, which a worktree made by a thread does not update.
+    const refs = AsyncResult.getOrElse(
+      get(
+        vcsEnvironment.listRefs({
+          environmentId,
+          input: { cwd, refKind: "local", limit: 200, refresh: true },
+        }),
+      ),
+      () => null,
+    );
+    if (refs === null) return null;
+    return new Set(
+      refs.refs.flatMap((ref) =>
+        ref.worktreePath === null || ref.worktreePath === cwd ? [] : [ref.worktreePath],
+      ),
+    );
+  }).pipe(Atom.withLabel(`worktrees-on-disk:${key}`));
+});
 
 const decodeSetupKey = Schema.decodeUnknownSync(Schema.Tuple([EnvironmentId, ThreadId]));
 

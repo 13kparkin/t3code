@@ -259,6 +259,7 @@ export function BoardScreen({
                 additions={additions}
                 onChangeHidden={changeHidden}
                 doneCount={doneCount + model.lanes.merged.length + model.lanes.off_path.length}
+                todoAgents={model.unassigned.length}
                 archived={cards.archived}
                 onUnarchive={(key) => saveCard(key, null)}
               />

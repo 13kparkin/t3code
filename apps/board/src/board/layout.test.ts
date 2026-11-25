@@ -1,3 +1,4 @@
+import * as Record from "effect/Record";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { Addition } from "../domain/additions";
@@ -21,6 +22,7 @@ import {
   hiddenFilters,
   layoutBoard,
   laneCount,
+  stageTagCount,
   orderedKeys,
   reorderByDrag,
   ticketLane,
@@ -176,6 +178,11 @@ describe("laying out the lanes", () => {
       laneCount(lane("done", shown)!, views, 0, agents),
       laneCount(lane("todo", shown)!, views, 0, agents),
     ]).toEqual([4, 2]);
+    const stages = Record.map(model.lanes, (views) => views.length);
+    expect(
+      [stageTagCount("todo", stages, agents.todo), stageTagCount("planned", stages, agents.todo)],
+      "the To do and planned tags add up to the To do header",
+    ).toEqual([1, 1]);
   });
 
   it("Given a hidden tag, when laid out, then its cards leave the lane and the lane stays", () => {

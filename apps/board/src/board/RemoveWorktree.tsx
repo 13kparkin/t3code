@@ -7,7 +7,7 @@ import { DeleteWorktreeConfirm } from "../settings/cleanup/DeleteWorktreeConfirm
 import type { TicketView } from "../state/boardModel";
 import { usePrContext } from "../state/prStatus";
 import { serverEnvironment } from "../state/server";
-import { deleteWorktree, vcsEnvironment } from "../state/vcs";
+import { deleteWorktree, worktreesOnDiskAtom } from "../state/vcs";
 import { worktreeBytes, worktreeKeptReason } from "./worktreeRow";
 
 export function RemoveWorktree({ view }: { view: TicketView }) {
@@ -28,16 +28,10 @@ export function RemoveWorktree({ view }: { view: TicketView }) {
   // No verdict yet: no cleanup run has finished for this ticket, so nothing says it is safe.
   const checking = reason === null && verdict === undefined;
   // The repository says which worktrees exist, as on the Cleanup page, and a delete refreshes it.
-  const refs = AsyncResult.getOrElse(
-    useAtomValue(
-      vcsEnvironment.listRefs({
-        environmentId: project.environmentId,
-        input: { cwd: project.workspaceRoot, refKind: "local", limit: 200, refresh: true },
-      }),
-    ),
-    () => null,
+  const onDisk = useAtomValue(
+    worktreesOnDiskAtom(JSON.stringify([project.environmentId, project.workspaceRoot])),
   );
-  if (path == null || !refs?.refs.some((ref) => ref.worktreePath === path)) return null;
+  if (path == null || onDisk?.has(path) !== true) return null;
 
   const remove = async () => {
     setFailure(null);

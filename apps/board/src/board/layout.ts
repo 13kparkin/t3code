@@ -38,6 +38,13 @@ export function ticketLane(stage: TicketStage, live: boolean): StageLane {
   return stage === "todo" || stage === "planned" ? "todo" : "waiting";
 }
 
+/** A stage tag's count. The To do tag also counts the agent rows that lead the To do lane, as its header does. */
+export const stageTagCount = (
+  stage: TicketStage,
+  stages: Readonly<Record<TicketStage, number>>,
+  todoAgents: number,
+) => stages[stage] + (stage === "todo" ? todoAgents : 0);
+
 /** The filter id of the Done lane, which starts hidden. */
 export const DONE_TAG = "done";
 export const stageTagId = (stage: TicketStage) => `stage:${stage}`;
