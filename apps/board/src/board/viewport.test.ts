@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
-  FIT_FLOOR,
   INITIAL_VIEW,
   MAX_ZOOM,
   MIN_ZOOM,
@@ -57,27 +56,39 @@ describe("panBy", () => {
 describe("fitToContent", () => {
   const size = { width: 1000, height: 800 };
 
-  it("never returns less than 0.7", () => {
+  it("never returns less than MIN_ZOOM", () => {
     for (const side of [1500, 5000, 100_000]) {
       const view = fitToContent({ x: 0, y: 0, width: side, height: side }, size);
-      expect(view.k).toBeGreaterThanOrEqual(FIT_FLOOR);
+      expect(view.k).toBeGreaterThanOrEqual(MIN_ZOOM);
     }
   });
 
   it("shows the top left of content that is too large to fit", () => {
     const view = fitToContent({ x: 50, y: 20, width: 5000, height: 5000 }, size);
-    expect(view.k).toBe(FIT_FLOOR);
+    expect(view.k).toBe(MIN_ZOOM);
     expect(view.x + 50 * view.k).toBeCloseTo(40, 6);
     expect(view.y + 20 * view.k).toBeCloseTo(40, 6);
   });
 
-  it("Given lanes that fit and a free card dragged past them, when fit, then the card shows too", () => {
-    const lanes = { x: 0, y: 0, width: 1400, height: 700 };
-    const content = withCards(lanes, [{ x: 1475.39, y: -60.79 }], { width: 320, height: 380 });
-    const screen = { width: 1280, height: 800 };
-    const view = fitToContent(content, screen, lanes);
-    expect(view.x + (content.x + content.width) * view.k).toBeLessThanOrEqual(screen.width);
-  });
+  it.each([
+    { name: "four lanes", lanes: 1400, screen: { width: 1280, height: 800 } },
+    { name: "five lanes, the Done lane shown", lanes: 1584, screen: { width: 1040, height: 720 } },
+  ])(
+    "Given $name and a free card dragged past them, when fit, then all of it shows",
+    ({ lanes, screen }) => {
+      const content = withCards(
+        { x: 0, y: 0, width: lanes, height: 700 },
+        [{ x: 1475.39, y: -60.79 }],
+        {
+          width: 320,
+          height: 380,
+        },
+      );
+      const view = fitToContent(content, screen);
+      expect(view.x + (content.x + content.width) * view.k).toBeLessThanOrEqual(screen.width);
+      expect(view.y + (content.y + content.height) * view.k).toBeLessThanOrEqual(screen.height);
+    },
+  );
 
   it("resets to the initial view when there is no content", () => {
     expect(fitToContent(null, size)).toEqual(INITIAL_VIEW);

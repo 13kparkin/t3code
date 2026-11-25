@@ -139,11 +139,7 @@ export function BoardScreen({
       doneCount,
       now,
     );
-    return {
-      ...laid,
-      lanesContent: laid.content,
-      content: withCards(laid.content, cards.free, FREE_CARD),
-    };
+    return { ...laid, content: withCards(laid.content, cards.free, FREE_CARD) };
   }, [
     model,
     order,
@@ -231,7 +227,6 @@ export function BoardScreen({
           >
             <Viewport
               content={layout.content}
-              floorFrom={layout.lanesContent}
               onDropFiles={(files) =>
                 void addDocs(registry, project, listed, files).then(setDropError)
               }

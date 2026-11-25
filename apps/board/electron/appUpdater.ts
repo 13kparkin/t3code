@@ -149,6 +149,14 @@ export function createAppUpdater(deps: {
 }
 
 export function registerAppUpdater() {
+  // Reading `autoUpdater` builds the updater, which throws on a dev build's version; electron-updater skips unpackaged apps too.
+  if (!app.isPackaged) {
+    ipcMain.handle("board:app-update-state", () => ({
+      current: app.getVersion(),
+      status: "disabled",
+    }));
+    return;
+  }
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.allowDowngrade = false;
