@@ -150,6 +150,31 @@ describe("merge readiness", () => {
     ]);
   });
 
+  it("Given the evidence listing has not loaded, when readiness is computed, then every condition that reads evidence is checking, not missing", () => {
+    const ticket = ticketOf({ key: "T-1", pr: 12, verdicts: clean });
+    const conditions = evaluateReadiness({
+      ticket,
+      tickets: [ticket],
+      evidence: null,
+      live: live([], "abc1234def"),
+      ciLocal: null,
+      smoke: null,
+      mergeOrderNote: null,
+      reviewRoles: REVIEW_ROLES,
+      now: NOW,
+    });
+    expect(
+      conditions.map(({ key, met, checking, missing }) => [key, met, checking, missing]),
+    ).toEqual([
+      ["ci_green", false, true, null],
+      ["reviews_fixed", true, false, null],
+      ["delta_rereviewed", true, false, null],
+      ["readmes_pass", false, true, null],
+      ["parent_ready", true, false, null],
+      ["smoke_named", false, true, null],
+    ]);
+  });
+
   it("Given a ready parent and a merge-order note, when readiness is computed, then the parent condition holds", () => {
     const parent = ticketOf({ key: "T-0", stage: "awaiting_approval" });
     const ticket = ticketOf({ key: "T-1", pr: 12, dependsOn: ["T-0"], verdicts: clean });
