@@ -72,7 +72,6 @@ export function Lanes({
   onChoose: (choice: TicketChoice) => void;
   onOpenAgent: (threadId: string, ticketKey: string | null) => void;
   onRemoveAddition: (id: string) => void;
-  /** The agent cards in Done. */
   done: { readonly agents: ReadonlyArray<AgentView>; readonly free: ReadonlyArray<FreeAgent> };
   onCardMenu: (event: MouseEvent, key: string, label: string, ticket: boolean) => void;
   now: number;

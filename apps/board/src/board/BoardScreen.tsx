@@ -98,8 +98,7 @@ export function BoardScreen({
     const inDone = [...cards.done.agents, ...cards.done.free].some(
       (agent) => agent.threadId === key,
     );
-    // A ticketless agent out of Done is pinned to To do, while a free agent goes back to the canvas.
-    const out = fullModel.unassigned.some((agent) => agent.threadId === key) ? "todo" : null;
+    const ticketless = fullModel.unassigned.some((agent) => agent.threadId === key);
     setMenu({
       at: { x: event.clientX, y: event.clientY },
       label: `${label} actions`,
@@ -108,7 +107,10 @@ export function BoardScreen({
           ? []
           : [
               inDone
-                ? { label: "Move out of Done", onSelect: () => saveCard(key, out) }
+                ? {
+                    label: "Move out of Done",
+                    onSelect: () => saveCard(key, ticketless ? "todo" : null),
+                  }
                 : { label: "Move to Done", onSelect: () => saveCard(key, "done") },
             ]),
         { label: "Archive", onSelect: () => saveCard(key, "archived") },
