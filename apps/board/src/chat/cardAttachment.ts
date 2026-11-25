@@ -52,7 +52,7 @@ export function cardMarkdown(ticket: Ticket): string {
 export const cardFile = (ticket: Ticket): File =>
   markdownFile([ticket.key, slug(ticket.title)].filter(Boolean).join("-"), cardMarkdown(ticket));
 
-/** An agent row or free agent card, named by its thread so the orchestrator can read it. A free agent has no title here. */
+/** An agent row or free agent card, named by its thread so the orchestrator can read it. A free agent falls back to its label. */
 export const agentFile = (agent: AgentCard): File =>
   markdownFile(
     `agent-${agent.threadId.slice(-8)}`,
@@ -82,7 +82,7 @@ export const dropOnComposer = (clientX: number, clientY: number, file: File): bo
 export const sendToComposer = (file: File): boolean =>
   attach(document.querySelector(`[${DROP_ATTRIBUTE}]`), file);
 
-/** The composer form's props for what lands on it: files from the desktop, and cards from the canvas. */
+/** Props for the composer form, which takes files dropped from the desktop and cards dropped from the canvas. */
 export function useComposerDrop(addFiles: (files: File[]) => void) {
   const ref = useRef<HTMLFormElement | null>(null);
   const add = (files: File[]) => {
