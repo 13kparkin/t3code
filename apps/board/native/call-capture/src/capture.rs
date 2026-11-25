@@ -41,6 +41,7 @@ const MIN_FREE_BYTES: u64 = 2 << 30;
 const MAX_LAG: u64 = SAMPLE_RATE as u64 / 10;
 const BUFFER_HNS: i64 = 2_000_000;
 const WAKE_MS: u32 = 100;
+const ACTIVATE_TIMEOUT: Duration = Duration::from_secs(10);
 const HEADER_EVERY: Duration = Duration::from_secs(5);
 const MIC_RETRY: Duration = Duration::from_secs(2);
 const MIC_GONE: &str = "The microphone is unavailable, so the helper records only the app's audio";
@@ -188,7 +189,9 @@ impl Stream {
                 Some(&*prop),
                 &handler,
             )?;
-            let _ = activated.recv();
+            activated.recv_timeout(ACTIVATE_TIMEOUT).map_err(|_| {
+                windows_core::Error::new(E_UNEXPECTED, "Audio activation timed out")
+            })?;
             let mut result = Default::default();
             let mut unknown = None;
             operation.GetActivateResult(&mut result, &mut unknown)?;
@@ -230,9 +233,10 @@ impl Stream {
                 &format,
                 None,
             )?;
+            let capture = client.GetService()?;
             let event = CreateEventW(None, false, false, PCWSTR::null())?;
             let stream = Self {
-                capture: client.GetService()?,
+                capture,
                 client,
                 event,
             };
@@ -448,12 +452,17 @@ pub fn record(pid: u32, them_path: &Path, me_path: &Path) -> i32 {
     let end = now().max(them.wav.samples()).max(me.wav.samples());
     let finished = [&mut them, &mut me]
         .map(|track| {
-            track.wav.pad(end - track.wav.samples())?;
-            track.wav.sync_header()
+            // After a failed write, padding would only fail again and skip the header.
+            let padded = match ended {
+                Ok(_) => track.wav.pad(end - track.wav.samples()),
+                Err(_) => Ok(()),
+            };
+            padded.and(track.wav.sync_header())
         })
         .into_iter()
         .collect::<io::Result<Vec<()>>>();
-    let seconds = round1(end as f64 / f64::from(SAMPLE_RATE));
+    let written = them.wav.samples().max(me.wav.samples());
+    let seconds = round1(written as f64 / f64::from(SAMPLE_RATE));
     let failure = match (ended, finished) {
         (Ok(reason), Ok(_)) => {
             emit(json!({ "event": "stopped", "reason": reason, "seconds": seconds }));
