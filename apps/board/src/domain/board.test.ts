@@ -52,6 +52,24 @@ describe("parseBoard", () => {
     expect(Result.isFailure(bad) && bad.failure.fields).toEqual(["roleTargets"]);
   });
 
+  it("Given a board with two calls, when decoded, then both calls keep their fields", () => {
+    const calls = [
+      { id: "c1", title: "Design sync", start: "2026-11-26T15:00:00.000Z", app: "zoom" },
+      { id: "c2", title: "Standup", start: "2026-11-27T09:30:00+01:00", app: "edge" },
+    ];
+    const result = parseBoard(JSON.stringify({ ...valid, calls }));
+    expect(Result.isSuccess(result) && result.success.calls).toEqual(calls);
+  });
+
+  it.each([
+    ["an unknown app", { app: "skype" }],
+    ["a start that is not a date", { start: "tomorrow 10:00" }],
+  ])("Given a call with %s, when decoded, then the error names the calls field", (_case, bad) => {
+    const call = { id: "c1", title: "Design sync", start: "2026-11-26T15:00:00.000Z", app: "zoom" };
+    const result = parseBoard(JSON.stringify({ ...valid, calls: [{ ...call, ...bad }] }));
+    expect(Result.isFailure(result) && result.failure.fields).toEqual(["calls"]);
+  });
+
   it("Given text that is not JSON, when decoded, then it fails without naming a field", () => {
     const result = parseBoard("{ nope");
     expect(Result.isFailure(result) && result.failure.fields).toEqual([]);

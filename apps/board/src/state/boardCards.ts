@@ -3,12 +3,14 @@ import { runAtomCommand } from "@t3tools/client-runtime/state/runtime";
 import { CommandId } from "@t3tools/contracts";
 import type { AtomRegistry } from "effect/reactivity";
 
-import type { Board, CardState, FreeAgent } from "../domain/board";
+import type { Board, CallEvent, CardState, FreeAgent } from "../domain/board";
 import { defaultPick, modelSelectionOf, pickableInstances } from "../providers/providers";
 import {
   changeCardState,
   placeFreeAgent,
   type ProjectFiles,
+  putCall,
+  removeCall,
   type ValidBoard,
 } from "../store/boardFiles";
 import { boardEngine, newId, projectBoardsAtom } from "./boards";
@@ -52,6 +54,26 @@ export const moveFreeAgent = (
 ) =>
   changeBoardFile(registry, project, (files) =>
     placeFreeAgent(files, project.workspaceRoot, listed.folder, agent),
+  );
+
+export const saveCall = (
+  registry: AtomRegistry.AtomRegistry,
+  project: BoardProject,
+  listed: ValidBoard,
+  call: CallEvent,
+) =>
+  changeBoardFile(registry, project, (files) =>
+    putCall(files, project.workspaceRoot, listed.folder, call),
+  );
+
+export const deleteCall = (
+  registry: AtomRegistry.AtomRegistry,
+  project: BoardProject,
+  listed: ValidBoard,
+  id: string,
+) =>
+  changeBoardFile(registry, project, (files) =>
+    removeCall(files, project.workspaceRoot, listed.folder, id),
   );
 
 /**

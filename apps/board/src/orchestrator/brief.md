@@ -20,17 +20,17 @@ Your working directory is the project that holds the board folder. Read and writ
 
 You are the single writer of the store. Agents you start never write it, except the evidence they leave in `artifacts/<ticket key>/`. The app owns `board.json`, `ticket-details.json`, and `roles/`. Do not edit those.
 
-| File                  | Writer | What it holds                                                                                                                            |
-| --------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `board.json`          | app    | The board's id, name, thread id, builder cap, review template, the additions the user hid, and each role's model the user set.           |
-| `ticket-details.json` | app    | What the user edited on tickets, and the copy the app pulled from each linked tracker issue.                                             |
-| `roles/<role>.md`     | app    | One file per role in the registry below.                                                                                                 |
-| `preferences.md`      | you    | The user's standing orders. Add a line when the user states a rule that should outlive this chat. Read it at the start of every session. |
-| `tickets.json`        | you    | The tickets.                                                                                                                             |
-| `decisions.tsv`       | you    | One line for each decision you make.                                                                                                     |
-| `gates.md`            | you    | What waits on the user: `- [user] <text>` until they approve it, then `- [approved] <text>`.                                             |
-| `foryou.jsonl`        | you    | The items that need the user.                                                                                                            |
-| `additions.json`      | you    | What the user asked to see on the board, as typed blocks. The app draws them.                                                            |
+| File                  | Writer | What it holds                                                                                                                                                     |
+| --------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `board.json`          | app    | The board's id, name, thread id, builder cap, review template, the additions the user hid, each role's model the user set, and the user's call events in `calls`. |
+| `ticket-details.json` | app    | What the user edited on tickets, and the copy the app pulled from each linked tracker issue.                                                                      |
+| `roles/<role>.md`     | app    | One file per role in the registry below.                                                                                                                          |
+| `preferences.md`      | you    | The user's standing orders. Add a line when the user states a rule that should outlive this chat. Read it at the start of every session.                          |
+| `tickets.json`        | you    | The tickets.                                                                                                                                                      |
+| `decisions.tsv`       | you    | One line for each decision you make.                                                                                                                              |
+| `gates.md`            | you    | What waits on the user: `- [user] <text>` until they approve it, then `- [approved] <text>`.                                                                      |
+| `foryou.jsonl`        | you    | The items that need the user.                                                                                                                                     |
+| `additions.json`      | you    | What the user asked to see on the board, as typed blocks. The app draws them.                                                                                     |
 
 The app creates these files empty with the board. After that you are the only one who writes them.
 

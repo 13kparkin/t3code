@@ -22,6 +22,22 @@ export type RoleOverride = typeof RoleOverride.Type;
 const FreeAgent = Schema.Struct({ threadId: Text, x: Schema.Finite, y: Schema.Finite });
 export type FreeAgent = typeof FreeAgent.Type;
 
+export const CallApp = Schema.Literals(["zoom", "teams", "chrome", "edge"]);
+export type CallApp = typeof CallApp.Type;
+
+const CallEvent = Schema.Struct({
+  id: Text,
+  title: Text.check(Schema.isMaxLength(80)),
+  /** ISO 8601 with an offset. */
+  start: Text.check(
+    Schema.makeFilter((start) => !Number.isNaN(Date.parse(start)), {
+      message: "must be a date and time",
+    }),
+  ),
+  app: CallApp,
+});
+export type CallEvent = typeof CallEvent.Type;
+
 export const CardState = Schema.Literals(["todo", "done", "archived"]);
 export type CardState = typeof CardState.Type;
 
@@ -47,8 +63,10 @@ export const Board = Schema.Struct({
   roleRequests: Schema.optionalKey(Schema.Record(Text, Text)),
   /** Agents the user started from the canvas, outside the orchestrator, at their place on it. Only the app writes this. */
   freeAgents: Schema.optionalKey(Schema.Array(FreeAgent)),
-  /** Cards the user moved to To do or Done, or archived, by ticket key or thread id. Only the app writes this. */
+  /** Cards the user moved to To do or Done, or archived, by ticket key, thread id, or call id. Only the app writes this. */
   cardStates: Schema.optionalKey(Schema.Record(Text, CardState)),
+  /** Call events the user entered by hand. Their Done and Archive states live in `cardStates` by call id. Only the app writes this. */
+  calls: Schema.optionalKey(Schema.Array(CallEvent)),
 });
 export type Board = typeof Board.Type;
 
