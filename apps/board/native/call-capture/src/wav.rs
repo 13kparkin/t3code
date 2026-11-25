@@ -5,6 +5,7 @@ use std::path::Path;
 pub const SAMPLE_RATE: u32 = 16_000;
 const HEADER_LEN: u64 = 44;
 const BYTES_PER_SAMPLE: u64 = 2;
+const MAX_LAG: u64 = SAMPLE_RATE as u64 / 10;
 
 pub fn header(data_bytes: u64) -> [u8; 44] {
     let data = u32::try_from(data_bytes).unwrap_or(u32::MAX - 36);
@@ -32,7 +33,7 @@ pub struct WavWriter {
 
 impl WavWriter {
     pub fn create(path: &Path) -> io::Result<Self> {
-        let mut file = BufWriter::new(File::create(path)?);
+        let mut file = BufWriter::new(OpenOptions::new().write(true).create_new(true).open(path)?);
         file.write_all(&header(0))?;
         file.flush()?;
         Ok(Self { file, samples: 0 })
@@ -90,6 +91,52 @@ pub fn repair(path: &Path) -> io::Result<f64> {
     file.write_all(&header(data))?;
     file.sync_all()?;
     Ok(data as f64 / (SAMPLE_RATE as u64 * BYTES_PER_SAMPLE) as f64)
+}
+
+pub struct Track {
+    pub wav: WavWriter,
+    energy: f64,
+    count: u64,
+}
+
+impl Track {
+    pub fn new(wav: WavWriter) -> Self {
+        Self {
+            wav,
+            energy: 0.0,
+            count: 0,
+        }
+    }
+
+    // Process loopback may deliver nothing while the target is quiet, so a lagging track pads silence.
+    pub fn append(&mut self, samples: &[i16], now: u64) -> io::Result<()> {
+        let behind = now.saturating_sub(self.wav.samples() + samples.len() as u64);
+        if behind > MAX_LAG {
+            self.wav.pad(behind)?;
+            self.count += behind;
+        }
+        self.wav.write(samples)?;
+        self.energy += samples.iter().map(|&s| f64::from(s).powi(2)).sum::<f64>();
+        self.count += samples.len() as u64;
+        Ok(())
+    }
+
+    #[cfg(windows)]
+    pub fn take_level(&mut self) -> f64 {
+        let mean = self.energy / self.count.max(1) as f64 / 32768f64.powi(2);
+        (self.energy, self.count) = (0.0, 0);
+        crate::round1((10.0 * mean.log10()).max(-100.0))
+    }
+}
+
+/// Pads every track to the longest one, or to `now` when that is later, and rewrites the headers.
+pub fn finish(tracks: &mut [Track], now: u64) -> io::Result<u64> {
+    let end = tracks.iter().map(|t| t.wav.samples()).fold(now, u64::max);
+    for track in tracks {
+        track.wav.pad(end - track.wav.samples())?;
+        track.wav.sync_header()?;
+    }
+    Ok(end)
 }
 
 #[cfg(test)]
@@ -157,5 +204,24 @@ mod tests {
         );
         assert_eq!(std::fs::read(&path).unwrap(), bytes);
         std::fs::remove_file(&path).unwrap();
+    }
+
+    #[test]
+    fn a_lagging_track_and_a_full_track_end_at_the_same_length() {
+        let (full_path, lagging_path) = (temp("full.wav"), temp("lagging.wav"));
+        let mut tracks = [
+            Track::new(WavWriter::create(&full_path).unwrap()),
+            Track::new(WavWriter::create(&lagging_path).unwrap()),
+        ];
+        tracks[0].append(&[1; 16_000], 16_000).unwrap();
+        tracks[1].append(&[], 14_000).unwrap();
+        assert_eq!(finish(&mut tracks, 15_000).unwrap(), 16_000);
+        assert_eq!(tracks.each_ref().map(|t| t.wav.samples()), [16_000, 16_000]);
+        drop(tracks);
+        let lagging = std::fs::read(&lagging_path).unwrap();
+        assert_eq!(lagging[..44], HEADER_ONE_SECOND);
+        assert!(lagging[44..].iter().all(|&b| b == 0));
+        std::fs::remove_file(&full_path).unwrap();
+        std::fs::remove_file(&lagging_path).unwrap();
     }
 }

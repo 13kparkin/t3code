@@ -1,6 +1,6 @@
 // Ports the activation and capture loop of Microsoft's ApplicationLoopback sample. See THIRD_PARTY_NOTICES.md.
 use crate::processes::{self, Process};
-use crate::wav::{SAMPLE_RATE, WavWriter};
+use crate::wav::{self, SAMPLE_RATE, Track, WavWriter};
 use crate::{emit, error, round1, write_error};
 use serde_json::json;
 use std::collections::HashMap;
@@ -38,7 +38,6 @@ use windows_core::{BOOL, HSTRING, Interface, PCWSTR, Ref, implement};
 const PROTOCOL: u32 = 1;
 const MIN_BUILD: u32 = 20348;
 const MIN_FREE_BYTES: u64 = 2 << 30;
-const MAX_LAG: u64 = SAMPLE_RATE as u64 / 10;
 const BUFFER_HNS: i64 = 2_000_000;
 const WAKE_MS: u32 = 100;
 const ACTIVATE_TIMEOUT: Duration = Duration::from_secs(10);
@@ -274,41 +273,6 @@ impl Drop for Stream {
     }
 }
 
-struct Track {
-    wav: WavWriter,
-    energy: f64,
-    count: u64,
-}
-
-impl Track {
-    fn new(wav: WavWriter) -> Self {
-        Self {
-            wav,
-            energy: 0.0,
-            count: 0,
-        }
-    }
-
-    // Process loopback may deliver nothing while the target is quiet, so a lagging track pads silence.
-    fn append(&mut self, samples: &[i16], now: u64) -> io::Result<()> {
-        let behind = now.saturating_sub(self.wav.samples() + samples.len() as u64);
-        if behind > MAX_LAG {
-            self.wav.pad(behind)?;
-            self.count += behind;
-        }
-        self.wav.write(samples)?;
-        self.energy += samples.iter().map(|&s| f64::from(s).powi(2)).sum::<f64>();
-        self.count += samples.len() as u64;
-        Ok(())
-    }
-
-    fn take_level(&mut self) -> f64 {
-        let mean = self.energy / self.count.max(1) as f64 / 32768f64.powi(2);
-        (self.energy, self.count) = (0.0, 0);
-        round1((10.0 * mean.log10()).max(-100.0))
-    }
-}
-
 fn warning(code: &str, message: &str) {
     emit(json!({ "event": "warning", "code": code, "message": message }));
 }
@@ -389,7 +353,10 @@ pub fn record(pid: u32, them_path: &Path, me_path: &Path) -> i32 {
     let now = || (start.elapsed().as_secs_f64() * f64::from(SAMPLE_RATE)) as u64;
     let (mut next_level, mut next_header, mut next_mic) = (1, HEADER_EVERY, MIC_RETRY);
     let mut packet = Vec::new();
-    emit(json!({ "event": "started", "protocol": PROTOCOL, "sampleRate": SAMPLE_RATE }));
+    let exe = snapshot().into_iter().find(|p| p.pid == pid).map(|p| p.exe);
+    emit(
+        json!({ "event": "started", "protocol": PROTOCOL, "sampleRate": SAMPLE_RATE, "exe": exe }),
+    );
     if mic.is_none() {
         warning("mic_unavailable", MIC_GONE);
     }
@@ -449,29 +416,29 @@ pub fn record(pid: u32, them_path: &Path, me_path: &Path) -> i32 {
     };
 
     let _ = unsafe { CloseHandle(target) };
-    let end = now().max(them.wav.samples()).max(me.wav.samples());
-    let finished = [&mut them, &mut me]
-        .map(|track| {
-            // After a failed write, padding would only fail again and skip the header.
-            let padded = match ended {
-                Ok(_) => track.wav.pad(end - track.wav.samples()),
-                Err(_) => Ok(()),
-            };
-            padded.and(track.wav.sync_header())
-        })
-        .into_iter()
-        .collect::<io::Result<Vec<()>>>();
-    let written = them.wav.samples().max(me.wav.samples());
-    let seconds = round1(written as f64 / f64::from(SAMPLE_RATE));
-    let failure = match (ended, finished) {
-        (Ok(reason), Ok(_)) => {
-            emit(json!({ "event": "stopped", "reason": reason, "seconds": seconds }));
-            return 0;
-        }
-        (Err(event), _) => event,
-        (Ok(_), Err(err)) => write_error(&err),
+    let mut tracks = [them, me];
+    let finished = match ended {
+        Ok(reason) => wav::finish(&mut tracks, now())
+            .map(|end| (reason, end))
+            .map_err(|err| write_error(&err)),
+        Err(event) => Err(event),
     };
-    emit(failure);
-    emit(json!({ "event": "stopped", "reason": "error", "seconds": seconds }));
-    1
+    match finished {
+        Ok((reason, end)) => {
+            emit(
+                json!({ "event": "stopped", "reason": reason, "seconds": round1(end as f64 / f64::from(SAMPLE_RATE)) }),
+            );
+            0
+        }
+        Err(event) => {
+            // A failed write can leave the last header stale, and repair needs no free space.
+            drop(tracks);
+            let repaired = [them_path, me_path].map(|path| wav::repair(path).unwrap_or(0.0));
+            emit(event);
+            emit(
+                json!({ "event": "stopped", "reason": "error", "seconds": round1(repaired[0].max(repaired[1])) }),
+            );
+            1
+        }
+    }
 }

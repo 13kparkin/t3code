@@ -110,6 +110,13 @@ jobs:
         with:
           tool: cargo-xwin@0.23.1
 
+      # Every cargo build that release.mjs runs happens here first, so build scripts never see the release secrets.
+      - name: Build call capture helper
+        run: |
+          cargo xwin build --locked --release --target x86_64-pc-windows-msvc --manifest-path apps/board/native/call-capture/Cargo.toml
+          cargo test --locked --manifest-path apps/board/native/call-capture/Cargo.toml
+          cargo check --locked --target x86_64-pc-windows-msvc --manifest-path apps/board/native/call-capture/Cargo.toml
+
       - name: Release
         env:
           GH_TOKEN: ${{ github.token }}
