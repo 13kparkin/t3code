@@ -9,6 +9,7 @@ import {
   changeCardState,
   listBoards,
   type ProjectFiles,
+  markCallRecorded,
   putCall,
   refreshRoles,
   removeCall,
@@ -379,6 +380,20 @@ describe("call events", () => {
     await removeCall(files, CWD, target.folder, sync.id);
     expect(savedBoard(store)?.calls).toEqual([standup]);
     expect(savedBoard(store)?.cardStates).toEqual({ [standup.id]: "archived" });
+  });
+
+  it("Given a call judged finished, when its start moved or it was recorded before the removal ran, then the call stays", async () => {
+    const { files, store, target } = await boardWith("orchestrator");
+    const moved = { ...sync, start: "2026-11-27T15:00:00.000Z" };
+    await putCall(files, CWD, target.folder, sync);
+    await putCall(files, CWD, target.folder, standup);
+    await Promise.all([
+      putCall(files, CWD, target.folder, moved),
+      removeCall(files, CWD, target.folder, sync.id, sync),
+      markCallRecorded(files, CWD, target.folder, standup.id),
+      removeCall(files, CWD, target.folder, standup.id, standup),
+    ]);
+    expect(savedBoard(store)?.calls).toEqual([moved, { ...standup, recorded: true }]);
   });
 });
 

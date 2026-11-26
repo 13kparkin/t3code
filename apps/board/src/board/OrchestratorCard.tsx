@@ -284,7 +284,7 @@ export function OrchestratorCard({
                     const takes = recordings.filter((take) => take.callId === call.id).length;
                     return {
                       label: call.title,
-                      hint: `${START.format(new Date(call.start))}${takes === 0 ? "" : ` · ${takes} ${takes === 1 ? "take" : "takes"}`}`,
+                      hint: `${START.format(new Date(call.start))} · ${takes === 0 ? "recorded on another PC" : `${takes} ${takes === 1 ? "take" : "takes"}`}`,
                       onSelect: () => {
                         const rect = artifactsRef.current?.getBoundingClientRect();
                         onCallMenu({ x: rect?.left ?? 0, y: rect?.bottom ?? 0 }, call);

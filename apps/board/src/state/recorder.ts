@@ -6,7 +6,7 @@ import type { RecorderSnapshot } from "../connection/engineState";
 import type { CallEvent } from "../domain/board";
 import type { RecordRequest } from "../domain/recording";
 import type { ValidBoard } from "../store/boardFiles";
-import { deleteCall } from "./boardCards";
+import { deleteCall, markRecorded } from "./boardCards";
 import { localState, openBoard, projectBoardsAtom } from "./boards";
 import { environmentProjects } from "./projects";
 
@@ -69,13 +69,28 @@ async function notifyDue(list: ReadonlyArray<BoardCall>, now: number) {
   }
 }
 
+/** `splitCalls` with this PC's recording and takes, which stay unknown until the snapshot loads. */
+export const splitHere = <C extends CallEvent>(
+  list: ReadonlyArray<C>,
+  now: number,
+  snapshot: RecorderSnapshot | null,
+) =>
+  splitCalls(
+    list,
+    now,
+    snapshot === null || snapshot.state.status === "idle" ? null : snapshot.state.callId,
+    snapshot === null ? null : new Set(snapshot.recordings.map((take) => take.callId)),
+  );
+
 const NONE: ReadonlySet<string> = new Set();
-/** A failed removal still refreshes the boards, which runs the scheduler again, so each call is tried once a session. */
-const removing = new Set<string>();
+/** A failed write still refreshes the boards, which runs the scheduler again, so each write is tried once a session. */
+const tried = new Set<string>();
+const once = (key: string) => !tried.has(key) && Boolean(tried.add(key));
 
 /**
  * The ids of the Chrome calls in their starting window, the only app v1 records. Reading it notifies
- * due calls, removes finished calls with nothing recorded, and sets the next wake.
+ * due calls, marks a call recorded once its take starts, removes finished calls never recorded, and
+ * sets the next wake.
  */
 export const startingCallsAtom = Atom.make((get): ReadonlySet<string> => {
   const snapshot = get(recorderAtom);
@@ -89,13 +104,16 @@ export const startingCallsAtom = Atom.make((get): ReadonlySet<string> => {
       call.app === "chrome" && (call.listed.board.cardStates?.[call.id] ?? "todo") === "todo",
   );
   void notifyDue(chrome, now);
-  const recording = snapshot.state.status === "idle" ? null : snapshot.state.callId;
-  const recorded = new Set(snapshot.recordings.map((take) => take.callId));
+  const { state } = snapshot;
+  const live = list.find((call) => state.status === "recording" && call.id === state.callId);
+  if (live !== undefined && live.recorded !== true && once(`mark ${live.id}`)) {
+    void markRecorded(get.registry, live.project, live.listed, live.id);
+  }
   // A dev build's seeded projects point at the developer's live checkout, as in projectBoardsAtom.
-  for (const call of import.meta.env.DEV ? [] : splitCalls(list, now, recording, recorded).stale) {
-    if (removing.has(call.id)) continue;
-    removing.add(call.id);
-    void deleteCall(get.registry, call.project, call.listed, call.id);
+  for (const call of import.meta.env.DEV ? [] : splitHere(list, now, snapshot).stale) {
+    if (once(`remove ${call.id}`)) {
+      void deleteCall(get.registry, call.project, call.listed, call.id, call);
+    }
   }
   return new Set(chrome.filter((call) => isStarting(call, now)).map((call) => call.id));
 }).pipe(Atom.withLabel("starting-calls"));

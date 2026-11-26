@@ -7,7 +7,6 @@ import { createPortal } from "react-dom";
 import { ArtifactsProvider } from "../artifacts/ArtifactsContext";
 import { CallCards } from "../calls/CallCards";
 import { CallEditor } from "../calls/CallEditor";
-import { splitCalls } from "../calls/dueCalls";
 import { useBoardArtifacts } from "../artifacts/useBoardArtifacts";
 import { chatSlotAtom, chooseTicket, ticketChoiceAtom, ticketSlotAtom } from "../browser/panel";
 import { agentFile, cardFile, sendToChatError, sendToComposer } from "../chat/cardAttachment";
@@ -30,7 +29,7 @@ import { keptWorktreesAtom } from "../state/mergeCleanup";
 import { setHiddenAdditions } from "../state/reviews";
 import type { ValidBoard } from "../store/boardFiles";
 import { openAgentPanel } from "../state/agentPanel";
-import { deleteAudio, recorderAtom } from "../state/recorder";
+import { deleteAudio, recorderAtom, splitHere } from "../state/recorder";
 import {
   deleteCall,
   moveFreeAgent,
@@ -110,17 +109,14 @@ export function BoardScreen({
   const calls = board.calls ?? NO_CALLS;
   const now = useAtomValue(clockAtom);
   const recorder = useAtomValue(recorderAtom);
-  const recordingId =
-    recorder === null || recorder.state.status === "idle" ? null : recorder.state.callId;
   const callSplit = useMemo(
     () =>
-      splitCalls(
+      splitHere(
         calls.filter((call) => cardStates[call.id] !== "archived"),
         now,
-        recordingId,
-        recorder === null ? null : new Set(recorder.recordings.map((take) => take.callId)),
+        recorder,
       ),
-    [calls, cardStates, now, recordingId, recorder],
+    [calls, cardStates, now, recorder],
   );
   const cards = useMemo(
     () => splitCards(fullModel, freeAgents, cardStates, now),
@@ -187,7 +183,18 @@ export function BoardScreen({
           onSelect: () => void deleteCall(registry, project, listed, call.id).then(setCardError),
         },
         ...(recorder?.recordings.some((take) => take.callId === call.id) === true
-          ? [{ label: "Delete audio", onSelect: () => deleteAudio(call.id) }]
+          ? [
+              {
+                label: "Delete audio",
+                onSelect: () => {
+                  deleteAudio(call.id);
+                  // A finished call lives on only for its audio.
+                  if (callSplit.finished.includes(call)) {
+                    void deleteCall(registry, project, listed, call.id).then(setCardError);
+                  }
+                },
+              },
+            ]
           : []),
       ],
     });

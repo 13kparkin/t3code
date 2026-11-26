@@ -35,6 +35,8 @@ const CallEvent = Schema.Struct({
     }),
   ),
   app: CallApp,
+  /** Set once a take starts on any PC, so a PC that holds no takes never removes the call. */
+  recorded: Schema.optionalKey(Schema.Literal(true)),
 });
 export type CallEvent = typeof CallEvent.Type;
 

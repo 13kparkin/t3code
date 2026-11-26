@@ -49,6 +49,7 @@ describe("where each call goes", () => {
   const later = { id: "later", start: at(60) };
   const now = { id: "now", start: at(-2) };
   const past = { id: "past", start: at(-30) };
+  const recordedElsewhere = { id: "elsewhere", start: at(-30), recorded: true } as const;
   const none = { shown: [], later: [], finished: [], stale: [] };
   const NO_TAKES = new Set<string>();
   it.each([
@@ -76,6 +77,13 @@ describe("where each call goes", () => {
       { ...none, finished: ["past"] },
     ],
     ["a finished call without takes", [past], null, NO_TAKES, { ...none, stale: ["past"] }],
+    [
+      "a finished call recorded on another PC",
+      [recordedElsewhere],
+      null,
+      NO_TAKES,
+      { ...none, finished: ["elsewhere"] },
+    ],
     [
       "a finished call while takes are unknown",
       [past],

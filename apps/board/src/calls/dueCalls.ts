@@ -4,6 +4,7 @@ const LATE_MS = 10 * 60_000;
 interface Timed {
   readonly id: string;
   readonly start: string;
+  readonly recorded?: true;
 }
 
 /** The start each call last notified for, by call id. */
@@ -41,8 +42,8 @@ export const markNotified = (
 
 /**
  * Where each call goes. The Calls group shows the recording call, the ones starting now, and the
- * next one, with the later ones behind a toggle. A finished call with takes on this PC is listed
- * under Artifacts, and one without takes is removed. `recorded` is null while the takes are unknown,
+ * next one, with the later ones behind a toggle. A finished call recorded on any PC is listed under
+ * Artifacts, and one never recorded is removed. `recorded` is null while the takes are unknown,
  * which keeps every finished call.
  */
 export function splitCalls<C extends Timed>(
@@ -58,7 +59,7 @@ export function splitCalls<C extends Timed>(
   return {
     shown: sorted.filter(current),
     later: sorted.filter((call) => !current(call) && Date.parse(call.start) > now),
-    finished: past.filter((call) => recorded?.has(call.id) !== false),
-    stale: past.filter((call) => recorded?.has(call.id) === false),
+    finished: past.filter((call) => call.recorded === true || recorded?.has(call.id) !== false),
+    stale: past.filter((call) => call.recorded !== true && recorded?.has(call.id) === false),
   };
 }
