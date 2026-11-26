@@ -324,7 +324,6 @@ export function createRecorder(deps: {
     set({ status: "idle", failed: null });
   };
 
-  /** Where one file of a take is, or null when no take of the call started then. */
   const fileOf = ({ callId, startedAt, file }: RecordingFile) => {
     const take = takes().find(
       ({ recording }) => recording.callId === callId && recording.startedAt === startedAt,
@@ -392,7 +391,6 @@ export function createRecorder(deps: {
     /** Closes the helper's stdin, which finalizes both files and ends the take as `app_quit`. */
     quit: () => session?.child.end(),
     fileOf,
-    /** Samples `[from, to)` of a track, cut at its end, or null when that take is gone. */
     readTrack: async ({ from, to, ...file }: TrackRange) => {
       const path = fileOf(file);
       if (path === null) return null;

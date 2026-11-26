@@ -8,10 +8,7 @@ const SAMPLE_RATE = 16_000;
 const toFloat32 = (samples: Int16Array) =>
   new Uint8Array(Float32Array.from(samples, (sample) => sample / 32768).buffer);
 
-/**
- * Transcribes every take of one call and writes the transcript, then deletes the call's audio.
- * Any failure throws before the write, so the audio stays for a retry and a rerun starts clean.
- */
+/** Deletes the audio after the write. Any failure throws before the write, so the audio stays for a retry. */
 export async function transcribeTakes(input: {
   /** The call's ended takes, in the order they started. */
   readonly takes: ReadonlyArray<Recording>;

@@ -21,7 +21,7 @@ export interface TranscriptHeader {
 const ECHO_SHARE = 0.6;
 const words = (text: string) => text.toLowerCase().match(/[\p{L}\p{N}']+/gu) ?? [];
 
-/** Drops each Me line that overlaps Them in time and repeats at least 60 percent of its words. */
+/** Drops the Me lines that are Them's audio leaking into the microphone. */
 export function dropEcho(me: ReadonlyArray<Said>, them: ReadonlyArray<Said>): Said[] {
   return me.filter((line) => {
     const heard = new Set(
@@ -45,7 +45,7 @@ const stamp = (ms: number) => {
   return `[${pad(Math.floor(seconds / 60))}:${pad(seconds % 60)}]`;
 };
 
-/** The Markdown `transcript.md` holds, lines in time order, empty ones left out. */
+/** The Markdown of `transcript.md`. */
 export function renderTranscript(header: TranscriptHeader, said: ReadonlyArray<Said>): string {
   const app = CALL_APPS[header.app].title;
   const me = header.meRecorded ? "Me is this PC's microphone." : "Me was not recorded.";

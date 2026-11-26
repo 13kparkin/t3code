@@ -5,7 +5,7 @@ export interface Span {
 }
 
 const FRAME_MS = 20;
-/** -50 dBFS of a 16-bit sample. The engine's own voice filter drops what passes this. */
+/** -50 dBFS, loose on purpose, since the engine's own voice filter drops the noise that gets past it. */
 const SPEECH_RMS = 32768 * 10 ** (-50 / 20);
 const CLOSE_GAP_MS = 800;
 const MIN_RUN_MS = 300;
@@ -27,10 +27,7 @@ export function frameLevels(samples: Int16Array, sampleRate: number): Float32Arr
   return levels;
 }
 
-/**
- * The speech runs of a track, from its frame levels: gaps under 800 ms close, runs under 300 ms
- * drop, and a run past 30 s splits at the quietest frame in the second half of its first 30 s.
- */
+/** Speech runs. Short gaps close, clicks drop, and a long run splits at a quiet frame. */
 export function speechSegments(levels: Float32Array, sampleRate: number): Span[] {
   const runs: Array<{ start: number; end: number }> = [];
   for (let frame = 0; frame < levels.length; frame += 1) {

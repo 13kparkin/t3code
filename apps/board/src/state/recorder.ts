@@ -189,14 +189,14 @@ export const openRecordingFile = (file: RecordingFile) =>
 export const deleteAudio = (callId: string) =>
   recorder?.deleteAudio(callId) ?? Promise.resolve(false);
 
-/** Where a call's transcript is, under its board folder. */
+/** Relative to the board folder. */
 export const transcriptPath = (callId: string) => `artifacts/calls/${callId}/transcript.md`;
 
 export type Transcription =
   | { readonly status: "running"; readonly done: number; readonly total: number }
   | { readonly status: "failed"; readonly message: string };
 
-/** The transcriptions running or failed on this PC, by call id. A finished one leaves. */
+/** By call id, on this PC only. A finished one leaves. */
 export const transcriptionsAtom = Atom.make<Readonly<Record<string, Transcription>>>({}).pipe(
   Atom.keepAlive,
   Atom.withLabel("call-transcriptions"),
@@ -204,10 +204,7 @@ export const transcriptionsAtom = Atom.make<Readonly<Record<string, Transcriptio
 
 const isInvalidRequest = Schema.is(EnvironmentRequestInvalidError);
 
-/**
- * Transcribes every ended take of a call on the engine's selected speech model into the board
- * folder, then deletes the call's audio. A failure keeps the audio and shows on the call.
- */
+/** Uses the engine's selected speech model. A failure keeps the audio and shows on the call. */
 export async function transcribeCall(
   registry: AtomRegistry.AtomRegistry,
   project: Pick<EnvironmentProject, "environmentId" | "workspaceRoot">,

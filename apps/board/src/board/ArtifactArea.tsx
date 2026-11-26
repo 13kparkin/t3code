@@ -168,7 +168,6 @@ export function ArtifactArea({
       />,
     );
   });
-  /** The call's transcript, Transcribe while its audio is here, then each take's files. */
   const callFiles = (call: CallEvent) => {
     const takes = takesOf(call.id);
     const transcript = transcriptOf(call.id);
@@ -203,8 +202,8 @@ export function ArtifactArea({
             job?.status === "running"
               ? transcribing(job)
               : job?.status === "failed"
-                ? "Failed. The audio is kept."
-                : "Me and Them, on the engine"
+                ? "Failed. The audio stays on this PC."
+                : "Writes Me and Them lines on the engine"
           }
           onClick={() => void transcribeCall(registry, project, listed.folder, call.id)}
         />
