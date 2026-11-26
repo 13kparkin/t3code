@@ -1,6 +1,7 @@
 import type {
   BranchNamingMode,
   ClientServerSettingsPatch,
+  DeviceConfigureInput,
   ProjectId,
   ProjectScript,
   ProjectSettingsOverrides,
@@ -220,6 +221,14 @@ export function saveWorktreesDirectory(path: string): SettingsInput {
 /** T3's switch for provider version checks, shared by every client of the engine. */
 export function saveProviderUpdateChecks(enabled: boolean): SettingsInput {
   return { patch: { enableProviderUpdateChecks: enabled } };
+}
+
+export function deviceConfigureInput(
+  target: "hub" | "agent",
+  enabled: boolean,
+): DeviceConfigureInput {
+  if (target === "agent") return { agentAccessEnabled: enabled };
+  return enabled ? { enabled, onboardingCompleted: true } : { enabled, agentAccessEnabled: false };
 }
 
 export type CleanupMode = "inherit" | "off" | "custom";
