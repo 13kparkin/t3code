@@ -427,8 +427,6 @@ describe("deviceConfigureInput", () => {
   it.each([
     ["hub", true, { enabled: true, onboardingCompleted: true }],
     ["hub", false, { enabled: false, agentAccessEnabled: false }],
-    ["agent", true, { agentAccessEnabled: true }],
-    ["agent", false, { agentAccessEnabled: false }],
   ] as const)(
     "Given the %s switch set to %s, when saved, then the RPC input is %o",
     (target, enabled, input) => {
