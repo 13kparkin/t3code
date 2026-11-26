@@ -4,8 +4,9 @@
     "plugins": [
       {
         "name": "@effect/language-service",
-        // React Native has no Effect platform layer.
+        // React Native has no Effect platform layer. Effect-style suggestions stay off, as in the board.
         "diagnosticSeverity": {
+          "effectFnOpportunity": "off",
           "globalDate": "off",
           "globalConsole": "off",
           "globalRandom": "off",
@@ -14,6 +15,7 @@
         }
       }
     ],
+    "allowImportingTsExtensions": true,
     "strict": true,
     "noUncheckedIndexedAccess": true
   }
