@@ -1,14 +1,29 @@
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
-import { Atom, type AtomRegistry } from "effect/reactivity";
+import {
+  getEnvironmentSpeechModels,
+  transcribeEnvironmentPcm,
+} from "@t3tools/client-runtime/voice-input";
+import {
+  DEFAULT_SPEECH_TRANSCRIPTION_OPTIONS,
+  EnvironmentRequestInvalidError,
+} from "@t3tools/contracts";
+import * as Effect from "effect/Effect";
+import type { HttpClient } from "effect/http";
+import * as Option from "effect/Option";
+import * as Schema from "effect/Schema";
+import { Atom, AtomRegistry } from "effect/reactivity";
 
 import { dueCalls, isStarting, markNotified, nextWake, splitCalls } from "../calls/dueCalls";
+import { transcribeTakes } from "../calls/transcribe";
 import type { RecorderSnapshot } from "../connection/engineState";
-import type { CallEvent } from "../domain/board";
+import { connectionAtomRuntime } from "../connection/runtime";
+import { BOARDS_DIR, type CallEvent } from "../domain/board";
 import type { RecordingFile, RecordRequest } from "../domain/recording";
 import type { ValidBoard } from "../store/boardFiles";
 import { deleteCall, markRecorded } from "./boardCards";
-import { localState, openBoard, projectBoardsAtom } from "./boards";
+import { boardEngine, localState, openBoard, projectBoardsAtom } from "./boards";
 import { environmentProjects } from "./projects";
+import { environmentSession } from "./server";
 
 /** Undefined in `dev:web`, which has no main process to record with. */
 const recorder = window.board?.recorder;
@@ -173,3 +188,105 @@ export const openRecordingFile = (file: RecordingFile) =>
   recorder?.openFile(file) ?? Promise.resolve("missing" as const);
 export const deleteAudio = (callId: string) =>
   recorder?.deleteAudio(callId) ?? Promise.resolve(false);
+
+/** Where a call's transcript is, under its board folder. */
+export const transcriptPath = (callId: string) => `artifacts/calls/${callId}/transcript.md`;
+
+export type Transcription =
+  | { readonly status: "running"; readonly done: number; readonly total: number }
+  | { readonly status: "failed"; readonly message: string };
+
+/** The transcriptions running or failed on this PC, by call id. A finished one leaves. */
+export const transcriptionsAtom = Atom.make<Readonly<Record<string, Transcription>>>({}).pipe(
+  Atom.keepAlive,
+  Atom.withLabel("call-transcriptions"),
+);
+
+const isInvalidRequest = Schema.is(EnvironmentRequestInvalidError);
+
+/**
+ * Transcribes every ended take of a call on the engine's selected speech model into the board
+ * folder, then deletes the call's audio. A failure keeps the audio and shows on the call.
+ */
+export async function transcribeCall(
+  registry: AtomRegistry.AtomRegistry,
+  project: Pick<EnvironmentProject, "environmentId" | "workspaceRoot">,
+  folder: string,
+  callId: string,
+) {
+  if (recorder === undefined || registry.get(transcriptionsAtom)[callId]?.status === "running") {
+    return;
+  }
+  const set = (job: Transcription | null) =>
+    registry.update(transcriptionsAtom, ({ [callId]: _old, ...rest }) =>
+      job === null ? rest : { ...rest, [callId]: job },
+    );
+  const takesOf = () =>
+    (registry.get(recorderAtom)?.recordings ?? []).filter((take) => take.callId === callId);
+  const takes = takesOf()
+    .filter((take) => take.endedAt !== null)
+    .toSorted((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt));
+  if (takes.length === 0) return;
+  set({ status: "running", done: 0, total: 0 });
+  let missingModel = "Choose a speech model in T3's voice settings, then transcribe again.";
+  try {
+    const prepared = Option.getOrNull(
+      registry.get(environmentSession.preparedConnectionValueAtom(project.environmentId)),
+    );
+    if (prepared === null) throw new Error("The engine is not connected.");
+    const speech = <A, E>(effect: Effect.Effect<A, E, HttpClient.HttpClient>) =>
+      Effect.runPromise(
+        AtomRegistry.getResult(registry, connectionAtomRuntime).pipe(
+          Effect.flatMap((context) => Effect.provide(effect, context)),
+        ),
+      );
+    const active = (await speech(getEnvironmentSpeechModels(prepared))).models.find(
+      (model) => model.active,
+    );
+    if (active !== undefined) {
+      missingModel = `Install ${active.name} in T3's voice settings, then transcribe again.`;
+    }
+    if (active?.state !== "installed") throw new Error(missingModel);
+    await transcribeTakes({
+      takes,
+      read: recorder.readTrack,
+      transcribe: async (pcm) =>
+        (
+          await speech(
+            transcribeEnvironmentPcm(
+              prepared,
+              pcm,
+              DEFAULT_SPEECH_TRANSCRIPTION_OPTIONS,
+              () => true,
+            ),
+          )
+        ).text,
+      write: (markdown) =>
+        boardEngine(registry, project.environmentId).files.write(
+          project.workspaceRoot,
+          `${BOARDS_DIR}/${folder}/${transcriptPath(callId)}`,
+          markdown,
+        ),
+      // A take recorded since the transcription started is not in it, so its audio stays.
+      deleteAudio: async () => {
+        const state = registry.get(recorderAtom)?.state;
+        const now = takesOf().map((take) => take.startedAt);
+        const same =
+          now.length === takes.length && takes.every((take) => now.includes(take.startedAt));
+        const live = state !== undefined && state.status !== "idle" && state.callId === callId;
+        return same && !live && recorder.deleteAudio(callId);
+      },
+      progress: (done, total) => set({ status: "running", done, total }),
+    });
+    set(null);
+  } catch (cause) {
+    // The engine answers a missing model with a generic invalid command.
+    const message =
+      isInvalidRequest(cause) && cause.reason === "invalid_command"
+        ? missingModel
+        : cause instanceof Error
+          ? cause.message
+          : String(cause);
+    set({ status: "failed", message });
+  }
+}

@@ -21,6 +21,17 @@ export const RecordingFile = Schema.Struct({
 });
 export type RecordingFile = typeof RecordingFile.Type;
 
+const SampleIndex = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
+/** Samples `[from, to)` of one track of a take. */
+export const TrackRange = Schema.Struct({
+  callId: CallId,
+  startedAt: RecordingFile.fields.startedAt,
+  file: Schema.Literals(["me.wav", "them.wav"]),
+  from: SampleIndex,
+  to: SampleIndex,
+});
+export type TrackRange = typeof TrackRange.Type;
+
 /** A call start toast. Its Record button carries all of it, so a press after a restart still knows the call. */
 export const CallToast = Schema.Struct({
   projectId: Schema.String.check(Schema.isMaxLength(200)),

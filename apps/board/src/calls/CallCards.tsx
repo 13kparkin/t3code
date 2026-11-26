@@ -1,12 +1,19 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
+import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { MoreHorizontal, Plus } from "lucide-react";
 import { type MouseEvent, useContext, useState } from "react";
 
 import { LANE_HEAD, LANE_WIDTH } from "../board/layout";
 import type { CallEvent, CardState } from "../domain/board";
-import { deleteAudio, recordCall, recorderAtom, startingCallsAtom } from "../state/recorder";
-import { CALL_APPS } from "./CallEditor";
-import { callAudio } from "./recorder";
+import {
+  deleteAudio,
+  recordCall,
+  recorderAtom,
+  startingCallsAtom,
+  transcribeCall,
+  transcriptionsAtom,
+} from "../state/recorder";
+import { CALL_APPS, callAudio, transcribing } from "./recorder";
 
 export const START = new Intl.DateTimeFormat(undefined, {
   weekday: "short",
@@ -21,6 +28,8 @@ export const START = new Intl.DateTimeFormat(undefined, {
  * calls marked. It stretches to the orchestrator card's height and scrolls inside.
  */
 export function CallCards({
+  project,
+  folder,
   boardId,
   shown,
   later,
@@ -28,6 +37,8 @@ export function CallCards({
   onAdd,
   onMenu,
 }: {
+  project: EnvironmentProject;
+  folder: string;
   boardId: string;
   shown: ReadonlyArray<CallEvent>;
   later: ReadonlyArray<CallEvent>;
@@ -38,6 +49,7 @@ export function CallCards({
   const registry = useContext(RegistryContext);
   const recorder = useAtomValue(recorderAtom);
   const starting = useAtomValue(startingCallsAtom);
+  const jobs = useAtomValue(transcriptionsAtom);
   const [all, setAll] = useState(false);
   const listed = all ? [...shown, ...later] : shown;
   const state = recorder?.state;
@@ -86,6 +98,7 @@ export function CallCards({
             const failed =
               state?.status === "idle" && state.failed?.callId === call.id ? state.failed : null;
             const audio = recorder === null ? null : callAudio(recorder.recordings, call.id);
+            const job = jobs[call.id];
             return (
               <li
                 key={call.id}
@@ -157,14 +170,30 @@ export function CallCards({
                       {audio.note === null ? "" : ` · ${audio.note}`}
                     </span>
                     {!live && (
-                      <button
-                        type="button"
-                        onClick={() => deleteAudio(call.id)}
-                        className="shrink-0 rounded px-1.5 text-faint hover:bg-hover hover:text-fg"
-                      >
-                        Delete audio
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          disabled={job?.status === "running"}
+                          onClick={() => void transcribeCall(registry, project, folder, call.id)}
+                          className="shrink-0 rounded px-1.5 text-faint hover:bg-hover hover:text-fg disabled:hover:bg-transparent"
+                        >
+                          {job?.status === "running" ? transcribing(job) : "Transcribe"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={job?.status === "running"}
+                          onClick={() => deleteAudio(call.id)}
+                          className="shrink-0 rounded px-1.5 text-faint hover:bg-hover hover:text-fg disabled:hover:bg-transparent"
+                        >
+                          Delete audio
+                        </button>
+                      </>
                     )}
+                  </p>
+                )}
+                {job?.status === "failed" && (
+                  <p role="alert" className="text-[11px] break-words text-red-400">
+                    {job.message} The audio is kept.
                   </p>
                 )}
               </li>

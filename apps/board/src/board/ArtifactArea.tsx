@@ -1,16 +1,23 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
-import { FileAudio, FileText, Folder, Phone, X } from "lucide-react";
+import { Captions, FileAudio, FileText, Folder, Phone, X } from "lucide-react";
 import { type MouseEvent, type ReactNode, useContext, useRef, useState } from "react";
 
 import { useArtifacts } from "../artifacts/ArtifactsContext";
 import { START } from "../calls/CallCards";
+import { transcribing } from "../calls/recorder";
 import { folderView } from "../domain/artifact";
 import type { CallEvent } from "../domain/board";
 import { setCardState } from "../state/boardCards";
 import { folderArchived } from "../state/cardStates";
 import { changeFileBox, fileBoxesAtom } from "../state/boardUi";
-import { openRecordingFile, recorderAtom } from "../state/recorder";
+import {
+  openRecordingFile,
+  recorderAtom,
+  transcribeCall,
+  transcriptionsAtom,
+  transcriptPath,
+} from "../state/recorder";
 import type { ValidBoard } from "../store/boardFiles";
 import { ContextMenu } from "../ui/ContextMenu";
 import { ArtifactCard } from "./ArtifactCard";
@@ -46,6 +53,7 @@ export function ArtifactArea({
   const boardId = listed.board.id;
   const boxes = useAtomValue(fileBoxesAtom)[boardId] ?? {};
   const snapshot = useAtomValue(recorderAtom);
+  const jobs = useAtomValue(transcriptionsAtom);
   const states = listed.board.cardStates ?? {};
   const scale = useViewScale();
   const anchor = useRef<HTMLDivElement>(null);
@@ -137,14 +145,18 @@ export function ArtifactArea({
     (snapshot?.recordings ?? [])
       .filter((take) => take.callId === callId)
       .toSorted((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt));
+  const transcriptOf = (callId: string) =>
+    groups.board.find((file) => file.path === transcriptPath(callId));
   const callCards = calls.map((call) => {
     const takes = takesOf(call.id).length;
     const where =
       takes > 0
         ? ` · ${takes} ${takes === 1 ? "take" : "takes"}`
-        : snapshot !== null && call.recordedAt !== undefined
-          ? " · recorded on another PC"
-          : "";
+        : transcriptOf(call.id) !== undefined
+          ? " · transcribed"
+          : snapshot !== null && call.recordedAt !== undefined
+            ? " · recorded on another PC"
+            : "";
     return archivable(
       call.id,
       call.title,
@@ -156,9 +168,23 @@ export function ArtifactArea({
       />,
     );
   });
-  const takeCards = (call: CallEvent) => {
+  /** The call's transcript, Transcribe while its audio is here, then each take's files. */
+  const callFiles = (call: CallEvent) => {
     const takes = takesOf(call.id);
+    const transcript = transcriptOf(call.id);
+    const job = jobs[call.id];
+    const shown =
+      transcript === undefined || states[`file:${transcript.path}`] === "archived"
+        ? []
+        : [
+            archivable(
+              `file:${transcript.path}`,
+              transcript.name,
+              <ArtifactCard artifact={transcript} />,
+            ),
+          ];
     if (takes.length === 0) {
+      if (transcript !== undefined) return shown;
       return [
         <li key="none" className="col-span-full text-[11px] text-faint">
           {snapshot !== null && call.recordedAt !== undefined
@@ -167,7 +193,38 @@ export function ArtifactArea({
         </li>,
       ];
     }
-    return takes.flatMap((take, index) =>
+    return [
+      ...shown,
+      <li key="transcribe" className="min-w-0">
+        <Tile
+          icon={Captions}
+          title={transcript === undefined ? "Transcribe" : "Transcribe again"}
+          hint={
+            job?.status === "running"
+              ? transcribing(job)
+              : job?.status === "failed"
+                ? "Failed. The audio is kept."
+                : "Me and Them, on the engine"
+          }
+          onClick={() => void transcribeCall(registry, project, listed.folder, call.id)}
+        />
+      </li>,
+      ...(job?.status === "failed"
+        ? [
+            <li
+              key="transcribe-error"
+              role="alert"
+              className="col-span-full text-[11px] break-words text-red-400"
+            >
+              {job.message}
+            </li>,
+          ]
+        : []),
+      ...takeCards(call, takes),
+    ];
+  };
+  const takeCards = (call: CallEvent, takes: ReturnType<typeof takesOf>) =>
+    takes.flatMap((take, index) =>
       TAKE_FILES.flatMap((file) => {
         const key = `take:${call.id}/${take.startedAt}/${file}`;
         if (states[key] === "archived") return [];
@@ -193,7 +250,6 @@ export function ArtifactArea({
         ];
       }),
     );
-  };
   const closeButton = (key: string) => (
     <button
       type="button"
@@ -222,7 +278,7 @@ export function ArtifactArea({
     const call = calls.find((entry) => key === `call:${entry.id}`);
     if (call === undefined) return [];
     const title = heading(call.title, START.format(new Date(call.start)));
-    return [{ key, title, cards: takeCards(call) }];
+    return [{ key, title, cards: callFiles(call) }];
   });
   return (
     <div ref={anchor} className="relative flex self-stretch">
