@@ -4,8 +4,7 @@ import { useContext } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { type EngineStatus, engineStatusAtom } from "./connection/engine";
-import { environmentCatalog } from "./connection/runtime";
+import { type EngineStatus, engineStatusAtom, unpair } from "./connection/engine";
 import { styles } from "./styles";
 
 const DOT = {
@@ -51,7 +50,7 @@ export function EngineHeader() {
       {"environmentId" in status && (
         <Pressable
           accessibilityRole="button"
-          onPress={() => void environmentCatalog.remove.run(registry, status.environmentId)}
+          onPress={() => void unpair(registry, status.environmentId)}
         >
           <Text style={styles.link}>{status.kind === "refused" ? "Pair again" : "Unpair"}</Text>
         </Pressable>

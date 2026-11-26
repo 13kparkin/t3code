@@ -13,14 +13,11 @@ export function PairScreen() {
   const { busy, error } = useAtomValue(pairingStateAtom);
   const [scanning, setScanning] = useState(false);
   const [pasted, setPasted] = useState("");
-  const [cameraRefused, setCameraRefused] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   useAtomMount(deepLinkPairingAtom);
 
   const scan = async () => {
-    const granted = permission?.granted || (await requestPermission()).granted;
-    setCameraRefused(!granted);
-    setScanning(granted);
+    setScanning(permission?.granted || (await requestPermission()).granted);
   };
 
   if (scanning) {
@@ -67,7 +64,7 @@ export function PairScreen() {
       >
         <Text style={styles.buttonText}>{busy ? "Pairing" : "Pair"}</Text>
       </Pressable>
-      {cameraRefused && (
+      {permission?.status === "denied" && (
         <Text style={styles.error}>Allow the camera to scan the pairing code.</Text>
       )}
       {error !== null && <Text style={styles.error}>{error}</Text>}

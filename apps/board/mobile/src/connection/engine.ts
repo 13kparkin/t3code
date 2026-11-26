@@ -96,10 +96,14 @@ export const boardProjectsAtom = Atom.make((get): ReadonlyArray<EnvironmentProje
           { reportFailure: false },
         )
       )._tag === "Success";
+    let current = true;
+    get.addFinalizer(() => {
+      current = false;
+    });
     void (async () => {
       const found: Array<EnvironmentProject> = [];
       for (const project of projects) if (await holdsBoard(project)) found.push(project);
-      get.setSelf(found);
+      if (current) get.setSelf(found);
     })();
   }
   return Option.getOrNull(get.self<ReadonlyArray<EnvironmentProject> | null>());
@@ -135,6 +139,9 @@ export async function pair(registry: AtomRegistry.AtomRegistry, input: string) {
     error: failure === null ? null : failure instanceof Error ? failure.message : String(failure),
   });
 }
+
+export const unpair = (registry: AtomRegistry.AtomRegistry, environmentId: EnvironmentId) =>
+  environmentCatalog.remove.run(registry, environmentId);
 
 // The launch link stays the initial URL for the whole process, and its one-time code is spent.
 let launchLinkRead = false;
