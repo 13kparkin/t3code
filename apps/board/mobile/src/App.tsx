@@ -10,7 +10,7 @@ import { useAtomValue } from "@effect/atom-react";
 import { useColorScheme } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { BoardScreen } from "./BoardScreen";
+import { BoardScreen } from "./board/BoardScreen";
 import { engineStatusAtom } from "./connection/engine";
 import { PairScreen } from "./connection/PairScreen";
 import { EngineHeader } from "./EngineHeader";

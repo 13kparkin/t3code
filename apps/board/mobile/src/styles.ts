@@ -19,4 +19,12 @@ export const styles = StyleSheet.create({
   button: { alignItems: "center", backgroundColor: "#3B82F6", borderRadius: 8, padding: 12 },
   buttonText: { color: "#FFFFFF", fontWeight: "600" },
   error: { color: "#DC2626" },
+  bold: { fontWeight: "600" },
+  small: { fontSize: 12 },
+  card: { borderRadius: 8, borderWidth: 1, gap: 2, marginBottom: 8, padding: 12 },
+  banner: { gap: 4, marginHorizontal: 16, marginTop: 8 },
+  chipRow: { flexGrow: 0 },
+  chips: { gap: 8, paddingHorizontal: 16, paddingVertical: 8 },
+  chip: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6 },
+  sheetTop: { paddingTop: 16 },
 });
