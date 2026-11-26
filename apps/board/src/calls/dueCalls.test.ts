@@ -45,14 +45,17 @@ describe("the notified calls kept in local state", () => {
 });
 
 describe("where each call goes", () => {
+  const hours = (count: number) => at(-count * 60);
   const soon = { id: "soon", start: at(5) };
   const later = { id: "later", start: at(60) };
   const now = { id: "now", start: at(-2) };
   const past = { id: "past", start: at(-30) };
-  const recordedElsewhere = { id: "elsewhere", start: at(-30), recorded: true } as const;
-  const expired = { id: "expired", start: at(-(7 * 24 + 5) * 60), recorded: true } as const;
+  const elsewhere = { id: "elsewhere", start: at(-30), recordedAt: at(-30) };
+  const expired = { id: "expired", start: hours(7 * 24 + 5), recordedAt: hours(7 * 24 + 5) };
+  const lateTake = { id: "late", start: hours(7 * 24 + 5), recordedAt: hours(7 * 24 + 3) };
   const none = { shown: [], later: [], finished: [], stale: [], mark: [] };
-  const NO_TAKES = new Set<string>();
+  const NO_TAKES = new Map<string, string>();
+  const takes = (id: string) => new Map([[id, at(-25)]]);
   it.each([
     ["no calls", [], null, NO_TAKES, none],
     ["one future call", [later], null, NO_TAKES, { ...none, shown: ["later"] }],
@@ -74,22 +77,22 @@ describe("where each call goes", () => {
       "a finished call with takes",
       [past],
       null,
-      new Set(["past"]),
+      takes("past"),
       { ...none, finished: ["past"], mark: ["past"] },
     ],
     ["a finished call without takes", [past], null, NO_TAKES, { ...none, stale: ["past"] }],
     [
       "a finished call recorded on another PC",
-      [recordedElsewhere],
+      [elsewhere],
       null,
       NO_TAKES,
       { ...none, finished: ["elsewhere"] },
     ],
     [
       "a marked call whose takes this PC holds",
-      [recordedElsewhere],
+      [elsewhere],
       null,
-      new Set(["elsewhere"]),
+      takes("elsewhere"),
       { ...none, finished: ["elsewhere"] },
     ],
     [
@@ -100,6 +103,13 @@ describe("where each call goes", () => {
       { ...none, stale: ["expired"] },
     ],
     [
+      "a call whose take started long after its start",
+      [lateTake],
+      null,
+      NO_TAKES,
+      { ...none, finished: ["late"] },
+    ],
+    [
       "a finished call while takes are unknown",
       [past],
       null,
@@ -107,14 +117,14 @@ describe("where each call goes", () => {
       { ...none, finished: ["past"] },
     ],
     [
-      "a past call still recording",
+      "a past call recording with no take saved yet",
       [past, later],
       "past",
       NO_TAKES,
-      { ...none, shown: ["past", "later"], mark: ["past"] },
+      { ...none, shown: ["past", "later"] },
     ],
-  ] as const)("Given %s, then it splits them as %j", (_name, calls, recording, recorded, ids) => {
-    const split = splitCalls(calls, NOW, recording, recorded);
+  ] as const)("Given %s, then it splits them as %j", (_name, calls, recording, local, ids) => {
+    const split = splitCalls(calls, NOW, recording, local);
     expect({
       shown: split.shown.map((call) => call.id),
       later: split.later.map((call) => call.id),
@@ -122,5 +132,11 @@ describe("where each call goes", () => {
       stale: split.stale.map((call) => call.id),
       mark: split.mark.map((call) => call.id),
     }).toEqual(ids);
+  });
+
+  it("Given a call with takes and no mark, then the mark carries its first take's start", () => {
+    expect(splitCalls([past], NOW, null, takes("past")).mark).toEqual([
+      { ...past, recordedAt: at(-25) },
+    ]);
   });
 });

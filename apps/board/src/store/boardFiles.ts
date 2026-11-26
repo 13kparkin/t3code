@@ -260,7 +260,7 @@ export const placeFreeAgent = (
     ],
   }));
 
-/** Adds a call event, or updates the one with the same id in its place, keeping its `recorded` mark. */
+/** Adds a call event, or updates the one with the same id in its place, keeping its `recordedAt` mark. */
 export const putCall = (files: ProjectFiles, cwd: string, folder: string, call: CallEvent) =>
   changeBoard(files, cwd, folder, (board) => {
     const calls = board.calls ?? [];
@@ -272,17 +272,24 @@ export const putCall = (files: ProjectFiles, cwd: string, folder: string, call: 
     };
   });
 
-export const markCallRecorded = (files: ProjectFiles, cwd: string, folder: string, id: string) =>
+/** Marks when a take of the call first started. A call already marked keeps its time. */
+export const markCallRecorded = (
+  files: ProjectFiles,
+  cwd: string,
+  folder: string,
+  id: string,
+  recordedAt: string,
+) =>
   changeBoard(files, cwd, folder, (board) => ({
     ...board,
     calls: (board.calls ?? []).map((call) =>
-      call.id === id ? { ...call, recorded: true as const } : call,
+      call.id === id && call.recordedAt === undefined ? { ...call, recordedAt } : call,
     ),
   }));
 
 /**
  * Removes a call event and its card state. With `judged`, the call a cleanup found finished, it
- * removes only while the saved call still has that start and no `recorded` mark.
+ * removes only while the saved call still has that start and no `recordedAt` mark.
  */
 export const removeCall = (
   files: ProjectFiles,
@@ -293,7 +300,7 @@ export const removeCall = (
 ) =>
   changeBoard(files, cwd, folder, (board) => {
     const saved = (board.calls ?? []).find((call) => call.id === id);
-    if (judged !== undefined && (saved?.start !== judged.start || saved.recorded === true)) {
+    if (judged !== undefined && (saved?.start !== judged.start || saved.recordedAt !== undefined)) {
       return board;
     }
     const { [id]: _removed, ...cardStates } = board.cardStates ?? {};

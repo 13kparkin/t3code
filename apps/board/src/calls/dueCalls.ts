@@ -1,12 +1,12 @@
 /** How long after its start a call still notifies, and its card says Starting now. */
 const LATE_MS = 10 * 60_000;
-/** A take starts by the end of that window, runs at most 4 hours, and is swept 7 days after it ends. */
-const TAKE_LIFE_MS = LATE_MS + (4 + 7 * 24) * 60 * 60_000;
+/** A take runs at most 4 hours and is swept 7 days after it ends. */
+const TAKE_LIFE_MS = (4 + 7 * 24) * 60 * 60_000;
 
 interface Timed {
   readonly id: string;
   readonly start: string;
-  readonly recorded?: true;
+  readonly recordedAt?: string;
 }
 
 /** The start each call last notified for, by call id. */
@@ -45,28 +45,31 @@ export const markNotified = (
 /**
  * Where each call goes: the Calls group (the recording, starting, and next call, then `later`),
  * Artifacts for a finished call recorded on any PC while a take can still exist, or removal.
- * `recorded`, this PC's takes, is null while unknown, which keeps every finished call. `mark` lists
- * calls this PC records or holds takes for that `board.json` does not yet mark.
+ * `takes` maps each call with takes on this PC to its first take's start, and is null while
+ * unknown, which keeps every finished call. `mark` is the calls `board.json` should mark, with that start.
  */
 export function splitCalls<C extends Timed>(
   calls: ReadonlyArray<C>,
   now: number,
   recording: string | null,
-  recorded: ReadonlySet<string> | null,
+  takes: ReadonlyMap<string, string> | null,
 ) {
   const sorted = calls.toSorted((a, b) => Date.parse(a.start) - Date.parse(b.start));
   const next = sorted.find((call) => Date.parse(call.start) > now);
   const current = (call: C) => call === next || call.id === recording || isStarting(call, now);
   const past = sorted.filter((call) => !current(call) && Date.parse(call.start) <= now);
-  const marked = (call: C) => call.recorded === true && now < Date.parse(call.start) + TAKE_LIFE_MS;
+  const marked = (call: C) =>
+    call.recordedAt !== undefined && now < Date.parse(call.recordedAt) + TAKE_LIFE_MS;
   return {
     shown: sorted.filter(current),
     later: sorted.filter((call) => !current(call) && Date.parse(call.start) > now),
-    finished: past.filter((call) => marked(call) || recorded?.has(call.id) !== false),
-    stale: past.filter((call) => !marked(call) && recorded?.has(call.id) === false),
-    mark: sorted.filter(
-      (call) =>
-        call.recorded !== true && (call.id === recording || recorded?.has(call.id) === true),
-    ),
+    finished: past.filter((call) => marked(call) || takes?.has(call.id) !== false),
+    stale: past.filter((call) => !marked(call) && takes?.has(call.id) === false),
+    mark: sorted.flatMap((call) => {
+      const recordedAt = takes?.get(call.id);
+      return call.recordedAt === undefined && recordedAt !== undefined
+        ? [{ ...call, recordedAt }]
+        : [];
+    }),
   };
 }

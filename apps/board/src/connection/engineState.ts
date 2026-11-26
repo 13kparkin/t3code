@@ -1,4 +1,4 @@
-import type { CallToast, Recording, RecordRequest } from "../domain/recording";
+import type { CallToast, Recording, RecordingFile, RecordRequest } from "../domain/recording";
 
 export type EngineState =
   | { readonly phase: "connecting" }
@@ -95,6 +95,8 @@ export interface RecorderHost {
   readonly stop: () => void;
   /** Removes every take of the call from this PC, true once none is left. Does nothing while that call records. */
   readonly deleteAudio: (callId: string) => Promise<boolean>;
+  /** Opens a take's file in Windows' default app, since the engine cannot read files on this PC. */
+  readonly openFile: (file: RecordingFile) => void;
 }
 
 /** The app's own release, which only the packaged app checks for and installs. */

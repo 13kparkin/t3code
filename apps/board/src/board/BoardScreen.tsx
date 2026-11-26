@@ -37,7 +37,7 @@ import {
   setCardState,
   startFreeAgent,
 } from "../state/boardCards";
-import { splitCards } from "../state/cardStates";
+import { archivedBesideLanes, splitCards } from "../state/cardStates";
 import { ContextMenu } from "../ui/ContextMenu";
 import type { PopMenuItem } from "../ui/MenuList";
 import { FREE_CARD } from "./FreeAgentCard";
@@ -197,12 +197,7 @@ export function BoardScreen({
     });
   };
   const archived = useMemo(
-    () => [
-      ...cards.archived,
-      ...calls
-        .filter((call) => cardStates[call.id] === "archived")
-        .map((call) => ({ key: call.id, label: call.title })),
-    ],
+    () => [...cards.archived, ...archivedBesideLanes(calls, cardStates)],
     [cards.archived, calls, cardStates],
   );
   useAtomValue(issuePullAtom(`${project.id}/${listed.folder}`));
@@ -366,11 +361,7 @@ export function BoardScreen({
                     onMenu={openCallMenu}
                   />
                 </div>
-                <ArtifactArea
-                  boardId={board.id}
-                  calls={callSplit.finished}
-                  onCallMenu={openCallMenu}
-                />
+                <ArtifactArea project={project} listed={listed} calls={callSplit.finished} />
               </div>
               <Lanes
                 layout={layout}

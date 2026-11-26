@@ -4,9 +4,10 @@ import { Atom, type AtomRegistry } from "effect/reactivity";
 import { dueCalls, isStarting, markNotified, nextWake, splitCalls } from "../calls/dueCalls";
 import type { RecorderSnapshot } from "../connection/engineState";
 import type { CallEvent } from "../domain/board";
-import type { RecordRequest } from "../domain/recording";
+import type { RecordingFile, RecordRequest } from "../domain/recording";
 import type { ValidBoard } from "../store/boardFiles";
 import { deleteCall, markRecorded } from "./boardCards";
+import { changeFileBox } from "./boardUi";
 import { localState, openBoard, projectBoardsAtom } from "./boards";
 import { environmentProjects } from "./projects";
 
@@ -69,6 +70,18 @@ async function notifyDue(list: ReadonlyArray<BoardCall>, now: number) {
   }
 }
 
+/** Each call with takes on this PC, to its first take's start. */
+const firstTakes = (snapshot: RecorderSnapshot) => {
+  const first = new Map<string, string>();
+  for (const { callId, startedAt } of snapshot.recordings) {
+    const known = first.get(callId);
+    if (known === undefined || Date.parse(startedAt) < Date.parse(known)) {
+      first.set(callId, startedAt);
+    }
+  }
+  return first;
+};
+
 /** `splitCalls` with this PC's recording and takes, which stay unknown until the snapshot loads. */
 export const splitHere = <C extends CallEvent>(
   list: ReadonlyArray<C>,
@@ -79,7 +92,7 @@ export const splitHere = <C extends CallEvent>(
     list,
     now,
     snapshot === null || snapshot.state.status === "idle" ? null : snapshot.state.callId,
-    snapshot === null ? null : new Set(snapshot.recordings.map((take) => take.callId)),
+    snapshot === null ? null : firstTakes(snapshot),
   );
 
 const NONE: ReadonlySet<string> = new Set();
@@ -89,8 +102,8 @@ const once = (key: string) => !tried.has(key) && Boolean(tried.add(key));
 
 /**
  * The ids of the Chrome calls in their starting window, the only app v1 records. Reading it notifies
- * due calls, marks every call this PC records or holds takes for, removes finished calls never
- * recorded, and sets the next wake.
+ * due calls, marks every call this PC holds takes for, removes finished calls never recorded, and
+ * sets the next wake.
  */
 export const startingCallsAtom = Atom.make((get): ReadonlySet<string> => {
   const snapshot = get(recorderAtom);
@@ -111,8 +124,9 @@ export const startingCallsAtom = Atom.make((get): ReadonlySet<string> => {
   void notifyDue(chrome, now);
   const split = splitHere(list, now, snapshot);
   for (const call of split.mark) {
-    if (once(`mark ${call.id}`))
-      void markRecorded(get.registry, call.project, call.listed, call.id);
+    if (once(`mark ${call.id}`)) {
+      void markRecorded(get.registry, call.project, call.listed, call.id, call.recordedAt);
+    }
   }
   // A dev build's seeded projects point at the developer's live checkout, as in projectBoardsAtom.
   for (const call of import.meta.env.DEV ? [] : split.stale) {
@@ -156,10 +170,11 @@ export const acceptConsent = () =>
   localState.update((state) => ({ ...state, recordingConsent: true }));
 
 export const stopRecording = () => recorder?.stop();
+export const openRecordingFile = (file: RecordingFile) => recorder?.openFile(file);
 export const deleteAudio = (callId: string) =>
   recorder?.deleteAudio(callId) ?? Promise.resolve(false);
 
-/** A finished call lives on only for its audio, so it goes once the audio is gone. Resolves to the failure text, or null. */
+/** A finished call lives on only for its audio, so it and its section go once the audio is gone. Resolves to the failure text, or null. */
 export async function deleteCallAudio(
   registry: AtomRegistry.AtomRegistry,
   project: EnvironmentProject,
@@ -168,5 +183,11 @@ export async function deleteCallAudio(
   finished: boolean,
 ) {
   const gone = await deleteAudio(callId);
+  if (gone) {
+    void changeFileBox(registry, listed.board.id, `call:${callId}`, { x: 0, y: 0 }, (box) => ({
+      ...box,
+      open: false,
+    }));
+  }
   return gone && finished ? deleteCall(registry, project, listed, callId) : null;
 }

@@ -138,6 +138,33 @@ export function groupArtifacts<A extends ArtifactRef>(
   return { byTicket, board };
 }
 
+/** The files directly in `folder` ("" for the board folder) and the folders under it, with how many files each holds. */
+export function folderView<A extends Pick<ArtifactRef, "path">>(
+  artifacts: ReadonlyArray<A>,
+  folder: string,
+) {
+  const prefix = folder === "" ? "" : `${folder}/`;
+  const files: A[] = [];
+  const counts = new Map<string, number>();
+  for (const artifact of artifacts) {
+    if (!artifact.path.startsWith(prefix)) continue;
+    const rest = artifact.path.slice(prefix.length);
+    const slash = rest.indexOf("/");
+    if (slash === -1) {
+      files.push(artifact);
+    } else {
+      const path = prefix + rest.slice(0, slash);
+      counts.set(path, (counts.get(path) ?? 0) + 1);
+    }
+  }
+  const folders = [...counts].map(([path, count]) => ({
+    path,
+    name: path.slice(path.lastIndexOf("/") + 1),
+    count,
+  }));
+  return { files, folders };
+}
+
 export interface ReadmeEntry {
   /** The file as the README wrote it, relative to the README's folder. */
   readonly file: string;

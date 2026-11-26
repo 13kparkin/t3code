@@ -390,15 +390,15 @@ describe("call events", () => {
     await Promise.all([
       putCall(files, CWD, target.folder, moved),
       removeCall(files, CWD, target.folder, sync.id, sync),
-      markCallRecorded(files, CWD, target.folder, standup.id),
+      markCallRecorded(files, CWD, target.folder, standup.id, standup.start),
       removeCall(files, CWD, target.folder, standup.id, standup),
     ]);
-    expect(savedBoard(store)?.calls).toEqual([moved, { ...standup, recorded: true }]);
+    expect(savedBoard(store)?.calls).toEqual([moved, { ...standup, recordedAt: standup.start }]);
     await putCall(files, CWD, target.folder, { ...standup, title: "Standup moved" });
     expect(savedBoard(store)?.calls?.[1]).toEqual({
       ...standup,
       title: "Standup moved",
-      recorded: true,
+      recordedAt: standup.start,
     });
   });
 });

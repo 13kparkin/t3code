@@ -1,6 +1,6 @@
 import { Atom, type AtomRegistry } from "effect/reactivity";
 
-import type { LocalState } from "../store/localState";
+import type { FileBox, LocalState } from "../store/localState";
 import { localState } from "./boards";
 
 export type FrameOrder = Readonly<Record<string, ReadonlyArray<string>>>;
@@ -68,25 +68,29 @@ export const filterFlipsAtom = Atom.family((boardId: string) =>
   }).pipe(Atom.withLabel(`filter-flips:${boardId}`)),
 );
 
-type ArtifactAreas = LocalState["artifactAreas"];
+type FileBoxes = LocalState["fileBoxes"];
 
-/** The size the user dragged each board's artifacts area to. A board with none takes the default size. */
-export const artifactAreasAtom = Atom.writable(
-  (get): ArtifactAreas => {
-    void localState.read().then((state) => get.setSelf(state.artifactAreas));
+/** The Artifacts area and the files sections of every board: where each sits, its size, and whether it is open. */
+export const fileBoxesAtom = Atom.writable(
+  (get): FileBoxes => {
+    void localState.read().then((state) => get.setSelf(state.fileBoxes));
     return {};
   },
-  (context, next: ArtifactAreas) => context.setSelf(next),
-).pipe(Atom.keepAlive, Atom.withLabel("artifact-areas"));
+  (context, next: FileBoxes) => context.setSelf(next),
+).pipe(Atom.keepAlive, Atom.withLabel("file-boxes"));
 
-export function saveArtifactArea(
+/** Changes one box of one board, from what is saved or `fallback`, in the atom and in `local-state.json`. */
+export function changeFileBox(
   registry: AtomRegistry.AtomRegistry,
   boardId: string,
-  size: ArtifactAreas[string],
+  key: string,
+  fallback: FileBox,
+  change: (box: FileBox) => FileBox,
 ) {
-  registry.set(artifactAreasAtom, { ...registry.get(artifactAreasAtom), [boardId]: size });
-  return localState.update((state) => ({
-    ...state,
-    artifactAreas: { ...state.artifactAreas, [boardId]: size },
-  }));
+  const apply = (all: FileBoxes) => ({
+    ...all,
+    [boardId]: { ...all[boardId], [key]: change(all[boardId]?.[key] ?? fallback) },
+  });
+  registry.set(fileBoxesAtom, apply(registry.get(fileBoxesAtom)));
+  return localState.update((state) => ({ ...state, fileBoxes: apply(state.fileBoxes) }));
 }

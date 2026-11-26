@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { classifyArtifact, groupArtifacts, parseReadme } from "./artifact";
+import { classifyArtifact, folderView, groupArtifacts, parseReadme } from "./artifact";
 
 describe("classifyArtifact", () => {
   // Every path is from a real run's evidence layout, under the store folder.
@@ -64,6 +64,41 @@ describe("groupArtifacts", () => {
     expect(groups.byTicket.has("T-2")).toBe(false);
     expect(groups.board.map((ref) => ref.path)).toEqual(["artifacts/HOTFIX-9/c.txt", "design.md"]);
   });
+});
+
+describe("folderView", () => {
+  const paths = [
+    "design.md",
+    "artifacts/board/shot.png",
+    "artifacts/board/runs/log.txt",
+    "artifacts/calls/c1/transcript.md",
+  ].map((path) => ({ path }));
+  it.each([
+    ["the board folder", "", ["design.md"], [["artifacts", 3]]],
+    [
+      "artifacts",
+      "artifacts",
+      [],
+      [
+        ["artifacts/board", 2],
+        ["artifacts/calls", 1],
+      ],
+    ],
+    [
+      "artifacts/board",
+      "artifacts/board",
+      ["artifacts/board/shot.png"],
+      [["artifacts/board/runs", 1]],
+    ],
+    ["a folder with nothing under it", "notes", [], []],
+  ] as const)(
+    "Given %s, then it lists its own files and its folders with their file counts",
+    (_name, folder, files, folders) => {
+      const view = folderView(paths, folder);
+      expect(view.files.map((file) => file.path)).toEqual(files);
+      expect(view.folders.map((entry) => [entry.path, entry.count])).toEqual(folders);
+    },
+  );
 });
 
 describe("parseReadme", () => {

@@ -5,11 +5,11 @@ import * as NodeReadline from "node:readline";
 
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
-import { app, BrowserWindow, ipcMain, nativeImage, Notification } from "electron";
+import { app, BrowserWindow, ipcMain, nativeImage, Notification, shell } from "electron";
 
 import type { RecorderSnapshot, RecorderState } from "../src/connection/engineState";
 import type { CallApp } from "../src/domain/board";
-import { CallId, Recording, RecordRequest } from "../src/domain/recording";
+import { CallId, Recording, RecordingFile, RecordRequest } from "../src/domain/recording";
 import { createLocalStateFile } from "./localState";
 
 const PROTOCOL = 1;
@@ -36,6 +36,7 @@ const CALL_EXES = {
 
 export const decodeRequest = Schema.decodeUnknownOption(RecordRequest);
 export const decodeCallId = Schema.decodeUnknownOption(CallId);
+const decodeRecordingFile = Schema.decodeUnknownOption(RecordingFile);
 const isCallId = Schema.is(CallId);
 // Struct drops keys it does not name, so every other app's window title ends here.
 const decodeList = Schema.decodeUnknownOption(
@@ -372,6 +373,13 @@ export function createRecorder(deps: {
     stop: () => session?.child.stop(),
     /** Closes the helper's stdin, which finalizes both files and ends the take as `app_quit`. */
     quit: () => session?.child.end(),
+    /** Where one file of a take is, or null when no take of the call started then. */
+    fileOf: ({ callId, startedAt, file }: RecordingFile) => {
+      const take = takes().find(
+        ({ recording }) => recording.callId === callId && recording.startedAt === startedAt,
+      );
+      return take === undefined ? null : NodePath.join(take.dir, file);
+    },
     /** True once no take of the call is left on this PC. */
     remove: (callId: string) => {
       // NTFS folder names ignore case, so `abc` and `ABC` share one folder.
@@ -489,6 +497,12 @@ export function registerRecorder(platform: NodeJS.Platform) {
     Option.map(decodeRequest(request), (valid) => void recorder.start(valid)),
   );
   ipcMain.on("board:recorder-stop", () => recorder.stop());
+  ipcMain.on("board:recording-open", (_event, file) =>
+    Option.map(decodeRecordingFile(file), (valid) => {
+      const path = recorder.fileOf(valid);
+      if (path !== null) void shell.openPath(path);
+    }),
+  );
   ipcMain.handle("board:recorder-delete", (_event, callId) =>
     Option.match(decodeCallId(callId), { onNone: () => false, onSome: recorder.remove }),
   );

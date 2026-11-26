@@ -1,144 +1,230 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
-import { Phone } from "lucide-react";
-import { type MouseEvent, useContext, useRef, useState } from "react";
+import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
+import { FileAudio, FileText, Folder, Phone, X } from "lucide-react";
+import { type MouseEvent, type ReactNode, useContext, useState } from "react";
 
 import { useArtifacts } from "../artifacts/ArtifactsContext";
 import { START } from "../calls/CallCards";
+import { folderView } from "../domain/artifact";
 import type { CallEvent } from "../domain/board";
-import { artifactAreasAtom, saveArtifactArea } from "../state/boardUi";
-import { recorderAtom } from "../state/recorder";
+import { setCardState } from "../state/boardCards";
+import { changeFileBox, fileBoxesAtom } from "../state/boardUi";
+import { openRecordingFile, recorderAtom } from "../state/recorder";
+import type { ValidBoard } from "../store/boardFiles";
+import { ContextMenu } from "../ui/ContextMenu";
 import { ArtifactCard } from "./ArtifactCard";
-import { ARTIFACT_GAP, ARTIFACT_HEIGHT, LANE_HEAD, LANE_MAX_HEIGHT, LANE_WIDTH } from "./layout";
-import { useViewScale } from "./Viewport";
+import { FileBox } from "./FileBox";
+import { LANE_GAP, LANE_WIDTH } from "./layout";
+import { Tile } from "./Tile";
 
-const MIN = { width: 216, height: 120 };
-const MAX = { width: 4 * LANE_WIDTH, height: LANE_MAX_HEIGHT };
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, Math.round(value)));
+const SECTION = { width: LANE_WIDTH, height: 200 };
+const STAGGER = 24;
+const HOME = { x: 0, y: 0 };
+const TAKE_FILES = ["me.wav", "them.wav", "recording.json"] as const;
 
 /**
- * The board's files and its finished recorded calls, as cards in a grid whose columns follow the
- * area's width. It matches the orchestrator card's height until its corner handle resizes it.
+ * The board's files and its finished recorded calls, and the files sections they open. A folder or
+ * a call opens its own section; a board file opens the viewer. Every card's right-click only
+ * archives it, under `file:<path>`, `dir:<path>`, or the call's id.
  */
 export function ArtifactArea({
-  boardId,
+  project,
+  listed,
   calls,
-  onCallMenu,
 }: {
-  boardId: string;
+  project: EnvironmentProject;
+  listed: ValidBoard;
   calls: ReadonlyArray<CallEvent>;
-  onCallMenu: (event: MouseEvent, call: CallEvent) => void;
 }) {
   const registry = useContext(RegistryContext);
   const { groups } = useArtifacts();
-  const saved = useAtomValue(artifactAreasAtom)[boardId];
+  const boardId = listed.board.id;
+  const boxes = useAtomValue(fileBoxesAtom)[boardId] ?? {};
   const snapshot = useAtomValue(recorderAtom);
-  const scale = useViewScale();
-  const box = useRef<HTMLElement>(null);
-  const press = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
-  const [drag, setDrag] = useState<{ width: number; height: number } | null>(null);
-  const size = drag ?? saved;
-  const count = groups.board.length + calls.length;
-  return (
-    <section
-      ref={box}
-      aria-label="Artifacts"
-      data-testid="artifact-area"
-      onPointerDown={(event) => event.stopPropagation()}
-      className="relative shrink-0 self-stretch rounded-xl border border-dashed border-line"
-      style={{ width: size?.width ?? LANE_WIDTH, height: size?.height }}
+  const states = listed.board.cardStates ?? {};
+  const [menu, setMenu] = useState<{ x: number; y: number; key: string; label: string } | null>(
+    null,
+  );
+  const files = groups.board.filter((file) => states[`file:${file.path}`] !== "archived");
+  const opened = Object.entries(boxes).flatMap(([key, box]) =>
+    key !== "artifacts" && box.open === true ? [key] : [],
+  );
+  const show = (key: string) =>
+    void changeFileBox(
+      registry,
+      boardId,
+      key,
+      {
+        ...SECTION,
+        x: (boxes.artifacts?.width ?? LANE_WIDTH) + LANE_GAP + STAGGER * opened.length,
+        y: STAGGER * opened.length,
+      },
+      (box) => ({ ...box, open: true }),
+    );
+  const hide = (key: string) =>
+    void changeFileBox(registry, boardId, key, HOME, (box) => ({ ...box, open: false }));
+  const archivable = (key: string, label: string, card: ReactNode) => (
+    <li
+      key={key}
+      className="min-w-0"
+      onContextMenu={(event: MouseEvent<HTMLLIElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        // A menu opened from the keyboard has no pointer, so it opens at the card.
+        const rect = event.currentTarget.getBoundingClientRect();
+        const keyboard = event.clientX === 0 && event.clientY === 0;
+        setMenu({
+          x: keyboard ? rect.left : event.clientX,
+          y: keyboard ? rect.bottom : event.clientY,
+          key,
+          label,
+        });
+      }}
     >
-      {/* Out of flow, so the card's height, not this grid, sets the row's height. */}
-      <div className="absolute inset-0 flex flex-col">
-        <header className="flex shrink-0 items-center gap-1.5 px-3" style={{ height: LANE_HEAD }}>
-          <span className="rounded-md px-2 text-[11px] leading-5 font-semibold text-muted">
-            Artifacts
-          </span>
-          <span className="text-[11px] text-faint">{count}</span>
-        </header>
-        <ul
-          data-scroll
-          className="grid min-h-0 content-start overflow-y-auto px-3 pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          style={{
-            gap: ARTIFACT_GAP,
-            gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-            gridAutoRows: ARTIFACT_HEIGHT,
-          }}
+      {card}
+    </li>
+  );
+  const folderCards = (folder: string) => {
+    const view = folderView(files, folder);
+    return [
+      ...view.folders
+        .filter((entry) => states[`dir:${entry.path}`] !== "archived")
+        .map((entry) =>
+          archivable(
+            `dir:${entry.path}`,
+            entry.name,
+            <Tile
+              icon={Folder}
+              title={entry.name}
+              hint={`${entry.count} ${entry.count === 1 ? "file" : "files"}`}
+              onClick={() => show(`dir:${entry.path}`)}
+            />,
+          ),
+        ),
+      ...view.files.map((file) =>
+        archivable(`file:${file.path}`, file.name, <ArtifactCard artifact={file} />),
+      ),
+    ];
+  };
+  const takesOf = (callId: string) =>
+    (snapshot?.recordings ?? [])
+      .filter((take) => take.callId === callId)
+      .toSorted((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt));
+  const callCards = calls.map((call) => {
+    const takes = takesOf(call.id).length;
+    const where =
+      takes > 0
+        ? ` · ${takes} ${takes === 1 ? "take" : "takes"}`
+        : snapshot !== null && call.recordedAt !== undefined
+          ? " · recorded on another PC"
+          : "";
+    return archivable(
+      call.id,
+      call.title,
+      <Tile
+        icon={Phone}
+        title={call.title}
+        hint={`${START.format(new Date(call.start))}${where}`}
+        onClick={() => show(`call:${call.id}`)}
+      />,
+    );
+  });
+  const takeCards = (call: CallEvent) => {
+    const takes = takesOf(call.id);
+    if (takes.length === 0) {
+      return [
+        <li key="none" className="col-span-full text-[11px] text-faint">
+          {snapshot !== null && call.recordedAt !== undefined
+            ? "Its audio is on another PC."
+            : "No audio on this PC."}
+        </li>,
+      ];
+    }
+    return takes.flatMap((take, index) =>
+      TAKE_FILES.map((file) =>
+        archivable(
+          `file:recordings/${call.id}/${take.startedAt}/${file}`,
+          file,
+          <Tile
+            icon={file === "recording.json" ? FileText : FileAudio}
+            title={file}
+            hint={`Take ${index + 1} · ${START.format(new Date(take.startedAt))}`}
+            onClick={() => openRecordingFile({ callId: call.id, startedAt: take.startedAt, file })}
+          />,
+        ),
+      ),
+    );
+  };
+  const closeButton = (key: string) => (
+    <button
+      type="button"
+      aria-label="Close"
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={() => hide(key)}
+      className="grid size-5 shrink-0 place-items-center rounded text-faint hover:bg-hover hover:text-fg"
+    >
+      <X className="size-3.5" aria-hidden />
+    </button>
+  );
+  const heading = (name: string, note: string) => (
+    <>
+      <span className="truncate px-2 text-[11px] leading-5 font-semibold text-muted">{name}</span>
+      <span className="shrink-0 text-[11px] text-faint">{note}</span>
+    </>
+  );
+  const top = [...folderCards(""), ...callCards];
+  const sections = opened.flatMap((key) => {
+    if (key.startsWith("dir:")) {
+      const path = key.slice("dir:".length);
+      const cards = folderCards(path);
+      return [{ key, title: heading(path.slice(path.lastIndexOf("/") + 1), path), cards }];
+    }
+    const call = calls.find((entry) => key === `call:${entry.id}`);
+    if (call === undefined) return [];
+    const title = heading(call.title, START.format(new Date(call.start)));
+    return [{ key, title, cards: takeCards(call) }];
+  });
+  return (
+    <div className="relative flex self-stretch">
+      <FileBox
+        boardId={boardId}
+        boxKey="artifacts"
+        place="row"
+        fallback={HOME}
+        title={heading("Artifacts", String(top.length))}
+      >
+        {top.length === 0 ? <li className="text-[11px] text-faint">No artifacts yet.</li> : top}
+      </FileBox>
+      {sections.map((section) => (
+        <FileBox
+          key={section.key}
+          boardId={boardId}
+          boxKey={section.key}
+          place="free"
+          fallback={{ ...SECTION, ...HOME }}
+          title={section.title}
+          actions={closeButton(section.key)}
         >
-          {count === 0 && <li className="text-[11px] text-faint">No artifacts yet.</li>}
-          {groups.board.map((artifact) => (
-            <li key={artifact.absolutePath} className="min-w-0">
-              <ArtifactCard artifact={artifact} />
-            </li>
-          ))}
-          {calls.map((call) => {
-            const takes = snapshot?.recordings.filter((take) => take.callId === call.id).length;
-            const where =
-              takes === undefined || takes === 0
-                ? snapshot !== null && call.recorded === true
-                  ? " · recorded on another PC"
-                  : ""
-                : ` · ${takes} ${takes === 1 ? "take" : "takes"}`;
-            return (
-              <li key={call.id} className="min-w-0">
-                <button
-                  type="button"
-                  data-testid="call-artifact"
-                  aria-label={`${call.title} actions`}
-                  onClick={(event) => onCallMenu(event, call)}
-                  onContextMenu={(event) => onCallMenu(event, call)}
-                  style={{ height: ARTIFACT_HEIGHT }}
-                  className="flex w-full min-w-0 items-center gap-2 rounded-md border border-line bg-bg px-1.5 text-left hover:bg-hover"
-                >
-                  <span className="grid size-7 shrink-0 place-items-center rounded bg-hover text-muted">
-                    <Phone className="size-3.5" aria-hidden />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[12px] text-fg">{call.title}</span>
-                    <span className="block truncate text-[10px] text-muted">
-                      {START.format(new Date(call.start))}
-                      {where}
-                    </span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-      <div
-        role="separator"
-        aria-label="Resize artifacts"
-        className="absolute right-0 bottom-0 size-3 cursor-nwse-resize touch-none"
-        onPointerDown={(event) => {
-          const rect = box.current?.getBoundingClientRect();
-          if (event.button !== 0 || rect === undefined) return;
-          event.currentTarget.setPointerCapture(event.pointerId);
-          press.current = {
-            x: event.clientX,
-            y: event.clientY,
-            width: rect.width / scale,
-            height: rect.height / scale,
-          };
-        }}
-        onPointerMove={(event) => {
-          const start = press.current;
-          if (start === null) return;
-          setDrag({
-            width: clamp(start.width + (event.clientX - start.x) / scale, MIN.width, MAX.width),
-            height: clamp(start.height + (event.clientY - start.y) / scale, MIN.height, MAX.height),
-          });
-        }}
-        onPointerUp={() => {
-          press.current = null;
-          if (drag !== null) void saveArtifactArea(registry, boardId, drag);
-          setDrag(null);
-        }}
-        onPointerCancel={() => {
-          press.current = null;
-          setDrag(null);
-        }}
-      />
-    </section>
+          {section.cards.length === 0 ? (
+            <li className="text-[11px] text-faint">Nothing here.</li>
+          ) : (
+            section.cards
+          )}
+        </FileBox>
+      ))}
+      {menu !== null && (
+        <ContextMenu
+          at={menu}
+          label={`${menu.label} actions`}
+          items={[
+            {
+              label: "Archive",
+              onSelect: () => void setCardState(registry, project, listed, menu.key, "archived"),
+            },
+          ]}
+          onClose={() => setMenu(null)}
+        />
+      )}
+    </div>
   );
 }

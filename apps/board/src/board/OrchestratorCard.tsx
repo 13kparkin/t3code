@@ -254,6 +254,8 @@ export function OrchestratorCard({
             <span onPointerDown={(event) => event.stopPropagation()}>
               <PopMenu
                 label={`${groups.board.length} board artifacts`}
+                // The card's right edge sits near the sidebar at the board's default pan.
+                align="start"
                 triggerClass="inline-flex items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-[18px] text-muted hover:bg-hover hover:text-fg"
                 trigger={
                   <>

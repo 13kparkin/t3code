@@ -32,6 +32,19 @@ describe("local state", () => {
     });
   });
 
+  it("Given a file saved before file boxes could move, when read, then none is placed; a saved box keeps only what was set", async () => {
+    expect((await createLocalState(fakeStorage("{}").storage).read()).fileBoxes).toEqual({});
+    const { storage } = fakeStorage();
+    const boxes = {
+      b1: {
+        artifacts: { x: 40, y: -12 },
+        c1: { x: 300, y: 0, width: 288, height: 200, open: true },
+      },
+    };
+    await createLocalState(storage).update((state) => ({ ...state, fileBoxes: boxes }));
+    expect((await createLocalState(storage).read()).fileBoxes).toEqual(boxes);
+  });
+
   it("Given a file saved before the chat thread could hide, when read, then no board has it shown; a saved choice is kept", async () => {
     expect((await createLocalState(fakeStorage("{}").storage).read()).threadShown).toEqual({});
     const { storage } = fakeStorage();

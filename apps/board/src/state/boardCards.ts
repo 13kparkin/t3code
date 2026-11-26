@@ -83,9 +83,10 @@ export const markRecorded = (
   project: BoardProject,
   listed: ValidBoard,
   id: string,
+  recordedAt: string,
 ) =>
   changeBoardFile(registry, project, (files) =>
-    markCallRecorded(files, project.workspaceRoot, listed.folder, id),
+    markCallRecorded(files, project.workspaceRoot, listed.folder, id, recordedAt),
   );
 
 /**
