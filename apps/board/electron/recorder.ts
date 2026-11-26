@@ -9,7 +9,14 @@ import { app, BrowserWindow, ipcMain, nativeImage, Notification, shell } from "e
 
 import type { RecorderSnapshot, RecorderState } from "../src/connection/engineState";
 import type { CallApp } from "../src/domain/board";
-import { CallId, Recording, RecordingFile, RecordRequest } from "../src/domain/recording";
+import {
+  CallId,
+  Recording,
+  RecordingFile,
+  RecordRequest,
+  TrackRange,
+  WINDOW_SAMPLES,
+} from "../src/domain/recording";
 import { createLocalStateFile } from "./localState";
 
 const PROTOCOL = 1;
@@ -21,6 +28,8 @@ const NUDGE_AFTER_S = 10 * 60;
 const MAX_S = 4 * 60 * 60;
 const HELPER = "agent-board-call-capture.exe";
 const HELPER_TIMEOUT_MS = 10_000;
+/** The helper writes 16 kHz mono s16le WAV with a fixed 44-byte header. */
+const WAV_HEADER = 44;
 const FILES = { me: "me.wav", them: "them.wav" } as const;
 const TRACKS: Recording["tracks"] = [
   { who: "me", file: FILES.me },
@@ -37,6 +46,7 @@ const CALL_EXES = {
 export const decodeRequest = Schema.decodeUnknownOption(RecordRequest);
 export const decodeCallId = Schema.decodeUnknownOption(CallId);
 const decodeRecordingFile = Schema.decodeUnknownOption(RecordingFile);
+const decodeTrackRange = Schema.decodeUnknownOption(TrackRange);
 const isCallId = Schema.is(CallId);
 // Struct drops keys it does not name, so every other app's window title ends here.
 const decodeList = Schema.decodeUnknownOption(
@@ -314,6 +324,13 @@ export function createRecorder(deps: {
     set({ status: "idle", failed: null });
   };
 
+  const fileOf = ({ callId, startedAt, file }: RecordingFile) => {
+    const take = takes().find(
+      ({ recording }) => recording.callId === callId && recording.startedAt === startedAt,
+    );
+    return take === undefined ? null : NodePath.join(take.dir, file);
+  };
+
   const fail = (callId: string, message: string) =>
     set({ status: "idle", failed: { callId, message } });
 
@@ -373,12 +390,20 @@ export function createRecorder(deps: {
     stop: () => session?.child.stop(),
     /** Closes the helper's stdin, which finalizes both files and ends the take as `app_quit`. */
     quit: () => session?.child.end(),
-    /** Where one file of a take is, or null when no take of the call started then. */
-    fileOf: ({ callId, startedAt, file }: RecordingFile) => {
-      const take = takes().find(
-        ({ recording }) => recording.callId === callId && recording.startedAt === startedAt,
-      );
-      return take === undefined ? null : NodePath.join(take.dir, file);
+    fileOf,
+    readTrack: async ({ from, to, ...file }: TrackRange) => {
+      const path = fileOf(file);
+      if (path === null) return null;
+      const count = Math.max(0, Math.min(to - from, WINDOW_SAMPLES));
+      const handle = await NodeFS.promises.open(path, "r").catch(() => null);
+      if (handle === null) return null;
+      try {
+        const bytes = Buffer.alloc(count * 2);
+        const { bytesRead } = await handle.read(bytes, 0, bytes.length, WAV_HEADER + from * 2);
+        return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytesRead - (bytesRead % 2));
+      } finally {
+        await handle.close();
+      }
     },
     /** True once no take of the call is left on this PC. */
     remove: (callId: string) => {
@@ -508,6 +533,9 @@ export function registerRecorder(platform: NodeJS.Platform) {
     shell.showItemInFolder(path);
     return "folder";
   });
+  ipcMain.handle("board:recording-read", (_event, range) =>
+    Option.match(decodeTrackRange(range), { onNone: () => null, onSome: recorder.readTrack }),
+  );
   ipcMain.handle("board:recorder-delete", (_event, callId) =>
     Option.match(decodeCallId(callId), { onNone: () => false, onSome: recorder.remove }),
   );

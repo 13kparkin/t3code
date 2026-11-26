@@ -1,4 +1,10 @@
-import type { CallToast, Recording, RecordingFile, RecordRequest } from "../domain/recording";
+import type {
+  CallToast,
+  Recording,
+  RecordingFile,
+  RecordRequest,
+  TrackRange,
+} from "../domain/recording";
 
 export type EngineState =
   | { readonly phase: "connecting" }
@@ -97,6 +103,8 @@ export interface RecorderHost {
   readonly deleteAudio: (callId: string) => Promise<boolean>;
   /** Opens a take's file in Windows' default app, since the engine cannot read files on this PC. `folder` when no app opens it and its folder opened instead. */
   readonly openFile: (file: RecordingFile) => Promise<"opened" | "folder" | "missing">;
+  /** Samples of one track as 16-bit PCM, cut at its end, or null when the take is gone. */
+  readonly readTrack: (range: TrackRange) => Promise<ArrayBuffer | null>;
 }
 
 /** The app's own release, which only the packaged app checks for and installs. */

@@ -27,7 +27,7 @@ export function ConsentNotice({
         <ul className="flex list-disc flex-col gap-1.5 pl-4 text-muted">
           <li>Some places require everyone on a call to agree before it is recorded.</li>
           <li>Nothing joins the call, so nobody else is told. Ask them first.</li>
-          <li>The audio stays on this PC for 7 days.</li>
+          <li>The audio stays on this PC until the board transcribes it, at most 7 days.</li>
           <li>
             The transcript goes to the board folder on the engine, where the project's agents can
             read it.

@@ -1,4 +1,12 @@
+import type { CallApp } from "../domain/board";
 import type { Recording } from "../domain/recording";
+
+export const CALL_APPS = {
+  zoom: { title: "Zoom", browser: false },
+  teams: { title: "Teams", browser: false },
+  chrome: { title: "Chrome", browser: true },
+  edge: { title: "Edge", browser: true },
+} as const satisfies Record<CallApp, { readonly title: string; readonly browser: boolean }>;
 
 export const CONSENT_LINE = "I'm recording this call to take notes. Is everyone OK with that?";
 
@@ -34,6 +42,10 @@ export function callAudio(
     note: last.endReason === "error" && last.error !== null ? last.error : reason,
   };
 }
+
+/** What a running transcription says: its level pass has no segment count yet. */
+export const transcribing = ({ done, total }: { readonly done: number; readonly total: number }) =>
+  total === 0 ? "Reading the audio" : `Transcribing ${done} of ${total}`;
 
 /** `m:ss`, or `h:mm:ss` from an hour on. */
 export function elapsed(ms: number): string {

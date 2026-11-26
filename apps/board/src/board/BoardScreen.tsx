@@ -346,6 +346,8 @@ export function BoardScreen({
                     onUnarchive={(key) => saveCard(key, null)}
                   />
                   <CallCards
+                    project={project}
+                    folder={listed.folder}
                     boardId={board.id}
                     shown={callSplit.shown}
                     later={callSplit.later}

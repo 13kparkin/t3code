@@ -455,4 +455,32 @@ describe("recovery and retention", () => {
       }),
     ).toBeNull();
   });
+
+  it("Given a take's track, when a sample range is read, then it skips the WAV header and stops at the file's end", async () => {
+    const rig = setup();
+    const ended = { endReason: "stopped", deleteAfter: "2026-12-02T10:00:00.000Z" } as const;
+    writeTake(rig.root, "old-call", "1", { ...ended, endedAt: STARTED_AT });
+    const samples = Int16Array.of(7, -7, 300, -300);
+    NodeFS.writeFileSync(
+      NodePath.join(rig.root, "old-call", "1", "them.wav"),
+      Buffer.concat([Buffer.alloc(44, 1), Buffer.from(samples.buffer)]),
+    );
+    const range = { callId: "old-call", startedAt: STARTED_AT, file: "them.wav" } as const;
+    const read = async (from: number, to: number) => {
+      const bytes = await rig.recorder.readTrack({ ...range, from, to });
+      return bytes === null ? null : [...new Int16Array(bytes)];
+    };
+    expect(await read(1, 3)).toEqual([-7, 300]);
+    expect(await read(2, 100)).toEqual([300, -300]);
+    expect(await read(9, 12)).toEqual([]);
+    expect(await read(0, 2)).toEqual([7, -7]);
+    expect(
+      await rig.recorder.readTrack({
+        ...range,
+        startedAt: "2026-01-01T00:00:00.000Z",
+        from: 0,
+        to: 2,
+      }),
+    ).toBeNull();
+  });
 });

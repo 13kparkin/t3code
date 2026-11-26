@@ -4,13 +4,7 @@ import { type FormEvent, useState } from "react";
 import { CallApp, type CallEvent } from "../domain/board";
 import { Select } from "../settings/controls/Select";
 import { newId } from "../state/boards";
-
-export const CALL_APPS = {
-  zoom: { title: "Zoom", browser: false },
-  teams: { title: "Teams", browser: false },
-  chrome: { title: "Chrome", browser: true },
-  edge: { title: "Edge", browser: true },
-} as const satisfies Record<CallApp, { readonly title: string; readonly browser: boolean }>;
+import { CALL_APPS } from "./recorder";
 
 const APP_OPTIONS = CallApp.literals.map((value) => ({ value, title: CALL_APPS[value].title }));
 

@@ -66,6 +66,7 @@ const bridge: BoardBridge = {
     stop: () => ipcRenderer.send("board:recorder-stop"),
     deleteAudio: (callId) => ipcRenderer.invoke("board:recorder-delete", callId),
     openFile: (file) => ipcRenderer.invoke("board:recording-open", file),
+    readTrack: (range) => ipcRenderer.invoke("board:recording-read", range),
   },
   calls: {
     wakeAt: (epochMs) => ipcRenderer.send("board:call-wake-at", epochMs),
