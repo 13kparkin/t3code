@@ -7,7 +7,6 @@ import type { CallEvent } from "../domain/board";
 import type { RecordingFile, RecordRequest } from "../domain/recording";
 import type { ValidBoard } from "../store/boardFiles";
 import { deleteCall, markRecorded } from "./boardCards";
-import { changeFileBox } from "./boardUi";
 import { localState, openBoard, projectBoardsAtom } from "./boards";
 import { environmentProjects } from "./projects";
 
@@ -173,21 +172,3 @@ export const stopRecording = () => recorder?.stop();
 export const openRecordingFile = (file: RecordingFile) => recorder?.openFile(file);
 export const deleteAudio = (callId: string) =>
   recorder?.deleteAudio(callId) ?? Promise.resolve(false);
-
-/** A finished call lives on only for its audio, so it and its section go once the audio is gone. Resolves to the failure text, or null. */
-export async function deleteCallAudio(
-  registry: AtomRegistry.AtomRegistry,
-  project: EnvironmentProject,
-  listed: ValidBoard,
-  callId: string,
-  finished: boolean,
-) {
-  const gone = await deleteAudio(callId);
-  if (gone) {
-    void changeFileBox(registry, listed.board.id, `call:${callId}`, { x: 0, y: 0 }, (box) => ({
-      ...box,
-      open: false,
-    }));
-  }
-  return gone && finished ? deleteCall(registry, project, listed, callId) : null;
-}

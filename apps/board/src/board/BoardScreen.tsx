@@ -29,7 +29,7 @@ import { keptWorktreesAtom } from "../state/mergeCleanup";
 import { setHiddenAdditions } from "../state/reviews";
 import type { ValidBoard } from "../store/boardFiles";
 import { openAgentPanel } from "../state/agentPanel";
-import { deleteCallAudio, recorderAtom, splitHere } from "../state/recorder";
+import { deleteAudio, recorderAtom, splitHere } from "../state/recorder";
 import {
   deleteCall,
   moveFreeAgent,
@@ -182,14 +182,7 @@ export function BoardScreen({
           ? [
               {
                 label: "Delete audio",
-                onSelect: () =>
-                  void deleteCallAudio(
-                    registry,
-                    project,
-                    listed,
-                    call.id,
-                    callSplit.finished.includes(call),
-                  ).then(setCardError),
+                onSelect: () => void deleteAudio(call.id),
               },
             ]
           : []),
