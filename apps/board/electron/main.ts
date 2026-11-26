@@ -7,6 +7,7 @@ import { app, BrowserWindow, Menu, nativeTheme, net, protocol, shell } from "ele
 import { registerAppUpdater } from "./appUpdater";
 import { registerBrowserViews } from "./browserView";
 import { registerEngineIpc } from "./ipc";
+import { registerRecorder } from "./recorder";
 
 const SCHEME = "agentboard";
 // oxlint-disable-next-line t3code/no-global-process-runtime -- The board has no Effect runtime.
@@ -24,6 +25,10 @@ const MACOS_TOPBAR_HEIGHT = 52;
 const MACOS_WINDOW_BUTTON_RADIUS = 7;
 
 app.setName("Agent Board");
+// Windows shows a notification only for an app with an AppUserModelID. Packaged, it is the installer's appId.
+if (platform === "win32") {
+  app.setAppUserModelId(app.isPackaged ? "com.13kparkin.agentboard" : process.execPath);
+}
 nativeTheme.themeSource = "dark";
 if (cdpPort) {
   app.commandLine.appendSwitch("remote-debugging-port", cdpPort);
@@ -44,6 +49,12 @@ function serveRenderer(request: Request): Promise<Response> | Response {
   }
   return net.fetch(NodeURL.pathToFileURL(file).toString());
 }
+
+// Not `URL.origin`, which is "null" for both `agentboard://` and `file://`.
+const siteOf = (url: string) => {
+  const parsed = URL.parse(url);
+  return parsed && `${parsed.protocol}//${parsed.host}`;
+};
 
 function openWindow(): void {
   const window = new BrowserWindow({
@@ -78,6 +89,10 @@ function openWindow(): void {
     if (/^https?:\/\//i.test(url)) void shell.openExternal(url);
     return { action: "deny" };
   });
+  // A dropped link or file would load a page that gets `window.board`. A reload keeps the origin, so it passes.
+  window.webContents.on("will-navigate", (event) => {
+    if (siteOf(event.url) !== siteOf(window.webContents.getURL())) event.preventDefault();
+  });
   void window.loadURL(devServerUrl ?? `${SCHEME}://app/index.html`);
 }
 
@@ -85,7 +100,12 @@ const engine = registerEngineIpc({ env: process.env, platform });
 
 app.on("window-all-closed", () => app.quit());
 
-app.on("before-quit", () => engine.release());
+let recorder: ReturnType<typeof registerRecorder> | null = null;
+
+app.on("before-quit", () => {
+  engine.release();
+  recorder?.quit();
+});
 
 void app.whenReady().then(() => {
   // macOS keeps its menu for the standard Cmd shortcuts.
@@ -93,6 +113,7 @@ void app.whenReady().then(() => {
   protocol.handle(SCHEME, serveRenderer);
   registerBrowserViews();
   registerAppUpdater();
+  recorder = registerRecorder(platform);
   engine.start();
   openWindow();
 });

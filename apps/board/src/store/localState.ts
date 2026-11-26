@@ -41,6 +41,8 @@ const LocalState = Schema.Struct({
   reviewTemplates: Schema.Array(ReviewTemplate).pipe(
     Schema.withDecodingDefaultKey(Effect.succeed([])),
   ),
+  /** Whether the user accepted the call recording notice. The main process reads it too, and records nothing until it is true. */
+  recordingConsent: Schema.Boolean.pipe(Schema.withDecodingDefaultKey(Effect.succeed(false))),
 });
 export type LocalState = typeof LocalState.Type;
 
@@ -55,6 +57,7 @@ export const EMPTY_LOCAL_STATE: LocalState = {
   automaticUpdates: {},
   lastEditor: null,
   reviewTemplates: [],
+  recordingConsent: false,
 };
 
 const decode = Schema.decodeUnknownOption(Schema.fromJsonString(LocalState));

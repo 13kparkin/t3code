@@ -1,3 +1,5 @@
+import type { Recording, RecordRequest } from "../domain/recording";
+
 export type EngineState =
   | { readonly phase: "connecting" }
   | { readonly phase: "starting" }
@@ -49,6 +51,38 @@ export interface BoardBridge {
   ) => Promise<string>;
   readonly browser: BrowserHost;
   readonly appUpdate: AppUpdateHost;
+  readonly recorder: RecorderHost;
+}
+
+export type RecorderState =
+  | {
+      readonly status: "idle";
+      /** Why the last Record press recorded nothing. */
+      readonly failed: { readonly callId: string; readonly message: string } | null;
+    }
+  | { readonly status: "starting"; readonly callId: string }
+  | {
+      readonly status: "recording";
+      readonly callId: string;
+      readonly title: string;
+      readonly startedAt: string;
+      readonly micMissing: boolean;
+    };
+
+export interface RecorderSnapshot {
+  readonly state: RecorderState;
+  readonly recordings: ReadonlyArray<Recording>;
+}
+
+/** The call recorder, which the main process runs. Main refuses to start until consent is saved. */
+export interface RecorderHost {
+  /** Null off Windows, where there is no helper to record with. */
+  readonly snapshot: () => Promise<RecorderSnapshot | null>;
+  readonly onSnapshot: (listener: (snapshot: RecorderSnapshot) => void) => () => void;
+  readonly start: (request: RecordRequest) => void;
+  readonly stop: () => void;
+  /** Removes every take of the call from this PC. Does nothing while that call records. */
+  readonly deleteAudio: (callId: string) => void;
 }
 
 /** The app's own release, which only the packaged app checks for and installs. */

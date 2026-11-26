@@ -6,6 +6,7 @@ import { sidebarOpenAtom } from "./browser/panel";
 import { attachDockSlot } from "./browser/panel";
 import { PanelHost } from "./browser/PanelHost";
 import { PanelToggle } from "./browser/PanelToggle";
+import { RecordingBar } from "./calls/RecordingBar";
 import { ForYouPanel } from "./foryou/ForYouPanel";
 import { ArchivedPanel } from "./sidebar/ArchivedPanel";
 import { EngineStatus } from "./sidebar/EngineStatus";
@@ -18,6 +19,7 @@ import { SidebarToggle } from "./sidebar/SidebarToggle";
 import { UpdateToasts } from "./sidebar/UpdateToasts";
 import { connectionWatchAtom } from "./state/engine";
 import { agentPanelAtom } from "./state/agentPanel";
+import { recorderAtom } from "./state/recorder";
 import { settingsPageAtom } from "./state/settingsPage";
 import { updateWatcherAtom } from "./state/updatesAtoms";
 import { UsageBar } from "./usage/UsageBar";
@@ -27,6 +29,7 @@ export function App() {
   const settingsPage = useAtomValue(settingsPageAtom);
   const sidebarOpen = useAtomValue(sidebarOpenAtom);
   const agentPanelOpen = useAtomValue(agentPanelAtom) !== null;
+  const recorder = useAtomValue(recorderAtom)?.state;
   const setSettingsPage = (page: SettingsPage | null) => registry.set(settingsPageAtom, page);
   useAtomMount(updateWatcherAtom);
   useAtomMount(connectionWatchAtom);
@@ -60,6 +63,7 @@ export function App() {
         )}
         <main className="relative min-h-0 min-w-0">
           <OpenBoard />
+          {recorder?.status === "recording" && <RecordingBar state={recorder} />}
           <ForYouPanel />
           <ArchivedPanel />
           <div
