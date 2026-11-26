@@ -1,5 +1,6 @@
 packages:
   - apps/*
+  - apps/board/mobile
   - evals
   - infra/*
   - oxlint-plugin-t3code
@@ -297,6 +298,7 @@ peerDependencyRules:
     vite: "*"
     # Our react-native-screens fork is a 5.x prerelease, which ">= 4.0.0" excludes.
     "@react-navigation/native-stack>react-native-screens": "*"
+    "@react-navigation/bottom-tabs>react-native-screens": "*"
     # ws 7 (React Native dev tooling) only calls isValidUTF8, unchanged in v6.
     "ws@7>utf-8-validate": "6"
 

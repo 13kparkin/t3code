@@ -1,0 +1,7 @@
+[
+  { "key": "T-1", "title": "Scaffold the phone app", "stage": "merged" },
+  { "key": "T-2", "title": "Pair with the engine", "stage": "building" },
+  { "key": "T-3", "title": "Show tickets by stage", "stage": "reviewing" },
+  { "key": "T-4", "title": "Build a signed APK", "stage": "planned" },
+  { "key": "T-5", "title": "Answer For you from the phone", "stage": "todo" }
+]
