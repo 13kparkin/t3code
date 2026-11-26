@@ -3,12 +3,10 @@ import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { ThreadId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import { Archive, Layers, ListChecks, Paperclip, Plus } from "lucide-react";
-import { useContext, useRef, useState } from "react";
+import { useContext, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useArtifacts } from "../artifacts/ArtifactsContext";
-import { START } from "../calls/CallCards";
-import type { CallEvent } from "../domain/board";
 import { type Addition, lineText } from "../domain/additions";
 import { pickTemplate, SYSTEM_TEMPLATE } from "../domain/reviewTemplate";
 import { STAGE_LABEL, TICKET_STAGES } from "../domain/ticket";
@@ -16,7 +14,6 @@ import { AddFromIssue } from "../issues/AddFromIssue";
 import type { OrchestratorStats } from "../orchestrator/brief";
 import { baseInstanceId } from "../orchestrator/orchestratorInstance";
 import { laneKey, toggleFolded } from "../state/boardUi";
-import { recorderAtom } from "../state/recorder";
 import { reviewTemplatesAtom, setBoardReviewTemplate, usageNoticeAtom } from "../state/reviews";
 import { usePrContext } from "../state/prStatus";
 import { useEnvironmentThread } from "../state/threads";
@@ -49,8 +46,6 @@ export function OrchestratorCard({
   todoAgents,
   archived,
   onUnarchive,
-  finishedCalls,
-  onCallMenu,
 }: {
   project: EnvironmentProject;
   listed: ValidBoard;
@@ -67,9 +62,6 @@ export function OrchestratorCard({
   todoAgents: number;
   archived: ReadonlyArray<ArchivedCard>;
   onUnarchive: (key: string) => void;
-  /** Finished calls with takes on this PC, listed under Artifacts. */
-  finishedCalls: ReadonlyArray<CallEvent>;
-  onCallMenu: (at: { readonly x: number; readonly y: number }, call: CallEvent) => void;
 }) {
   const { board } = listed;
   // The panel holds the same thread open, so this adds no second subscription.
@@ -80,9 +72,6 @@ export function OrchestratorCard({
     ).data,
   );
   const { groups, open } = useArtifacts();
-  const recordings = useAtomValue(recorderAtom)?.recordings ?? [];
-  const artifactsRef = useRef<HTMLSpanElement>(null);
-  const artifactCount = groups.board.length + finishedCalls.length;
   const [adding, setAdding] = useState(false);
   const registry = useContext(RegistryContext);
   const custom = useAtomValue(reviewTemplatesAtom);
@@ -257,41 +246,25 @@ export function OrchestratorCard({
       <div className="mt-3 flex items-start justify-between gap-3 border-t border-line pt-2">
         <span className="inline-flex items-center gap-1 text-muted">
           Artifacts{" "}
-          {artifactCount === 0 ? (
+          {groups.board.length === 0 ? (
             <span className="inline-flex items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-[18px] text-muted opacity-60">
               <Paperclip className="size-3" aria-hidden />0
             </span>
           ) : (
-            <span ref={artifactsRef} onPointerDown={(event) => event.stopPropagation()}>
+            <span onPointerDown={(event) => event.stopPropagation()}>
               <PopMenu
-                label={`${artifactCount} board artifacts`}
+                label={`${groups.board.length} board artifacts`}
                 triggerClass="inline-flex items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-[18px] text-muted hover:bg-hover hover:text-fg"
                 trigger={
                   <>
                     <Paperclip className="size-3" aria-hidden />
-                    {artifactCount}
+                    {groups.board.length}
                   </>
                 }
-                items={[
-                  ...groups.board.map((artifact) => ({
-                    label: artifact.name,
-                    onSelect: () => open(artifact),
-                  })),
-                  ...(finishedCalls.length === 0
-                    ? []
-                    : [{ label: "Calls", disabled: true, onSelect: () => undefined }]),
-                  ...finishedCalls.map((call) => {
-                    const takes = recordings.filter((take) => take.callId === call.id).length;
-                    return {
-                      label: call.title,
-                      hint: `${START.format(new Date(call.start))} · ${takes === 0 ? "recorded on another PC" : `${takes} ${takes === 1 ? "take" : "takes"}`}`,
-                      onSelect: () => {
-                        const rect = artifactsRef.current?.getBoundingClientRect();
-                        onCallMenu({ x: rect?.left ?? 0, y: rect?.bottom ?? 0 }, call);
-                      },
-                    };
-                  }),
-                ]}
+                items={groups.board.map((artifact) => ({
+                  label: artifact.name,
+                  onSelect: () => open(artifact),
+                }))}
               />
             </span>
           )}

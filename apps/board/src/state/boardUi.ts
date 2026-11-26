@@ -1,5 +1,6 @@
 import { Atom, type AtomRegistry } from "effect/reactivity";
 
+import type { LocalState } from "../store/localState";
 import { localState } from "./boards";
 
 export type FrameOrder = Readonly<Record<string, ReadonlyArray<string>>>;
@@ -66,3 +67,26 @@ export const filterFlipsAtom = Atom.family((boardId: string) =>
       .join(",");
   }).pipe(Atom.withLabel(`filter-flips:${boardId}`)),
 );
+
+type ArtifactAreas = LocalState["artifactAreas"];
+
+/** The size the user dragged each board's artifacts area to. A board with none takes the default size. */
+export const artifactAreasAtom = Atom.writable(
+  (get): ArtifactAreas => {
+    void localState.read().then((state) => get.setSelf(state.artifactAreas));
+    return {};
+  },
+  (context, next: ArtifactAreas) => context.setSelf(next),
+).pipe(Atom.keepAlive, Atom.withLabel("artifact-areas"));
+
+export function saveArtifactArea(
+  registry: AtomRegistry.AtomRegistry,
+  boardId: string,
+  size: ArtifactAreas[string],
+) {
+  registry.set(artifactAreasAtom, { ...registry.get(artifactAreasAtom), [boardId]: size });
+  return localState.update((state) => ({
+    ...state,
+    artifactAreas: { ...state.artifactAreas, [boardId]: size },
+  }));
+}

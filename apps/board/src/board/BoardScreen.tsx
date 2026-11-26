@@ -29,7 +29,7 @@ import { keptWorktreesAtom } from "../state/mergeCleanup";
 import { setHiddenAdditions } from "../state/reviews";
 import type { ValidBoard } from "../store/boardFiles";
 import { openAgentPanel } from "../state/agentPanel";
-import { deleteAudio, recorderAtom, splitHere } from "../state/recorder";
+import { deleteCallAudio, recorderAtom, splitHere } from "../state/recorder";
 import {
   deleteCall,
   moveFreeAgent,
@@ -42,6 +42,7 @@ import { ContextMenu } from "../ui/ContextMenu";
 import type { PopMenuItem } from "../ui/MenuList";
 import { FREE_CARD } from "./FreeAgentCard";
 import { AgentPanel } from "./AgentPanel";
+import { ArtifactArea } from "./ArtifactArea";
 import { ForYouLane } from "./ForYouLane";
 import { ForYouPage } from "./ForYouPage";
 import { Lanes } from "./Lanes";
@@ -109,15 +110,8 @@ export function BoardScreen({
   const calls = board.calls ?? NO_CALLS;
   const now = useAtomValue(clockAtom);
   const recorder = useAtomValue(recorderAtom);
-  const callSplit = useMemo(
-    () =>
-      splitHere(
-        calls.filter((call) => cardStates[call.id] !== "archived"),
-        now,
-        recorder,
-      ),
-    [calls, cardStates, now, recorder],
-  );
+  const unarchived = calls.filter((call) => cardStates[call.id] !== "archived");
+  const callSplit = splitHere(unarchived, now, recorder);
   const cards = useMemo(
     () => splitCards(fullModel, freeAgents, cardStates, now),
     [fullModel, freeAgents, cardStates, now],
@@ -168,9 +162,11 @@ export function BoardScreen({
       ],
     });
   };
-  const showCallMenu = (at: { readonly x: number; readonly y: number }, call: CallEvent) =>
+  const openCallMenu = (event: MouseEvent, call: CallEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
     setMenu({
-      at,
+      at: { x: event.clientX, y: event.clientY },
       label: `${call.title} actions`,
       items: [
         { label: "Edit", onSelect: () => setEditing(call) },
@@ -186,22 +182,19 @@ export function BoardScreen({
           ? [
               {
                 label: "Delete audio",
-                // A finished call lives on only for its audio, so it goes once the audio is gone.
                 onSelect: () =>
-                  void deleteAudio(call.id).then((gone) => {
-                    if (gone && callSplit.finished.includes(call)) {
-                      void deleteCall(registry, project, listed, call.id).then(setCardError);
-                    }
-                  }),
+                  void deleteCallAudio(
+                    registry,
+                    project,
+                    listed,
+                    call.id,
+                    callSplit.finished.includes(call),
+                  ).then(setCardError),
               },
             ]
           : []),
       ],
     });
-  const openCallMenu = (event: MouseEvent, call: CallEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    showCallMenu({ x: event.clientX, y: event.clientY }, call);
   };
   const archived = useMemo(
     () => [
@@ -347,31 +340,36 @@ export function BoardScreen({
               }
             >
               <div
-                className="absolute flex"
+                className="absolute flex items-start"
                 style={{ left: ORCHESTRATOR_BOX.x, top: ORCHESTRATOR_BOX.y, gap: LANE_GAP }}
               >
-                <OrchestratorCard
-                  project={project}
-                  listed={listed}
-                  stats={{ ...stats, forYouOpen: forYou.open }}
-                  builders={builders}
-                  hidden={hidden}
-                  additions={additions}
-                  onChangeHidden={changeHidden}
-                  doneCount={doneCount + model.lanes.merged.length + model.lanes.off_path.length}
-                  todoAgents={model.unassigned.length}
-                  archived={archived}
-                  onUnarchive={(key) => saveCard(key, null)}
-                  finishedCalls={callSplit.finished}
-                  onCallMenu={showCallMenu}
-                />
-                <CallCards
+                <div className="flex" style={{ gap: LANE_GAP }}>
+                  <OrchestratorCard
+                    project={project}
+                    listed={listed}
+                    stats={{ ...stats, forYouOpen: forYou.open }}
+                    builders={builders}
+                    hidden={hidden}
+                    additions={additions}
+                    onChangeHidden={changeHidden}
+                    doneCount={doneCount + model.lanes.merged.length + model.lanes.off_path.length}
+                    todoAgents={model.unassigned.length}
+                    archived={archived}
+                    onUnarchive={(key) => saveCard(key, null)}
+                  />
+                  <CallCards
+                    boardId={board.id}
+                    shown={callSplit.shown}
+                    later={callSplit.later}
+                    states={cardStates}
+                    onAdd={() => setEditing("new")}
+                    onMenu={openCallMenu}
+                  />
+                </div>
+                <ArtifactArea
                   boardId={board.id}
-                  shown={callSplit.shown}
-                  later={callSplit.later}
-                  states={cardStates}
-                  onAdd={() => setEditing("new")}
-                  onMenu={openCallMenu}
+                  calls={callSplit.finished}
+                  onCallMenu={openCallMenu}
                 />
               </div>
               <Lanes

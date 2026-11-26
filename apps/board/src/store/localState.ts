@@ -47,6 +47,11 @@ const LocalState = Schema.Struct({
   notifiedCalls: Schema.Record(Schema.String, Schema.String).pipe(
     Schema.withDecodingDefaultKey(Effect.succeed({})),
   ),
+  /** The size the user dragged each board's artifacts area to, by board id, in canvas px. */
+  artifactAreas: Schema.Record(
+    Schema.String,
+    Schema.Struct({ width: Schema.Finite, height: Schema.Finite }),
+  ).pipe(Schema.withDecodingDefaultKey(Effect.succeed({}))),
 });
 export type LocalState = typeof LocalState.Type;
 
@@ -63,6 +68,7 @@ export const EMPTY_LOCAL_STATE: LocalState = {
   reviewTemplates: [],
   recordingConsent: false,
   notifiedCalls: {},
+  artifactAreas: {},
 };
 
 const decode = Schema.decodeUnknownOption(Schema.fromJsonString(LocalState));

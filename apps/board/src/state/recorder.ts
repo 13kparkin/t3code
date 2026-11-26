@@ -158,3 +158,15 @@ export const acceptConsent = () =>
 export const stopRecording = () => recorder?.stop();
 export const deleteAudio = (callId: string) =>
   recorder?.deleteAudio(callId) ?? Promise.resolve(false);
+
+/** A finished call lives on only for its audio, so it goes once the audio is gone. Resolves to the failure text, or null. */
+export async function deleteCallAudio(
+  registry: AtomRegistry.AtomRegistry,
+  project: EnvironmentProject,
+  listed: ValidBoard,
+  callId: string,
+  finished: boolean,
+) {
+  const gone = await deleteAudio(callId);
+  return gone && finished ? deleteCall(registry, project, listed, callId) : null;
+}
