@@ -1,5 +1,6 @@
 import { type DragEvent, useEffect, useEffectEvent, useRef } from "react";
 
+import { type CallNotes, callNotesMarkdown } from "../domain/callNotes";
 import { STAGE_LABEL, type Ticket } from "../domain/ticket";
 import type { AgentView } from "../state/boardModel";
 import { freeAgentLabel } from "../state/cardStates";
@@ -64,6 +65,12 @@ export const agentFile = (agent: AgentCard): File =>
       ]),
       "",
     ].join("\n"),
+  );
+
+export const callNotesFile = (title: string, notes: CallNotes): File =>
+  markdownFile(
+    ["call-notes", slug(title)].filter(Boolean).join("-"),
+    callNotesMarkdown(title, notes),
   );
 
 const attach = (target: Element | null | undefined, file: File) => {

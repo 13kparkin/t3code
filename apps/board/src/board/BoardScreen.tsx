@@ -347,8 +347,7 @@ export function BoardScreen({
                   />
                   <CallCards
                     project={project}
-                    folder={listed.folder}
-                    boardId={board.id}
+                    listed={listed}
                     shown={callSplit.shown}
                     later={callSplit.later}
                     states={cardStates}

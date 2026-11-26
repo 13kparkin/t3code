@@ -21,6 +21,8 @@ import { sameTakes, transcribeTakes } from "../calls/transcribe";
 import type { RecorderSnapshot } from "../connection/engineState";
 import { connectionAtomRuntime } from "../connection/runtime";
 import { BOARDS_DIR, type CallEvent } from "../domain/board";
+import { callNotesMessage, callNotesPath } from "../domain/callNotes";
+import { messageOrchestrator } from "../foryou/actions";
 import type { RecordingFile, RecordRequest } from "../domain/recording";
 import type { ValidBoard } from "../store/boardFiles";
 import { deleteCall, markRecorded } from "./boardCards";
@@ -220,11 +222,53 @@ function failure(cause: unknown, missingModel: string) {
   return cause instanceof Error ? cause.message : String(cause);
 }
 
-/** Uses the engine's selected speech model. A failure keeps the audio and shows on the call. */
+type NotesRequest =
+  | { readonly status: "sending" | "sent" }
+  | { readonly status: "failed"; readonly message: string };
+
+/** By call id, on this PC only. The notes card itself comes from `notes.json`. */
+export const callNotesRequestsAtom = Atom.make<Readonly<Record<string, NotesRequest>>>({}).pipe(
+  Atom.keepAlive,
+  Atom.withLabel("call-notes-requests"),
+);
+
+/** Asks the orchestrator to start a `call-notes` agent on the call's transcript. */
+export async function requestCallNotes(
+  registry: AtomRegistry.AtomRegistry,
+  project: Pick<EnvironmentProject, "environmentId" | "workspaceRoot">,
+  listed: ValidBoard,
+  call: Pick<CallEvent, "id" | "title">,
+) {
+  const set = (request: NotesRequest) =>
+    registry.update(callNotesRequestsAtom, (all) => ({ ...all, [call.id]: request }));
+  const threadId = listed.board.orchestratorThreadId;
+  if (threadId === null) {
+    return set({
+      status: "failed",
+      message: "Start this board's orchestrator, then press Write call notes.",
+    });
+  }
+  set({ status: "sending" });
+  const dir = `${project.workspaceRoot}/${BOARDS_DIR}/${listed.folder}`;
+  const failure = await messageOrchestrator(registry, project.environmentId, threadId, async () =>
+    callNotesMessage({
+      callId: call.id,
+      title: call.title,
+      transcript: `${dir}/${transcriptPath(call.id)}`,
+      notes: `${dir}/${callNotesPath(call.id)}`,
+    }),
+  ).catch((cause: unknown) => (cause instanceof Error ? cause.message : String(cause)));
+  set(failure === null ? { status: "sent" } : { status: "failed", message: failure });
+}
+
+/**
+ * Uses the engine's selected speech model. A failure keeps the audio and shows on the call. Once
+ * the transcript is written it asks for the call's notes.
+ */
 export async function transcribeCall(
   registry: AtomRegistry.AtomRegistry,
   project: Pick<EnvironmentProject, "environmentId" | "workspaceRoot">,
-  folder: string,
+  listed: ValidBoard,
   callId: string,
 ) {
   if (recorder === undefined || registry.get(transcriptionsAtom)[callId]?.status === "running") {
@@ -239,7 +283,8 @@ export async function transcribeCall(
   const takes = takesOf()
     .filter((take) => take.endedAt !== null)
     .toSorted((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt));
-  if (takes.length === 0) return;
+  const [first] = takes;
+  if (first === undefined) return;
   set({ status: "running", done: 0, total: 0 });
   let missingModel = "Choose a speech model in T3's voice settings, then transcribe again.";
   try {
@@ -288,13 +333,14 @@ export async function transcribeCall(
       write: (markdown) =>
         boardEngine(registry, project.environmentId).files.write(
           project.workspaceRoot,
-          `${BOARDS_DIR}/${folder}/${transcriptPath(callId)}`,
+          `${BOARDS_DIR}/${listed.folder}/${transcriptPath(callId)}`,
           markdown,
         ),
       deleteAudio: async () => sameTakes(takes, takesOf()) && recorder.deleteAudio(callId),
       progress: (done, total) => set({ status: "running", done, total }),
     });
     set({ status: "written" });
+    void requestCallNotes(registry, project, listed, { id: callId, title: first.title });
   } catch (cause) {
     set({ status: "failed", message: failure(cause, missingModel) });
   }

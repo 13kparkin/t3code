@@ -6,6 +6,7 @@ import { type MouseEvent, useContext, useState } from "react";
 import { LANE_HEAD, LANE_WIDTH } from "../board/layout";
 import type { CallEvent, CardState } from "../domain/board";
 import {
+  callNotesRequestsAtom,
   deleteAudio,
   recordCall,
   recorderAtom,
@@ -13,6 +14,7 @@ import {
   transcribeCall,
   transcriptionsAtom,
 } from "../state/recorder";
+import type { ValidBoard } from "../store/boardFiles";
 import { CALL_APPS, callAudio, transcribing } from "./recorder";
 
 export const START = new Intl.DateTimeFormat(undefined, {
@@ -29,8 +31,7 @@ export const START = new Intl.DateTimeFormat(undefined, {
  */
 export function CallCards({
   project,
-  folder,
-  boardId,
+  listed,
   shown,
   later,
   states,
@@ -38,8 +39,7 @@ export function CallCards({
   onMenu,
 }: {
   project: EnvironmentProject;
-  folder: string;
-  boardId: string;
+  listed: ValidBoard;
   shown: ReadonlyArray<CallEvent>;
   later: ReadonlyArray<CallEvent>;
   states: Readonly<{ [key: string]: CardState }>;
@@ -50,8 +50,9 @@ export function CallCards({
   const recorder = useAtomValue(recorderAtom);
   const starting = useAtomValue(startingCallsAtom);
   const jobs = useAtomValue(transcriptionsAtom);
+  const notes = useAtomValue(callNotesRequestsAtom);
   const [all, setAll] = useState(false);
-  const listed = all ? [...shown, ...later] : shown;
+  const rows = all ? [...shown, ...later] : shown;
   const state = recorder?.state;
   return (
     <section
@@ -91,14 +92,15 @@ export function CallCards({
           data-scroll
           className="flex min-h-0 flex-col gap-1.5 overflow-y-auto px-3 pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {listed.length === 0 && <li className="text-[11px] text-faint">No calls coming up.</li>}
-          {listed.map((call) => {
+          {rows.length === 0 && <li className="text-[11px] text-faint">No calls coming up.</li>}
+          {rows.map((call) => {
             const done = states[call.id] === "done";
             const live = state?.status !== "idle" && state?.callId === call.id;
             const failed =
               state?.status === "idle" && state.failed?.callId === call.id ? state.failed : null;
             const audio = recorder === null ? null : callAudio(recorder.recordings, call.id);
             const job = jobs[call.id];
+            const request = notes[call.id];
             return (
               <li
                 key={call.id}
@@ -134,7 +136,7 @@ export function CallCards({
                           onClick={() =>
                             void recordCall(registry, {
                               callId: call.id,
-                              boardId,
+                              boardId: listed.board.id,
                               title: call.title,
                               app: call.app,
                             })
@@ -174,7 +176,7 @@ export function CallCards({
                         <button
                           type="button"
                           disabled={job?.status === "running"}
-                          onClick={() => void transcribeCall(registry, project, folder, call.id)}
+                          onClick={() => void transcribeCall(registry, project, listed, call.id)}
                           className="shrink-0 rounded px-1.5 text-faint hover:bg-hover hover:text-fg disabled:hover:bg-transparent"
                         >
                           {job?.status === "running" ? transcribing(job) : "Transcribe"}
@@ -194,6 +196,11 @@ export function CallCards({
                 {job?.status === "failed" && (
                   <p role="alert" className="text-[11px] break-words text-red-400">
                     {job.message}
+                  </p>
+                )}
+                {request?.status === "failed" && (
+                  <p role="alert" className="text-[11px] break-words text-red-400">
+                    {request.message}
                   </p>
                 )}
               </li>

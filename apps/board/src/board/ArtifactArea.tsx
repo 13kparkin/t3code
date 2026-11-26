@@ -1,6 +1,6 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
-import { Captions, FileAudio, FileText, Folder, Phone, X } from "lucide-react";
+import { Captions, FileAudio, FileText, Folder, NotebookPen, Phone, X } from "lucide-react";
 import { type MouseEvent, type ReactNode, useContext, useRef, useState } from "react";
 
 import { useArtifacts } from "../artifacts/ArtifactsContext";
@@ -8,11 +8,14 @@ import { START } from "../calls/CallCards";
 import { transcribing } from "../calls/recorder";
 import { folderView } from "../domain/artifact";
 import type { CallEvent } from "../domain/board";
+import { callNotesPath } from "../domain/callNotes";
 import { setCardState } from "../state/boardCards";
 import { folderArchived } from "../state/cardStates";
 import { changeFileBox, fileBoxesAtom } from "../state/boardUi";
 import {
+  callNotesRequestsAtom,
   openRecordingFile,
+  requestCallNotes,
   recorderAtom,
   transcribeCall,
   transcriptionsAtom,
@@ -21,6 +24,7 @@ import {
 import type { ValidBoard } from "../store/boardFiles";
 import { ContextMenu } from "../ui/ContextMenu";
 import { ArtifactCard } from "./ArtifactCard";
+import { CALL_NOTES_ROWS, CallNotesCard } from "./CallNotesCard";
 import { FileBox } from "./FileBox";
 import { LANE_GAP, LANE_WIDTH } from "./layout";
 import { Tile } from "./Tile";
@@ -54,6 +58,7 @@ export function ArtifactArea({
   const boxes = useAtomValue(fileBoxesAtom)[boardId] ?? {};
   const snapshot = useAtomValue(recorderAtom);
   const jobs = useAtomValue(transcriptionsAtom);
+  const notesRequests = useAtomValue(callNotesRequestsAtom);
   const states = listed.board.cardStates ?? {};
   const scale = useViewScale();
   const anchor = useRef<HTMLDivElement>(null);
@@ -97,10 +102,11 @@ export function ArtifactArea({
   };
   const hide = (key: string) =>
     void changeFileBox(registry, boardId, key, HOME, (box) => ({ ...box, open: false }));
-  const archivable = (key: string, label: string, card: ReactNode) => (
+  const archivable = (key: string, label: string, card: ReactNode, span = 1) => (
     <li
       key={key}
-      className="min-w-0"
+      className={span === 1 ? "min-w-0" : "col-span-full min-w-0"}
+      style={span === 1 ? undefined : { gridRow: `span ${span}` }}
       onContextMenu={(event: MouseEvent<HTMLLIElement>) => {
         event.preventDefault();
         event.stopPropagation();
@@ -147,6 +153,57 @@ export function ArtifactArea({
       .toSorted((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt));
   const transcriptOf = (callId: string) =>
     groups.board.find((file) => file.path === transcriptPath(callId));
+  const notesOf = (callId: string) =>
+    groups.board.find((file) => file.path === callNotesPath(callId));
+  const notesCards = (call: CallEvent, transcript: (typeof groups.board)[number]) => {
+    const notes = notesOf(call.id);
+    if (notes !== undefined) {
+      if (states[`file:${notes.path}`] === "archived") return [];
+      return [
+        archivable(
+          `file:${notes.path}`,
+          "Call notes",
+          <CallNotesCard
+            artifact={notes}
+            call={call}
+            transcript={transcript}
+            board={{ projectId: project.id, folder: listed.folder, boardId }}
+          />,
+          CALL_NOTES_ROWS,
+        ),
+      ];
+    }
+    const request = notesRequests[call.id];
+    return [
+      <li key="notes" className="min-w-0">
+        <Tile
+          icon={NotebookPen}
+          title="Write call notes"
+          hint={
+            request?.status === "sending"
+              ? "Sending to the orchestrator"
+              : request?.status === "sent"
+                ? "The orchestrator is on it"
+                : request?.status === "failed"
+                  ? "Failed. Press to try again."
+                  : "Asks the orchestrator for notes and For you items"
+          }
+          onClick={() => void requestCallNotes(registry, project, listed, call)}
+        />
+      </li>,
+      ...(request?.status === "failed"
+        ? [
+            <li
+              key="notes-error"
+              role="alert"
+              className="col-span-full text-[11px] break-words text-red-400"
+            >
+              {request.message}
+            </li>,
+          ]
+        : []),
+    ];
+  };
   // Between deleting the audio and the next file listing, the call has neither takes nor transcript.
   const transcribed = (callId: string) =>
     transcriptOf(callId) !== undefined ||
@@ -178,14 +235,19 @@ export function ArtifactArea({
     const transcript = transcriptOf(call.id);
     const job = jobs[call.id];
     const shown =
-      transcript === undefined || states[`file:${transcript.path}`] === "archived"
+      transcript === undefined
         ? []
         : [
-            archivable(
-              `file:${transcript.path}`,
-              transcript.name,
-              <ArtifactCard artifact={transcript} />,
-            ),
+            ...notesCards(call, transcript),
+            ...(states[`file:${transcript.path}`] === "archived"
+              ? []
+              : [
+                  archivable(
+                    `file:${transcript.path}`,
+                    transcript.name,
+                    <ArtifactCard artifact={transcript} />,
+                  ),
+                ]),
           ];
     if (takes.length === 0) {
       if (transcribed(call.id)) return shown;
@@ -210,7 +272,7 @@ export function ArtifactArea({
                 ? "Failed. Transcribe to try again."
                 : "Writes Me and Them lines on the engine"
           }
-          onClick={() => void transcribeCall(registry, project, listed.folder, call.id)}
+          onClick={() => void transcribeCall(registry, project, listed, call.id)}
         />
       </li>,
       ...(job?.status === "failed"
