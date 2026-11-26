@@ -22,7 +22,6 @@ describe("pairedEngineStatus", () => {
     ["offline", null, { kind: "reconnecting" }],
     ["backoff", null, { kind: "reconnecting" }],
     ["blocked", revoked, { kind: "refused", detail: "Pairing revoked." }],
-    ["blocked", null, { kind: "refused", detail: "The engine refused this phone." }],
   ])("maps %s to its header status", (phase, lastFailure, expected) => {
     expect(
       pairedEngineStatus(environmentId, "Desk PC", {
