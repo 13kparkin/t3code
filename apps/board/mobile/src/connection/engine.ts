@@ -11,9 +11,10 @@ import {
   createEnvironmentShellAtoms,
   createEnvironmentSnapshotAtom,
 } from "@t3tools/client-runtime/state/shell";
-import { type EnvironmentId, WS_METHODS } from "@t3tools/contracts";
+import { type EnvironmentId, ProjectListEntriesError, WS_METHODS } from "@t3tools/contracts";
 import { parseUrl } from "@t3tools/shared/url";
 import * as Option from "effect/Option";
+import * as Schema from "effect/Schema";
 import { AsyncResult, Atom, type AtomRegistry } from "effect/reactivity";
 import { Linking } from "react-native";
 
@@ -36,37 +37,47 @@ export const engineStatusAtom = Atom.make((get): EngineStatus => {
 }).pipe(Atom.withLabel("engine-status"));
 
 const environmentShell = createEnvironmentShellAtoms(connectionAtomRuntime);
+const environmentSnapshot = createEnvironmentSnapshotAtom(environmentShell.stateAtom);
 const environmentProjects = createEnvironmentProjectAtoms({
   catalogValueAtom: environmentCatalog.catalogValueAtom,
-  snapshotAtom: createEnvironmentSnapshotAtom(environmentShell.stateAtom),
+  snapshotAtom: environmentSnapshot,
 });
+const isProjectListEntriesError = Schema.is(ProjectListEntriesError);
 
 const listEntries = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "phone:project:list-entries",
   tag: WS_METHODS.projectsListEntries,
 });
 
-const engineConnectedAtom = Atom.make((get) => get(engineStatusAtom).kind === "connected").pipe(
-  Atom.withLabel("engine-connected"),
-);
+const engineSyncedAtom = Atom.make((get) => {
+  const status = get(engineStatusAtom);
+  return status.kind === "connected" && get(environmentSnapshot(status.environmentId)) !== null;
+}).pipe(Atom.withLabel("engine-synced"));
 
-/** The engine's projects that hold a board folder, or null until the first check answers. */
-export const boardProjectsAtom = Atom.make((get): ReadonlyArray<EnvironmentProject> | null => {
+type BoardProjects = ReadonlyArray<EnvironmentProject> | Error | null;
+
+/** The engine's projects that hold a board folder, null until the first check answers, or why it failed. */
+export const boardProjectsAtom = Atom.make((get): BoardProjects => {
   const projects = get(environmentProjects.projectsAtom);
-  if (get(engineConnectedAtom)) {
+  if (get(engineSyncedAtom)) {
     const registry = get.registry;
-    const holdsBoard = async (project: EnvironmentProject) =>
-      (
-        await runAtomCommand(
-          registry,
-          listEntries,
-          {
-            environmentId: project.environmentId,
-            input: { cwd: project.workspaceRoot, directoryPath: BOARDS_DIR },
-          },
-          { reportFailure: false },
-        )
-      )._tag === "Success";
+    const holdsBoard = async (project: EnvironmentProject) => {
+      const result = await runAtomCommand(
+        registry,
+        listEntries,
+        {
+          environmentId: project.environmentId,
+          input: { cwd: project.workspaceRoot, directoryPath: BOARDS_DIR },
+        },
+        { reportFailure: false },
+      );
+      if (result._tag === "Success") return true;
+      const failure = squashAtomCommandFailure(result);
+      if (isProjectListEntriesError(failure) && failure.failure === "directory_list_failed") {
+        return false;
+      }
+      throw failure instanceof Error ? failure : new Error(String(failure));
+    };
     let current = true;
     get.addFinalizer(() => {
       current = false;
@@ -74,10 +85,13 @@ export const boardProjectsAtom = Atom.make((get): ReadonlyArray<EnvironmentProje
     void (async () => {
       const found: Array<EnvironmentProject> = [];
       for (const project of projects) if (await holdsBoard(project)) found.push(project);
-      if (current) get.setSelf(found);
-    })();
+      return found;
+    })().then(
+      (found) => current && get.setSelf(found),
+      (error: Error) => current && get.setSelf(error),
+    );
   }
-  return Option.getOrNull(get.self<ReadonlyArray<EnvironmentProject> | null>());
+  return Option.getOrNull(get.self<BoardProjects>());
 }).pipe(Atom.withLabel("board-projects"));
 
 export interface PairingState {

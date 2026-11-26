@@ -11,6 +11,9 @@ export function BoardScreen() {
   if (projects === null) {
     return <Text style={[styles.body, { color: colors.text }]}>Looking for boards</Text>;
   }
+  if (projects instanceof Error) {
+    return <Text style={[styles.body, styles.error]}>{projects.message}</Text>;
+  }
   if (projects.length === 0) {
     return (
       <Text style={[styles.body, { color: colors.text }]}>No project on this PC has a board.</Text>
