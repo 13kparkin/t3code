@@ -91,7 +91,8 @@ export const startingCallsAtom = Atom.make((get): ReadonlySet<string> => {
   void notifyDue(chrome, now);
   const recording = snapshot.state.status === "idle" ? null : snapshot.state.callId;
   const recorded = new Set(snapshot.recordings.map((take) => take.callId));
-  for (const call of splitCalls(list, now, recording, recorded).stale) {
+  // A dev build's seeded projects point at the developer's live checkout, as in projectBoardsAtom.
+  for (const call of import.meta.env.DEV ? [] : splitCalls(list, now, recording, recorded).stale) {
     if (removing.has(call.id)) continue;
     removing.add(call.id);
     void deleteCall(get.registry, call.project, call.listed, call.id);
