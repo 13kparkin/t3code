@@ -34,7 +34,7 @@ Write only `artifacts/calls/<callId>/notes.json` in the board folder, at the abs
   "decisions": ["<one decision, up to 160 characters>"],
   "actions": [{ "text": "<one action, up to 160 characters>", "who": "me" }],
   "ticketNotes": [
-    { "ticket": "T-42", "text": "<what the call said about this ticket, up to 500 characters>" }
+    { "ticket": "T-42", "text": "<what the call said about this ticket, up to 400 characters>" }
   ],
   "newWork": [{ "title": "<up to 80 characters>", "why": "<up to 300 characters>" }]
 }

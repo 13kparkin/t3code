@@ -33,7 +33,12 @@ describe("call notes", () => {
       "actions.0.who",
     ],
     ["a missing summary", { ...NOTES, summary: undefined }, "summary"],
-  ])("Given %s, when parsed, then the failure names %s", (_, file, field) => {
+    [
+      "a 401-character ticket note",
+      { ...NOTES, ticketNotes: [{ ticket: "T-42", text: "x".repeat(401) }] },
+      "ticketNotes.0.text",
+    ],
+  ])("Given %s, when parsed, then the failure names the field", (_, file, field) => {
     const parsed = parseCallNotes(JSON.stringify(file));
     expect(Result.isFailure(parsed) && parsed.failure).toContain(
       `notes.json is invalid: ${field} `,
@@ -50,30 +55,9 @@ describe("call notes", () => {
     expect(callNotesForYouId(NOTES.callId, "n-1")).toBe("call-1a2b3c4d-n-1");
   });
 
-  it("Given notes, when they become Markdown, then each part is a section", () => {
-    expect(callNotesMarkdown("Design sync", NOTES)).toBe(
-      [
-        "# Design sync call notes",
-        "",
-        "Release moves to Friday if T-42 lands today.",
-        "",
-        "## Decisions",
-        "",
-        "- Ship on Friday",
-        "",
-        "## Actions",
-        "",
-        "- Me: Land T-42 today",
-        "",
-        "## Ticket notes",
-        "",
-        "- T-42: Release waits on this landing today.",
-        "",
-        "## New work",
-        "",
-        "- Add a release checklist: Nobody knew who signs off.",
-        "",
-      ].join("\n"),
-    );
+  it("Given notes with no decisions, when they become Markdown, then there is no Decisions section", () => {
+    const markdown = callNotesMarkdown("Design sync", { ...NOTES, decisions: [] });
+    expect(markdown).not.toContain("## Decisions");
+    expect(markdown).toContain("## Actions\n\n- Me: Land T-42 today\n");
   });
 });

@@ -14,7 +14,8 @@ const CallNotes = Schema.Struct({
     Schema.Struct({ text: Line(160), who: Schema.Literals(["me", "them"]) }),
   ).check(Schema.isMaxLength(12)),
   // Each attached note keeps an additions.json item, and that file holds 12 for the whole board.
-  ticketNotes: Schema.Array(Schema.Struct({ ticket: Line(40), text: Line(500) })).check(
+  // A note is at most 400 so the call title fits beside it in a 500-character text block.
+  ticketNotes: Schema.Array(Schema.Struct({ ticket: Line(40), text: Line(400) })).check(
     Schema.isMaxLength(4),
   ),
   newWork: Schema.Array(Schema.Struct({ title: Line(80), why: Line(300) })).check(
@@ -39,7 +40,7 @@ export const parseCallNotes = (text: string): Result.Result<CallNotes, string> =
 export const callNotesPath = (callId: string) => `artifacts/calls/${callId}/notes.json`;
 
 /** How the app's message to the orchestrator starts, which the brief names. */
-export const CALL_NOTES_MESSAGE = "Call notes:";
+const CALL_NOTES_MESSAGE = "Call notes:";
 
 export const callNotesMessage = (input: {
   readonly callId: string;
