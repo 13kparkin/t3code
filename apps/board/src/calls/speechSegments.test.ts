@@ -31,17 +31,33 @@ describe("speechSegments", () => {
       [28.02, 48, 3000],
     ]);
     expect(segments(samples)).toEqual([
-      { start: 16_000, end: 48_000 },
-      { start: 128_000, end: 448_000 },
-      { start: 448_000, end: 768_000 },
+      { start: 12_000, end: 52_000 },
+      { start: 124_000, end: 448_000 },
+      { start: 448_000, end: 772_000 },
     ]);
   });
 
   it("keeps every piece of an even run within 30 seconds", () => {
     expect(segments(track(70, [[0, 70, 3000]]))).toEqual([
-      { start: 0, end: 479_680 },
-      { start: 479_680, end: 959_360 },
-      { start: 959_360, end: 1_120_000 },
+      { start: 0, end: 471_680 },
+      { start: 471_680, end: 943_360 },
+      { start: 943_360, end: 1_120_000 },
+    ]);
+  });
+
+  it("pads a short word by 0.25 s on each side, within the track", () => {
+    expect(
+      segments(
+        track(5, [
+          [0, 0.4, 3000],
+          [2, 2.4, 3000],
+          [4.6, 5, 3000],
+        ]),
+      ),
+    ).toEqual([
+      { start: 0, end: 10_400 },
+      { start: 28_000, end: 42_400 },
+      { start: 69_600, end: 80_000 },
     ]);
   });
 

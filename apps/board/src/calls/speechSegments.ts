@@ -11,6 +11,8 @@ const CLOSE_GAP_MS = 800;
 const MIN_RUN_MS = 300;
 /** Well under the engine's 5-minute cap, and short enough to time each line. */
 const MAX_RUN_MS = 30_000;
+/** Parakeet returns nothing for a short word cut at its edges, such as a 0.38 s "Okay.". */
+const PAD_MS = 250;
 
 const frames = (ms: number) => ms / FRAME_MS;
 
@@ -36,21 +38,31 @@ export function speechSegments(levels: Float32Array, sampleRate: number): Span[]
     if (last !== undefined && frame - last.end < frames(CLOSE_GAP_MS)) last.end = frame + 1;
     else runs.push({ start: frame, end: frame + 1 });
   }
-  const max = frames(MAX_RUN_MS);
+  // Each run is padded at its two ends, so its pieces split 0.5 s short of the cap.
+  const max = frames(MAX_RUN_MS - 2 * PAD_MS);
+  const size = (sampleRate * FRAME_MS) / 1000;
+  const pad = (sampleRate * PAD_MS) / 1000;
   const pieces: Span[] = [];
   for (const run of runs.filter(({ start, end }) => end - start >= frames(MIN_RUN_MS))) {
-    let start = run.start;
-    while (run.end - start > max) {
-      let cut = start + max / 2;
-      // The latest of equal frames, so an even run splits as close to 30 s as it can.
+    const cuts = [run.start];
+    for (let start = run.start; run.end - start > max; start = cuts.at(-1)!) {
+      let cut = start + Math.floor(max / 2);
+      // The latest of equal frames, so an even run splits as close to the cap as it can.
       for (let frame = cut; frame < start + max; frame += 1) {
         if (levels[frame]! <= levels[cut]!) cut = frame;
       }
-      pieces.push({ start, end: cut });
-      start = cut;
+      cuts.push(cut);
     }
-    pieces.push({ start, end: run.end });
+    cuts.push(run.end);
+    for (let index = 1; index < cuts.length; index += 1) {
+      pieces.push({
+        start: Math.max(0, cuts[index - 1]! * size - (index === 1 ? pad : 0)),
+        end: Math.min(
+          levels.length * size,
+          cuts[index]! * size + (index === cuts.length - 1 ? pad : 0),
+        ),
+      });
+    }
   }
-  const size = (sampleRate * FRAME_MS) / 1000;
-  return pieces.map(({ start, end }) => ({ start: start * size, end: end * size }));
+  return pieces;
 }

@@ -1,6 +1,8 @@
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
+import { EnvironmentRegistry, EnvironmentSupervisor } from "@t3tools/client-runtime/connection";
+import { RemoteEnvironmentAuthUndeclaredStatusError } from "@t3tools/client-runtime/rpc";
 import {
-  getEnvironmentSpeechModels,
+  getEnvironmentSpeechStatus,
   transcribeEnvironmentPcm,
 } from "@t3tools/client-runtime/voice-input";
 import {
@@ -11,6 +13,7 @@ import * as Effect from "effect/Effect";
 import type { HttpClient } from "effect/http";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
+import * as SubscriptionRef from "effect/SubscriptionRef";
 import { Atom, AtomRegistry } from "effect/reactivity";
 
 import { dueCalls, isStarting, markNotified, nextWake, splitCalls } from "../calls/dueCalls";
@@ -23,7 +26,6 @@ import type { ValidBoard } from "../store/boardFiles";
 import { deleteCall, markRecorded } from "./boardCards";
 import { boardEngine, localState, openBoard, projectBoardsAtom } from "./boards";
 import { environmentProjects } from "./projects";
-import { environmentSession } from "./server";
 
 /** Undefined in `dev:web`, which has no main process to record with. */
 const recorder = window.board?.recorder;
@@ -194,15 +196,29 @@ export const transcriptPath = (callId: string) => `artifacts/calls/${callId}/tra
 
 type Transcription =
   | { readonly status: "running"; readonly done: number; readonly total: number }
-  | { readonly status: "failed"; readonly message: string };
+  | { readonly status: "failed"; readonly message: string }
+  | { readonly status: "written" };
 
-/** By call id, on this PC only. A finished one leaves. */
+/** By call id, on this PC only. */
 export const transcriptionsAtom = Atom.make<Readonly<Record<string, Transcription>>>({}).pipe(
   Atom.keepAlive,
   Atom.withLabel("call-transcriptions"),
 );
 
 const isInvalidRequest = Schema.is(EnvironmentRequestInvalidError);
+const isUndeclaredStatus = Schema.is(RemoteEnvironmentAuthUndeclaredStatusError);
+
+/** The engine's errors in plain words. A missing model comes back as a generic invalid command. */
+function failure(cause: unknown, missingModel: string) {
+  if (isInvalidRequest(cause) && cause.reason === "invalid_command") return missingModel;
+  if (isInvalidRequest(cause) && cause.reason === "speech_busy") {
+    return "Another speech task is running on the engine. Try again when it finishes.";
+  }
+  if (isUndeclaredStatus(cause) && cause.status === 503) {
+    return "The engine stopped. Transcribe again once it is back.";
+  }
+  return cause instanceof Error ? cause.message : String(cause);
+}
 
 /** Uses the engine's selected speech model. A failure keeps the audio and shows on the call. */
 export async function transcribeCall(
@@ -227,23 +243,34 @@ export async function transcribeCall(
   set({ status: "running", done: 0, total: 0 });
   let missingModel = "Choose a speech model in T3's voice settings, then transcribe again.";
   try {
-    const prepared = Option.getOrNull(
-      registry.get(environmentSession.preparedConnectionValueAtom(project.environmentId)),
-    );
-    if (prepared === null) throw new Error("The engine is not connected.");
-    const speech = <A, E>(effect: Effect.Effect<A, E, HttpClient.HttpClient>) =>
+    const speech = <A, E>(
+      effect: Effect.Effect<A, E, HttpClient.HttpClient | EnvironmentRegistry.EnvironmentRegistry>,
+    ) =>
       Effect.runPromise(
         AtomRegistry.getResult(registry, connectionAtomRuntime).pipe(
           Effect.flatMap((context) => Effect.provide(effect, context)),
         ),
       );
-    const active = (await speech(getEnvironmentSpeechModels(prepared))).models.find(
-      (model) => model.active,
+    // Read from the supervisor itself, since the session's atom is empty until a view mounts it.
+    const prepared = Option.getOrNull(
+      await speech(
+        EnvironmentRegistry.EnvironmentRegistry.pipe(
+          Effect.flatMap((environments) =>
+            environments.run(
+              project.environmentId,
+              EnvironmentSupervisor.EnvironmentSupervisor.pipe(
+                Effect.flatMap((supervisor) => SubscriptionRef.get(supervisor.prepared)),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
-    if (active !== undefined) {
-      missingModel = `Install ${active.name} in T3's voice settings, then transcribe again.`;
-    }
-    if (active?.state !== "installed") throw new Error(missingModel);
+    if (prepared === null) throw new Error("The engine is not connected.");
+    const status = await speech(getEnvironmentSpeechStatus(prepared));
+    if (!status.supported) throw new Error(status.reason);
+    missingModel = `Install ${status.model} in T3's voice settings, then transcribe again.`;
+    if (status.state === "missing-model") throw new Error(missingModel);
     await transcribeTakes({
       takes,
       read: recorder.readTrack,
@@ -267,15 +294,8 @@ export async function transcribeCall(
       deleteAudio: async () => sameTakes(takes, takesOf()) && recorder.deleteAudio(callId),
       progress: (done, total) => set({ status: "running", done, total }),
     });
-    set(null);
+    set({ status: "written" });
   } catch (cause) {
-    // The engine answers a missing model with a generic invalid command.
-    const message =
-      isInvalidRequest(cause) && cause.reason === "invalid_command"
-        ? missingModel
-        : cause instanceof Error
-          ? cause.message
-          : String(cause);
-    set({ status: "failed", message });
+    set({ status: "failed", message: failure(cause, missingModel) });
   }
 }

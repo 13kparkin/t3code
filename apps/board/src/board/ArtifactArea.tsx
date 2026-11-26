@@ -147,12 +147,17 @@ export function ArtifactArea({
       .toSorted((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt));
   const transcriptOf = (callId: string) =>
     groups.board.find((file) => file.path === transcriptPath(callId));
+  // Between deleting the audio and the next file listing, the call has neither takes nor transcript.
+  const transcribed = (callId: string) =>
+    transcriptOf(callId) !== undefined ||
+    jobs[callId]?.status === "running" ||
+    jobs[callId]?.status === "written";
   const callCards = calls.map((call) => {
     const takes = takesOf(call.id).length;
     const where =
       takes > 0
         ? ` · ${takes} ${takes === 1 ? "take" : "takes"}`
-        : transcriptOf(call.id) !== undefined
+        : transcribed(call.id)
           ? " · transcribed"
           : snapshot !== null && call.recordedAt !== undefined
             ? " · recorded on another PC"
@@ -183,7 +188,7 @@ export function ArtifactArea({
             ),
           ];
     if (takes.length === 0) {
-      if (transcript !== undefined) return shown;
+      if (transcribed(call.id)) return shown;
       return [
         <li key="none" className="col-span-full text-[11px] text-faint">
           {snapshot !== null && call.recordedAt !== undefined
