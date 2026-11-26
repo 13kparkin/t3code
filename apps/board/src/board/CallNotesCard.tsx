@@ -102,7 +102,7 @@ export function CallNotesCard({
       onPointerCancel={() => {
         press.current = null;
       }}
-      className="flex h-full min-w-0 cursor-grab touch-none flex-col gap-1.5 overflow-y-auto rounded-md border border-line bg-bg p-2 text-[11px] text-fg"
+      className="flex h-full min-w-0 cursor-grab touch-none flex-col select-none gap-1.5 overflow-y-auto rounded-md border border-line bg-bg p-2 text-[11px] text-fg"
     >
       <div className="flex items-center gap-1.5">
         <NotebookPen className="size-3.5 shrink-0 text-muted" aria-hidden />

@@ -184,6 +184,9 @@ describe("call notes", () => {
     );
     expect(rules).toContain("Skip any other key.");
     expect(rules).toContain("Never write a ticket note without an `Attach` answer.");
+    expect(rules).toContain("sends you a message that starts `Call notes:`");
+    expect(rules).toContain("copied verbatim from `notes.json`, without rewording");
+    expect(rules).toContain("longer than the longest run of backticks in the note");
   });
 });
 

@@ -238,8 +238,7 @@ export async function requestCallNotes(
   folder: string,
   call: Pick<CallEvent, "id" | "title">,
 ) {
-  const last = registry.get(callNotesRequestsAtom)[call.id]?.status;
-  if (last === "sending" || last === "sent") return;
+  if (registry.get(callNotesRequestsAtom)[call.id]?.status === "sending") return;
   const set = (request: NotesRequest) =>
     registry.update(callNotesRequestsAtom, (all) => ({ ...all, [call.id]: request }));
   set({ status: "sending" });
