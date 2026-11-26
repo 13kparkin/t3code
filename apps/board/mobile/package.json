@@ -11,13 +11,21 @@
   },
   "dependencies": {
     "@agent-board/app": "workspace:*",
+    "@effect/atom-react": "catalog:",
     "@react-navigation/bottom-tabs": "7.21.0",
     "@react-navigation/native": "7.5.1",
+    "@t3tools/client-runtime": "workspace:*",
+    "@t3tools/contracts": "workspace:*",
+    "@t3tools/shared": "workspace:*",
     "@tabler/icons-react-native": "^3.44.0",
     "effect": "catalog:",
     "expo": "58.0.23",
     "expo-build-properties": "~58.0.12",
+    "expo-camera": "~58.0.14",
+    "expo-crypto": "~58.0.7",
     "expo-dev-client": "~58.0.18",
+    "expo-network": "~58.0.4",
+    "expo-secure-store": "~58.0.2",
     "react": "catalog:",
     "react-native": "0.88.1",
     "react-native-safe-area-context": "~5.11.1",
@@ -25,6 +33,7 @@
     "react-native-svg": "15.16.1"
   },
   "devDependencies": {
+    "@effect/vitest": "catalog:",
     "@types/react": "catalog:"
   }
 }
