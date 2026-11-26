@@ -1,17 +1,24 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId, ServerSettings } from "@t3tools/contracts";
 import { AsyncResult } from "effect/reactivity";
 import { useContext } from "react";
 
 import { issueTrackerEnvironment } from "../state/issues";
 import { sourceControlEnvironment } from "../state/sourceControl";
 import { buttonClass } from "./controls/buttonClass";
+import { DevicesSection } from "./integrations/DevicesSection";
 import { IntegrationGroup } from "./integrations/IntegrationGroup";
 import { JiraCard } from "./integrations/JiraCard";
 import { LinearCard } from "./integrations/LinearCard";
 import { ProviderCard } from "./integrations/ProviderCard";
 
-export function IntegrationsPage({ environmentId }: { environmentId: EnvironmentId }) {
+export function IntegrationsPage({
+  environmentId,
+  settings,
+}: {
+  environmentId: EnvironmentId;
+  settings: ServerSettings;
+}) {
   const registry = useContext(RegistryContext);
   const trackersAtom = issueTrackerEnvironment.connections({ environmentId, input: {} });
   const discoveryAtom = sourceControlEnvironment.discovery({ environmentId, input: {} });
@@ -76,6 +83,7 @@ export function IntegrationsPage({ environmentId }: { environmentId: Environment
         ))}
         <JiraCard />
       </IntegrationGroup>
+      <DevicesSection environmentId={environmentId} settings={settings} />
     </div>
   );
 }

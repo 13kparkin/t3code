@@ -112,7 +112,7 @@ export function SettingsScreen({
               save={(input) => void save(input)}
             />
           ) : page === "integrations" ? (
-            <IntegrationsPage environmentId={environmentId} />
+            <IntegrationsPage environmentId={environmentId} settings={settings} />
           ) : page === "updates" ? (
             <UpdatesPage settings={settings} save={(input) => void save(input)} />
           ) : page === "reviews" ? (
