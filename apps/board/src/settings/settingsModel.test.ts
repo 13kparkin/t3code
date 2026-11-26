@@ -11,6 +11,7 @@ import { DEFAULT_SETUP_SCRIPT } from "./defaultSetupScript";
 import {
   cleanupValues,
   defaultSetupPatch,
+  deviceConfigureInput,
   formatBytes,
   hasCleanupRules,
   latestReport,
@@ -420,4 +421,16 @@ describe("removedWorktreePaths", () => {
     );
     expect([...paths]).toEqual(["/w/a"]);
   });
+});
+
+describe("deviceConfigureInput", () => {
+  it.each([
+    ["hub", true, { enabled: true, onboardingCompleted: true }],
+    ["hub", false, { enabled: false, agentAccessEnabled: false }],
+  ] as const)(
+    "Given the %s switch set to %s, when saved, then the RPC input is %o",
+    (target, enabled, input) => {
+      expect(deviceConfigureInput(target, enabled)).toEqual(input);
+    },
+  );
 });
