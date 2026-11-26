@@ -1,10 +1,8 @@
-import type { Recording, TrackRange } from "../domain/recording";
+import { type Recording, type TrackRange, WINDOW_SAMPLES } from "../domain/recording";
 import { frameLevels, speechSegments } from "./speechSegments";
 import { dropEcho, renderTranscript, type Said } from "./transcript";
 
 const SAMPLE_RATE = 16_000;
-/** How much of a track one read brings over IPC. */
-export const WINDOW_SAMPLES = 5 * 60 * SAMPLE_RATE;
 
 /** The engine takes Float32 PCM. */
 const toFloat32 = (samples: Int16Array) =>

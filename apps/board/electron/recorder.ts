@@ -15,6 +15,7 @@ import {
   RecordingFile,
   RecordRequest,
   TrackRange,
+  WINDOW_SAMPLES,
 } from "../src/domain/recording";
 import { createLocalStateFile } from "./localState";
 
@@ -29,8 +30,6 @@ const HELPER = "agent-board-call-capture.exe";
 const HELPER_TIMEOUT_MS = 10_000;
 /** The helper writes 16 kHz mono s16le WAV with a fixed 44-byte header. */
 const WAV_HEADER = 44;
-/** One read brings at most 5 minutes of one track to the renderer. */
-const MAX_READ_SAMPLES = 5 * 60 * 16_000;
 const FILES = { me: "me.wav", them: "them.wav" } as const;
 const TRACKS: Recording["tracks"] = [
   { who: "me", file: FILES.me },
@@ -397,7 +396,7 @@ export function createRecorder(deps: {
     readTrack: async ({ from, to, ...file }: TrackRange) => {
       const path = fileOf(file);
       if (path === null) return null;
-      const count = Math.max(0, Math.min(to - from, MAX_READ_SAMPLES));
+      const count = Math.max(0, Math.min(to - from, WINDOW_SAMPLES));
       const handle = await NodeFS.promises.open(path, "r").catch(() => null);
       if (handle === null) return null;
       try {

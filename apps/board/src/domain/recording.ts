@@ -21,6 +21,9 @@ export const RecordingFile = Schema.Struct({
 });
 export type RecordingFile = typeof RecordingFile.Type;
 
+/** The most samples of one track a single read brings over IPC: 5 minutes at 16 kHz. */
+export const WINDOW_SAMPLES = 5 * 60 * 16_000;
+
 const SampleIndex = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 /** Samples `[from, to)` of one track of a take. */
 export const TrackRange = Schema.Struct({
