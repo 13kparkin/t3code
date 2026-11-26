@@ -80,7 +80,7 @@ async function notifyDue(list: ReadonlyArray<BoardCall>, now: number) {
 
 const NONE: ReadonlySet<string> = new Set();
 
-/** The ids of the calls in their first 10 minutes. It notifies each due call once and wakes at the next start or window end. */
+/** The ids of the calls in their starting window. Reading it notifies due calls and sets the next wake. */
 export const startingCallsAtom = Atom.make((get): ReadonlySet<string> => {
   if (calls === undefined || get(recorderAtom) === null) return NONE;
   const list = get(chromeCallsAtom);

@@ -19,11 +19,7 @@ const xmlText = (text: string) =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&apos;");
 
-/**
- * Stays on screen until pressed, as Electron's own `timeoutType: "never"` toast does. Record carries
- * the whole toast, so a press after the board quit still names the call. Dismiss is Windows' own
- * button and never starts the app.
- */
+/** Stays on screen until pressed, as Electron's own `timeoutType: "never"` toast does. Dismiss is Windows' own button and never starts the app. */
 export const toastXml = (toast: CallToast) =>
   [
     `<toast scenario="reminder"><visual><binding template="ToastGeneric">`,
@@ -35,11 +31,7 @@ export const toastXml = (toast: CallToast) =>
     `</actions></toast>`,
   ].join("");
 
-/**
- * The renderer decides which calls notify and keeps that in local state. Main only shows the toast
- * and holds its one wake timer, because Chromium delays a hidden window's chained timers by up to a
- * minute.
- */
+/** Main holds the one wake timer, because Chromium delays a hidden window's chained timers by up to a minute. */
 export function registerCallToasts(platform: NodeJS.Platform) {
   if (platform !== "win32") return;
   const windows = () => BrowserWindow.getAllWindows().filter((window) => !window.isDestroyed());

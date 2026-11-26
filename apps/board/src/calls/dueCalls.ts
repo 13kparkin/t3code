@@ -14,7 +14,6 @@ export const isStarting = (call: Timed, now: number) => {
   return start <= now && now < start + LATE_MS;
 };
 
-/** The calls that start within the last 10 minutes and have not notified for that start. */
 export const dueCalls = <C extends Timed>(
   calls: ReadonlyArray<C>,
   now: number,
