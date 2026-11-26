@@ -73,7 +73,7 @@ const persistenceError =
 const layerPersistence = Layer.effectContext(
   Effect.gen(function* () {
     const { read, update } = yield* makeCatalogStore(SecureStore);
-    const register = (
+    const save = (
       operation: Persistence.ConnectionPersistenceError["operation"],
       transform: (document: ConnectionCatalogDocument) => ConnectionCatalogDocument,
     ) => update(transform).pipe(Effect.mapError(persistenceError(operation)));
@@ -90,19 +90,19 @@ const layerPersistence = Layer.effectContext(
     });
     const registrationStore = Persistence.ConnectionRegistrationStore.of({
       register: (registration, routes) =>
-        register("register-connection", (document) =>
+        save("register-connection", (document) =>
           registerConnectionInCatalog(document, registration, routes),
         ),
       setRoutes: (environmentId, routes) =>
-        register("set-connection-routes", (document) =>
+        save("set-connection-routes", (document) =>
           setRoutesInCatalog(document, environmentId, routes),
         ),
       remove: (environmentId) =>
-        register("remove-connection", (document) =>
+        save("remove-connection", (document) =>
           removeConnectionFromCatalog(document, environmentId),
         ),
       setEnabled: (environmentId, enabled) =>
-        register("set-connection-enabled", (document) =>
+        save("set-connection-enabled", (document) =>
           setConnectionEnabledInCatalog(document, environmentId, enabled),
         ),
     });
@@ -176,7 +176,6 @@ const layerPersistence = Layer.effectContext(
       write: (githubRoutingPermissions) =>
         update((document) => ({ ...document, githubRoutingPermissions })),
     });
-    // The phone keeps no offline copy: it reads the live shell every launch.
     const cacheStore = Persistence.EnvironmentCacheStore.of({
       loadShell: () => Effect.succeedNone,
       saveShell: () => Effect.void,

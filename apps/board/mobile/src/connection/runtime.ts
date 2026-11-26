@@ -20,8 +20,8 @@ import * as ConnectionPlatform from "./platform";
 
 const noRelayKey = "T3 Connect is not available in Agent Board.";
 
-// T3 Connect is out of scope, but the connection layer is built with its relay client. Nothing
-// registers a relay environment, and a failed proof makes pairing fall back to a bearer session.
+// client-runtime requires a relay client. A non-https URL gets the disabled client, and the failing
+// signer sends pairing down the bearer path.
 const layerRelay = ManagedRelay.layer({
   relayUrl: "http://relay.invalid",
   clientId: RelayMobileClientId,

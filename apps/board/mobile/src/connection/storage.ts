@@ -29,7 +29,7 @@ const storageError = (operation: "read" | "save") => (cause: unknown) =>
 
 /**
  * The connection catalog, credentials included, as one document in the Android keystore-backed
- * secure store, as T3 mobile keeps it.
+ * secure store.
  */
 export const makeCatalogStore = Effect.fn("phone.connection.makeCatalogStore")(function* (
   storage: SecureStorage,
@@ -59,8 +59,10 @@ export const makeCatalogStore = Effect.fn("phone.connection.makeCatalogStore")(f
     return document;
   });
 
-  const update = (transform: (document: ConnectionCatalogDocument) => ConnectionCatalogDocument) =>
-    lock.withPermits(1)(
+  const update = Effect.fn("phone.connection.updateCatalog")(function* (
+    transform: (document: ConnectionCatalogDocument) => ConnectionCatalogDocument,
+  ) {
+    yield* lock.withPermits(1)(
       Effect.gen(function* () {
         const next = transform(yield* load);
         const raw = yield* encodeCatalog(next).pipe(Effect.mapError(storageError("save")));
@@ -71,6 +73,7 @@ export const makeCatalogStore = Effect.fn("phone.connection.makeCatalogStore")(f
         yield* Ref.set(cached, Option.some(next));
       }),
     );
+  });
 
   return { read: lock.withPermits(1)(load), update };
 });
