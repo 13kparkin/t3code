@@ -112,6 +112,7 @@ export function FileBox({
       {/* Out of flow, so the card's height, not this grid, sets the row's height. */}
       <div className="absolute inset-0 flex flex-col">
         <header
+          tabIndex={-1}
           className="flex shrink-0 cursor-grab touch-none items-center gap-1.5 px-3 select-none"
           style={{ height: LANE_HEAD }}
           onPointerDown={start("move")}

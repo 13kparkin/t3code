@@ -61,17 +61,31 @@ export function ArtifactArea({
   const opened = Object.entries(boxes).flatMap(([key, box]) =>
     key !== "artifacts" && box.open === true ? [key] : [],
   );
-  /** A section opens on top, and the first time beside the card that opened it. */
+  /**
+   * A section opens on top, and the first time beside the card that opened it: to its right, else
+   * its left, else shifted in, so it stays inside the visible canvas.
+   */
   const show = (key: string) => (event: MouseEvent<HTMLElement>) => {
     const card = event.currentTarget.getBoundingClientRect();
     const home = anchor.current?.getBoundingClientRect() ?? card;
-    const top = Math.max(0, ...Object.values(boxes).map((box) => box.z ?? 0)) + 1;
+    const view =
+      anchor.current?.closest('[data-testid="board-canvas"]')?.getBoundingClientRect() ?? card;
+    const [width, height, gap] = [SECTION.width * scale, SECTION.height * scale, LANE_GAP * scale];
+    const right = card.right + gap;
+    const left =
+      right + width <= view.right
+        ? right
+        : card.left - gap - width >= view.left
+          ? card.left - gap - width
+          : Math.max(view.left, view.right - width);
+    const top = Math.max(view.top, Math.min(card.top, view.bottom - height));
+    const front = Math.max(0, ...Object.values(boxes).map((box) => box.z ?? 0)) + 1;
     const beside = {
       ...SECTION,
-      x: Math.round((card.right - home.left) / scale) + LANE_GAP,
-      y: Math.round((card.top - home.top) / scale),
+      x: Math.round((left - home.left) / scale),
+      y: Math.round((top - home.top) / scale),
     };
-    void changeFileBox(registry, boardId, key, beside, (box) => ({ ...box, open: true, z: top }));
+    void changeFileBox(registry, boardId, key, beside, (box) => ({ ...box, open: true, z: front }));
   };
   const hide = (key: string) =>
     void changeFileBox(registry, boardId, key, HOME, (box) => ({ ...box, open: false }));
@@ -245,14 +259,21 @@ export function ArtifactArea({
           items={[
             {
               label: "Archive",
-              onSelect: () => void setCardState(registry, project, listed, menu.key, "archived"),
+              onSelect: () => {
+                // The archived card leaves, so focus moves to the next card in its box, or the box's header.
+                const next =
+                  menu.from.nextElementSibling?.querySelector("button") ??
+                  menu.from.closest("section")?.querySelector("header");
+                next?.focus();
+                void setCardState(registry, project, listed, menu.key, "archived");
+              },
             },
           ]}
           onClose={() => {
-            // Escape or a pick leaves focus in the closing menu, so it goes back to the card.
+            // Escape or a pick leaves focus in the closing menu, so it goes back to the card's button.
             const inMenu = document.activeElement?.closest('[role="menu"]') != null;
             setMenu(null);
-            if (inMenu) menu.from.focus();
+            if (inMenu) menu.from.querySelector("button")?.focus();
           }}
         />
       )}
