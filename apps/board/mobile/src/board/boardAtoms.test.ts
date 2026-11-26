@@ -54,8 +54,8 @@ describe("createBoardStore", () => {
   it("reads nothing while the app is in the background", async () => {
     using board = setup();
     await vi.advanceTimersByTimeAsync(0);
-    board.registry.set(board.active, false);
     board.reads.length = 0;
+    board.registry.set(board.active, false);
     await vi.advanceTimersByTimeAsync(STORE_POLL_MS * 20);
     expect(board.reads).toEqual([]);
   });

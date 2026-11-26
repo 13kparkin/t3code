@@ -3,6 +3,7 @@ import { AVAILABLE_CONNECTION_STATE } from "@t3tools/client-runtime/connection";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { createEnvironmentProjectAtoms } from "@t3tools/client-runtime/state/projects";
 import {
+  type AtomCommandResult,
   createEnvironmentRpcCommand,
   runAtomCommand,
   squashAtomCommandFailure,
@@ -18,6 +19,7 @@ import * as Schema from "effect/Schema";
 import { AsyncResult, Atom, type AtomRegistry } from "effect/reactivity";
 import { Linking } from "react-native";
 
+import type { ProjectFiles } from "../board/boardAtoms";
 import { type BoardProject, foldBoardScan } from "./boardScan";
 import { readPairingRequest } from "./pairing";
 import { connectionAtomRuntime, connectPairingUrl, environmentCatalog } from "./runtime";
@@ -43,12 +45,51 @@ const environmentProjects = createEnvironmentProjectAtoms({
   catalogValueAtom: environmentCatalog.catalogValueAtom,
   snapshotAtom: environmentSnapshot,
 });
-const isProjectListEntriesError = Schema.is(ProjectListEntriesError);
-
 const listEntries = createEnvironmentRpcCommand(connectionAtomRuntime, {
-  label: "phone:project:list-entries",
+  label: "phone:board:list-entries",
   tag: WS_METHODS.projectsListEntries,
 });
+const readFile = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "phone:board:read-file",
+  tag: WS_METHODS.projectsReadFile,
+});
+const isProjectListEntriesError = Schema.is(ProjectListEntriesError);
+
+type FailedCommand = Extract<AtomCommandResult<unknown, unknown>, { readonly _tag: "Failure" }>;
+
+const commandError = (result: FailedCommand) => {
+  const failure = squashAtomCommandFailure(result);
+  return failure instanceof Error ? failure : new Error(String(failure));
+};
+
+export function engineFiles(registry: AtomRegistry.AtomRegistry, environmentId: EnvironmentId) {
+  return {
+    list: async (cwd, directoryPath) => {
+      const result = await runAtomCommand(
+        registry,
+        listEntries,
+        { environmentId, input: { cwd, directoryPath } },
+        { reportFailure: false },
+      );
+      if (result._tag === "Success") return result.value.entries;
+      const failure = squashAtomCommandFailure(result);
+      if (isProjectListEntriesError(failure) && failure.failure === "directory_list_failed") {
+        return null;
+      }
+      throw commandError(result);
+    },
+    read: async (cwd, relativePath) => {
+      const result = await runAtomCommand(
+        registry,
+        readFile,
+        { environmentId, input: { cwd, relativePath, allowMissing: true } },
+        { reportFailure: false },
+      );
+      if (result._tag === "Failure") throw commandError(result);
+      return result.value.exists === false ? null : result.value.contents;
+    },
+  } satisfies ProjectFiles;
+}
 
 const engineSyncedAtom = Atom.make((get) => {
   const status = get(engineStatusAtom);
@@ -62,23 +103,13 @@ export const boardProjectsAtom = Atom.make((get): BoardProjects => {
   const projects = get(environmentProjects.projectsAtom);
   if (get(engineSyncedAtom)) {
     const registry = get.registry;
-    const holdsBoard = async (project: EnvironmentProject) => {
-      const result = await runAtomCommand(
-        registry,
-        listEntries,
-        {
-          environmentId: project.environmentId,
-          input: { cwd: project.workspaceRoot, directoryPath: BOARDS_DIR },
-        },
-        { reportFailure: false },
-      );
-      if (result._tag === "Success") return true;
-      const failure = squashAtomCommandFailure(result);
-      if (isProjectListEntriesError(failure) && failure.failure === "directory_list_failed") {
-        return false;
-      }
-      return failure instanceof Error ? failure : new Error(String(failure));
-    };
+    const holdsBoard = (project: EnvironmentProject) =>
+      engineFiles(registry, project.environmentId)
+        .list(project.workspaceRoot, BOARDS_DIR)
+        .then(
+          (entries) => entries !== null,
+          (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
+        );
     let current = true;
     get.addFinalizer(() => {
       current = false;

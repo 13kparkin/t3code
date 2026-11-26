@@ -5,7 +5,6 @@ import { Linking, Modal, Pressable, ScrollView, Text, View } from "react-native"
 
 import { styles } from "../styles";
 
-/** The conditions tickets.json decides alone. CI, evidence files and merge-order notes are read on the desktop. */
 function fileReadiness(ticket: Ticket, tickets: ReadonlyArray<Ticket>) {
   return evaluateReadiness({
     ticket,
@@ -18,8 +17,7 @@ function fileReadiness(ticket: Ticket, tickets: ReadonlyArray<Ticket>) {
     reviewRoles: new Set(
       (ticket.verdicts ?? []).map((verdict) => verdict.role).filter((role) => role !== "verify"),
     ),
-    // Only CI reads `now`, and CI is left out below.
-    now: 0,
+    now: Date.now(),
   }).filter((condition) => !condition.checking && condition.key !== "ci_green");
 }
 
@@ -78,7 +76,10 @@ export function TicketSheet({
           <View>
             <Text style={[styles.bold, text]}>Pull request</Text>
             {/^https?:\/\//.test(pr) ? (
-              <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(pr)}>
+              <Pressable
+                accessibilityRole="link"
+                onPress={() => void Linking.openURL(pr).catch(() => undefined)}
+              >
                 <Text style={styles.link}>{pr}</Text>
               </Pressable>
             ) : (

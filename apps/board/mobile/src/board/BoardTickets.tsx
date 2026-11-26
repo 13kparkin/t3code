@@ -23,7 +23,11 @@ export function BoardTickets({ choice }: { choice: BoardChoice }) {
   const { colors } = useTheme();
   // Bottom tabs keep a visited screen mounted, so only the focused one subscribes and polls.
   const focused = useIsFocused();
-  const files = useAtomValue(focused ? boardStoreAtom(choice.key) : NOT_READING);
+  const read = useAtomValue(focused ? boardStoreAtom(choice.key) : NOT_READING);
+  // The store is dropped while the tab is blurred, so the last files stay up until it reads again.
+  const [lastRead, setLastRead] = useState(read);
+  if (read !== null && read !== lastRead) setLastRead(read);
+  const files = read ?? lastRead;
   const ticketsText = files?.tickets ?? null;
   const parsed = useMemo(
     () => (ticketsText === null ? Result.succeed(NO_TICKETS) : parseTickets(ticketsText)),

@@ -1,8 +1,7 @@
 import {
   BOARD_FILE,
   BOARDS_DIR,
-  type Board,
-  type BoardIssue,
+  type ListedBoard,
   parseBoard,
 } from "@agent-board/app/domain/board";
 import * as Option from "effect/Option";
@@ -11,7 +10,6 @@ import { Atom } from "effect/reactivity";
 
 export const STORE_POLL_MS = 3_000;
 
-/** The phone's reads of a project's files. It has no write, so the phone never changes the board folder. */
 export interface ProjectFiles {
   /** Entries under a project-relative directory, or null when it does not exist. */
   readonly list: (
@@ -22,8 +20,6 @@ export interface ProjectFiles {
   readonly read: (cwd: string, path: string) => Promise<string | null>;
 }
 
-const STORE_FILES = ["tickets.json", "foryou.jsonl", "decisions.tsv", "additions.json"] as const;
-
 export interface StoreFiles {
   readonly tickets: string | null;
   readonly forYou: string | null;
@@ -31,14 +27,8 @@ export interface StoreFiles {
   readonly additions: string | null;
 }
 
-export type ListedBoard =
-  | { readonly ok: true; readonly folder: string; readonly board: Board }
-  | { readonly ok: false; readonly folder: string; readonly issue: BoardIssue };
-
-/** A board's folder, `<workspaceRoot>/.agentboard/<folder>`, which keys its store. */
 export const boardKey = (cwd: string, folder: string) => `${cwd}/${BOARDS_DIR}/${folder}`;
 
-/** Every folder under the project's `.agentboard` that holds a `board.json`, parsed. */
 export async function listBoards(
   files: ProjectFiles,
   cwd: string,
@@ -57,7 +47,7 @@ export async function listBoards(
         : { ok: false, folder, issue: parsed.failure },
     );
   }
-  return listed;
+  return listed.toSorted((a, b) => a.folder.localeCompare(b.folder));
 }
 
 const sameFiles = (left: StoreFiles | null, right: StoreFiles) =>
@@ -67,10 +57,6 @@ const sameFiles = (left: StoreFiles | null, right: StoreFiles) =>
   left.decisions === right.decisions &&
   left.additions === right.additions;
 
-/**
- * The orchestrator's store files for one board, by `boardKey`. They are read every few seconds while
- * the files port is up and the app is active, and the last files stay up while it is not.
- */
 export function createBoardStore(
   filesAtom: Atom.Atom<ProjectFiles | null>,
   activeAtom: Atom.Atom<boolean>,
@@ -81,23 +67,34 @@ export function createBoardStore(
       if (files !== null && get(activeAtom)) {
         const split = key.lastIndexOf(`/${BOARDS_DIR}/`);
         const cwd = key.slice(0, split);
-        const folder = key.slice(split + 1);
+        const dir = key.slice(split + 1);
+        const read = (name: string) => files.read(cwd, `${dir}/${name}`);
         let current = true;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        // The next round waits for this one, so a slow link never stacks reads.
         const refresh = () =>
-          Promise.all(STORE_FILES.map((name) => files.read(cwd, `${folder}/${name}`))).then(
-            ([tickets = null, forYou = null, decisions = null, additions = null]) => {
-              const next = { tickets, forYou, decisions, additions };
-              if (current && !sameFiles(Option.getOrNull(get.self<StoreFiles | null>()), next)) {
-                get.setSelf(next);
-              }
-            },
-            () => undefined,
-          );
+          Promise.all([
+            read("tickets.json"),
+            read("foryou.jsonl"),
+            read("decisions.tsv"),
+            read("additions.json"),
+          ])
+            .then(
+              ([tickets, forYou, decisions, additions]) => {
+                const next = { tickets, forYou, decisions, additions };
+                if (current && !sameFiles(Option.getOrNull(get.self<StoreFiles | null>()), next)) {
+                  get.setSelf(next);
+                }
+              },
+              () => undefined,
+            )
+            .then(() => {
+              if (current) timer = setTimeout(refresh, STORE_POLL_MS);
+            });
         void refresh();
-        const timer = setInterval(() => void refresh(), STORE_POLL_MS);
         get.addFinalizer(() => {
           current = false;
-          clearInterval(timer);
+          clearTimeout(timer);
         });
       }
       return Option.getOrNull(get.self<StoreFiles | null>());

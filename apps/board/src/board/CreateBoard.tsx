@@ -2,12 +2,12 @@ import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { type FormEvent, useContext, useState } from "react";
 
+import type { PickerValue } from "../domain/picker";
 import { ProviderPicker } from "../providers/ProviderPicker";
 import {
   canStart,
   defaultPick,
   NO_PICK,
-  type PickerValue,
   pickableInstances,
   resolvePick,
   selectionOf,

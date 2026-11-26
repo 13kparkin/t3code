@@ -1,3 +1,4 @@
+import { isThreadWorking } from "@agent-board/app/domain/threadWork";
 import { useAtomValue } from "@effect/atom-react";
 import { LegendList } from "@legendapp/list/react-native";
 import { createThreadFamilyAtoms } from "@t3tools/client-runtime/state/threads";
@@ -15,7 +16,6 @@ import { ThreadActivity } from "./ThreadActivity";
 
 const threadFamilies = createThreadFamilyAtoms(connectionAtomRuntime, environmentShell.stateAtom);
 
-/** Reads the engine's family of one orchestrator thread while subscribed. */
 const familyMountAtom = Atom.family((rootId: string) =>
   Atom.make((get) => {
     const environmentId = get(connectedEnvironmentAtom);
@@ -26,22 +26,8 @@ const familyMountAtom = Atom.family((rootId: string) =>
 );
 const NOT_MOUNTED = Atom.make(undefined).pipe(Atom.withLabel("phone-family-mount:none"));
 
-const LIVE_STATUSES: ReadonlySet<string> = new Set([
-  "queued",
-  "preparing",
-  "starting",
-  "running",
-  "waiting",
-]);
-
-// The desktop's `familyThread` rule: an orchestrator's run ends while its delegated tasks keep going.
-const isWorking = (thread: OrchestrationV2ThreadShell) =>
-  LIVE_STATUSES.has(thread.status) ||
-  (thread.activityRunStatus ?? null) !== null ||
-  (thread.pendingBackgroundTasks?.length ?? 0) > 0;
-
 function statusText(thread: OrchestrationV2ThreadShell) {
-  if (isWorking(thread)) return "Working";
+  if (isThreadWorking(thread)) return "Working";
   switch (thread.status) {
     case "completed":
       return "Done";
@@ -76,7 +62,7 @@ export function FamilyList({
             thread.archivedAt === null &&
             thread.deletedAt === null,
         )
-        .toSorted((a, b) => Number(isWorking(b)) - Number(isWorking(a))),
+        .toSorted((a, b) => Number(isThreadWorking(b)) - Number(isThreadWorking(a))),
     [threads, rootId],
   );
   const [open, setOpen] = useState<OrchestrationV2ThreadShell | null>(null);
@@ -102,7 +88,12 @@ export function FamilyList({
             <Text style={[styles.bold, { color: colors.text }]} numberOfLines={1}>
               {item.title}
             </Text>
-            <Text style={[styles.small, { color: isWorking(item) ? colors.primary : colors.text }]}>
+            <Text
+              style={[
+                styles.small,
+                { color: isThreadWorking(item) ? colors.primary : colors.text },
+              ]}
+            >
               {item.id === rootId ? "Orchestrator · " : ""}
               {statusText(item)}
             </Text>

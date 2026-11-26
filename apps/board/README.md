@@ -72,7 +72,7 @@ It needs a clean checkout. It fetches upstream, runs `vp run check:changed` and 
 
 ## Phone app
 
-`apps/board/mobile` is the board's Android app, `@agent-board/phone`. It is an Expo app on the same Expo and React Native versions as T3's mobile app, and it reads the board's domain code from `@agent-board/app/domain/*`, the same files the desktop uses.
+`apps/board/mobile` is the board's Android app, `@agent-board/phone`. It is an Expo app on the same Expo and React Native versions as T3's mobile app, and it reads the board's domain code from `@agent-board/app/domain/*` and the chat timeline from `@agent-board/app/chat/*`, the same files the desktop uses.
 
 The phone pairs with the T3 engine over the local network or Tailscale. T3 Connect is not supported. To pair, open T3 Code on the PC, go to Settings, Connections, and add a client. Then scan its QR code with **Scan QR code**, paste its pairing link, or open an `agentboard-phone://pair?url=<pairing link>` link on the phone, which fills in the link. Then tap **Pair**. The phone never pairs from a link on its own, because any app can open that link. A pairing code works once, so a used link shows the engine's refusal.
 

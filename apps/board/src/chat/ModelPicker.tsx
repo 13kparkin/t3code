@@ -1,7 +1,8 @@
 import { Check, ChevronUp } from "lucide-react";
 import { useId } from "react";
 
-import { effortOf, type PickableInstance, type PickerValue } from "../providers/providers";
+import type { PickerValue } from "../domain/picker";
+import { effortOf, type PickableInstance } from "../providers/providers";
 import { ProviderGlyph } from "../usage/ProviderGlyph";
 
 const row =

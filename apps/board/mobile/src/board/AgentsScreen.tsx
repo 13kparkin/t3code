@@ -9,11 +9,14 @@ import { shownBoardAtom } from "./files";
 export function AgentsScreen() {
   const { colors } = useTheme();
   const shown = useAtomValue(shownBoardAtom);
-  const rootId = shown?.listed.ok === true ? shown.listed.board.orchestratorThreadId : null;
-  if (shown === null || rootId === null) {
+  if (shown === null) {
+    return <Text style={[styles.body, { color: colors.text }]}>No board yet.</Text>;
+  }
+  const rootId = shown.listed.ok ? shown.listed.board.orchestratorThreadId : null;
+  if (rootId === null) {
     return (
       <Text style={[styles.body, { color: colors.text }]}>
-        {shown === null ? "No board yet." : "This board's orchestrator has not started."}
+        This board's orchestrator has not started.
       </Text>
     );
   }

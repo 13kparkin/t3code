@@ -34,7 +34,6 @@ function rowLines(row: TimelineRow): ReadonlyArray<{ id: string; text: string; e
   }
 }
 
-/** A thread's messages and tool calls, read-only, streamed while open. */
 export function ThreadActivity({
   environmentId,
   threadId,

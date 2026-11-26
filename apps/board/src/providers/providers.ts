@@ -10,6 +10,7 @@ import {
   type ServerProvider,
 } from "@t3tools/contracts";
 
+import type { PickerValue } from "../domain/picker";
 import type { OrchestratorSelection } from "../orchestrator/launch";
 
 export type SignInState = "signed-in" | "signed-out" | "unknown";
@@ -49,13 +50,6 @@ export interface PickableInstance {
   /** Every model the instance runs, legacy ones too, though the picker lists only `models`. A role may name a legacy model. */
   readonly offered: ReadonlyArray<string>;
   readonly defaultModel: string | null;
-}
-
-/** What the picker holds: an instance, the model typed or chosen for it, and its effort, empty for the model's own default. */
-export interface PickerValue {
-  readonly instanceId: string;
-  readonly model: string;
-  readonly effort: string;
 }
 
 export const NO_PICK: PickerValue = { instanceId: "", model: "", effort: "" };

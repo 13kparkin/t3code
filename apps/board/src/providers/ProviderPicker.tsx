@@ -3,7 +3,8 @@ import { useId } from "react";
 
 import { engineEnvironmentIdAtom } from "../state/projects";
 import { ProviderGlyph } from "../usage/ProviderGlyph";
-import { effortOf, type PickableInstance, type PickerValue } from "./providers";
+import type { PickerValue } from "../domain/picker";
+import { effortOf, type PickableInstance } from "./providers";
 import { SignIn } from "./SignIn";
 
 const STATE_TEXT = {

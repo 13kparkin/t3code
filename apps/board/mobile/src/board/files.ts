@@ -1,71 +1,11 @@
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
-import {
-  type AtomCommandResult,
-  createEnvironmentRpcCommand,
-  runAtomCommand,
-  squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
-import { type EnvironmentId, ProjectListEntriesError, WS_METHODS } from "@t3tools/contracts";
+import type { ListedBoard } from "@agent-board/app/domain/board";
 import * as Option from "effect/Option";
-import * as Schema from "effect/Schema";
-import { Atom, type AtomRegistry } from "effect/reactivity";
+import { Atom } from "effect/reactivity";
 import { AppState } from "react-native";
 
-import { boardProjectsAtom, engineStatusAtom } from "../connection/engine";
-import { connectionAtomRuntime } from "../connection/runtime";
-import {
-  boardKey,
-  createBoardStore,
-  type ListedBoard,
-  listBoards,
-  type ProjectFiles,
-} from "./boardAtoms";
-
-const listEntries = createEnvironmentRpcCommand(connectionAtomRuntime, {
-  label: "phone:board:list-entries",
-  tag: WS_METHODS.projectsListEntries,
-});
-const readFile = createEnvironmentRpcCommand(connectionAtomRuntime, {
-  label: "phone:board:read-file",
-  tag: WS_METHODS.projectsReadFile,
-});
-const isProjectListEntriesError = Schema.is(ProjectListEntriesError);
-
-type FailedCommand = Extract<AtomCommandResult<unknown, unknown>, { readonly _tag: "Failure" }>;
-
-const commandError = (result: FailedCommand) => {
-  const failure = squashAtomCommandFailure(result);
-  return failure instanceof Error ? failure : new Error(String(failure));
-};
-
-function engineFiles(registry: AtomRegistry.AtomRegistry, environmentId: EnvironmentId) {
-  return {
-    list: async (cwd, directoryPath) => {
-      const result = await runAtomCommand(
-        registry,
-        listEntries,
-        { environmentId, input: { cwd, directoryPath } },
-        { reportFailure: false },
-      );
-      if (result._tag === "Success") return result.value.entries;
-      const failure = squashAtomCommandFailure(result);
-      if (isProjectListEntriesError(failure) && failure.failure === "directory_list_failed") {
-        return null;
-      }
-      throw commandError(result);
-    },
-    read: async (cwd, relativePath) => {
-      const result = await runAtomCommand(
-        registry,
-        readFile,
-        { environmentId, input: { cwd, relativePath, allowMissing: true } },
-        { reportFailure: false },
-      );
-      if (result._tag === "Failure") throw commandError(result);
-      return result.value.exists === false ? null : result.value.contents;
-    },
-  } satisfies ProjectFiles;
-}
+import { boardProjectsAtom, engineFiles, engineStatusAtom } from "../connection/engine";
+import { boardKey, createBoardStore, listBoards, type ProjectFiles } from "./boardAtoms";
 
 export const connectedEnvironmentAtom = Atom.make((get) => {
   const status = get(engineStatusAtom);
@@ -95,11 +35,9 @@ export interface BoardChoice {
 
 export interface BoardList {
   readonly boards: ReadonlyArray<BoardChoice>;
-  /** A project whose boards could not be listed, with why. */
   readonly problems: ReadonlyArray<string>;
 }
 
-/** Every board in the projects that hold one, null until listed. */
 export const boardListAtom = Atom.make((get): BoardList | Error | null => {
   const projects = get(boardProjectsAtom);
   const files = get(engineFilesAtom);
@@ -131,7 +69,6 @@ export const boardListAtom = Atom.make((get): BoardList | Error | null => {
   return Option.getOrNull(get.self<BoardList | Error | null>());
 }).pipe(Atom.withLabel("phone-board-list"));
 
-/** The board the picker chose, by key. Null or a key no longer listed means the first board. */
 export const pickedBoardAtom = Atom.make<string | null>(null).pipe(
   Atom.keepAlive,
   Atom.withLabel("phone-picked-board"),

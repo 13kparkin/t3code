@@ -80,6 +80,11 @@ export interface BoardIssue {
   readonly message: string;
 }
 
+/** A folder under `.agentboard` with its parsed `board.json`, or why it did not parse. */
+export type ListedBoard =
+  | { readonly ok: true; readonly folder: string; readonly board: Board }
+  | { readonly ok: false; readonly folder: string; readonly issue: BoardIssue };
+
 const decodeBoardJson = Schema.decodeUnknownResult(Schema.fromJsonString(Board));
 const formatIssues = SchemaIssue.makeFormatterStandardSchemaV1();
 
