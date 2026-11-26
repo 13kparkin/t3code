@@ -29,6 +29,7 @@ import { keptWorktreesAtom } from "../state/mergeCleanup";
 import { setHiddenAdditions } from "../state/reviews";
 import type { ValidBoard } from "../store/boardFiles";
 import { openAgentPanel } from "../state/agentPanel";
+import { deleteAudio, recorderAtom, splitHere } from "../state/recorder";
 import {
   deleteCall,
   moveFreeAgent,
@@ -36,15 +37,24 @@ import {
   setCardState,
   startFreeAgent,
 } from "../state/boardCards";
-import { splitCards } from "../state/cardStates";
+import { archivedBesideLanes, splitCards } from "../state/cardStates";
 import { ContextMenu } from "../ui/ContextMenu";
 import type { PopMenuItem } from "../ui/MenuList";
 import { FREE_CARD } from "./FreeAgentCard";
 import { AgentPanel } from "./AgentPanel";
+import { ArtifactArea } from "./ArtifactArea";
 import { ForYouLane } from "./ForYouLane";
 import { ForYouPage } from "./ForYouPage";
 import { Lanes } from "./Lanes";
-import { besideLanes, forYouHeight, hiddenFilters, layoutBoard, withCards } from "./layout";
+import {
+  besideLanes,
+  forYouHeight,
+  hiddenFilters,
+  LANE_GAP,
+  layoutBoard,
+  ORCHESTRATOR_BOX,
+  withCards,
+} from "./layout";
 import { OrchestratorCard } from "./OrchestratorCard";
 import { TicketPanel } from "./TicketPanel";
 import { useStoreErrorReports } from "./useStoreErrorReports";
@@ -99,6 +109,9 @@ export function BoardScreen({
   const freeAgents = board.freeAgents ?? NO_FREE;
   const calls = board.calls ?? NO_CALLS;
   const now = useAtomValue(clockAtom);
+  const recorder = useAtomValue(recorderAtom);
+  const unarchived = calls.filter((call) => cardStates[call.id] !== "archived");
+  const callSplit = splitHere(unarchived, now, recorder);
   const cards = useMemo(
     () => splitCards(fullModel, freeAgents, cardStates, now),
     [fullModel, freeAgents, cardStates, now],
@@ -165,16 +178,19 @@ export function BoardScreen({
           label: "Delete",
           onSelect: () => void deleteCall(registry, project, listed, call.id).then(setCardError),
         },
+        ...(recorder?.recordings.some((take) => take.callId === call.id) === true
+          ? [
+              {
+                label: "Delete audio",
+                onSelect: () => void deleteAudio(call.id),
+              },
+            ]
+          : []),
       ],
     });
   };
   const archived = useMemo(
-    () => [
-      ...cards.archived,
-      ...calls
-        .filter((call) => cardStates[call.id] === "archived")
-        .map((call) => ({ key: call.id, label: call.title })),
-    ],
+    () => [...cards.archived, ...archivedBesideLanes(calls, cardStates)],
     [cards.archived, calls, cardStates],
   );
   useAtomValue(issuePullAtom(`${project.id}/${listed.folder}`));
@@ -311,26 +327,35 @@ export function BoardScreen({
                 })
               }
             >
-              <OrchestratorCard
-                project={project}
-                listed={listed}
-                stats={{ ...stats, forYouOpen: forYou.open }}
-                builders={builders}
-                hidden={hidden}
-                additions={additions}
-                onChangeHidden={changeHidden}
-                doneCount={doneCount + model.lanes.merged.length + model.lanes.off_path.length}
-                todoAgents={model.unassigned.length}
-                archived={archived}
-                onUnarchive={(key) => saveCard(key, null)}
-              />
-              <CallCards
-                boardId={board.id}
-                calls={calls}
-                states={cardStates}
-                onAdd={() => setEditing("new")}
-                onMenu={openCallMenu}
-              />
+              <div
+                className="absolute flex items-start"
+                style={{ left: ORCHESTRATOR_BOX.x, top: ORCHESTRATOR_BOX.y, gap: LANE_GAP }}
+              >
+                <div className="flex" style={{ gap: LANE_GAP }}>
+                  <OrchestratorCard
+                    project={project}
+                    listed={listed}
+                    stats={{ ...stats, forYouOpen: forYou.open }}
+                    builders={builders}
+                    hidden={hidden}
+                    additions={additions}
+                    onChangeHidden={changeHidden}
+                    doneCount={doneCount + model.lanes.merged.length + model.lanes.off_path.length}
+                    todoAgents={model.unassigned.length}
+                    archived={archived}
+                    onUnarchive={(key) => saveCard(key, null)}
+                  />
+                  <CallCards
+                    boardId={board.id}
+                    shown={callSplit.shown}
+                    later={callSplit.later}
+                    states={cardStates}
+                    onAdd={() => setEditing("new")}
+                    onMenu={openCallMenu}
+                  />
+                </div>
+                <ArtifactArea project={project} listed={listed} calls={callSplit.finished} />
+              </div>
               <Lanes
                 layout={layout}
                 model={model}

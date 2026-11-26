@@ -4,6 +4,17 @@ import * as Schema from "effect/Schema";
 
 import { ReviewTemplate } from "../domain/reviewTemplate";
 
+const FileBox = Schema.Struct({
+  x: Schema.Finite,
+  y: Schema.Finite,
+  width: Schema.optionalKey(Schema.Finite),
+  height: Schema.optionalKey(Schema.Finite),
+  open: Schema.optionalKey(Schema.Boolean),
+  /** Raised past every other box of the board when the user presses it. */
+  z: Schema.optionalKey(Schema.Finite),
+});
+export type FileBox = typeof FileBox.Type;
+
 const LocalState = Schema.Struct({
   lastOpenedBoard: Schema.NullOr(
     Schema.Struct({ projectId: Schema.String, folder: Schema.String }),
@@ -43,6 +54,17 @@ const LocalState = Schema.Struct({
   ),
   /** Whether the user accepted the call recording notice. The main process reads it too, and records nothing until it is true. */
   recordingConsent: Schema.Boolean.pipe(Schema.withDecodingDefaultKey(Effect.succeed(false))),
+  /** The start each call last notified for, by call id, so a restart does not notify again and a moved call does. */
+  notifiedCalls: Schema.Record(Schema.String, Schema.String).pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed({})),
+  ),
+  /**
+   * The Artifacts area and the files sections opened from it, by board id then box key: `artifacts`,
+   * `dir:<path>`, or `call:<id>`. `x` and `y` are canvas px from the area's place in the top row.
+   */
+  fileBoxes: Schema.Record(Schema.String, Schema.Record(Schema.String, FileBox)).pipe(
+    Schema.withDecodingDefaultKey(Effect.succeed({})),
+  ),
 });
 export type LocalState = typeof LocalState.Type;
 
@@ -58,6 +80,8 @@ export const EMPTY_LOCAL_STATE: LocalState = {
   lastEditor: null,
   reviewTemplates: [],
   recordingConsent: false,
+  notifiedCalls: {},
+  fileBoxes: {},
 };
 
 const decode = Schema.decodeUnknownOption(Schema.fromJsonString(LocalState));

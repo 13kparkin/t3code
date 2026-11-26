@@ -1,7 +1,7 @@
 import * as Record from "effect/Record";
 
 import { hasFinished } from "../board/ticketStatus";
-import type { CardState, FreeAgent } from "../domain/board";
+import type { CallEvent, CardState, FreeAgent } from "../domain/board";
 import type { AgentView, BoardModel } from "./boardModel";
 
 export interface ArchivedCard {
@@ -64,3 +64,25 @@ export function splitCards(
     archived,
   };
 }
+
+/** Archived calls, and the files, folders, and take files archived from the Artifacts area, each by its name. */
+export const archivedBesideLanes = (
+  calls: ReadonlyArray<CallEvent>,
+  states: { readonly [key: string]: CardState },
+): ReadonlyArray<ArchivedCard> => [
+  ...calls
+    .filter((call) => states[call.id] === "archived")
+    .map((call) => ({ key: call.id, label: call.title })),
+  ...Object.keys(states)
+    .filter((key) => states[key] === "archived" && /^(file|dir|take):/.test(key))
+    .map((key) => ({
+      key,
+      label: key.slice(Math.max(key.indexOf(":"), key.lastIndexOf("/")) + 1),
+    })),
+];
+
+/** Whether a folder, or a folder it sits in, was archived from the Artifacts area, which hides its section. */
+export const folderArchived = (states: { readonly [key: string]: CardState }, path: string) =>
+  path
+    .split("/")
+    .some((_, at, parts) => states[`dir:${parts.slice(0, at + 1).join("/")}`] === "archived");

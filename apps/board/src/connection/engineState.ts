@@ -1,4 +1,4 @@
-import type { Recording, RecordRequest } from "../domain/recording";
+import type { CallToast, Recording, RecordingFile, RecordRequest } from "../domain/recording";
 
 export type EngineState =
   | { readonly phase: "connecting" }
@@ -52,6 +52,18 @@ export interface BoardBridge {
   readonly browser: BrowserHost;
   readonly appUpdate: AppUpdateHost;
   readonly recorder: RecorderHost;
+  readonly calls: CallToastHost;
+}
+
+/** Call start toasts on Windows. The renderer picks the calls, and main shows them and wakes it. */
+export interface CallToastHost {
+  /** Replaces main's one wake timer. Null clears it. */
+  readonly wakeAt: (epochMs: number | null) => void;
+  readonly onWake: (listener: () => void) => () => void;
+  readonly notify: (toast: CallToast) => void;
+  /** Fires when a toast's Record is pressed. `takeRecord` then returns it once. */
+  readonly onRecord: (listener: () => void) => () => void;
+  readonly takeRecord: () => Promise<CallToast | null>;
 }
 
 export type RecorderState =
@@ -81,8 +93,10 @@ export interface RecorderHost {
   readonly onSnapshot: (listener: (snapshot: RecorderSnapshot) => void) => () => void;
   readonly start: (request: RecordRequest) => void;
   readonly stop: () => void;
-  /** Removes every take of the call from this PC. Does nothing while that call records. */
-  readonly deleteAudio: (callId: string) => void;
+  /** Removes every take of the call from this PC, true once none is left. Does nothing while that call records. */
+  readonly deleteAudio: (callId: string) => Promise<boolean>;
+  /** Opens a take's file in Windows' default app, since the engine cannot read files on this PC. `folder` when no app opens it and its folder opened instead. */
+  readonly openFile: (file: RecordingFile) => Promise<"opened" | "folder" | "missing">;
 }
 
 /** The app's own release, which only the packaged app checks for and installs. */

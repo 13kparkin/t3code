@@ -13,6 +13,22 @@ export const RecordRequest = Schema.Struct({
 });
 export type RecordRequest = typeof RecordRequest.Type;
 
+/** One file of a take on this PC, found by its call and start. Only the names the recorder writes. */
+export const RecordingFile = Schema.Struct({
+  callId: CallId,
+  startedAt: Schema.String.check(Schema.isMaxLength(64)),
+  file: Schema.Literals(["me.wav", "them.wav", "recording.json"]),
+});
+export type RecordingFile = typeof RecordingFile.Type;
+
+/** A call start toast. Its Record button carries all of it, so a press after a restart still knows the call. */
+export const CallToast = Schema.Struct({
+  projectId: Schema.String.check(Schema.isMaxLength(200)),
+  folder: Schema.String.check(Schema.isMaxLength(200)),
+  request: RecordRequest,
+});
+export type CallToast = typeof CallToast.Type;
+
 /** One take of a call, kept beside its `me.wav` and `them.wav` as `recording.json`. */
 export const Recording = Schema.Struct({
   callId: Schema.String,

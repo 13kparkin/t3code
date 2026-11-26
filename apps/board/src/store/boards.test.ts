@@ -9,6 +9,7 @@ import {
   changeCardState,
   listBoards,
   type ProjectFiles,
+  markCallRecorded,
   putCall,
   refreshRoles,
   removeCall,
@@ -379,6 +380,29 @@ describe("call events", () => {
     await removeCall(files, CWD, target.folder, sync.id);
     expect(savedBoard(store)?.calls).toEqual([standup]);
     expect(savedBoard(store)?.cardStates).toEqual({ [standup.id]: "archived" });
+  });
+
+  it("Given a call judged finished, when its start moved or it was recorded before the removal ran, then the call stays", async () => {
+    const { files, store, target } = await boardWith("orchestrator");
+    const moved = { ...sync, start: "2026-11-27T15:00:00.000Z" };
+    await putCall(files, CWD, target.folder, sync);
+    await putCall(files, CWD, target.folder, standup);
+    await Promise.all([
+      putCall(files, CWD, target.folder, moved),
+      removeCall(files, CWD, target.folder, sync.id, sync),
+      markCallRecorded(files, CWD, target.folder, standup.id, standup.start),
+      removeCall(files, CWD, target.folder, standup.id, standup),
+    ]);
+    expect(savedBoard(store)?.calls).toEqual([moved, { ...standup, recordedAt: standup.start }]);
+    await putCall(files, CWD, target.folder, { ...standup, title: "Standup moved" });
+    expect(savedBoard(store)?.calls?.[1]).toEqual({
+      ...standup,
+      title: "Standup moved",
+      recordedAt: standup.start,
+    });
+    const expired = { ...standup, title: "Standup moved", recordedAt: standup.start };
+    await removeCall(files, CWD, target.folder, standup.id, expired);
+    expect(savedBoard(store)?.calls).toEqual([moved]);
   });
 });
 

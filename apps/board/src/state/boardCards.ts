@@ -10,6 +10,7 @@ import {
   placeFreeAgent,
   type ProjectFiles,
   putCall,
+  markCallRecorded,
   removeCall,
   type ValidBoard,
 } from "../store/boardFiles";
@@ -71,9 +72,21 @@ export const deleteCall = (
   project: BoardProject,
   listed: ValidBoard,
   id: string,
+  judged?: Pick<CallEvent, "start" | "recordedAt">,
 ) =>
   changeBoardFile(registry, project, (files) =>
-    removeCall(files, project.workspaceRoot, listed.folder, id),
+    removeCall(files, project.workspaceRoot, listed.folder, id, judged),
+  );
+
+export const markRecorded = (
+  registry: AtomRegistry.AtomRegistry,
+  project: BoardProject,
+  listed: ValidBoard,
+  id: string,
+  recordedAt: string,
+) =>
+  changeBoardFile(registry, project, (files) =>
+    markCallRecorded(files, project.workspaceRoot, listed.folder, id, recordedAt),
   );
 
 /**

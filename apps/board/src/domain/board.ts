@@ -25,16 +25,20 @@ export type FreeAgent = typeof FreeAgent.Type;
 export const CallApp = Schema.Literals(["zoom", "teams", "chrome", "edge"]);
 export type CallApp = typeof CallApp.Type;
 
+const Instant = Text.check(
+  Schema.makeFilter((text) => !Number.isNaN(Date.parse(text)), {
+    message: "must be a date and time",
+  }),
+);
+
 const CallEvent = Schema.Struct({
   id: Text,
   title: Text.check(Schema.isMaxLength(80)),
   /** ISO 8601 with an offset. */
-  start: Text.check(
-    Schema.makeFilter((start) => !Number.isNaN(Date.parse(start)), {
-      message: "must be a date and time",
-    }),
-  ),
+  start: Instant,
   app: CallApp,
+  /** When a take of the call first started on any PC, so a PC that holds no takes keeps the call while a take can exist. */
+  recordedAt: Schema.optionalKey(Instant),
 });
 export type CallEvent = typeof CallEvent.Type;
 

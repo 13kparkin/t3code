@@ -426,12 +426,33 @@ describe("recovery and retention", () => {
       endReason: "stopped",
       deleteAfter: "2026-12-02T10:00:00.000Z",
     });
-    rig.recorder.remove("old-call");
+    expect(rig.recorder.remove("old-call")).toBe(true);
     expect(NodeFS.existsSync(NodePath.join(rig.root, "old-call"))).toBe(false);
     expect(rig.recorder.snapshot().recordings).toEqual([]);
     await startRecording(rig);
-    rig.recorder.remove("call-1");
+    expect(rig.recorder.remove("call-1")).toBe(false);
     rig.recorder.remove("CALL-1");
     expect(NodeFS.existsSync(NodePath.join(rig.root, "call-1", "1"))).toBe(true);
+  });
+
+  it("Given two takes of a call, when a file of one is opened, then it resolves inside that take's folder only", () => {
+    const rig = setup();
+    const later = "2026-11-25T11:00:00.000Z";
+    const ended = { endReason: "stopped", deleteAfter: "2026-12-02T10:00:00.000Z" } as const;
+    writeTake(rig.root, "old-call", "1", { ...ended, endedAt: STARTED_AT });
+    writeTake(rig.root, "old-call", "2", { ...ended, startedAt: later, endedAt: later });
+    expect(rig.recorder.fileOf({ callId: "old-call", startedAt: later, file: "me.wav" })).toBe(
+      NodePath.join(rig.root, "old-call", "2", "me.wav"),
+    );
+    expect(
+      rig.recorder.fileOf({ callId: "old-call", startedAt: STARTED_AT, file: "recording.json" }),
+    ).toBe(NodePath.join(rig.root, "old-call", "1", "recording.json"));
+    expect(
+      rig.recorder.fileOf({
+        callId: "old-call",
+        startedAt: "2026-01-01T00:00:00.000Z",
+        file: "me.wav",
+      }),
+    ).toBeNull();
   });
 });

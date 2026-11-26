@@ -1,5 +1,6 @@
 import { Atom, type AtomRegistry } from "effect/reactivity";
 
+import type { FileBox, LocalState } from "../store/localState";
 import { localState } from "./boards";
 
 export type FrameOrder = Readonly<Record<string, ReadonlyArray<string>>>;
@@ -66,3 +67,30 @@ export const filterFlipsAtom = Atom.family((boardId: string) =>
       .join(",");
   }).pipe(Atom.withLabel(`filter-flips:${boardId}`)),
 );
+
+type FileBoxes = LocalState["fileBoxes"];
+
+/** The Artifacts area and the files sections of every board: where each sits, its size, and whether it is open. */
+export const fileBoxesAtom = Atom.writable(
+  (get): FileBoxes => {
+    void localState.read().then((state) => get.setSelf(state.fileBoxes));
+    return {};
+  },
+  (context, next: FileBoxes) => context.setSelf(next),
+).pipe(Atom.keepAlive, Atom.withLabel("file-boxes"));
+
+/** Changes one box of one board, from what is saved or `fallback`, in the atom and in `local-state.json`. */
+export function changeFileBox(
+  registry: AtomRegistry.AtomRegistry,
+  boardId: string,
+  key: string,
+  fallback: FileBox,
+  change: (box: FileBox) => FileBox,
+) {
+  const apply = (all: FileBoxes) => ({
+    ...all,
+    [boardId]: { ...all[boardId], [key]: change(all[boardId]?.[key] ?? fallback) },
+  });
+  registry.set(fileBoxesAtom, apply(registry.get(fileBoxesAtom)));
+  return localState.update((state) => ({ ...state, fileBoxes: apply(state.fileBoxes) }));
+}

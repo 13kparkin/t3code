@@ -103,8 +103,8 @@ export function OrchestratorCard({
     <section
       aria-label="Orchestrator card"
       data-testid="orchestrator-card"
-      className="absolute rounded-xl border border-line bg-panel p-3 shadow-panel"
-      style={{ left: ORCHESTRATOR_BOX.x, top: ORCHESTRATOR_BOX.y, width: ORCHESTRATOR_BOX.width }}
+      className="shrink-0 rounded-xl border border-line bg-panel p-3 shadow-panel"
+      style={{ width: ORCHESTRATOR_BOX.width }}
     >
       <header className="flex items-center gap-2">
         <h3 className="min-w-0 flex-1 truncate font-semibold">{board.name}</h3>
@@ -254,6 +254,8 @@ export function OrchestratorCard({
             <span onPointerDown={(event) => event.stopPropagation()}>
               <PopMenu
                 label={`${groups.board.length} board artifacts`}
+                // The card's right edge sits near the sidebar at the board's default pan.
+                align="start"
                 triggerClass="inline-flex items-center gap-1 rounded border border-line px-1.5 text-[11px] leading-[18px] text-muted hover:bg-hover hover:text-fg"
                 trigger={
                   <>

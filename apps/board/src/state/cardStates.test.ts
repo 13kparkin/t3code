@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import type { Ticket } from "../domain/ticket";
 import type { AgentView, BoardModel } from "./boardModel";
-import { agentLane, splitCards } from "./cardStates";
+import { agentLane, archivedBesideLanes, folderArchived, splitCards } from "./cardStates";
 
 const agent = (threadId: string, extra: Partial<AgentView> = {}): AgentView => ({
   threadId,
@@ -120,5 +120,36 @@ describe("an unclaimed agent's lane", () => {
       todo: split.model.unassigned.map((entry) => entry.threadId),
       done: split.done.agents.map((entry) => entry.threadId),
     }).toEqual({ todo: ["run"], done: ["end"] });
+  });
+});
+
+describe("cards archived beside the lanes", () => {
+  const states = {
+    c1: "archived",
+    "file:brief.md": "archived",
+    "dir:artifacts/board": "archived",
+    "take:c2/2026-11-26T10:00:00.000Z/them.wav": "archived",
+    "file:kept.md": "todo",
+  } as const;
+
+  it("Given archived calls, files, folders, and take files, then each is listed by its name", () => {
+    const calls = [
+      { id: "c1", title: "Design sync", start: "2026-11-26T10:00:00.000Z", app: "chrome" },
+    ] as const;
+    expect(archivedBesideLanes(calls, states).map((card) => card.label)).toEqual([
+      "Design sync",
+      "brief.md",
+      "board",
+      "them.wav",
+    ]);
+  });
+
+  it.each([
+    ["the archived folder", "artifacts/board", true],
+    ["a folder inside it", "artifacts/board/runs", true],
+    ["its parent", "artifacts", false],
+    ["a folder whose name only starts the same", "artifacts/boards", false],
+  ])("Given %s, then its section hides: %s", (_name, path, hidden) => {
+    expect(folderArchived(states, path)).toBe(hidden);
   });
 });
