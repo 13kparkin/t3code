@@ -7,7 +7,7 @@ import { type ReactNode, useContext, useRef } from "react";
 import { useArtifacts } from "../artifacts/ArtifactsContext";
 import { callNotesFile, dropOnComposer } from "../chat/cardAttachment";
 import type { CallEvent } from "../domain/board";
-import { type CallNotes, callNotesForYouId, parseCallNotes } from "../domain/callNotes";
+import { type CallNotes, callNotesForYouId, parseCallNotes, WHO } from "../domain/callNotes";
 import { locate } from "../files/target";
 import { showForYouCard } from "../sidebar/ForYouRow";
 import { artifactContentsAtom, artifactContentsKey, type LoadedArtifact } from "../state/artifacts";
@@ -39,12 +39,14 @@ export function CallNotesCard({
 }: {
   artifact: Artifact;
   call: Pick<CallEvent, "id" | "title">;
-  transcript: Artifact | undefined;
+  transcript: Artifact;
   board: { readonly projectId: string; readonly folder: string; readonly boardId: string };
 }) {
   const registry = useContext(RegistryContext);
   const { files, open } = useArtifacts();
   const at = locate(files.roots, artifact.absolutePath);
+  // shortcut: read once per mount, so a rewritten notes.json shows when the section reopens;
+  // re-read on a timer like `smokeAtom` if that confuses users.
   const loaded = useAtomValue(
     at === null
       ? NOT_LISTED
@@ -105,11 +107,9 @@ export function CallNotesCard({
       <div className="flex items-center gap-1.5">
         <NotebookPen className="size-3.5 shrink-0 text-muted" aria-hidden />
         <span className="min-w-0 flex-1 truncate text-[12px] font-semibold">Call notes</span>
-        {transcript !== undefined && (
-          <button type="button" onClick={() => open(transcript)} className={BUTTON}>
-            Transcript
-          </button>
-        )}
+        <button type="button" onClick={() => open(transcript)} className={BUTTON}>
+          Transcript
+        </button>
         <button type="button" onClick={() => open(artifact)} className={BUTTON}>
           notes.json
         </button>
@@ -131,7 +131,7 @@ export function CallNotesCard({
             "Actions",
             notes.actions.map((action) => (
               <li key={`${action.who} ${action.text}`}>
-                {action.who === "me" ? "Me" : "Them"}: {action.text}
+                {WHO[action.who]}: {action.text}
               </li>
             )),
           )}
@@ -139,7 +139,7 @@ export function CallNotesCard({
             "Ticket notes",
             notes.ticketNotes.map((note) => (
               <li key={note.ticket}>
-                {note.ticket}: {note.text} {forYou(note.ticket)}
+                {note.ticket}: {note.text} {forYou(`t-${note.ticket}`)}
               </li>
             )),
           )}
@@ -147,7 +147,7 @@ export function CallNotesCard({
             "New work",
             notes.newWork.map((work, index) => (
               <li key={work.title}>
-                {work.title}: {work.why} {forYou(`new-${index + 1}`)}
+                {work.title}: {work.why} {forYou(`n-${index + 1}`)}
               </li>
             )),
           )}

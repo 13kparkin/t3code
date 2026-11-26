@@ -187,7 +187,7 @@ export function ArtifactArea({
                   ? "Failed. Press to try again."
                   : "Asks the orchestrator for notes and For you items"
           }
-          onClick={() => void requestCallNotes(registry, project, listed, call)}
+          onClick={() => void requestCallNotes(registry, project, listed.folder, call)}
         />
       </li>,
       ...(request?.status === "failed"
@@ -271,7 +271,7 @@ export function ArtifactArea({
                 ? "Failed. Transcribe to try again."
                 : "Writes Me and Them lines on the engine"
           }
-          onClick={() => void transcribeCall(registry, project, listed, call.id)}
+          onClick={() => void transcribeCall(registry, project, listed.folder, call.id)}
         />
       </li>,
       ...(job?.status === "failed"

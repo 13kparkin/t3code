@@ -5,7 +5,7 @@ import * as SchemaIssue from "effect/SchemaIssue";
 const Line = (max: number) => Schema.String.check(Schema.isNonEmpty(), Schema.isMaxLength(max));
 
 /** What the `call-notes` agent writes to `artifacts/calls/<callId>/notes.json`. */
-export const CallNotes = Schema.Struct({
+const CallNotes = Schema.Struct({
   callId: Line(64),
   asOf: Line(64),
   summary: Line(500),
@@ -56,7 +56,7 @@ export const callNotesMessage = (input: {
 export const callNotesForYouId = (callId: string, ticket: string) =>
   `call-${callId.slice(0, 8)}-${ticket}`.toLowerCase();
 
-const WHO = { me: "Me", them: "Them" } as const;
+export const WHO = { me: "Me", them: "Them" } as const;
 
 const section = (heading: string, lines: ReadonlyArray<string>) =>
   lines.length === 0 ? [] : [`## ${heading}`, "", ...lines.map((line) => `- ${line}`), ""];

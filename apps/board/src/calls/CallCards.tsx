@@ -14,7 +14,6 @@ import {
   transcribeCall,
   transcriptionsAtom,
 } from "../state/recorder";
-import type { ValidBoard } from "../store/boardFiles";
 import { CALL_APPS, callAudio, transcribing } from "./recorder";
 
 export const START = new Intl.DateTimeFormat(undefined, {
@@ -31,7 +30,8 @@ export const START = new Intl.DateTimeFormat(undefined, {
  */
 export function CallCards({
   project,
-  listed,
+  folder,
+  boardId,
   shown,
   later,
   states,
@@ -39,7 +39,8 @@ export function CallCards({
   onMenu,
 }: {
   project: EnvironmentProject;
-  listed: ValidBoard;
+  folder: string;
+  boardId: string;
   shown: ReadonlyArray<CallEvent>;
   later: ReadonlyArray<CallEvent>;
   states: Readonly<{ [key: string]: CardState }>;
@@ -52,7 +53,7 @@ export function CallCards({
   const jobs = useAtomValue(transcriptionsAtom);
   const notes = useAtomValue(callNotesRequestsAtom);
   const [all, setAll] = useState(false);
-  const rows = all ? [...shown, ...later] : shown;
+  const listed = all ? [...shown, ...later] : shown;
   const state = recorder?.state;
   return (
     <section
@@ -92,8 +93,8 @@ export function CallCards({
           data-scroll
           className="flex min-h-0 flex-col gap-1.5 overflow-y-auto px-3 pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {rows.length === 0 && <li className="text-[11px] text-faint">No calls coming up.</li>}
-          {rows.map((call) => {
+          {listed.length === 0 && <li className="text-[11px] text-faint">No calls coming up.</li>}
+          {listed.map((call) => {
             const done = states[call.id] === "done";
             const live = state?.status !== "idle" && state?.callId === call.id;
             const failed =
@@ -136,7 +137,7 @@ export function CallCards({
                           onClick={() =>
                             void recordCall(registry, {
                               callId: call.id,
-                              boardId: listed.board.id,
+                              boardId,
                               title: call.title,
                               app: call.app,
                             })
@@ -176,7 +177,7 @@ export function CallCards({
                         <button
                           type="button"
                           disabled={job?.status === "running"}
-                          onClick={() => void transcribeCall(registry, project, listed, call.id)}
+                          onClick={() => void transcribeCall(registry, project, folder, call.id)}
                           className="shrink-0 rounded px-1.5 text-faint hover:bg-hover hover:text-fg disabled:hover:bg-transparent"
                         >
                           {job?.status === "running" ? transcribing(job) : "Transcribe"}

@@ -45,8 +45,9 @@ describe("call notes", () => {
     expect(Result.isFailure(parsed) && parsed.failure).toMatch(/^notes\.json is invalid: /);
   });
 
-  it("Given a call and a ticket, when the For you id is made, then it is the brief's lowercase id", () => {
-    expect(callNotesForYouId(NOTES.callId, "T-42")).toBe("call-1a2b3c4d-t-42");
+  it("Given a ticket note and a new-work item, when their For you ids are made, then they are the brief's lowercase ids and differ for a NEW-1 ticket", () => {
+    expect(callNotesForYouId(NOTES.callId, "t-NEW-1")).toBe("call-1a2b3c4d-t-new-1");
+    expect(callNotesForYouId(NOTES.callId, "n-1")).toBe("call-1a2b3c4d-n-1");
   });
 
   it("Given notes, when they become Markdown, then each part is a section", () => {

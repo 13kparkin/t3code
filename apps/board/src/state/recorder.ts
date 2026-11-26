@@ -24,7 +24,7 @@ import { BOARDS_DIR, type CallEvent } from "../domain/board";
 import { callNotesMessage, callNotesPath } from "../domain/callNotes";
 import { messageOrchestrator } from "../foryou/actions";
 import type { RecordingFile, RecordRequest } from "../domain/recording";
-import type { ValidBoard } from "../store/boardFiles";
+import { readBoard, type ValidBoard } from "../store/boardFiles";
 import { deleteCall, markRecorded } from "./boardCards";
 import { boardEngine, localState, openBoard, projectBoardsAtom } from "./boards";
 import { environmentProjects } from "./projects";
@@ -235,36 +235,50 @@ export const callNotesRequestsAtom = Atom.make<Readonly<Record<string, NotesRequ
 export async function requestCallNotes(
   registry: AtomRegistry.AtomRegistry,
   project: Pick<EnvironmentProject, "environmentId" | "workspaceRoot">,
-  listed: ValidBoard,
+  folder: string,
   call: Pick<CallEvent, "id" | "title">,
 ) {
+  if (registry.get(callNotesRequestsAtom)[call.id]?.status === "sending") return;
   const set = (request: NotesRequest) =>
     registry.update(callNotesRequestsAtom, (all) => ({ ...all, [call.id]: request }));
-  const threadId = listed.board.orchestratorThreadId;
-  if (threadId === null) {
-    return set({
-      status: "failed",
-      message: "Start this board's orchestrator, then press Write call notes.",
-    });
-  }
   set({ status: "sending" });
-  const dir = `${project.workspaceRoot}/${BOARDS_DIR}/${listed.folder}`;
-  const failure = await messageOrchestrator(registry, project.environmentId, threadId, async () =>
-    callNotesMessage({
-      callId: call.id,
-      title: call.title,
-      transcript: `${dir}/${transcriptPath(call.id)}`,
-      notes: `${dir}/${callNotesPath(call.id)}`,
-    }),
-  ).catch((cause: unknown) => (cause instanceof Error ? cause.message : String(cause)));
-  set(failure === null ? { status: "sent" } : { status: "failed", message: failure });
+  const dir = `${project.workspaceRoot}/${BOARDS_DIR}/${folder}`;
+  try {
+    // Read fresh, since the orchestrator may have started while the transcript was written.
+    const { orchestratorThreadId } = await readBoard(
+      boardEngine(registry, project.environmentId).files,
+      project.workspaceRoot,
+      folder,
+    );
+    if (orchestratorThreadId === null) {
+      return set({
+        status: "failed",
+        message: "Start this board's orchestrator, then press Write call notes.",
+      });
+    }
+    const failure = await messageOrchestrator(
+      registry,
+      project.environmentId,
+      orchestratorThreadId,
+      async () =>
+        callNotesMessage({
+          callId: call.id,
+          title: call.title,
+          transcript: `${dir}/${transcriptPath(call.id)}`,
+          notes: `${dir}/${callNotesPath(call.id)}`,
+        }),
+    );
+    set(failure === null ? { status: "sent" } : { status: "failed", message: failure });
+  } catch (cause) {
+    set({ status: "failed", message: cause instanceof Error ? cause.message : String(cause) });
+  }
 }
 
 /** Uses the engine's selected speech model. A failure keeps the audio and shows on the call. */
 export async function transcribeCall(
   registry: AtomRegistry.AtomRegistry,
   project: Pick<EnvironmentProject, "environmentId" | "workspaceRoot">,
-  listed: ValidBoard,
+  folder: string,
   callId: string,
 ) {
   if (recorder === undefined || registry.get(transcriptionsAtom)[callId]?.status === "running") {
@@ -329,14 +343,14 @@ export async function transcribeCall(
       write: (markdown) =>
         boardEngine(registry, project.environmentId).files.write(
           project.workspaceRoot,
-          `${BOARDS_DIR}/${listed.folder}/${transcriptPath(callId)}`,
+          `${BOARDS_DIR}/${folder}/${transcriptPath(callId)}`,
           markdown,
         ),
       deleteAudio: async () => sameTakes(takes, takesOf()) && recorder.deleteAudio(callId),
       progress: (done, total) => set({ status: "running", done, total }),
     });
     set({ status: "written" });
-    void requestCallNotes(registry, project, listed, { id: callId, title: first.title });
+    void requestCallNotes(registry, project, folder, { id: callId, title: first.title });
   } catch (cause) {
     set({ status: "failed", message: failure(cause, missingModel) });
   }
