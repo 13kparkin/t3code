@@ -21,6 +21,7 @@ import {
   transcriptionsAtom,
   transcriptPath,
 } from "../state/recorder";
+import type { Artifact } from "../store/artifacts";
 import type { ValidBoard } from "../store/boardFiles";
 import { ContextMenu } from "../ui/ContextMenu";
 import { ArtifactCard } from "./ArtifactCard";
@@ -153,10 +154,8 @@ export function ArtifactArea({
       .toSorted((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt));
   const transcriptOf = (callId: string) =>
     groups.board.find((file) => file.path === transcriptPath(callId));
-  const notesOf = (callId: string) =>
-    groups.board.find((file) => file.path === callNotesPath(callId));
-  const notesCards = (call: CallEvent, transcript: (typeof groups.board)[number]) => {
-    const notes = notesOf(call.id);
+  const notesCards = (call: CallEvent, transcript: Artifact) => {
+    const notes = groups.board.find((file) => file.path === callNotesPath(call.id));
     if (notes !== undefined) {
       if (states[`file:${notes.path}`] === "archived") return [];
       return [
