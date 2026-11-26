@@ -8,6 +8,14 @@ const SAMPLE_RATE = 16_000;
 const toFloat32 = (samples: Int16Array) =>
   new Uint8Array(Float32Array.from(samples, (sample) => sample / 32768).buffer);
 
+/** True while the call still has exactly the takes that were transcribed, so none would go untranscribed. */
+export const sameTakes = (
+  transcribed: ReadonlyArray<Pick<Recording, "startedAt">>,
+  now: ReadonlyArray<Pick<Recording, "startedAt">>,
+) =>
+  now.length === transcribed.length &&
+  transcribed.every((take) => now.some((other) => other.startedAt === take.startedAt));
+
 /** Deletes the audio after the write. Any failure throws before the write, so the audio stays for a retry. */
 export async function transcribeTakes(input: {
   /** The call's ended takes, in the order they started. */

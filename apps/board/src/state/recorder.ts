@@ -14,7 +14,7 @@ import * as Schema from "effect/Schema";
 import { Atom, AtomRegistry } from "effect/reactivity";
 
 import { dueCalls, isStarting, markNotified, nextWake, splitCalls } from "../calls/dueCalls";
-import { transcribeTakes } from "../calls/transcribe";
+import { sameTakes, transcribeTakes } from "../calls/transcribe";
 import type { RecorderSnapshot } from "../connection/engineState";
 import { connectionAtomRuntime } from "../connection/runtime";
 import { BOARDS_DIR, type CallEvent } from "../domain/board";
@@ -192,7 +192,7 @@ export const deleteAudio = (callId: string) =>
 /** Relative to the board folder. */
 export const transcriptPath = (callId: string) => `artifacts/calls/${callId}/transcript.md`;
 
-export type Transcription =
+type Transcription =
   | { readonly status: "running"; readonly done: number; readonly total: number }
   | { readonly status: "failed"; readonly message: string };
 
@@ -264,15 +264,7 @@ export async function transcribeCall(
           `${BOARDS_DIR}/${folder}/${transcriptPath(callId)}`,
           markdown,
         ),
-      // A take recorded since the transcription started is not in it, so its audio stays.
-      deleteAudio: async () => {
-        const state = registry.get(recorderAtom)?.state;
-        const now = takesOf().map((take) => take.startedAt);
-        const same =
-          now.length === takes.length && takes.every((take) => now.includes(take.startedAt));
-        const live = state !== undefined && state.status !== "idle" && state.callId === callId;
-        return same && !live && recorder.deleteAudio(callId);
-      },
+      deleteAudio: async () => sameTakes(takes, takesOf()) && recorder.deleteAudio(callId),
       progress: (done, total) => set({ status: "running", done, total }),
     });
     set(null);

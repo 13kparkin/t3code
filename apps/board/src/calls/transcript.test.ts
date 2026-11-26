@@ -21,10 +21,13 @@ describe("dropEcho", () => {
     expect(dropEcho(me, them)).toEqual([me[1], me[2]]);
   });
 
-  it("keeps a Me line over Them that shares under 60 percent of its words", () => {
+  it("drops a Me line over Them at 60 percent shared words and keeps one under it", () => {
     const them = [said("them", 0, 5_000, "We should ship on Friday")];
-    const me = [said("me", 1_000, 4_000, "No, Monday works better for QA")];
-    expect(dropEcho(me, them)).toEqual(me);
+    const me = [
+      said("me", 1_000, 4_000, "We should ship Monday instead"),
+      said("me", 1_000, 4_000, "We could ship Monday instead"),
+    ];
+    expect(dropEcho(me, them)).toEqual([me[1]]);
   });
 });
 
@@ -59,25 +62,6 @@ describe("renderTranscript", () => {
         "[00:12] Them: Can we move the release to Friday?",
         "[00:19] Me: Yes, if T-42 lands today.",
         "[62:05] Them: Thanks, bye.",
-        "",
-      ].join("\n"),
-    );
-  });
-
-  it("says when Me was not recorded", () => {
-    const header = {
-      title: "Design sync",
-      app: "chrome",
-      from: new Date(2026, 10, 26, 10, 0),
-      to: new Date(2026, 10, 26, 10, 5),
-      meRecorded: false,
-    } as const;
-    expect(renderTranscript(header, [said("them", 1_000, 2_000, "Hello?")])).toBe(
-      [
-        "# Design sync",
-        "Recorded 2026-11-26 10:00 to 10:05 from Chrome. Me was not recorded. Them is Chrome's audio.",
-        "",
-        "[00:01] Them: Hello?",
         "",
       ].join("\n"),
     );

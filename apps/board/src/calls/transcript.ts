@@ -9,7 +9,7 @@ export interface Said {
   readonly text: string;
 }
 
-export interface TranscriptHeader {
+interface TranscriptHeader {
   readonly title: string;
   readonly app: CallApp;
   readonly from: Date;

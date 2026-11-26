@@ -1,5 +1,5 @@
 /** A range of samples, `end` exclusive. */
-export interface Span {
+interface Span {
   readonly start: number;
   readonly end: number;
 }

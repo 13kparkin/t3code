@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import type { Recording, TrackRange } from "../domain/recording";
-import { transcribeTakes } from "./transcribe";
+import { sameTakes, transcribeTakes } from "./transcribe";
 
 const RATE = 16_000;
 // Local times, so the header reads the same in every time zone.
@@ -106,6 +106,21 @@ describe("transcribeTakes", () => {
     ]);
   });
 
+  it("keeps a speech run whole across a read window and reads past the first window", async () => {
+    const { run, events } = setup({
+      ...CALL,
+      [`${FIRST} them.wav`]: track(320, [
+        [299, 302, 3000],
+        [310, 312, 5000],
+      ]),
+    });
+    await run();
+    const written = events.find((event) => event.startsWith("write")) ?? "";
+    expect(
+      written.split("\n").filter((line) => line.startsWith("[0") && line.includes("Them:")),
+    ).toEqual(["[04:59] Them: Can we move the release to Friday?", "[05:10] Them: Thanks, bye."]);
+  });
+
   it("keeps the audio and writes nothing when a segment fails", async () => {
     const { run, events } = setup(CALL, { failAt: 2 });
     await expect(run()).rejects.toThrow("The engine is busy.");
@@ -134,5 +149,14 @@ describe("transcribeTakes", () => {
     expect(events.find((event) => event.startsWith("write"))?.split("\n")[2]).toContain(
       "Me was not recorded.",
     );
+  });
+});
+
+describe("sameTakes", () => {
+  it("allows the delete only while the call has exactly the transcribed takes", () => {
+    const done = [{ startedAt: FIRST }, { startedAt: SECOND }];
+    expect(sameTakes(done, [{ startedAt: SECOND }, { startedAt: FIRST }])).toBe(true);
+    expect(sameTakes(done, [...done, { startedAt: at(40) }])).toBe(false);
+    expect(sameTakes(done, [{ startedAt: FIRST }, { startedAt: at(40) }])).toBe(false);
   });
 });
