@@ -13,6 +13,7 @@
     "@agent-board/app": "workspace:*",
     "@react-navigation/bottom-tabs": "7.21.0",
     "@react-navigation/native": "7.5.1",
+    "@tabler/icons-react-native": "^3.44.0",
     "effect": "catalog:",
     "expo": "58.0.23",
     "expo-build-properties": "~58.0.12",
@@ -20,7 +21,8 @@
     "react": "catalog:",
     "react-native": "0.88.1",
     "react-native-safe-area-context": "~5.11.1",
-    "react-native-screens": "file:../../mobile/deps/react-native-screens-5.0.0-t3.61.tgz"
+    "react-native-screens": "file:../../mobile/deps/react-native-screens-5.0.0-t3.61.tgz",
+    "react-native-svg": "15.16.1"
   },
   "devDependencies": {
     "@types/react": "catalog:"
