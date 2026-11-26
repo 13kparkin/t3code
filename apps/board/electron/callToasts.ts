@@ -19,12 +19,11 @@ const xmlText = (text: string) =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&apos;");
 
-/** Stays on screen until pressed, as Electron's own `timeoutType: "never"` toast does. Dismiss is Windows' own button and never starts the app. */
+/** Dismiss is Windows' own button, as in Electron's own toasts, so it never starts the app. */
 export const toastXml = (toast: CallToast) =>
   [
-    `<toast scenario="reminder"><visual><binding template="ToastGeneric">`,
+    `<toast><visual><binding template="ToastGeneric">`,
     `<text>${xmlText(`${toast.request.title} is starting`)}</text>`,
-    `<text>${xmlText(toast.board)}</text>`,
     `</binding></visual><actions>`,
     `<action content="Record" arguments="${xmlText(JSON.stringify(toast))}" activationType="foreground"/>`,
     `<action content="Dismiss" arguments="dismiss" activationType="system"/>`,

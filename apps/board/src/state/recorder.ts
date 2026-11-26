@@ -30,7 +30,6 @@ export const secondAtom = Atom.make((get): number => {
 export interface BoardCall extends CallEvent {
   readonly projectId: string;
   readonly folder: string;
-  readonly board: string;
   readonly boardId: string;
 }
 
@@ -52,7 +51,6 @@ export const chromeCallsAtom = Atom.make((get): ReadonlyArray<BoardCall> =>
             ...call,
             projectId: project.id,
             folder,
-            board: board.name,
             boardId: board.id,
           }));
       });
@@ -72,7 +70,6 @@ async function notifyDue(list: ReadonlyArray<BoardCall>, now: number) {
     calls.notify({
       projectId: call.projectId,
       folder: call.folder,
-      board: call.board,
       request: { callId: call.id, boardId: call.boardId, title: call.title, app: call.app },
     });
   }

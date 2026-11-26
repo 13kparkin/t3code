@@ -6,7 +6,6 @@ import { decodeToastRecord, toastXml } from "./callToasts";
 const TOAST = {
   projectId: "project-1",
   folder: "t3-board",
-  board: "Ops & <Planning>",
   request: {
     callId: "call-1",
     boardId: "board-1",
@@ -33,7 +32,6 @@ describe("the call start toast", () => {
 
   it("Given a title with markup, then the text is escaped and reads as the title", () => {
     expect(xml).toContain("<text>Design &quot;sync&quot; &amp; &lt;review&gt; is starting</text>");
-    expect(xml).toContain("<text>Ops &amp; &lt;Planning&gt;</text>");
   });
 
   it("Given its Record button pressed, then the activation decodes to the call it names", () => {

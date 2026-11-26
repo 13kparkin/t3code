@@ -17,7 +17,6 @@ export type RecordRequest = typeof RecordRequest.Type;
 export const CallToast = Schema.Struct({
   projectId: Schema.String.check(Schema.isMaxLength(200)),
   folder: Schema.String.check(Schema.isMaxLength(200)),
-  board: Schema.String.check(Schema.isMaxLength(200)),
   request: RecordRequest,
 });
 export type CallToast = typeof CallToast.Type;
