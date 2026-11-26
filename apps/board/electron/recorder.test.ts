@@ -393,7 +393,7 @@ describe("recovery and retention", () => {
     writeTake(rig.root, "held-call", "1", { ...ended, deleteAfter: "2026-11-25T09:00:00.000Z" });
     const held = NodePath.join(rig.root, "held-call", "1");
     NodeFS.writeFileSync(NodePath.join(held, "me.wav"), "");
-    // A folder whose child cannot be removed stands in for a WAV a player holds open on Windows.
+    // `them.wav` is a folder, so removing it as a file throws, as an open WAV does on Windows.
     NodeFS.mkdirSync(NodePath.join(held, "them.wav", "open"), { recursive: true });
     NodeFS.writeFileSync(NodePath.join(held, "them.wav", "open", "data"), "");
     NodeFS.chmodSync(NodePath.join(held, "them.wav", "open"), 0o555);

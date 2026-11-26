@@ -50,6 +50,12 @@ function serveRenderer(request: Request): Promise<Response> | Response {
   return net.fetch(NodeURL.pathToFileURL(file).toString());
 }
 
+// Not `URL.origin`, which is "null" for both `agentboard://` and `file://`.
+const siteOf = (url: string) => {
+  const parsed = URL.parse(url);
+  return parsed && `${parsed.protocol}//${parsed.host}`;
+};
+
 function openWindow(): void {
   const window = new BrowserWindow({
     width: 1400,
@@ -83,8 +89,10 @@ function openWindow(): void {
     if (/^https?:\/\//i.test(url)) void shell.openExternal(url);
     return { action: "deny" };
   });
-  // A dropped link or file would load a page that gets `window.board`. The board never navigates itself.
-  window.webContents.on("will-navigate", (event) => event.preventDefault());
+  // A dropped link or file would load a page that gets `window.board`. A reload keeps the origin, so it passes.
+  window.webContents.on("will-navigate", (event) => {
+    if (siteOf(event.url) !== siteOf(window.webContents.getURL())) event.preventDefault();
+  });
   void window.loadURL(devServerUrl ?? `${SCHEME}://app/index.html`);
 }
 
