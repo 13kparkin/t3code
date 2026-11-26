@@ -59,13 +59,6 @@ export const chromeCallsAtom = Atom.make((get): ReadonlyArray<BoardCall> =>
     }),
 ).pipe(Atom.withLabel("chrome-calls"));
 
-const requestOf = (call: BoardCall): RecordRequest => ({
-  callId: call.id,
-  boardId: call.boardId,
-  title: call.title,
-  app: call.app,
-});
-
 /** Saves each due call as notified before its toast shows, so a crash never shows it twice. */
 async function notifyDue(list: ReadonlyArray<BoardCall>, now: number) {
   if (calls === undefined) return;
@@ -80,7 +73,7 @@ async function notifyDue(list: ReadonlyArray<BoardCall>, now: number) {
       projectId: call.projectId,
       folder: call.folder,
       board: call.board,
-      request: requestOf(call),
+      request: { callId: call.id, boardId: call.boardId, title: call.title, app: call.app },
     });
   }
 }
