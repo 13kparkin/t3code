@@ -38,17 +38,15 @@ function setup() {
 }
 
 describe("createBoardStore", () => {
-  it("reads the four store files each tick while the app is active", async () => {
+  it("reads the tickets and decisions files each tick while the app is active", async () => {
     using board = setup();
     await vi.advanceTimersByTimeAsync(0);
     expect(board.reads).toEqual([
       ".agentboard/board/tickets.json",
-      ".agentboard/board/foryou.jsonl",
       ".agentboard/board/decisions.tsv",
-      ".agentboard/board/additions.json",
     ]);
     await vi.advanceTimersByTimeAsync(STORE_POLL_MS);
-    expect(board.reads).toHaveLength(8);
+    expect(board.reads).toHaveLength(4);
   });
 
   it("reads nothing while the app is in the background", async () => {
@@ -63,11 +61,11 @@ describe("createBoardStore", () => {
   it("keeps the last files when a read fails", async () => {
     using board = setup();
     await vi.advanceTimersByTimeAsync(0);
-    const loaded = { tickets: "[]", forYou: null, decisions: null, additions: null };
+    const loaded = { tickets: "[]", decisions: null };
     expect(board.registry.get(board.store)).toEqual(loaded);
     board.failReads();
     await vi.advanceTimersByTimeAsync(STORE_POLL_MS);
-    expect(board.reads).toHaveLength(8);
+    expect(board.reads).toHaveLength(4);
     expect(board.registry.get(board.store)).toEqual(loaded);
   });
 });

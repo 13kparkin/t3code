@@ -22,9 +22,7 @@ export interface ProjectFiles {
 
 export interface StoreFiles {
   readonly tickets: string | null;
-  readonly forYou: string | null;
   readonly decisions: string | null;
-  readonly additions: string | null;
 }
 
 export const boardKey = (cwd: string, folder: string) => `${cwd}/${BOARDS_DIR}/${folder}`;
@@ -51,11 +49,7 @@ export async function listBoards(
 }
 
 const sameFiles = (left: StoreFiles | null, right: StoreFiles) =>
-  left !== null &&
-  left.tickets === right.tickets &&
-  left.forYou === right.forYou &&
-  left.decisions === right.decisions &&
-  left.additions === right.additions;
+  left !== null && left.tickets === right.tickets && left.decisions === right.decisions;
 
 export function createBoardStore(
   filesAtom: Atom.Atom<ProjectFiles | null>,
@@ -73,15 +67,10 @@ export function createBoardStore(
         let timer: ReturnType<typeof setTimeout> | undefined;
         // The next round waits for this one, so a slow link never stacks reads.
         const refresh = () =>
-          Promise.all([
-            read("tickets.json"),
-            read("foryou.jsonl"),
-            read("decisions.tsv"),
-            read("additions.json"),
-          ])
+          Promise.all([read("tickets.json"), read("decisions.tsv")])
             .then(
-              ([tickets, forYou, decisions, additions]) => {
-                const next = { tickets, forYou, decisions, additions };
+              ([tickets, decisions]) => {
+                const next = { tickets, decisions };
                 if (current && !sameFiles(Option.getOrNull(get.self<StoreFiles | null>()), next)) {
                   get.setSelf(next);
                 }
