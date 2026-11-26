@@ -37,7 +37,7 @@ export const engineStatusAtom = Atom.make((get): EngineStatus => {
   return pairedEngineStatus(environmentId, label, state);
 }).pipe(Atom.withLabel("engine-status"));
 
-const environmentShell = createEnvironmentShellAtoms(connectionAtomRuntime);
+export const environmentShell = createEnvironmentShellAtoms(connectionAtomRuntime);
 const environmentSnapshot = createEnvironmentSnapshotAtom(environmentShell.stateAtom);
 const environmentProjects = createEnvironmentProjectAtoms({
   catalogValueAtom: environmentCatalog.catalogValueAtom,
