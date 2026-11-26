@@ -1,7 +1,5 @@
 import type { MessageId, ThreadId, TurnItemId } from "@t3tools/contracts";
 
-import type { PickerValue } from "../providers/providers";
-
 /** Where a user message stands on its way to the orchestrator, which the bubble shows until it is delivered. */
 export type Delivery = "sending" | "queued" | "steering" | "delivered" | "failed";
 
@@ -187,7 +185,8 @@ export interface PendingSend {
   readonly text: string;
   readonly files: ReadonlyArray<File>;
   readonly fresh: boolean;
-  readonly shown: PickerValue;
+  // Not `PickerValue`: its module pulls Vite-only imports into the phone, which reads this file.
+  readonly shown: { readonly instanceId: string; readonly model: string; readonly effort: string };
   readonly overridden: boolean;
   readonly state:
     | { readonly kind: "sending" }
