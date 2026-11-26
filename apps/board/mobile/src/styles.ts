@@ -1,8 +1,22 @@
 import { StyleSheet } from "react-native";
 
 export const styles = StyleSheet.create({
-  banner: { backgroundColor: "#F5C451", paddingBottom: 8, paddingHorizontal: 16 },
-  bannerText: { color: "#1F1A0E", fontWeight: "600" },
-  body: { gap: 8, padding: 16 },
+  header: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    paddingBottom: 8,
+    paddingHorizontal: 16,
+  },
+  headerText: { flex: 1, fontWeight: "600" },
+  dot: { borderRadius: 5, height: 10, width: 10 },
+  link: { color: "#3B82F6", fontWeight: "600" },
+  body: { gap: 12, padding: 16 },
+  fill: { flex: 1 },
   title: { fontSize: 18, fontWeight: "600" },
+  muted: { opacity: 0.6 },
+  input: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 10 },
+  button: { alignItems: "center", backgroundColor: "#3B82F6", borderRadius: 8, padding: 12 },
+  buttonText: { color: "#FFFFFF", fontWeight: "600" },
+  error: { color: "#DC2626" },
 });

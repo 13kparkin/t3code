@@ -6,11 +6,14 @@ import IconInbox from "@tabler/icons-react-native/IconInbox";
 import IconLayoutKanban from "@tabler/icons-react-native/IconLayoutKanban";
 import IconMessageCircle from "@tabler/icons-react-native/IconMessageCircle";
 import IconRobot from "@tabler/icons-react-native/IconRobot";
+import { useAtomValue } from "@effect/atom-react";
 import { useColorScheme } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { BoardScreen } from "./BoardScreen";
-import { NotPairedBanner } from "./NotPairedBanner";
+import { engineStatusAtom } from "./connection/engine";
+import { PairScreen } from "./connection/PairScreen";
+import { EngineHeader } from "./EngineHeader";
 import { PlaceholderScreen } from "./PlaceholderScreen";
 
 const Tab = createBottomTabNavigator();
@@ -21,32 +24,37 @@ const tabIcon =
 
 export default function App() {
   const dark = useColorScheme() === "dark";
+  const status = useAtomValue(engineStatusAtom).kind;
   return (
     <SafeAreaProvider>
       <NavigationContainer theme={dark ? DarkTheme : DefaultTheme}>
-        <NotPairedBanner />
-        <Tab.Navigator screenOptions={{ headerShown: false }}>
-          <Tab.Screen
-            name="Board"
-            component={BoardScreen}
-            options={{ tabBarIcon: tabIcon(IconLayoutKanban) }}
-          />
-          <Tab.Screen
-            name="Agents"
-            component={PlaceholderScreen}
-            options={{ tabBarIcon: tabIcon(IconRobot) }}
-          />
-          <Tab.Screen
-            name="For you"
-            component={PlaceholderScreen}
-            options={{ tabBarIcon: tabIcon(IconInbox) }}
-          />
-          <Tab.Screen
-            name="Chat"
-            component={PlaceholderScreen}
-            options={{ tabBarIcon: tabIcon(IconMessageCircle) }}
-          />
-        </Tab.Navigator>
+        <EngineHeader />
+        {status === "unpaired" ? (
+          <PairScreen />
+        ) : status === "loading" ? null : (
+          <Tab.Navigator screenOptions={{ headerShown: false }}>
+            <Tab.Screen
+              name="Board"
+              component={BoardScreen}
+              options={{ tabBarIcon: tabIcon(IconLayoutKanban) }}
+            />
+            <Tab.Screen
+              name="Agents"
+              component={PlaceholderScreen}
+              options={{ tabBarIcon: tabIcon(IconRobot) }}
+            />
+            <Tab.Screen
+              name="For you"
+              component={PlaceholderScreen}
+              options={{ tabBarIcon: tabIcon(IconInbox) }}
+            />
+            <Tab.Screen
+              name="Chat"
+              component={PlaceholderScreen}
+              options={{ tabBarIcon: tabIcon(IconMessageCircle) }}
+            />
+          </Tab.Navigator>
+        )}
       </NavigationContainer>
     </SafeAreaProvider>
   );

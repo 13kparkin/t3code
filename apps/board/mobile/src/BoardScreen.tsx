@@ -1,28 +1,29 @@
-import { parseTickets, STAGE_LABEL } from "@agent-board/app/domain/ticket";
+import { useAtomValue } from "@effect/atom-react";
 import { useTheme } from "@react-navigation/native";
-import * as Result from "effect/Result";
-import { ScrollView, Text } from "react-native";
+import { ScrollView, Text, View } from "react-native";
 
-import { summarize } from "./boardSummary";
-import sample from "./sample-tickets.json";
+import { boardProjectsAtom } from "./connection/engine";
 import { styles } from "./styles";
-
-const summary = summarize(Result.getOrThrow(parseTickets(JSON.stringify(sample))));
 
 export function BoardScreen() {
   const { colors } = useTheme();
+  const projects = useAtomValue(boardProjectsAtom);
+  if (projects === null) {
+    return <Text style={[styles.body, { color: colors.text }]}>Looking for boards</Text>;
+  }
+  if (projects.length === 0) {
+    return (
+      <Text style={[styles.body, { color: colors.text }]}>No project on this PC has a board.</Text>
+    );
+  }
   return (
     <ScrollView contentContainerStyle={styles.body}>
-      <Text style={[styles.title, { color: colors.text }]}>
-        {summary.total} tickets, {summary.inProgress} in progress
-      </Text>
-      {[...summary.byStage]
-        .filter(([, count]) => count > 0)
-        .map(([stage, count]) => (
-          <Text key={stage} style={{ color: colors.text }}>
-            {STAGE_LABEL[stage]}: {count}
-          </Text>
-        ))}
+      {projects.map((project) => (
+        <View key={project.id}>
+          <Text style={[styles.title, { color: colors.text }]}>{project.title}</Text>
+          <Text style={[styles.muted, { color: colors.text }]}>{project.workspaceRoot}</Text>
+        </View>
+      ))}
     </ScrollView>
   );
 }
