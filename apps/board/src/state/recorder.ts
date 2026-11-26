@@ -106,7 +106,7 @@ export async function recordCall(registry: AtomRegistry.AtomRegistry, request: R
 
 /** Opens the board of a toast whose Record was pressed, then records its call. */
 export const toastRecordAtom = Atom.make((get) => {
-  if (calls === undefined) return;
+  if (calls === undefined || get(recorderAtom) === null) return;
   const take = () =>
     void calls.takeRecord().then((toast) => {
       if (toast === null) return;
