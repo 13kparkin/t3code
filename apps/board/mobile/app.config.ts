@@ -17,7 +17,8 @@ export default {
     allowBackup: false,
   },
   plugins: [
-    ["expo-build-properties", { android: { minSdkVersion: 24 } }],
+    // A LAN engine is plain http, which Android blocks in release builds by default.
+    ["expo-build-properties", { android: { minSdkVersion: 24, usesCleartextTraffic: true } }],
     "expo-secure-store",
     [
       "expo-camera",
