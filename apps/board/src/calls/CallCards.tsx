@@ -1,11 +1,12 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import { MoreHorizontal, Plus } from "lucide-react";
-import { type MouseEvent, useContext } from "react";
+import { type MouseEvent, useContext, useState } from "react";
 
 import { LANE_GAP, LANE_HEAD, LANE_WIDTH, ORCHESTRATOR_BOX } from "../board/layout";
 import type { CallEvent, CardState } from "../domain/board";
 import { deleteAudio, recordCall, recorderAtom, startingCallsAtom } from "../state/recorder";
 import { CALL_APPS } from "./CallEditor";
+import { shownCalls } from "./dueCalls";
 import { callAudio } from "./recorder";
 
 const CALLS_BOX = {
@@ -28,21 +29,32 @@ export function CallCards({
   boardId,
   calls,
   states,
+  now,
   onAdd,
   onMenu,
 }: {
   boardId: string;
   calls: ReadonlyArray<CallEvent>;
   states: Readonly<{ [key: string]: CardState }>;
+  now: number;
   onAdd: () => void;
   onMenu: (event: MouseEvent, call: CallEvent) => void;
 }) {
   const registry = useContext(RegistryContext);
   const recorder = useAtomValue(recorderAtom);
   const starting = useAtomValue(startingCallsAtom);
-  const shown = calls
+  const [all, setAll] = useState(false);
+  const listed = calls
     .filter((call) => states[call.id] !== "archived")
     .toSorted((a, b) => Date.parse(a.start) - Date.parse(b.start));
+  const state = recorder?.state;
+  const current = shownCalls(
+    listed,
+    now,
+    state?.status === "idle" ? null : (state?.callId ?? null),
+  );
+  const shown = all ? listed : current;
+  const hidden = listed.length - current.length;
   return (
     <section
       aria-label="Calls"
@@ -60,8 +72,17 @@ export function CallCards({
         <span className="rounded-md px-2 text-[11px] leading-5 font-semibold text-muted">
           Calls
         </span>
-        <span className="text-[11px] text-faint">{shown.length}</span>
+        <span className="text-[11px] text-faint">{listed.length}</span>
         <span className="flex-1" />
+        {hidden > 0 && (
+          <button
+            type="button"
+            onClick={() => setAll(!all)}
+            className="rounded px-1.5 text-[11px] text-faint hover:bg-hover hover:text-fg"
+          >
+            {all ? "Show less" : `${hidden} more`}
+          </button>
+        )}
         <button
           type="button"
           aria-label="Add call"
@@ -71,11 +92,13 @@ export function CallCards({
           <Plus className="size-3.5" aria-hidden />
         </button>
       </header>
-      <ul data-scroll className="flex min-h-0 flex-col gap-1.5 overflow-y-auto px-3 pb-3">
-        {shown.length === 0 && <li className="text-[11px] text-faint">No calls yet.</li>}
+      <ul
+        data-scroll
+        className="flex min-h-0 flex-col gap-1.5 overflow-y-auto px-3 pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {listed.length === 0 && <li className="text-[11px] text-faint">No calls yet.</li>}
         {shown.map((call) => {
           const done = states[call.id] === "done";
-          const state = recorder?.state;
           const live = state?.status !== "idle" && state?.callId === call.id;
           const failed =
             state?.status === "idle" && state.failed?.callId === call.id ? state.failed : null;

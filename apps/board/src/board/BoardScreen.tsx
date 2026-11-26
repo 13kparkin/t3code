@@ -328,6 +328,7 @@ export function BoardScreen({
                 boardId={board.id}
                 calls={calls}
                 states={cardStates}
+                now={now}
                 onAdd={() => setEditing("new")}
                 onMenu={openCallMenu}
               />

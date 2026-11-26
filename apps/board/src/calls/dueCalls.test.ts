@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { dueCalls, markNotified, nextWake } from "./dueCalls";
+import { dueCalls, markNotified, nextWake, shownCalls } from "./dueCalls";
 
 const NOW = Date.parse("2026-11-26T10:00:00.000Z");
 const at = (minutes: number) => new Date(NOW + minutes * 60_000).toISOString();
@@ -41,5 +41,22 @@ describe("the notified calls kept in local state", () => {
         now: at(0),
       },
     );
+  });
+});
+
+describe("which calls the Calls group shows", () => {
+  const soon = { id: "soon", start: at(5) };
+  const later = { id: "later", start: at(60) };
+  const now = { id: "now", start: at(-2) };
+  const past = { id: "past", start: at(-30) };
+  it.each([
+    ["no calls", [], null, []],
+    ["one future call", [later], null, ["later"]],
+    ["two future calls", [later, soon], null, ["soon"]],
+    ["a call starting now and a future call", [later, now], null, ["now", "later"]],
+    ["a past finished call", [past], null, []],
+    ["a past call still recording", [past, later], "past", ["past", "later"]],
+  ])("Given %s, then it shows %j", (_name, calls, recording, ids) => {
+    expect(shownCalls(calls, NOW, recording).map((call) => call.id)).toEqual(ids);
   });
 });

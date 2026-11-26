@@ -38,3 +38,14 @@ export const markNotified = (
     ...Object.entries(notified).filter(([id, start]) => isStarting({ id, start }, now)),
     ...due.map((call) => [call.id, call.start] as const),
   ]);
+
+/** The recording call, the calls starting now, and the next call to come, soonest first. */
+export function shownCalls<C extends Timed>(
+  calls: ReadonlyArray<C>,
+  now: number,
+  recording: string | null,
+) {
+  const sorted = calls.toSorted((a, b) => Date.parse(a.start) - Date.parse(b.start));
+  const next = sorted.find((call) => Date.parse(call.start) > now);
+  return sorted.filter((call) => call === next || call.id === recording || isStarting(call, now));
+}
