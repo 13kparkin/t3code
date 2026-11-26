@@ -125,23 +125,28 @@ export async function pair(registry: AtomRegistry.AtomRegistry, input: string) {
   });
 }
 
-export const unpair = (registry: AtomRegistry.AtomRegistry, environmentId: EnvironmentId) =>
-  environmentCatalog.remove.run(registry, environmentId);
-
 /** What the pairing field holds, typed or filled in from a deep link. */
 export const pairingInputAtom = Atom.make("").pipe(Atom.keepAlive, Atom.withLabel("pairing-input"));
 
 // The launch link stays the initial URL for the whole process, and its one-time code may be spent.
 let launchLinkRead = false;
 
+export const unpair = (registry: AtomRegistry.AtomRegistry, environmentId: EnvironmentId) => {
+  launchLinkRead = true;
+  registry.set(pairingInputAtom, "");
+  return environmentCatalog.remove.run(registry, environmentId);
+};
+
 /**
- * Fills the pairing field from an `agentboard-phone://pair` link while it is mounted. Any app can
- * open the scheme, so the user still taps Pair. Other links, such as the dev client's, are ignored.
+ * Fills an empty pairing field from an `agentboard-phone://pair` link while it is mounted. Any app
+ * can open the scheme, so the user still taps Pair. Other links, such as the dev client's, are ignored.
  */
 export const deepLinkPairingAtom = Atom.make((get) => {
   const registry = get.registry;
   const offer = (url: string | null | undefined) => {
-    if (url && parseUrl(url)?.host === "pair") registry.set(pairingInputAtom, url);
+    if (url && parseUrl(url)?.host === "pair" && registry.get(pairingInputAtom) === "") {
+      registry.set(pairingInputAtom, url);
+    }
   };
   const subscription = Linking.addEventListener("url", ({ url }) => offer(url));
   get.addFinalizer(() => subscription.remove());

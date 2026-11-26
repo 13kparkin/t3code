@@ -6,6 +6,7 @@ import { Pressable, Text, TextInput, View } from "react-native";
 
 import { styles } from "../styles";
 import { deepLinkPairingAtom, pair, pairingInputAtom, pairingStateAtom } from "./engine";
+import { pairingHost } from "./pairing";
 
 export function PairScreen() {
   const { colors } = useTheme();
@@ -15,6 +16,7 @@ export function PairScreen() {
   const [pasted, setPasted] = useAtom(pairingInputAtom);
   const [permission, requestPermission] = useCameraPermissions();
   useAtomMount(deepLinkPairingAtom);
+  const host = pairingHost(pasted);
 
   const scan = async () => {
     setScanning(permission?.granted || (await requestPermission()).granted);
@@ -62,7 +64,9 @@ export function PairScreen() {
         disabled={busy || pasted.trim() === ""}
         onPress={() => void pair(registry, pasted)}
       >
-        <Text style={styles.buttonText}>{busy ? "Pairing" : "Pair"}</Text>
+        <Text style={styles.buttonText}>
+          {busy ? "Pairing" : host === null ? "Pair" : `Pair with ${host}`}
+        </Text>
       </Pressable>
       {permission?.status === "denied" && (
         <Text style={styles.error}>Allow the camera to scan the pairing code.</Text>

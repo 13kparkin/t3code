@@ -30,6 +30,15 @@ export function readPairingRequest(input: string): PairingRequest {
   return { pairingUrl, ...resolveRemotePairingTarget({ pairingUrl }) };
 }
 
+/** The host a pairing link would send its code to, or null when it is not a pairing link. */
+export function pairingHost(input: string): string | null {
+  try {
+    return parseUrl(readPairingRequest(input).httpBaseUrl)?.hostname ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function unwrapAppLink(value: string): string {
   const t3AppLink = readPairingAppLink(value);
   if (t3AppLink !== null) return t3AppLink;
