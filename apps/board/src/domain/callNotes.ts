@@ -13,7 +13,7 @@ export const CallNotes = Schema.Struct({
   actions: Schema.Array(
     Schema.Struct({ text: Line(160), who: Schema.Literals(["me", "them"]) }),
   ).check(Schema.isMaxLength(12)),
-  // additions.json holds 12 items across the board, so one call names at most 4 tickets.
+  // Each attached note keeps an additions.json item, and that file holds 12 for the whole board.
   ticketNotes: Schema.Array(Schema.Struct({ ticket: Line(40), text: Line(500) })).check(
     Schema.isMaxLength(4),
   ),
@@ -26,7 +26,6 @@ export type CallNotes = typeof CallNotes.Type;
 const decode = Schema.decodeUnknownResult(Schema.fromJsonString(CallNotes));
 const formatIssues = SchemaIssue.makeFormatterStandardSchemaV1();
 
-/** The notes, or one line naming each bad field. */
 export const parseCallNotes = (text: string): Result.Result<CallNotes, string> =>
   Result.mapError(
     decode(text, { errors: "all" }),
@@ -54,7 +53,6 @@ export const callNotesMessage = (input: {
     `Notes: \`${input.notes}\``,
   ].join("\n");
 
-/** The id of the For you question the orchestrator posts for one ticket note. */
 export const callNotesForYouId = (callId: string, ticket: string) =>
   `call-${callId.slice(0, 8)}-${ticket}`.toLowerCase();
 

@@ -14,7 +14,6 @@ import { artifactContentsAtom, artifactContentsKey, type LoadedArtifact } from "
 import type { Artifact } from "../store/artifacts";
 
 const DRAG_THRESHOLD_PX = 4;
-/** File cards sit on a grid of fixed rows, so the notes card spans several. */
 export const CALL_NOTES_ROWS = 6;
 
 const NOT_LISTED = Atom.make<LoadedArtifact>({
@@ -32,10 +31,6 @@ const list = (heading: string, rows: ReadonlyArray<ReactNode>) =>
     </div>
   );
 
-/**
- * A call's `notes.json` as the call-notes card: summary, decisions, actions, and the For you items
- * the orchestrator posts from it. Dragging it onto the chat input attaches the notes as Markdown.
- */
 export function CallNotesCard({
   artifact,
   call,

@@ -232,7 +232,6 @@ export const callNotesRequestsAtom = Atom.make<Readonly<Record<string, NotesRequ
   Atom.withLabel("call-notes-requests"),
 );
 
-/** Asks the orchestrator to start a `call-notes` agent on the call's transcript. */
 export async function requestCallNotes(
   registry: AtomRegistry.AtomRegistry,
   project: Pick<EnvironmentProject, "environmentId" | "workspaceRoot">,
@@ -261,10 +260,7 @@ export async function requestCallNotes(
   set(failure === null ? { status: "sent" } : { status: "failed", message: failure });
 }
 
-/**
- * Uses the engine's selected speech model. A failure keeps the audio and shows on the call. Once
- * the transcript is written it asks for the call's notes.
- */
+/** Uses the engine's selected speech model. A failure keeps the audio and shows on the call. */
 export async function transcribeCall(
   registry: AtomRegistry.AtomRegistry,
   project: Pick<EnvironmentProject, "environmentId" | "workspaceRoot">,
