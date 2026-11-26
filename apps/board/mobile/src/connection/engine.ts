@@ -1,0 +1,150 @@
+import { BOARDS_DIR } from "@agent-board/app/domain/board";
+import { AVAILABLE_CONNECTION_STATE } from "@t3tools/client-runtime/connection";
+import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
+import { createEnvironmentProjectAtoms } from "@t3tools/client-runtime/state/projects";
+import {
+  createEnvironmentRpcCommand,
+  runAtomCommand,
+  squashAtomCommandFailure,
+} from "@t3tools/client-runtime/state/runtime";
+import {
+  createEnvironmentShellAtoms,
+  createEnvironmentSnapshotAtom,
+} from "@t3tools/client-runtime/state/shell";
+import { type EnvironmentId, WS_METHODS } from "@t3tools/contracts";
+import * as Option from "effect/Option";
+import { AsyncResult, Atom, type AtomRegistry } from "effect/reactivity";
+import { Linking } from "react-native";
+
+import { readPairingRequest } from "./pairing";
+import { connectionAtomRuntime, connectPairingUrl, environmentCatalog } from "./runtime";
+
+export type EngineStatus =
+  | { readonly kind: "loading" }
+  | { readonly kind: "unpaired" }
+  | {
+      readonly kind: "connecting" | "reconnecting" | "connected";
+      readonly environmentId: EnvironmentId;
+      readonly label: string;
+    }
+  | {
+      readonly kind: "refused";
+      readonly environmentId: EnvironmentId;
+      readonly label: string;
+      readonly detail: string;
+    };
+
+/** The one engine the phone is paired with, and how its connection is doing. */
+export const engineStatusAtom = Atom.make((get): EngineStatus => {
+  const catalog = get(environmentCatalog.catalogValueAtom);
+  if (!catalog.isReady) return { kind: "loading" };
+  const [entry] = catalog.entries.values();
+  if (entry === undefined) return { kind: "unpaired" };
+  const { environmentId, label } = entry.target;
+  const state = AsyncResult.getOrElse(
+    get(environmentCatalog.stateAtom(environmentId)),
+    () => AVAILABLE_CONNECTION_STATE,
+  );
+  switch (state.phase) {
+    case "connected":
+      return { kind: "connected", environmentId, label };
+    case "blocked":
+      return {
+        kind: "refused",
+        environmentId,
+        label,
+        detail: state.lastFailure?.detail ?? "The engine refused this phone.",
+      };
+    case "offline":
+    case "backoff":
+      return { kind: "reconnecting", environmentId, label };
+    case "available":
+    case "connecting":
+      return { kind: "connecting", environmentId, label };
+  }
+}).pipe(Atom.withLabel("engine-status"));
+
+const environmentShell = createEnvironmentShellAtoms(connectionAtomRuntime);
+const environmentProjects = createEnvironmentProjectAtoms({
+  catalogValueAtom: environmentCatalog.catalogValueAtom,
+  snapshotAtom: createEnvironmentSnapshotAtom(environmentShell.stateAtom),
+});
+
+const listEntries = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "phone:project:list-entries",
+  tag: WS_METHODS.projectsListEntries,
+});
+
+const engineConnectedAtom = Atom.make((get) => get(engineStatusAtom).kind === "connected").pipe(
+  Atom.withLabel("engine-connected"),
+);
+
+/** The engine's projects that hold a board folder, or null until the first check answers. */
+export const boardProjectsAtom = Atom.make((get): ReadonlyArray<EnvironmentProject> | null => {
+  const projects = get(environmentProjects.projectsAtom);
+  if (get(engineConnectedAtom)) {
+    const registry = get.registry;
+    const holdsBoard = async (project: EnvironmentProject) =>
+      (
+        await runAtomCommand(
+          registry,
+          listEntries,
+          {
+            environmentId: project.environmentId,
+            input: { cwd: project.workspaceRoot, directoryPath: BOARDS_DIR },
+          },
+          { reportFailure: false },
+        )
+      )._tag === "Success";
+    void (async () => {
+      const found: Array<EnvironmentProject> = [];
+      for (const project of projects) if (await holdsBoard(project)) found.push(project);
+      get.setSelf(found);
+    })();
+  }
+  return Option.getOrNull(get.self<ReadonlyArray<EnvironmentProject> | null>());
+}).pipe(Atom.withLabel("board-projects"));
+
+export interface PairingState {
+  readonly busy: boolean;
+  readonly error: string | null;
+}
+
+export const pairingStateAtom = Atom.make<PairingState>({ busy: false, error: null }).pipe(
+  Atom.keepAlive,
+  Atom.withLabel("pairing-state"),
+);
+
+/** Validates the input before anything is sent or saved, then redeems it with the engine. */
+export async function pair(registry: AtomRegistry.AtomRegistry, input: string) {
+  let pairingUrl: string;
+  try {
+    ({ pairingUrl } = readPairingRequest(input));
+  } catch (cause) {
+    const error = cause instanceof Error ? cause.message : "That is not a pairing link.";
+    registry.set(pairingStateAtom, { busy: false, error });
+    return;
+  }
+  registry.set(pairingStateAtom, { busy: true, error: null });
+  const result = await runAtomCommand(registry, connectPairingUrl, pairingUrl, {
+    reportFailure: false,
+  });
+  const failure = result._tag === "Failure" ? squashAtomCommandFailure(result) : null;
+  registry.set(pairingStateAtom, {
+    busy: false,
+    error: failure === null ? null : failure instanceof Error ? failure.message : String(failure),
+  });
+}
+
+// The launch link stays the initial URL for the whole process, and its one-time code is spent.
+let launchLinkRead = false;
+
+/** Pairs from an `agentboard-phone://pair` link while it is mounted. */
+export const deepLinkPairingAtom = Atom.make((get) => {
+  const registry = get.registry;
+  const subscription = Linking.addEventListener("url", ({ url }) => void pair(registry, url));
+  get.addFinalizer(() => subscription.remove());
+  if (launchLinkRead) return;
+  launchLinkRead = true;
+  void Linking.getInitialURL().then((url) => (url ? pair(registry, url) : undefined));
+}).pipe(Atom.withLabel("deep-link-pairing"));
