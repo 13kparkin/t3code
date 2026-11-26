@@ -31,7 +31,8 @@ export async function transcribeTakes(input: {
   if (first === undefined || endedAt == null) return;
   const read = async (range: TrackRange) => {
     const bytes = await input.read(range);
-    if (bytes === null) throw new Error("The audio is no longer on this PC.");
+    if (bytes === null)
+      throw new Error("A take of this call was deleted before it was transcribed.");
     return new Int16Array(bytes);
   };
 
@@ -77,6 +78,9 @@ export async function transcribeTakes(input: {
     input.progress(said.length, jobs.length);
   }
 
+  if (!said.some((line) => line.text.trim() !== "")) {
+    throw new Error("Nothing was transcribed, so the audio stays on this PC.");
+  }
   const byWho = (who: Said["who"]) => said.filter((line) => line.who === who);
   await input.write(
     renderTranscript(

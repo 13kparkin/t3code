@@ -202,7 +202,7 @@ export function ArtifactArea({
             job?.status === "running"
               ? transcribing(job)
               : job?.status === "failed"
-                ? "Failed. The audio stays on this PC."
+                ? "Failed. Transcribe to try again."
                 : "Writes Me and Them lines on the engine"
           }
           onClick={() => void transcribeCall(registry, project, listed.folder, call.id)}

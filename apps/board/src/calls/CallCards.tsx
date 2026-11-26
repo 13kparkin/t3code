@@ -193,7 +193,7 @@ export function CallCards({
                 )}
                 {job?.status === "failed" && (
                   <p role="alert" className="text-[11px] break-words text-red-400">
-                    {job.message} The audio stays on this PC.
+                    {job.message}
                   </p>
                 )}
               </li>
