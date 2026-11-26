@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import { ArtifactsProvider } from "../artifacts/ArtifactsContext";
 import { CallCards } from "../calls/CallCards";
 import { CallEditor } from "../calls/CallEditor";
+import { splitCalls } from "../calls/dueCalls";
 import { useBoardArtifacts } from "../artifacts/useBoardArtifacts";
 import { chatSlotAtom, chooseTicket, ticketChoiceAtom, ticketSlotAtom } from "../browser/panel";
 import { agentFile, cardFile, sendToChatError, sendToComposer } from "../chat/cardAttachment";
@@ -29,6 +30,7 @@ import { keptWorktreesAtom } from "../state/mergeCleanup";
 import { setHiddenAdditions } from "../state/reviews";
 import type { ValidBoard } from "../store/boardFiles";
 import { openAgentPanel } from "../state/agentPanel";
+import { deleteAudio, recorderAtom } from "../state/recorder";
 import {
   deleteCall,
   moveFreeAgent,
@@ -44,7 +46,15 @@ import { AgentPanel } from "./AgentPanel";
 import { ForYouLane } from "./ForYouLane";
 import { ForYouPage } from "./ForYouPage";
 import { Lanes } from "./Lanes";
-import { besideLanes, forYouHeight, hiddenFilters, layoutBoard, withCards } from "./layout";
+import {
+  besideLanes,
+  forYouHeight,
+  hiddenFilters,
+  LANE_GAP,
+  layoutBoard,
+  ORCHESTRATOR_BOX,
+  withCards,
+} from "./layout";
 import { OrchestratorCard } from "./OrchestratorCard";
 import { TicketPanel } from "./TicketPanel";
 import { useStoreErrorReports } from "./useStoreErrorReports";
@@ -99,6 +109,19 @@ export function BoardScreen({
   const freeAgents = board.freeAgents ?? NO_FREE;
   const calls = board.calls ?? NO_CALLS;
   const now = useAtomValue(clockAtom);
+  const recorder = useAtomValue(recorderAtom);
+  const recordingId =
+    recorder === null || recorder.state.status === "idle" ? null : recorder.state.callId;
+  const callSplit = useMemo(
+    () =>
+      splitCalls(
+        calls.filter((call) => cardStates[call.id] !== "archived"),
+        now,
+        recordingId,
+        recorder === null ? null : new Set(recorder.recordings.map((take) => take.callId)),
+      ),
+    [calls, cardStates, now, recordingId, recorder],
+  );
   const cards = useMemo(
     () => splitCards(fullModel, freeAgents, cardStates, now),
     [fullModel, freeAgents, cardStates, now],
@@ -149,11 +172,9 @@ export function BoardScreen({
       ],
     });
   };
-  const openCallMenu = (event: MouseEvent, call: CallEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
+  const showCallMenu = (at: { readonly x: number; readonly y: number }, call: CallEvent) =>
     setMenu({
-      at: { x: event.clientX, y: event.clientY },
+      at,
       label: `${call.title} actions`,
       items: [
         { label: "Edit", onSelect: () => setEditing(call) },
@@ -165,8 +186,15 @@ export function BoardScreen({
           label: "Delete",
           onSelect: () => void deleteCall(registry, project, listed, call.id).then(setCardError),
         },
+        ...(recorder?.recordings.some((take) => take.callId === call.id) === true
+          ? [{ label: "Delete audio", onSelect: () => deleteAudio(call.id) }]
+          : []),
       ],
     });
+  const openCallMenu = (event: MouseEvent, call: CallEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    showCallMenu({ x: event.clientX, y: event.clientY }, call);
   };
   const archived = useMemo(
     () => [
@@ -311,27 +339,34 @@ export function BoardScreen({
                 })
               }
             >
-              <OrchestratorCard
-                project={project}
-                listed={listed}
-                stats={{ ...stats, forYouOpen: forYou.open }}
-                builders={builders}
-                hidden={hidden}
-                additions={additions}
-                onChangeHidden={changeHidden}
-                doneCount={doneCount + model.lanes.merged.length + model.lanes.off_path.length}
-                todoAgents={model.unassigned.length}
-                archived={archived}
-                onUnarchive={(key) => saveCard(key, null)}
-              />
-              <CallCards
-                boardId={board.id}
-                calls={calls}
-                states={cardStates}
-                now={now}
-                onAdd={() => setEditing("new")}
-                onMenu={openCallMenu}
-              />
+              <div
+                className="absolute flex"
+                style={{ left: ORCHESTRATOR_BOX.x, top: ORCHESTRATOR_BOX.y, gap: LANE_GAP }}
+              >
+                <OrchestratorCard
+                  project={project}
+                  listed={listed}
+                  stats={{ ...stats, forYouOpen: forYou.open }}
+                  builders={builders}
+                  hidden={hidden}
+                  additions={additions}
+                  onChangeHidden={changeHidden}
+                  doneCount={doneCount + model.lanes.merged.length + model.lanes.off_path.length}
+                  todoAgents={model.unassigned.length}
+                  archived={archived}
+                  onUnarchive={(key) => saveCard(key, null)}
+                  finishedCalls={callSplit.finished}
+                  onCallMenu={showCallMenu}
+                />
+                <CallCards
+                  boardId={board.id}
+                  shown={callSplit.shown}
+                  later={callSplit.later}
+                  states={cardStates}
+                  onAdd={() => setEditing("new")}
+                  onMenu={openCallMenu}
+                />
+              </div>
               <Lanes
                 layout={layout}
                 model={model}

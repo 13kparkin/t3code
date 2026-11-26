@@ -39,13 +39,26 @@ export const markNotified = (
     ...due.map((call) => [call.id, call.start] as const),
   ]);
 
-/** The recording call, the calls starting now, and the next call to come, soonest first. */
-export function shownCalls<C extends Timed>(
+/**
+ * Where each call goes. The Calls group shows the recording call, the ones starting now, and the
+ * next one, with the later ones behind a toggle. A finished call with takes on this PC is listed
+ * under Artifacts, and one without takes is removed. `recorded` is null while the takes are unknown,
+ * which keeps every finished call.
+ */
+export function splitCalls<C extends Timed>(
   calls: ReadonlyArray<C>,
   now: number,
   recording: string | null,
+  recorded: ReadonlySet<string> | null,
 ) {
   const sorted = calls.toSorted((a, b) => Date.parse(a.start) - Date.parse(b.start));
   const next = sorted.find((call) => Date.parse(call.start) > now);
-  return sorted.filter((call) => call === next || call.id === recording || isStarting(call, now));
+  const current = (call: C) => call === next || call.id === recording || isStarting(call, now);
+  const past = sorted.filter((call) => !current(call) && Date.parse(call.start) <= now);
+  return {
+    shown: sorted.filter(current),
+    later: sorted.filter((call) => !current(call) && Date.parse(call.start) > now),
+    finished: past.filter((call) => recorded?.has(call.id) !== false),
+    stale: past.filter((call) => recorded?.has(call.id) === false),
+  };
 }

@@ -1,9 +1,12 @@
+import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { Atom, type AtomRegistry } from "effect/reactivity";
 
-import { dueCalls, isStarting, markNotified, nextWake } from "../calls/dueCalls";
+import { dueCalls, isStarting, markNotified, nextWake, splitCalls } from "../calls/dueCalls";
 import type { RecorderSnapshot } from "../connection/engineState";
 import type { CallEvent } from "../domain/board";
 import type { RecordRequest } from "../domain/recording";
+import type { ValidBoard } from "../store/boardFiles";
+import { deleteCall } from "./boardCards";
 import { localState, openBoard, projectBoardsAtom } from "./boards";
 import { environmentProjects } from "./projects";
 
@@ -28,13 +31,12 @@ export const secondAtom = Atom.make((get): number => {
 }).pipe(Atom.withLabel("recorder-second"));
 
 export interface BoardCall extends CallEvent {
-  readonly projectId: string;
-  readonly folder: string;
-  readonly boardId: string;
+  readonly project: EnvironmentProject;
+  readonly listed: ValidBoard;
 }
 
-/** The Chrome calls on every board the sidebar lists, without Done or archived ones. v1 records Chrome only. */
-export const chromeCallsAtom = Atom.make((get): ReadonlyArray<BoardCall> =>
+/** The calls on every board the sidebar lists, without archived ones. */
+export const boardCallsAtom = Atom.make((get): ReadonlyArray<BoardCall> =>
   get(environmentProjects.projectsAtom)
     .filter((project) => project.archivedAt == null)
     .flatMap((project) => {
@@ -42,20 +44,12 @@ export const chromeCallsAtom = Atom.make((get): ReadonlyArray<BoardCall> =>
       if (boards.status !== "ready") return [];
       return boards.boards.flatMap((listed) => {
         if (!listed.ok || listed.board.archived) return [];
-        const { board, folder } = listed;
-        return (board.calls ?? [])
-          .filter(
-            (call) => call.app === "chrome" && (board.cardStates?.[call.id] ?? "todo") === "todo",
-          )
-          .map((call) => ({
-            ...call,
-            projectId: project.id,
-            folder,
-            boardId: board.id,
-          }));
+        return (listed.board.calls ?? [])
+          .filter((call) => listed.board.cardStates?.[call.id] !== "archived")
+          .map((call) => ({ ...call, project, listed }));
       });
     }),
-).pipe(Atom.withLabel("chrome-calls"));
+).pipe(Atom.withLabel("board-calls"));
 
 /** Saves each due call as notified before its toast shows, so a crash never shows it twice. */
 async function notifyDue(list: ReadonlyArray<BoardCall>, now: number) {
@@ -68,24 +62,41 @@ async function notifyDue(list: ReadonlyArray<BoardCall>, now: number) {
   });
   for (const call of due) {
     calls.notify({
-      projectId: call.projectId,
-      folder: call.folder,
-      request: { callId: call.id, boardId: call.boardId, title: call.title, app: call.app },
+      projectId: call.project.id,
+      folder: call.listed.folder,
+      request: { callId: call.id, boardId: call.listed.board.id, title: call.title, app: call.app },
     });
   }
 }
 
 const NONE: ReadonlySet<string> = new Set();
+/** A failed removal still refreshes the boards, which runs the scheduler again, so each call is tried once a session. */
+const removing = new Set<string>();
 
-/** The ids of the calls in their starting window. Reading it notifies due calls and sets the next wake. */
+/**
+ * The ids of the Chrome calls in their starting window, the only app v1 records. Reading it notifies
+ * due calls, removes finished calls with nothing recorded, and sets the next wake.
+ */
 export const startingCallsAtom = Atom.make((get): ReadonlySet<string> => {
-  if (calls === undefined || get(recorderAtom) === null) return NONE;
-  const list = get(chromeCallsAtom);
+  const snapshot = get(recorderAtom);
+  if (calls === undefined || snapshot === null) return NONE;
+  const list = get(boardCallsAtom);
   const now = Date.now();
   get.addFinalizer(calls.onWake(() => get.refreshSelf()));
   calls.wakeAt(nextWake(list, now));
-  void notifyDue(list, now);
-  return new Set(list.filter((call) => isStarting(call, now)).map((call) => call.id));
+  const chrome = list.filter(
+    (call) =>
+      call.app === "chrome" && (call.listed.board.cardStates?.[call.id] ?? "todo") === "todo",
+  );
+  void notifyDue(chrome, now);
+  const recording = snapshot.state.status === "idle" ? null : snapshot.state.callId;
+  const recorded = new Set(snapshot.recordings.map((take) => take.callId));
+  for (const call of splitCalls(list, now, recording, recorded).stale) {
+    if (removing.has(call.id)) continue;
+    removing.add(call.id);
+    void deleteCall(get.registry, call.project, call.listed, call.id);
+  }
+  return new Set(chrome.filter((call) => isStarting(call, now)).map((call) => call.id));
 }).pipe(Atom.withLabel("starting-calls"));
 
 /** What the board asks before it records: the consent notice, or that another call records. */

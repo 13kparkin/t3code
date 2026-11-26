@@ -6,7 +6,7 @@ import { openBoard } from "../state/boards";
 import {
   acceptConsent,
   callPromptAtom,
-  chromeCallsAtom,
+  boardCallsAtom,
   recordCall,
   recorderAtom,
 } from "../state/recorder";
@@ -17,7 +17,7 @@ export function CallPrompt() {
   const registry = useContext(RegistryContext);
   const prompt = useAtomValue(callPromptAtom);
   const state = useAtomValue(recorderAtom)?.state;
-  const calls = useAtomValue(chromeCallsAtom);
+  const calls = useAtomValue(boardCallsAtom);
   if (prompt === null) return null;
   const close = () => registry.set(callPromptAtom, null);
   if (prompt.kind === "consent") {
@@ -61,7 +61,10 @@ export function CallPrompt() {
               autoFocus
               onClick={() => {
                 close();
-                void openBoard(registry, { projectId: running.projectId, folder: running.folder });
+                void openBoard(registry, {
+                  projectId: running.project.id,
+                  folder: running.listed.folder,
+                });
               }}
               className="rounded-md bg-fg px-2.5 py-1 font-medium text-bg"
             >
