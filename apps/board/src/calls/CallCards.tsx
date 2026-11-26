@@ -6,6 +6,7 @@ import { type MouseEvent, useContext, useState } from "react";
 import { LANE_HEAD, LANE_WIDTH } from "../board/layout";
 import type { CallEvent, CardState } from "../domain/board";
 import {
+  callNotesRequestsAtom,
   deleteAudio,
   recordCall,
   recorderAtom,
@@ -50,6 +51,7 @@ export function CallCards({
   const recorder = useAtomValue(recorderAtom);
   const starting = useAtomValue(startingCallsAtom);
   const jobs = useAtomValue(transcriptionsAtom);
+  const notes = useAtomValue(callNotesRequestsAtom);
   const [all, setAll] = useState(false);
   const listed = all ? [...shown, ...later] : shown;
   const state = recorder?.state;
@@ -99,6 +101,7 @@ export function CallCards({
               state?.status === "idle" && state.failed?.callId === call.id ? state.failed : null;
             const audio = recorder === null ? null : callAudio(recorder.recordings, call.id);
             const job = jobs[call.id];
+            const request = notes[call.id];
             return (
               <li
                 key={call.id}
@@ -194,6 +197,11 @@ export function CallCards({
                 {job?.status === "failed" && (
                   <p role="alert" className="text-[11px] break-words text-red-400">
                     {job.message}
+                  </p>
+                )}
+                {request?.status === "failed" && (
+                  <p role="alert" className="text-[11px] break-words text-red-400">
+                    {request.message}
                   </p>
                 )}
               </li>

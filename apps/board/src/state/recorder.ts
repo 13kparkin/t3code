@@ -21,8 +21,10 @@ import { sameTakes, transcribeTakes } from "../calls/transcribe";
 import type { RecorderSnapshot } from "../connection/engineState";
 import { connectionAtomRuntime } from "../connection/runtime";
 import { BOARDS_DIR, type CallEvent } from "../domain/board";
+import { callNotesMessage, callNotesPath } from "../domain/callNotes";
+import { messageOrchestrator } from "../foryou/actions";
 import type { RecordingFile, RecordRequest } from "../domain/recording";
-import type { ValidBoard } from "../store/boardFiles";
+import { readBoard, type ValidBoard } from "../store/boardFiles";
 import { deleteCall, markRecorded } from "./boardCards";
 import { boardEngine, localState, openBoard, projectBoardsAtom } from "./boards";
 import { environmentProjects } from "./projects";
@@ -220,6 +222,58 @@ function failure(cause: unknown, missingModel: string) {
   return cause instanceof Error ? cause.message : String(cause);
 }
 
+type NotesRequest =
+  | { readonly status: "sending" | "sent" }
+  | { readonly status: "failed"; readonly message: string };
+
+/** By call id, on this PC only. The notes card itself comes from `notes.json`. */
+export const callNotesRequestsAtom = Atom.make<Readonly<Record<string, NotesRequest>>>({}).pipe(
+  Atom.keepAlive,
+  Atom.withLabel("call-notes-requests"),
+);
+
+export async function requestCallNotes(
+  registry: AtomRegistry.AtomRegistry,
+  project: Pick<EnvironmentProject, "environmentId" | "workspaceRoot">,
+  folder: string,
+  call: Pick<CallEvent, "id" | "title">,
+) {
+  if (registry.get(callNotesRequestsAtom)[call.id]?.status === "sending") return;
+  const set = (request: NotesRequest) =>
+    registry.update(callNotesRequestsAtom, (all) => ({ ...all, [call.id]: request }));
+  set({ status: "sending" });
+  const dir = `${project.workspaceRoot}/${BOARDS_DIR}/${folder}`;
+  try {
+    // Read fresh, since the orchestrator may have started while the transcript was written.
+    const { orchestratorThreadId } = await readBoard(
+      boardEngine(registry, project.environmentId).files,
+      project.workspaceRoot,
+      folder,
+    );
+    if (orchestratorThreadId === null) {
+      return set({
+        status: "failed",
+        message: "Start this board's orchestrator, then press Write call notes.",
+      });
+    }
+    const failure = await messageOrchestrator(
+      registry,
+      project.environmentId,
+      orchestratorThreadId,
+      async () =>
+        callNotesMessage({
+          callId: call.id,
+          title: call.title,
+          transcript: `${dir}/${transcriptPath(call.id)}`,
+          notes: `${dir}/${callNotesPath(call.id)}`,
+        }),
+    );
+    set(failure === null ? { status: "sent" } : { status: "failed", message: failure });
+  } catch (cause) {
+    set({ status: "failed", message: cause instanceof Error ? cause.message : String(cause) });
+  }
+}
+
 /** Uses the engine's selected speech model. A failure keeps the audio and shows on the call. */
 export async function transcribeCall(
   registry: AtomRegistry.AtomRegistry,
@@ -239,7 +293,8 @@ export async function transcribeCall(
   const takes = takesOf()
     .filter((take) => take.endedAt !== null)
     .toSorted((a, b) => Date.parse(a.startedAt) - Date.parse(b.startedAt));
-  if (takes.length === 0) return;
+  const [first] = takes;
+  if (first === undefined) return;
   set({ status: "running", done: 0, total: 0 });
   let missingModel = "Choose a speech model in T3's voice settings, then transcribe again.";
   try {
@@ -295,6 +350,7 @@ export async function transcribeCall(
       progress: (done, total) => set({ status: "running", done, total }),
     });
     set({ status: "written" });
+    void requestCallNotes(registry, project, folder, { id: callId, title: first.title });
   } catch (cause) {
     set({ status: "failed", message: failure(cause, missingModel) });
   }

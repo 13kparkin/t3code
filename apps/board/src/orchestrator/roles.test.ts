@@ -8,7 +8,7 @@ import { resolveRoles, roleTargetProblem, ROLES } from "./roles";
 const rolesDir = NodePath.resolve(import.meta.dirname, "../../roles");
 
 describe("the role registry", () => {
-  it("Given the registry, when it is read, then it is these 17 roles on these models", () => {
+  it("Given the registry, when it is read, then it is these 18 roles on these models", () => {
     const SONNET = ["claude-sonnet-5-5", "medium"];
     const OPUS = ["claude-opus-5-5", "medium"];
     expect(
@@ -37,6 +37,7 @@ describe("the role registry", () => {
       ["egm-style", "review", "shared", ...OPUS],
       ["egm-synthesizer", "general", "shared", ...OPUS],
       ["egm-zoom-out", "design", "shared", ...OPUS],
+      ["call-notes", "research", "shared", ...SONNET],
     ]);
   });
 

@@ -70,6 +70,7 @@ const SPECS: ReadonlyArray<RoleSpec> = [
   spec("egm-style", "review", "shared", true),
   spec("egm-synthesizer", "general", "shared", false),
   spec("egm-zoom-out", "design", "shared", true),
+  spec("call-notes", "research", "shared", true, SCOUT),
 ];
 
 function descriptionOf(file: string): string {
