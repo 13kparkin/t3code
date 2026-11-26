@@ -19,21 +19,7 @@ import { Linking } from "react-native";
 
 import { readPairingRequest } from "./pairing";
 import { connectionAtomRuntime, connectPairingUrl, environmentCatalog } from "./runtime";
-
-export type EngineStatus =
-  | { readonly kind: "loading" }
-  | { readonly kind: "unpaired" }
-  | {
-      readonly kind: "connecting" | "reconnecting" | "connected";
-      readonly environmentId: EnvironmentId;
-      readonly label: string;
-    }
-  | {
-      readonly kind: "refused";
-      readonly environmentId: EnvironmentId;
-      readonly label: string;
-      readonly detail: string;
-    };
+import { type EngineStatus, pairedEngineStatus } from "./status";
 
 /** The one engine the phone is paired with, and how its connection is doing. */
 export const engineStatusAtom = Atom.make((get): EngineStatus => {
@@ -46,23 +32,7 @@ export const engineStatusAtom = Atom.make((get): EngineStatus => {
     get(environmentCatalog.stateAtom(environmentId)),
     () => AVAILABLE_CONNECTION_STATE,
   );
-  switch (state.phase) {
-    case "connected":
-      return { kind: "connected", environmentId, label };
-    case "blocked":
-      return {
-        kind: "refused",
-        environmentId,
-        label,
-        detail: state.lastFailure?.detail ?? "The engine refused this phone.",
-      };
-    case "offline":
-    case "backoff":
-      return { kind: "reconnecting", environmentId, label };
-    case "available":
-    case "connecting":
-      return { kind: "connecting", environmentId, label };
-  }
+  return pairedEngineStatus(environmentId, label, state);
 }).pipe(Atom.withLabel("engine-status"));
 
 const environmentShell = createEnvironmentShellAtoms(connectionAtomRuntime);

@@ -4,7 +4,8 @@ import { useContext } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { type EngineStatus, engineStatusAtom, unpair } from "./connection/engine";
+import { engineStatusAtom, unpair } from "./connection/engine";
+import type { EngineStatus } from "./connection/status";
 import { styles } from "./styles";
 
 const DOT = {
