@@ -10,6 +10,8 @@ const FileBox = Schema.Struct({
   width: Schema.optionalKey(Schema.Finite),
   height: Schema.optionalKey(Schema.Finite),
   open: Schema.optionalKey(Schema.Boolean),
+  /** Raised past every other box of the board when the user presses it. */
+  z: Schema.optionalKey(Schema.Finite),
 });
 export type FileBox = typeof FileBox.Type;
 

@@ -35,7 +35,8 @@ export function FileBox({
   children: ReactNode;
 }) {
   const registry = useContext(RegistryContext);
-  const saved = useAtomValue(fileBoxesAtom)[boardId]?.[boxKey];
+  const boxes = useAtomValue(fileBoxesAtom)[boardId] ?? {};
+  const saved = boxes[boxKey];
   const scale = useViewScale();
   const ref = useRef<HTMLElement>(null);
   const press = useRef<{ mode: "move" | "size"; x: number; y: number; box: Box } | null>(null);
@@ -71,19 +72,38 @@ export function FileBox({
   };
   const end = () => {
     press.current = null;
-    if (live !== null) void changeFileBox(registry, boardId, boxKey, fallback, () => live);
+    if (live !== null) {
+      void changeFileBox(registry, boardId, boxKey, fallback, (now) => ({
+        ...live,
+        z: now.z ?? 0,
+      }));
+    }
     setLive(null);
   };
   const handlers = { onPointerMove: drag, onPointerUp: end, onPointerCancel: end };
+  const z = saved?.z ?? 0;
+  const raise = () => {
+    const others = Object.entries(boxes).flatMap(([key, other]) =>
+      key === boxKey ? [] : [other.z ?? 0],
+    );
+    if (!others.some((other) => other >= z)) return;
+    const top = Math.max(...others) + 1;
+    void changeFileBox(registry, boardId, boxKey, fallback, (now) => ({ ...now, z: top }));
+  };
   return (
     <section
       ref={ref}
       aria-label={boxKey === "artifacts" ? "Artifacts" : `Files ${boxKey}`}
       data-testid="file-box"
       data-box={boxKey}
-      onPointerDown={(event) => event.stopPropagation()}
-      className={`z-[5] rounded-xl border border-dashed border-line bg-bg ${place === "row" ? "relative shrink-0 self-stretch" : "absolute top-0 left-0"}`}
+      onPointerDown={(event) => {
+        event.stopPropagation();
+        raise();
+      }}
+      className={`rounded-xl border border-dashed border-line bg-bg ${place === "row" ? "relative shrink-0 self-stretch" : "absolute top-0 left-0"}`}
       style={{
+        // Above the lanes, which have no z-index, and in the order the user last pressed the boxes.
+        zIndex: 5 + z,
         transform: `translate(${box.x}px, ${box.y}px)`,
         width: box.width ?? LANE_WIDTH,
         height: box.height,

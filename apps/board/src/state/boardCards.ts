@@ -72,7 +72,7 @@ export const deleteCall = (
   project: BoardProject,
   listed: ValidBoard,
   id: string,
-  judged?: Pick<CallEvent, "start">,
+  judged?: Pick<CallEvent, "start" | "recordedAt">,
 ) =>
   changeBoardFile(registry, project, (files) =>
     removeCall(files, project.workspaceRoot, listed.folder, id, judged),

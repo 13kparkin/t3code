@@ -400,6 +400,9 @@ describe("call events", () => {
       title: "Standup moved",
       recordedAt: standup.start,
     });
+    const expired = { ...standup, title: "Standup moved", recordedAt: standup.start };
+    await removeCall(files, CWD, target.folder, standup.id, expired);
+    expect(savedBoard(store)?.calls).toEqual([moved]);
   });
 });
 

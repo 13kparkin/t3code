@@ -95,8 +95,8 @@ export interface RecorderHost {
   readonly stop: () => void;
   /** Removes every take of the call from this PC, true once none is left. Does nothing while that call records. */
   readonly deleteAudio: (callId: string) => Promise<boolean>;
-  /** Opens a take's file in Windows' default app, since the engine cannot read files on this PC. */
-  readonly openFile: (file: RecordingFile) => void;
+  /** Opens a take's file in Windows' default app, since the engine cannot read files on this PC. `folder` when no app opens it and its folder opened instead. */
+  readonly openFile: (file: RecordingFile) => Promise<"opened" | "folder" | "missing">;
 }
 
 /** The app's own release, which only the packaged app checks for and installs. */

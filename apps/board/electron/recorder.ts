@@ -497,12 +497,17 @@ export function registerRecorder(platform: NodeJS.Platform) {
     Option.map(decodeRequest(request), (valid) => void recorder.start(valid)),
   );
   ipcMain.on("board:recorder-stop", () => recorder.stop());
-  ipcMain.on("board:recording-open", (_event, file) =>
-    Option.map(decodeRecordingFile(file), (valid) => {
-      const path = recorder.fileOf(valid);
-      if (path !== null) void shell.openPath(path);
-    }),
-  );
+  // With no app for the file type, openPath resolves to an error, so the folder opens instead.
+  ipcMain.handle("board:recording-open", async (_event, file) => {
+    const path = Option.match(decodeRecordingFile(file), {
+      onNone: () => null,
+      onSome: recorder.fileOf,
+    });
+    if (path === null) return "missing";
+    if ((await shell.openPath(path)) === "") return "opened";
+    shell.showItemInFolder(path);
+    return "folder";
+  });
   ipcMain.handle("board:recorder-delete", (_event, callId) =>
     Option.match(decodeCallId(callId), { onNone: () => false, onSome: recorder.remove }),
   );

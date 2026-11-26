@@ -289,18 +289,21 @@ export const markCallRecorded = (
 
 /**
  * Removes a call event and its card state. With `judged`, the call a cleanup found finished, it
- * removes only while the saved call still has that start and no `recordedAt` mark.
+ * removes only while the saved call still has that start and that mark, so an edit or a new take since keeps it.
  */
 export const removeCall = (
   files: ProjectFiles,
   cwd: string,
   folder: string,
   id: string,
-  judged?: Pick<CallEvent, "start">,
+  judged?: Pick<CallEvent, "start" | "recordedAt">,
 ) =>
   changeBoard(files, cwd, folder, (board) => {
     const saved = (board.calls ?? []).find((call) => call.id === id);
-    if (judged !== undefined && (saved?.start !== judged.start || saved.recordedAt !== undefined)) {
+    if (
+      judged !== undefined &&
+      (saved?.start !== judged.start || saved.recordedAt !== judged.recordedAt)
+    ) {
       return board;
     }
     const { [id]: _removed, ...cardStates } = board.cardStates ?? {};

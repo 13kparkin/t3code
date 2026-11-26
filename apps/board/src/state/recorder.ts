@@ -169,6 +169,7 @@ export const acceptConsent = () =>
   localState.update((state) => ({ ...state, recordingConsent: true }));
 
 export const stopRecording = () => recorder?.stop();
-export const openRecordingFile = (file: RecordingFile) => recorder?.openFile(file);
+export const openRecordingFile = (file: RecordingFile) =>
+  recorder?.openFile(file) ?? Promise.resolve("missing" as const);
 export const deleteAudio = (callId: string) =>
   recorder?.deleteAudio(callId) ?? Promise.resolve(false);

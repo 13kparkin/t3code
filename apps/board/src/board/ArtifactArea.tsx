@@ -1,13 +1,14 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { FileAudio, FileText, Folder, Phone, X } from "lucide-react";
-import { type MouseEvent, type ReactNode, useContext, useState } from "react";
+import { type MouseEvent, type ReactNode, useContext, useRef, useState } from "react";
 
 import { useArtifacts } from "../artifacts/ArtifactsContext";
 import { START } from "../calls/CallCards";
 import { folderView } from "../domain/artifact";
 import type { CallEvent } from "../domain/board";
 import { setCardState } from "../state/boardCards";
+import { folderArchived } from "../state/cardStates";
 import { changeFileBox, fileBoxesAtom } from "../state/boardUi";
 import { openRecordingFile, recorderAtom } from "../state/recorder";
 import type { ValidBoard } from "../store/boardFiles";
@@ -16,16 +17,20 @@ import { ArtifactCard } from "./ArtifactCard";
 import { FileBox } from "./FileBox";
 import { LANE_GAP, LANE_WIDTH } from "./layout";
 import { Tile } from "./Tile";
+import { useViewScale } from "./Viewport";
 
 const SECTION = { width: LANE_WIDTH, height: 200 };
-const STAGGER = 24;
 const HOME = { x: 0, y: 0 };
+const NOTICE = {
+  folder: "No app opens this file here, so its folder opened.",
+  missing: "This take is no longer on this PC.",
+} as const;
 const TAKE_FILES = ["me.wav", "them.wav", "recording.json"] as const;
 
 /**
  * The board's files and its finished recorded calls, and the files sections they open. A folder or
  * a call opens its own section; a board file opens the viewer. Every card's right-click only
- * archives it, under `file:<path>`, `dir:<path>`, or the call's id.
+ * archives it, under `file:<path>`, `dir:<path>`, `take:<call>/<start>/<name>`, or the call's id.
  */
 export function ArtifactArea({
   project,
@@ -42,25 +47,32 @@ export function ArtifactArea({
   const boxes = useAtomValue(fileBoxesAtom)[boardId] ?? {};
   const snapshot = useAtomValue(recorderAtom);
   const states = listed.board.cardStates ?? {};
-  const [menu, setMenu] = useState<{ x: number; y: number; key: string; label: string } | null>(
-    null,
-  );
+  const scale = useViewScale();
+  const anchor = useRef<HTMLDivElement>(null);
+  const [menu, setMenu] = useState<{
+    x: number;
+    y: number;
+    key: string;
+    label: string;
+    from: HTMLElement;
+  } | null>(null);
+  const [notices, setNotices] = useState<{ readonly [key: string]: string }>({});
   const files = groups.board.filter((file) => states[`file:${file.path}`] !== "archived");
   const opened = Object.entries(boxes).flatMap(([key, box]) =>
     key !== "artifacts" && box.open === true ? [key] : [],
   );
-  const show = (key: string) =>
-    void changeFileBox(
-      registry,
-      boardId,
-      key,
-      {
-        ...SECTION,
-        x: (boxes.artifacts?.width ?? LANE_WIDTH) + LANE_GAP + STAGGER * opened.length,
-        y: STAGGER * opened.length,
-      },
-      (box) => ({ ...box, open: true }),
-    );
+  /** A section opens on top, and the first time beside the card that opened it. */
+  const show = (key: string) => (event: MouseEvent<HTMLElement>) => {
+    const card = event.currentTarget.getBoundingClientRect();
+    const home = anchor.current?.getBoundingClientRect() ?? card;
+    const top = Math.max(0, ...Object.values(boxes).map((box) => box.z ?? 0)) + 1;
+    const beside = {
+      ...SECTION,
+      x: Math.round((card.right - home.left) / scale) + LANE_GAP,
+      y: Math.round((card.top - home.top) / scale),
+    };
+    void changeFileBox(registry, boardId, key, beside, (box) => ({ ...box, open: true, z: top }));
+  };
   const hide = (key: string) =>
     void changeFileBox(registry, boardId, key, HOME, (box) => ({ ...box, open: false }));
   const archivable = (key: string, label: string, card: ReactNode) => (
@@ -78,6 +90,7 @@ export function ArtifactArea({
           y: keyboard ? rect.bottom : event.clientY,
           key,
           label,
+          from: event.currentTarget,
         });
       }}
     >
@@ -97,7 +110,7 @@ export function ArtifactArea({
               icon={Folder}
               title={entry.name}
               hint={`${entry.count} ${entry.count === 1 ? "file" : "files"}`}
-              onClick={() => show(`dir:${entry.path}`)}
+              onClick={show(`dir:${entry.path}`)}
             />,
           ),
         ),
@@ -125,7 +138,7 @@ export function ArtifactArea({
         icon={Phone}
         title={call.title}
         hint={`${START.format(new Date(call.start))}${where}`}
-        onClick={() => show(`call:${call.id}`)}
+        onClick={show(`call:${call.id}`)}
       />,
     );
   });
@@ -141,18 +154,30 @@ export function ArtifactArea({
       ];
     }
     return takes.flatMap((take, index) =>
-      TAKE_FILES.map((file) =>
-        archivable(
-          `file:recordings/${call.id}/${take.startedAt}/${file}`,
-          file,
-          <Tile
-            icon={file === "recording.json" ? FileText : FileAudio}
-            title={file}
-            hint={`Take ${index + 1} · ${START.format(new Date(take.startedAt))}`}
-            onClick={() => openRecordingFile({ callId: call.id, startedAt: take.startedAt, file })}
-          />,
-        ),
-      ),
+      TAKE_FILES.flatMap((file) => {
+        const key = `take:${call.id}/${take.startedAt}/${file}`;
+        if (states[key] === "archived") return [];
+        return [
+          archivable(
+            key,
+            file,
+            <Tile
+              icon={file === "recording.json" ? FileText : FileAudio}
+              title={file}
+              hint={notices[key] ?? `Take ${index + 1} · ${START.format(new Date(take.startedAt))}`}
+              onClick={() =>
+                void openRecordingFile({ callId: call.id, startedAt: take.startedAt, file }).then(
+                  (result) =>
+                    setNotices((shown) => {
+                      const { [key]: _old, ...rest } = shown;
+                      return result === "opened" ? rest : { ...rest, [key]: NOTICE[result] };
+                    }),
+                )
+              }
+            />,
+          ),
+        ];
+      }),
     );
   };
   const closeButton = (key: string) => (
@@ -176,6 +201,7 @@ export function ArtifactArea({
   const sections = opened.flatMap((key) => {
     if (key.startsWith("dir:")) {
       const path = key.slice("dir:".length);
+      if (folderArchived(states, path)) return [];
       const cards = folderCards(path);
       return [{ key, title: heading(path.slice(path.lastIndexOf("/") + 1), path), cards }];
     }
@@ -185,7 +211,7 @@ export function ArtifactArea({
     return [{ key, title, cards: takeCards(call) }];
   });
   return (
-    <div className="relative flex self-stretch">
+    <div ref={anchor} className="relative flex self-stretch">
       <FileBox
         boardId={boardId}
         boxKey="artifacts"
@@ -222,7 +248,12 @@ export function ArtifactArea({
               onSelect: () => void setCardState(registry, project, listed, menu.key, "archived"),
             },
           ]}
-          onClose={() => setMenu(null)}
+          onClose={() => {
+            // Escape or a pick leaves focus in the closing menu, so it goes back to the card.
+            const inMenu = document.activeElement?.closest('[role="menu"]') != null;
+            setMenu(null);
+            if (inMenu) menu.from.focus();
+          }}
         />
       )}
     </div>

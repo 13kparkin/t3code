@@ -65,7 +65,7 @@ export function splitCards(
   };
 }
 
-/** Archived calls, and the files and folders archived from the Artifacts area under `file:` and `dir:` keys. */
+/** Archived calls, and the files, folders, and take files archived from the Artifacts area, each by its name. */
 export const archivedBesideLanes = (
   calls: ReadonlyArray<CallEvent>,
   states: { readonly [key: string]: CardState },
@@ -74,6 +74,15 @@ export const archivedBesideLanes = (
     .filter((call) => states[call.id] === "archived")
     .map((call) => ({ key: call.id, label: call.title })),
   ...Object.keys(states)
-    .filter((key) => states[key] === "archived" && /^(file|dir):/.test(key))
-    .map((key) => ({ key, label: key.slice(key.lastIndexOf("/") + 1) })),
+    .filter((key) => states[key] === "archived" && /^(file|dir|take):/.test(key))
+    .map((key) => ({
+      key,
+      label: key.slice(Math.max(key.indexOf(":"), key.lastIndexOf("/")) + 1),
+    })),
 ];
+
+/** Whether a folder, or a folder it sits in, was archived from the Artifacts area, which hides its section. */
+export const folderArchived = (states: { readonly [key: string]: CardState }, path: string) =>
+  path
+    .split("/")
+    .some((_, at, parts) => states[`dir:${parts.slice(0, at + 1).join("/")}`] === "archived");
