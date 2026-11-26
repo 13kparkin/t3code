@@ -1,18 +1,18 @@
-import { RegistryContext, useAtomMount, useAtomValue } from "@effect/atom-react";
+import { RegistryContext, useAtom, useAtomMount, useAtomValue } from "@effect/atom-react";
 import { useTheme } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useContext, useState } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
 import { styles } from "../styles";
-import { deepLinkPairingAtom, pair, pairingStateAtom } from "./engine";
+import { deepLinkPairingAtom, pair, pairingInputAtom, pairingStateAtom } from "./engine";
 
 export function PairScreen() {
   const { colors } = useTheme();
   const registry = useContext(RegistryContext);
   const { busy, error } = useAtomValue(pairingStateAtom);
   const [scanning, setScanning] = useState(false);
-  const [pasted, setPasted] = useState("");
+  const [pasted, setPasted] = useAtom(pairingInputAtom);
   const [permission, requestPermission] = useCameraPermissions();
   useAtomMount(deepLinkPairingAtom);
 

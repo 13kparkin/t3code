@@ -28,6 +28,12 @@ describe("readPairingRequest", () => {
       "lan-code",
     ],
     [
+      "the dev build's deep link",
+      `agentboard-phone-dev://pair?url=${encodeURIComponent(LAN)}`,
+      "http://192.168.1.20:3773/",
+      "lan-code",
+    ],
+    [
       "the phone's deep link",
       `agentboard-phone://pair?url=${encodeURIComponent(LAN)}`,
       "http://192.168.1.20:3773/",
