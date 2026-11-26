@@ -182,7 +182,7 @@ export function ArtifactArea({
             request?.status === "sending"
               ? "Sending to the orchestrator"
               : request?.status === "sent"
-                ? "The orchestrator is on it"
+                ? "Sent to the orchestrator"
                 : request?.status === "failed"
                   ? "Failed. Press to try again."
                   : "Asks the orchestrator for notes and For you items"
