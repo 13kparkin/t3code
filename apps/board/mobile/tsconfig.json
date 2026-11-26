@@ -1,0 +1,20 @@
+{
+  "extends": ["expo/tsconfig.base.json", "../../../tsconfig.effect.json"],
+  "compilerOptions": {
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        // React Native has no Effect platform layer.
+        "diagnosticSeverity": {
+          "globalDate": "off",
+          "globalConsole": "off",
+          "globalRandom": "off",
+          "globalTimers": "off",
+          "globalFetch": "off"
+        }
+      }
+    ],
+    "strict": true,
+    "noUncheckedIndexedAccess": true
+  }
+}

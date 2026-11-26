@@ -5,7 +5,8 @@
   "main": "dist-electron/electron/main.cjs",
   "exports": {
     ".": "./dist-electron/electron/main.cjs",
-    "./preload": "./dist-electron/electron/preload.cjs"
+    "./preload": "./dist-electron/electron/preload.cjs",
+    "./domain/*": "./src/domain/*.ts"
   },
   "scripts": {
     "dev": "node scripts/dev.mjs",

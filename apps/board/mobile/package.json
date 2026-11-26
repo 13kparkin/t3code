@@ -1,0 +1,30 @@
+{
+  "name": "@agent-board/phone",
+  "version": "0.0.0",
+  "private": true,
+  "main": "index.ts",
+  "scripts": {
+    "android:dev": "APP_VARIANT=development EXPO_NO_GIT_STATUS=1 expo prebuild --clean --platform android && REACT_NATIVE_PACKAGER_HOSTNAME=localhost expo run:android",
+    "dev:client": "APP_VARIANT=development expo start --dev-client --scheme agentboard-phone-dev --lan",
+    "typecheck": "effect-tsgo tsrs --noEmit",
+    "test": "vp test run"
+  },
+  "dependencies": {
+    "@agent-board/app": "workspace:*",
+    "@react-navigation/bottom-tabs": "7.21.0",
+    "@react-navigation/native": "7.5.1",
+    "@tabler/icons-react-native": "^3.44.0",
+    "effect": "catalog:",
+    "expo": "58.0.23",
+    "expo-build-properties": "~58.0.12",
+    "expo-dev-client": "~58.0.18",
+    "react": "catalog:",
+    "react-native": "0.88.1",
+    "react-native-safe-area-context": "~5.11.1",
+    "react-native-screens": "file:../../mobile/deps/react-native-screens-5.0.0-t3.61.tgz",
+    "react-native-svg": "15.16.1"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:"
+  }
+}

@@ -9,6 +9,7 @@ const ALLOWED = [
   ".claude/settings.json",
   ".github/workflows/agent-board.yml",
   "pnpm-lock.yaml",
+  "pnpm-workspace.yaml",
   ".gitignore",
   "AGENTS.md",
   ".agents/skills/test-t3-app/SKILL.md",

@@ -89,6 +89,7 @@ export default {
           allowPatterns: [
             "/(scripts|electron|standards)/",
             "vite\\.config\\.[cm]?ts$",
+            "/app\\.config\\.ts$",
             "\\.test\\.[cm]?[jt]sx?$",
           ],
         },

@@ -4,7 +4,7 @@ A desktop app that runs projects through an orchestrator on the T3 Code engine. 
 
 ## The engine stays upstream
 
-This fork tracks `pingdotgg/t3code`. Board code lives only in `apps/board/`, `.github/workflows/agent-board.yml`, and `pnpm-lock.yaml`, so merging upstream never conflicts. The check below enforces that and runs in CI on every pull request.
+This fork tracks `pingdotgg/t3code`. Board code lives only in `apps/board/`, `.github/workflows/agent-board.yml`, `pnpm-lock.yaml`, `standards/`, and the phone app's two lines in `pnpm-workspace.yaml`, so merging upstream never conflicts. The check below enforces that and runs in CI on every pull request.
 
 ```sh
 git remote add upstream https://github.com/pingdotgg/t3code.git  # once
@@ -69,6 +69,23 @@ node apps/board/scripts/ci-local.mjs T-13 <board folder>/artifacts/T-13
 ```
 
 It needs a clean checkout. It fetches upstream, runs `vp run check:changed` and every release gate, and writes `ci-local.txt` into the evidence folder named by its second argument, whose last segment must be the ticket key. A builder's worktree does not hold the board folder, so the path comes from the caller. Line 1 is the head SHA, and each step ends with a line such as `engine-exit=0`. The file keeps the last 32,000 characters of each step's output.
+
+## Phone app
+
+`apps/board/mobile` is the board's Android app, `@agent-board/phone`. It is an Expo app on the same Expo and React Native versions as T3's mobile app, and it reads the board's domain code from `@agent-board/app/domain/*`, the same files the desktop uses.
+
+It is not paired with the engine yet. It opens to Board, Agents, For you and Chat tabs under a "Not paired" banner, and the Board tab counts the tickets in a bundled sample board.
+
+Build it in WSL with JDK 17 in `JAVA_HOME` and the Android SDK in `ANDROID_HOME`, and run it on an emulator or a phone that `adb devices` lists.
+
+```sh
+vp run --filter @agent-board/phone android:dev  # build and install Agent Board Dev
+vp run --filter @agent-board/phone dev:client   # start Metro for it
+```
+
+The dev build's package id is `dev.agentboard.phone.dev`, so installing it does not replace T3 Code Dev.
+
+`react-native-screens` comes from T3's fork tarball at `apps/mobile/deps/`, by path. When an upstream merge renames that tarball, update the path in `apps/board/mobile/package.json`.
 
 ## omp rules for Claude Code
 
@@ -289,7 +306,9 @@ When a board starts its orchestrator on a project with no setup script and no sc
 
 ```sh
 vp run --filter @agent-board/app typecheck
+vp run --filter @agent-board/phone typecheck
 cd apps/board && vp test run
+vp run --filter @agent-board/phone test
 node --test apps/board/scripts/*.test.mjs
 node --test apps/board/plugins/board-rules/engine/
 ```
