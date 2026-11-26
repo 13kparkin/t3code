@@ -18,6 +18,7 @@ import * as Schema from "effect/Schema";
 import { AsyncResult, Atom, type AtomRegistry } from "effect/reactivity";
 import { Linking } from "react-native";
 
+import { type BoardProject, foldBoardScan } from "./boardScan";
 import { readPairingRequest } from "./pairing";
 import { connectionAtomRuntime, connectPairingUrl, environmentCatalog } from "./runtime";
 import { type EngineStatus, pairedEngineStatus } from "./status";
@@ -54,9 +55,9 @@ const engineSyncedAtom = Atom.make((get) => {
   return status.kind === "connected" && get(environmentSnapshot(status.environmentId)) !== null;
 }).pipe(Atom.withLabel("engine-synced"));
 
-type BoardProjects = ReadonlyArray<EnvironmentProject> | Error | null;
+type BoardProjects = ReadonlyArray<BoardProject<EnvironmentProject>> | Error | null;
 
-/** The engine's projects that hold a board folder, null until the first check answers, or why it failed. */
+/** The engine's projects that hold a board folder or failed to answer, null until the scan ends. */
 export const boardProjectsAtom = Atom.make((get): BoardProjects => {
   const projects = get(environmentProjects.projectsAtom);
   if (get(engineSyncedAtom)) {
@@ -76,20 +77,17 @@ export const boardProjectsAtom = Atom.make((get): BoardProjects => {
       if (isProjectListEntriesError(failure) && failure.failure === "directory_list_failed") {
         return false;
       }
-      throw failure instanceof Error ? failure : new Error(String(failure));
+      return failure instanceof Error ? failure : new Error(String(failure));
     };
     let current = true;
     get.addFinalizer(() => {
       current = false;
     });
     void (async () => {
-      const found: Array<EnvironmentProject> = [];
-      for (const project of projects) if (await holdsBoard(project)) found.push(project);
-      return found;
-    })().then(
-      (found) => current && get.setSelf(found),
-      (error: Error) => current && get.setSelf(error),
-    );
+      const outcomes: Array<boolean | Error> = [];
+      for (const project of projects) outcomes.push(await holdsBoard(project));
+      if (current) get.setSelf(foldBoardScan(projects, outcomes));
+    })();
   }
   return Option.getOrNull(get.self<BoardProjects>());
 }).pipe(Atom.withLabel("board-projects"));

@@ -21,10 +21,11 @@ export function BoardScreen() {
   }
   return (
     <ScrollView contentContainerStyle={styles.body}>
-      {projects.map((project) => (
+      {projects.map(({ project, error }) => (
         <View key={project.id}>
           <Text style={[styles.title, { color: colors.text }]}>{project.title}</Text>
           <Text style={[styles.muted, { color: colors.text }]}>{project.workspaceRoot}</Text>
+          {error !== null && <Text style={styles.error}>{error}</Text>}
         </View>
       ))}
     </ScrollView>
