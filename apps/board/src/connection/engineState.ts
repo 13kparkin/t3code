@@ -1,4 +1,4 @@
-import type { Recording, RecordRequest } from "../domain/recording";
+import type { CallToast, Recording, RecordRequest } from "../domain/recording";
 
 export type EngineState =
   | { readonly phase: "connecting" }
@@ -52,6 +52,18 @@ export interface BoardBridge {
   readonly browser: BrowserHost;
   readonly appUpdate: AppUpdateHost;
   readonly recorder: RecorderHost;
+  readonly calls: CallToastHost;
+}
+
+/** Call start toasts on Windows. The renderer picks the calls, and main shows them and wakes it. */
+export interface CallToastHost {
+  /** Replaces main's one wake timer. Null clears it. */
+  readonly wakeAt: (epochMs: number | null) => void;
+  readonly onWake: (listener: () => void) => () => void;
+  readonly notify: (toast: CallToast) => void;
+  /** Fires when a toast's Record is pressed. `takeRecord` then returns it once. */
+  readonly onRecord: (listener: () => void) => () => void;
+  readonly takeRecord: () => Promise<CallToast | null>;
 }
 
 export type RecorderState =

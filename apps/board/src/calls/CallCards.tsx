@@ -1,12 +1,11 @@
-import { useAtomValue } from "@effect/atom-react";
+import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import { MoreHorizontal, Plus } from "lucide-react";
-import { type MouseEvent, useState } from "react";
+import { type MouseEvent, useContext } from "react";
 
 import { LANE_GAP, LANE_HEAD, LANE_WIDTH, ORCHESTRATOR_BOX } from "../board/layout";
 import type { CallEvent, CardState } from "../domain/board";
-import { acceptConsent, deleteAudio, record, recorderAtom } from "../state/recorder";
+import { deleteAudio, recordCall, recorderAtom, startingCallsAtom } from "../state/recorder";
 import { CALL_APPS } from "./CallEditor";
-import { ConsentNotice } from "./ConsentNotice";
 import { callAudio } from "./recorder";
 
 const CALLS_BOX = {
@@ -38,18 +37,9 @@ export function CallCards({
   onAdd: () => void;
   onMenu: (event: MouseEvent, call: CallEvent) => void;
 }) {
+  const registry = useContext(RegistryContext);
   const recorder = useAtomValue(recorderAtom);
-  const [asking, setAsking] = useState<CallEvent | null>(null);
-  const request = (call: CallEvent) => ({
-    callId: call.id,
-    boardId,
-    title: call.title,
-    app: call.app,
-  });
-  const press = (call: CallEvent) =>
-    void record(request(call)).then((started) => {
-      if (!started) setAsking(call);
-    });
+  const starting = useAtomValue(startingCallsAtom);
   const shown = calls
     .filter((call) => states[call.id] !== "archived")
     .toSorted((a, b) => Date.parse(a.start) - Date.parse(b.start));
@@ -115,14 +105,26 @@ export function CallCards({
                   // v1 records Chrome only, the one app verified on Windows.
                   recorder !== null &&
                   call.app === "chrome" && (
-                    <button
-                      type="button"
-                      disabled={state?.status !== "idle"}
-                      onClick={() => press(call)}
-                      className="shrink-0 rounded px-1.5 text-[11px] text-muted hover:bg-hover hover:text-fg disabled:opacity-50"
-                    >
-                      Record
-                    </button>
+                    <>
+                      {starting.has(call.id) && (
+                        <span className="shrink-0 text-[11px] text-amber-300">Starting now</span>
+                      )}
+                      <button
+                        type="button"
+                        disabled={state?.status !== "idle"}
+                        onClick={() =>
+                          void recordCall(registry, {
+                            callId: call.id,
+                            boardId,
+                            title: call.title,
+                            app: call.app,
+                          })
+                        }
+                        className="shrink-0 rounded px-1.5 text-[11px] text-muted hover:bg-hover hover:text-fg disabled:opacity-50"
+                      >
+                        Record
+                      </button>
+                    </>
                   )
                 )}
                 <button
@@ -163,16 +165,6 @@ export function CallCards({
           );
         })}
       </ul>
-      {asking !== null && (
-        <ConsentNotice
-          onClose={() => setAsking(null)}
-          onAccept={() => {
-            const call = asking;
-            setAsking(null);
-            void acceptConsent().then(() => record(request(call)));
-          }}
-        />
-      )}
     </section>
   );
 }

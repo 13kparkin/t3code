@@ -6,6 +6,7 @@ import { sidebarOpenAtom } from "./browser/panel";
 import { attachDockSlot } from "./browser/panel";
 import { PanelHost } from "./browser/PanelHost";
 import { PanelToggle } from "./browser/PanelToggle";
+import { CallPrompt } from "./calls/CallPrompt";
 import { RecordingBar } from "./calls/RecordingBar";
 import { ForYouPanel } from "./foryou/ForYouPanel";
 import { ArchivedPanel } from "./sidebar/ArchivedPanel";
@@ -19,7 +20,7 @@ import { SidebarToggle } from "./sidebar/SidebarToggle";
 import { UpdateToasts } from "./sidebar/UpdateToasts";
 import { connectionWatchAtom } from "./state/engine";
 import { agentPanelAtom } from "./state/agentPanel";
-import { recorderAtom } from "./state/recorder";
+import { recorderAtom, startingCallsAtom, toastRecordAtom } from "./state/recorder";
 import { settingsPageAtom } from "./state/settingsPage";
 import { updateWatcherAtom } from "./state/updatesAtoms";
 import { UsageBar } from "./usage/UsageBar";
@@ -33,6 +34,8 @@ export function App() {
   const setSettingsPage = (page: SettingsPage | null) => registry.set(settingsPageAtom, page);
   useAtomMount(updateWatcherAtom);
   useAtomMount(connectionWatchAtom);
+  useAtomMount(startingCallsAtom);
+  useAtomMount(toastRecordAtom);
   return (
     <div className="grid h-full grid-rows-[var(--topbar-height)_minmax(0,1fr)_auto]">
       <header className="drag-region flex items-center justify-between border-b border-line bg-bg px-2">
@@ -80,6 +83,7 @@ export function App() {
           onBack={() => setSettingsPage(null)}
         />
       )}
+      <CallPrompt />
       <ForYouToasts />
       <UpdateToasts onOpen={() => setSettingsPage("updates")} />
       <UsageBar />

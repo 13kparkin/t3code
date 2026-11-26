@@ -66,6 +66,21 @@ const bridge: BoardBridge = {
     stop: () => ipcRenderer.send("board:recorder-stop"),
     deleteAudio: (callId) => ipcRenderer.send("board:recorder-delete", callId),
   },
+  calls: {
+    wakeAt: (epochMs) => ipcRenderer.send("board:call-wake-at", epochMs),
+    onWake: (listener) => {
+      const handler = () => listener();
+      ipcRenderer.on("board:call-wake", handler);
+      return () => void ipcRenderer.off("board:call-wake", handler);
+    },
+    notify: (toast) => ipcRenderer.send("board:call-notify", toast),
+    onRecord: (listener) => {
+      const handler = () => listener();
+      ipcRenderer.on("board:call-record", handler);
+      return () => void ipcRenderer.off("board:call-record", handler);
+    },
+    takeRecord: () => ipcRenderer.invoke("board:call-record-take"),
+  },
 };
 
 contextBridge.exposeInMainWorld("board", bridge);
