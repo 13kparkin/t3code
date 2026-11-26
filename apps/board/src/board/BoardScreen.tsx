@@ -186,13 +186,13 @@ export function BoardScreen({
           ? [
               {
                 label: "Delete audio",
-                onSelect: () => {
-                  deleteAudio(call.id);
-                  // A finished call lives on only for its audio.
-                  if (callSplit.finished.includes(call)) {
-                    void deleteCall(registry, project, listed, call.id).then(setCardError);
-                  }
-                },
+                // A finished call lives on only for its audio, so it goes once the audio is gone.
+                onSelect: () =>
+                  void deleteAudio(call.id).then((gone) => {
+                    if (gone && callSplit.finished.includes(call)) {
+                      void deleteCall(registry, project, listed, call.id).then(setCardError);
+                    }
+                  }),
               },
             ]
           : []),

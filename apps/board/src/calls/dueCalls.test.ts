@@ -50,7 +50,8 @@ describe("where each call goes", () => {
   const now = { id: "now", start: at(-2) };
   const past = { id: "past", start: at(-30) };
   const recordedElsewhere = { id: "elsewhere", start: at(-30), recorded: true } as const;
-  const none = { shown: [], later: [], finished: [], stale: [] };
+  const expired = { id: "expired", start: at(-(7 * 24 + 5) * 60), recorded: true } as const;
+  const none = { shown: [], later: [], finished: [], stale: [], mark: [] };
   const NO_TAKES = new Set<string>();
   it.each([
     ["no calls", [], null, NO_TAKES, none],
@@ -74,7 +75,7 @@ describe("where each call goes", () => {
       [past],
       null,
       new Set(["past"]),
-      { ...none, finished: ["past"] },
+      { ...none, finished: ["past"], mark: ["past"] },
     ],
     ["a finished call without takes", [past], null, NO_TAKES, { ...none, stale: ["past"] }],
     [
@@ -83,6 +84,20 @@ describe("where each call goes", () => {
       null,
       NO_TAKES,
       { ...none, finished: ["elsewhere"] },
+    ],
+    [
+      "a marked call whose takes this PC holds",
+      [recordedElsewhere],
+      null,
+      new Set(["elsewhere"]),
+      { ...none, finished: ["elsewhere"] },
+    ],
+    [
+      "a marked call past the life of any take, with none here",
+      [expired],
+      null,
+      NO_TAKES,
+      { ...none, stale: ["expired"] },
     ],
     [
       "a finished call while takes are unknown",
@@ -96,7 +111,7 @@ describe("where each call goes", () => {
       [past, later],
       "past",
       NO_TAKES,
-      { ...none, shown: ["past", "later"] },
+      { ...none, shown: ["past", "later"], mark: ["past"] },
     ],
   ] as const)("Given %s, then it splits them as %j", (_name, calls, recording, recorded, ids) => {
     const split = splitCalls(calls, NOW, recording, recorded);
@@ -105,6 +120,7 @@ describe("where each call goes", () => {
       later: split.later.map((call) => call.id),
       finished: split.finished.map((call) => call.id),
       stale: split.stale.map((call) => call.id),
+      mark: split.mark.map((call) => call.id),
     }).toEqual(ids);
   });
 });

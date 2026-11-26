@@ -426,11 +426,11 @@ describe("recovery and retention", () => {
       endReason: "stopped",
       deleteAfter: "2026-12-02T10:00:00.000Z",
     });
-    rig.recorder.remove("old-call");
+    expect(rig.recorder.remove("old-call")).toBe(true);
     expect(NodeFS.existsSync(NodePath.join(rig.root, "old-call"))).toBe(false);
     expect(rig.recorder.snapshot().recordings).toEqual([]);
     await startRecording(rig);
-    rig.recorder.remove("call-1");
+    expect(rig.recorder.remove("call-1")).toBe(false);
     rig.recorder.remove("CALL-1");
     expect(NodeFS.existsSync(NodePath.join(rig.root, "call-1", "1"))).toBe(true);
   });

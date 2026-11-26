@@ -93,8 +93,8 @@ export interface RecorderHost {
   readonly onSnapshot: (listener: (snapshot: RecorderSnapshot) => void) => () => void;
   readonly start: (request: RecordRequest) => void;
   readonly stop: () => void;
-  /** Removes every take of the call from this PC. Does nothing while that call records. */
-  readonly deleteAudio: (callId: string) => void;
+  /** Removes every take of the call from this PC, true once none is left. Does nothing while that call records. */
+  readonly deleteAudio: (callId: string) => Promise<boolean>;
 }
 
 /** The app's own release, which only the packaged app checks for and installs. */

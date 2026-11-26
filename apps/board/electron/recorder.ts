@@ -372,12 +372,14 @@ export function createRecorder(deps: {
     stop: () => session?.child.stop(),
     /** Closes the helper's stdin, which finalizes both files and ends the take as `app_quit`. */
     quit: () => session?.child.end(),
+    /** True once no take of the call is left on this PC. */
     remove: (callId: string) => {
       // NTFS folder names ignore case, so `abc` and `ABC` share one folder.
-      if (session?.request.callId.toLowerCase() === callId.toLowerCase()) return;
+      if (session?.request.callId.toLowerCase() === callId.toLowerCase()) return false;
       const callDir = NodePath.join(root, callId);
       for (const take of readDir(callDir)) removeTake(NodePath.join(callDir, take));
       deps.publish(snapshot());
+      return readDir(callDir).length === 0;
     },
     /** Ends every take a quit or crash of the board left open. Runs at launch, before any Record. */
     recover: async () => {
@@ -487,8 +489,8 @@ export function registerRecorder(platform: NodeJS.Platform) {
     Option.map(decodeRequest(request), (valid) => void recorder.start(valid)),
   );
   ipcMain.on("board:recorder-stop", () => recorder.stop());
-  ipcMain.on("board:recorder-delete", (_event, callId) =>
-    Option.map(decodeCallId(callId), recorder.remove),
+  ipcMain.handle("board:recorder-delete", (_event, callId) =>
+    Option.match(decodeCallId(callId), { onNone: () => false, onSome: recorder.remove }),
   );
 
   void recorder.recover().finally(() => recorder.sweep());

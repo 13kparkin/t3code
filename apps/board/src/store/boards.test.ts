@@ -394,6 +394,12 @@ describe("call events", () => {
       removeCall(files, CWD, target.folder, standup.id, standup),
     ]);
     expect(savedBoard(store)?.calls).toEqual([moved, { ...standup, recorded: true }]);
+    await putCall(files, CWD, target.folder, { ...standup, title: "Standup moved" });
+    expect(savedBoard(store)?.calls?.[1]).toEqual({
+      ...standup,
+      title: "Standup moved",
+      recorded: true,
+    });
   });
 });
 

@@ -1,5 +1,7 @@
 /** How long after its start a call still notifies, and its card says Starting now. */
 const LATE_MS = 10 * 60_000;
+/** A take starts by the end of that window, runs at most 4 hours, and is swept 7 days after it ends. */
+const TAKE_LIFE_MS = LATE_MS + (4 + 7 * 24) * 60 * 60_000;
 
 interface Timed {
   readonly id: string;
@@ -41,10 +43,10 @@ export const markNotified = (
   ]);
 
 /**
- * Where each call goes. The Calls group shows the recording call, the ones starting now, and the
- * next one, with the later ones behind a toggle. A finished call recorded on any PC is listed under
- * Artifacts, and one never recorded is removed. `recorded` is null while the takes are unknown,
- * which keeps every finished call.
+ * Where each call goes: the Calls group (the recording, starting, and next call, then `later`),
+ * Artifacts for a finished call recorded on any PC while a take can still exist, or removal.
+ * `recorded`, this PC's takes, is null while unknown, which keeps every finished call. `mark` lists
+ * calls this PC records or holds takes for that `board.json` does not yet mark.
  */
 export function splitCalls<C extends Timed>(
   calls: ReadonlyArray<C>,
@@ -56,10 +58,15 @@ export function splitCalls<C extends Timed>(
   const next = sorted.find((call) => Date.parse(call.start) > now);
   const current = (call: C) => call === next || call.id === recording || isStarting(call, now);
   const past = sorted.filter((call) => !current(call) && Date.parse(call.start) <= now);
+  const marked = (call: C) => call.recorded === true && now < Date.parse(call.start) + TAKE_LIFE_MS;
   return {
     shown: sorted.filter(current),
     later: sorted.filter((call) => !current(call) && Date.parse(call.start) > now),
-    finished: past.filter((call) => call.recorded === true || recorded?.has(call.id) !== false),
-    stale: past.filter((call) => call.recorded !== true && recorded?.has(call.id) === false),
+    finished: past.filter((call) => marked(call) || recorded?.has(call.id) !== false),
+    stale: past.filter((call) => !marked(call) && recorded?.has(call.id) === false),
+    mark: sorted.filter(
+      (call) =>
+        call.recorded !== true && (call.id === recording || recorded?.has(call.id) === true),
+    ),
   };
 }

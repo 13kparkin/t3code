@@ -83,34 +83,39 @@ export const splitHere = <C extends CallEvent>(
   );
 
 const NONE: ReadonlySet<string> = new Set();
-/** A failed write still refreshes the boards, which runs the scheduler again, so each write is tried once a session. */
+/** A failed write still refreshes the boards, which runs the scheduler again, so a write is retried only after the next wake. */
 const tried = new Set<string>();
 const once = (key: string) => !tried.has(key) && Boolean(tried.add(key));
 
 /**
  * The ids of the Chrome calls in their starting window, the only app v1 records. Reading it notifies
- * due calls, marks a call recorded once its take starts, removes finished calls never recorded, and
- * sets the next wake.
+ * due calls, marks every call this PC records or holds takes for, removes finished calls never
+ * recorded, and sets the next wake.
  */
 export const startingCallsAtom = Atom.make((get): ReadonlySet<string> => {
   const snapshot = get(recorderAtom);
   if (calls === undefined || snapshot === null) return NONE;
   const list = get(boardCallsAtom);
   const now = Date.now();
-  get.addFinalizer(calls.onWake(() => get.refreshSelf()));
+  get.addFinalizer(
+    calls.onWake(() => {
+      tried.clear();
+      get.refreshSelf();
+    }),
+  );
   calls.wakeAt(nextWake(list, now));
   const chrome = list.filter(
     (call) =>
       call.app === "chrome" && (call.listed.board.cardStates?.[call.id] ?? "todo") === "todo",
   );
   void notifyDue(chrome, now);
-  const { state } = snapshot;
-  const live = list.find((call) => state.status === "recording" && call.id === state.callId);
-  if (live !== undefined && live.recorded !== true && once(`mark ${live.id}`)) {
-    void markRecorded(get.registry, live.project, live.listed, live.id);
+  const split = splitHere(list, now, snapshot);
+  for (const call of split.mark) {
+    if (once(`mark ${call.id}`))
+      void markRecorded(get.registry, call.project, call.listed, call.id);
   }
   // A dev build's seeded projects point at the developer's live checkout, as in projectBoardsAtom.
-  for (const call of import.meta.env.DEV ? [] : splitHere(list, now, snapshot).stale) {
+  for (const call of import.meta.env.DEV ? [] : split.stale) {
     if (once(`remove ${call.id}`)) {
       void deleteCall(get.registry, call.project, call.listed, call.id, call);
     }
@@ -151,4 +156,5 @@ export const acceptConsent = () =>
   localState.update((state) => ({ ...state, recordingConsent: true }));
 
 export const stopRecording = () => recorder?.stop();
-export const deleteAudio = (callId: string) => recorder?.deleteAudio(callId);
+export const deleteAudio = (callId: string) =>
+  recorder?.deleteAudio(callId) ?? Promise.resolve(false);
