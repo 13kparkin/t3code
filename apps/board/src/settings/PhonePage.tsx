@@ -9,8 +9,8 @@ import { authEnvironment } from "../state/auth";
 import { serverEnvironment } from "../state/server";
 import { buttonClass } from "./controls/buttonClass";
 import { failureText } from "./failureText";
-import { isPhone, PHONE_LABEL, phonePairingUrl } from "./phonePairing";
-import { QrCodeSvg } from "./QrCodeSvg";
+import { isPhone, PHONE_LABEL, phoneEndpoint, phonePairingUrl } from "./phonePairing";
+import { PairingLink } from "./PairingLink";
 import { SettingsRow } from "./SettingsRow";
 import { SettingsSection } from "./SettingsSection";
 
@@ -19,35 +19,42 @@ export function PhonePage({ environmentId }: { environmentId: EnvironmentId }) {
   const access = useAtomValue(authEnvironment.accessChanges({ environmentId, input: null }));
   const event = AsyncResult.getOrElse(access, () => null);
   const snapshot = event?.type === "snapshot" ? event.payload : null;
-  const endpoints = useAtomValue(serverEnvironment.configValueAtom(environmentId))?.directEndpoints;
+  const config = useAtomValue(serverEnvironment.configValueAtom(environmentId));
+  const endpoint = phoneEndpoint(config?.directEndpoints);
   // The credential stays in this page's memory only: never logged, stored, or written to a board file.
-  const [created, setCreated] = useState<{ id: string; credential: string } | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [created, setCreated] = useState<{
+    id: string;
+    credential: string;
+    expiresAt: number;
+  } | null>(null);
+  const [pairing, setPairing] = useState(false);
+  const [revoking, setRevoking] = useState<AuthSessionId | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  // The engine drops the link from the snapshot once a phone uses it or it expires.
+  // The engine drops the link from the snapshot once a phone uses it.
   const live = created !== null && snapshot?.pairingLinks.some((link) => link.id === created.id);
-  const url = live ? phonePairingUrl(endpoints, created.credential) : null;
   const phones = snapshot?.clientSessions.filter(isPhone) ?? [];
 
   const pair = async () => {
-    setBusy("pair");
+    setPairing(true);
     setFailure(null);
-    setCopied(false);
     const result = await runAtomCommand(
       registry,
       authEnvironment.createPairingCredential,
       { environmentId, input: { label: PHONE_LABEL } },
       { reportFailure: false },
     );
-    setBusy(null);
+    setPairing(false);
     if (result._tag === "Success") {
-      setCreated({ id: result.value.id, credential: result.value.credential });
+      setCreated({
+        id: result.value.id,
+        credential: result.value.credential,
+        expiresAt: DateTime.toEpochMillis(result.value.expiresAt),
+      });
     } else setFailure(failureText(result));
   };
 
   const revoke = async (sessionId: AuthSessionId) => {
-    setBusy(sessionId);
+    setRevoking(sessionId);
     setFailure(null);
     const result = await runAtomCommand(
       registry,
@@ -55,7 +62,7 @@ export function PhonePage({ environmentId }: { environmentId: EnvironmentId }) {
       { environmentId, input: { sessionId } },
       { reportFailure: false },
     );
-    setBusy(null);
+    setRevoking(null);
     if (result._tag !== "Success") setFailure(failureText(result));
   };
 
@@ -68,34 +75,30 @@ export function PhonePage({ environmentId }: { environmentId: EnvironmentId }) {
         <SettingsRow
           title="Pairing link"
           description={
-            live && url === null
-              ? "The engine listens only on this PC, so a phone cannot reach it. Turn on network access in T3 Code's Settings, Connections, then pair again."
-              : live
-                ? "Scan it with the phone's Scan QR code."
+            config === null
+              ? "Reading the engine's addresses."
+              : endpoint === undefined
+                ? "The engine listens only on this PC, so a phone cannot reach it. Turn on network access in T3 Code's Settings, Connections."
                 : "Makes a one-time link through the engine."
           }
           control={
             <button
               type="button"
-              disabled={busy === "pair"}
+              disabled={pairing || endpoint === undefined}
               onClick={() => void pair()}
               className={buttonClass}
             >
-              {busy === "pair" ? "Creating…" : live ? "New link" : "Pair a phone"}
+              {pairing ? "Creating…" : live ? "New link" : "Pair a phone"}
             </button>
           }
         >
-          {url !== null && (
-            <div className="flex items-end gap-3">
-              <QrCodeSvg value={url} title="Pairing link for the phone" />
-              <button
-                type="button"
-                onClick={() => void navigator.clipboard.writeText(url).then(() => setCopied(true))}
-                className={buttonClass}
-              >
-                {copied ? "Copied" : "Copy link"}
-              </button>
-            </div>
+          {live && endpoint !== undefined && (
+            <PairingLink
+              key={created.id}
+              url={phonePairingUrl(endpoint, created.credential)}
+              expiresAt={created.expiresAt}
+              onFailure={setFailure}
+            />
           )}
           {failure !== null && (
             <p role="alert" className="text-xs break-words text-red-400">
@@ -128,11 +131,11 @@ export function PhonePage({ environmentId }: { environmentId: EnvironmentId }) {
               control={
                 <button
                   type="button"
-                  disabled={busy === phone.sessionId}
+                  disabled={revoking === phone.sessionId}
                   onClick={() => void revoke(phone.sessionId)}
                   className={buttonClass}
                 >
-                  {busy === phone.sessionId ? "Revoking…" : "Revoke"}
+                  {revoking === phone.sessionId ? "Revoking…" : "Revoke"}
                 </button>
               }
             />

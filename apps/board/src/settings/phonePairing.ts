@@ -4,15 +4,13 @@ import { setPairingTokenOnUrl } from "@t3tools/shared/remote";
 /** The label the board's phone app gives its session when it pairs. */
 export const PHONE_LABEL = "Agent Board phone";
 
-/** T3's one-time `/pair` link on an address a phone can reach, Tailscale first. */
-export function phonePairingUrl(
-  endpoints: ReadonlyArray<ServerDirectEndpoint> | undefined,
-  credential: string,
-): string | null {
-  const endpoint =
-    endpoints?.find((entry) => entry.kind === "tailnet") ??
-    endpoints?.find((entry) => entry.kind === "lan");
-  if (endpoint === undefined) return null;
+/** The engine's address a phone can reach, Tailscale first. */
+export const phoneEndpoint = (endpoints: ReadonlyArray<ServerDirectEndpoint> | undefined) =>
+  endpoints?.find((entry) => entry.kind === "tailnet") ??
+  endpoints?.find((entry) => entry.kind === "lan");
+
+/** T3's one-time `/pair` link, the same one its Connections page gives. */
+export function phonePairingUrl(endpoint: ServerDirectEndpoint, credential: string) {
   const url = new URL(endpoint.httpBaseUrl);
   url.pathname = "/pair";
   return setPairingTokenOnUrl(url, credential).toString();
