@@ -35,11 +35,7 @@ export function VoicePage({ environmentId }: { environmentId: EnvironmentId }) {
       ) : (
         <SettingsRow
           title={status.model}
-          description={
-            modelInstalled(status)
-              ? "Installed"
-              : `Not installed · ${Math.round(status.size / 1024 / 1024)} MB`
-          }
+          description={`${modelInstalled(status) ? "Installed" : "Not installed"} · ${Math.round(status.size / 1024 / 1024)} MB`}
           control={
             modelInstalled(status) ? null : (
               <button

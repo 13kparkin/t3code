@@ -94,10 +94,13 @@ export function CallCards({
           {listed.map((call) => {
             const done = states[call.id] === "done";
             const live = state?.status !== "idle" && state?.callId === call.id;
-            const failed =
-              state?.status === "idle" && state.failed?.callId === call.id ? state.failed : null;
-            const audio = recorder === null ? null : callAudio(recorder.recordings, call.id);
             const job = jobs[call.id];
+            // Main keeps a failed start until the next one, so a call transcribed since then hides it.
+            const failed =
+              state?.status === "idle" && state.failed?.callId === call.id && job === undefined
+                ? state.failed
+                : null;
+            const audio = recorder === null ? null : callAudio(recorder.recordings, call.id);
             const request = notes[call.id];
             return (
               <li

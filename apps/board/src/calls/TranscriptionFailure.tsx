@@ -21,24 +21,26 @@ export function TranscriptionFailure({
 }) {
   const registry = useContext(RegistryContext);
   return (
-    <div role="alert" className="flex items-start gap-1 text-[11px] text-red-400">
-      <p className="min-w-0 flex-1 break-words">{job.message}</p>
-      {job.missingModel && (
+    <div role="alert" className="flex flex-col items-start gap-0.5 text-[11px] text-red-400">
+      <p className="break-words">{job.message}</p>
+      <div className="flex gap-1">
+        {job.missingModel && (
+          <button
+            type="button"
+            onClick={() => registry.set(settingsPageAtom, "voice")}
+            className={BUTTON}
+          >
+            Voice settings
+          </button>
+        )}
         <button
           type="button"
-          onClick={() => registry.set(settingsPageAtom, "voice")}
+          onClick={() => void transcribeCall(registry, project, folder, callId)}
           className={BUTTON}
         >
-          Voice settings
+          Try again
         </button>
-      )}
-      <button
-        type="button"
-        onClick={() => void transcribeCall(registry, project, folder, callId)}
-        className={BUTTON}
-      >
-        Try again
-      </button>
+      </div>
     </div>
   );
 }
