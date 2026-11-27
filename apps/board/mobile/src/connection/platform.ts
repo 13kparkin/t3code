@@ -227,7 +227,12 @@ const layerCapabilities = Layer.succeedContext(
     Context.add(
       ClientCapabilities.ClientPresentation,
       ClientCapabilities.ClientPresentation.of({
-        metadata: { label: "Agent Board phone", surface: "mobile", os: "Android" },
+        metadata: {
+          label: "Agent Board phone",
+          surface: "mobile",
+          deviceType: "mobile",
+          os: "Android",
+        },
       }),
     ),
     Context.add(

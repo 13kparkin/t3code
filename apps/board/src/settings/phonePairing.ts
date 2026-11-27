@@ -16,8 +16,7 @@ export function phonePairingUrl(endpoint: ServerDirectEndpoint, credential: stri
   return setPairingTokenOnUrl(url, credential).toString();
 }
 
-// The board's own pairing labels the phone's session. A phone paired from T3's page with another
-// label is missed, since it sends no device type and the engine infers desktop from its user agent.
+// Phones paired before the app sent its device type are known only by the label.
 export const isPhone = (session: AuthClientSession) =>
   session.client.label === PHONE_LABEL ||
   session.client.deviceType === "mobile" ||
