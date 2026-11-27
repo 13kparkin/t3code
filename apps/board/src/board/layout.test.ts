@@ -5,8 +5,8 @@ import type { Addition } from "../domain/additions";
 import type { Ticket } from "../domain/ticket";
 import type { AgentView, BoardModel, TicketView } from "../state/boardModel";
 import {
+  agentsKey,
   clampDrag,
-  DONE_AGENTS_KEY,
   FRAME_WIDTH,
   CARD_HEIGHT,
   FRAME_GAP,
@@ -27,7 +27,6 @@ import {
   reorderByDrag,
   ticketLane,
   besideLanes,
-  UNASSIGNED_KEY,
 } from "./layout";
 import { isWorking, ticketStatus } from "./ticketStatus";
 
@@ -160,26 +159,28 @@ describe("laying out the lanes", () => {
     },
   );
 
-  it("Given the Done lane shown, one ticketless agent in To do and two in Done, when laid out, then each agents frame leads its lane, and each header counts its tickets and its agents, as the Done tag does", () => {
-    const shown = layoutBoard(
-      { ...model, unassigned: [agent("orphan")] },
-      {},
-      0,
-      hiddenFilters(new Set(["done"]), []),
-      [],
-      0,
-      2,
-    );
-    expect(keys("done", shown)).toEqual([DONE_AGENTS_KEY, "T-6", "T-5"]);
-    expect(keys("todo", shown)).toEqual([UNASSIGNED_KEY, "T-3"]);
+  it("Given the Done lane shown and ticketless agents in To do, Running and Done, when laid out, then each agents frame leads its lane, and each header counts its tickets and its agents, as the Done tag does", () => {
+    const agents = { todo: 1, running: 1, waiting: 0, done: 2 };
+    const shown = layoutBoard(model, {}, 0, hiddenFilters(new Set(["done"]), []), [], 0, agents);
+    expect([
+      keys("todo", shown),
+      keys("running", shown),
+      keys("waiting", shown),
+      keys("done", shown),
+    ]).toEqual([
+      [agentsKey("todo"), "T-3"],
+      [agentsKey("running"), "T-2", "T-1"],
+      ["T-4"],
+      [agentsKey("done"), "T-6", "T-5"],
+    ]);
     const views = new Map(
       Object.values(model.lanes).flatMap((all) => all.map((v) => [v.ticket.key, v])),
     );
-    const agents = { todo: 1, done: 2 };
-    expect([
-      laneCount(lane("done", shown)!, views, 0, agents),
-      laneCount(lane("todo", shown)!, views, 0, agents),
-    ]).toEqual([4, 2]);
+    expect(
+      (["todo", "running", "waiting", "done"] as const).map((id) =>
+        laneCount(lane(id, shown)!, views, 0, agents),
+      ),
+    ).toEqual([2, 3, 1, 4]);
     const stages = Record.map(model.lanes, (views) => views.length);
     expect(
       [stageTagCount("todo", stages, agents.todo), stageTagCount("planned", stages, agents.todo)],
@@ -203,11 +204,6 @@ describe("laying out the lanes", () => {
       ["running", 40 + LANE_WIDTH + LANE_GAP],
       ["waiting", 40 + 2 * (LANE_WIDTH + LANE_GAP)],
     ]);
-  });
-
-  it("Given agents no ticket claims, when laid out, then their frame leads the To do lane", () => {
-    const withOrphan = layoutBoard({ ...model, unassigned: [agent("orphan")] }, {}, 0, defaults);
-    expect(keys("todo", withOrphan)).toEqual([UNASSIGNED_KEY, "T-3"]);
   });
 
   it.each([

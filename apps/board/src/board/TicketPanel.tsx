@@ -106,7 +106,7 @@ export function TicketPanel({
       <header className="shrink-0 border-b border-line px-3 py-2.5">
         <div className="flex items-center gap-2">
           {view === undefined ? (
-            <h3 className="min-w-0 flex-1 truncate font-semibold">Unassigned</h3>
+            <h3 className="min-w-0 flex-1 truncate font-semibold">{agent?.title}</h3>
           ) : (
             <TicketTitle ticket={view.ticket} />
           )}

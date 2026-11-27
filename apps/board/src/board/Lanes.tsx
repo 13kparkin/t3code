@@ -5,7 +5,7 @@ import { type MouseEvent, type ReactNode, useContext, useRef, useState } from "r
 import { agentFile, dropOnComposer } from "../chat/cardAttachment";
 import type { FreeAgent } from "../domain/board";
 import type { AgentView, BoardModel } from "../state/boardModel";
-import { freeAgentLabel } from "../state/cardStates";
+import { agentRowCounts, freeAgentLabel } from "../state/cardStates";
 import { usePrContext } from "../state/prStatus";
 import type { TicketChoice } from "../browser/panel";
 import { laneKey, saveFrameOrder, toggleFolded } from "../state/boardUi";
@@ -17,6 +17,7 @@ import { CardLine } from "./CardLine";
 import {
   ADDITION_KEY,
   additionLaneId,
+  agentsKey,
   clampDrag,
   type FrameBox,
   type LaneBox,
@@ -29,11 +30,9 @@ import {
   laneCardsHeight,
   laneCount,
   reorderByDrag,
-  UNASSIGNED_HEAD,
-  UNASSIGNED_KEY,
+  type StageLane,
   CARD_GAP,
   CARD_HEIGHT,
-  DONE_AGENTS_KEY,
   FRAME_PAD,
 } from "./layout";
 import { RemoveAddition } from "./RemoveAddition";
@@ -61,7 +60,8 @@ export function Lanes({
   onChoose,
   onOpenAgent,
   onRemoveAddition,
-  done,
+  agents,
+  doneFree,
   onCardMenu,
   now,
 }: {
@@ -75,7 +75,8 @@ export function Lanes({
   onChoose: (choice: TicketChoice) => void;
   onOpenAgent: (threadId: string, ticketKey: string | null) => void;
   onRemoveAddition: (id: string) => void;
-  done: { readonly agents: ReadonlyArray<AgentView>; readonly free: ReadonlyArray<FreeAgent> };
+  agents: Readonly<Record<StageLane, ReadonlyArray<AgentView>>>;
+  doneFree: ReadonlyArray<FreeAgent>;
   onCardMenu: (event: MouseEvent, key: string, label: string, ticket: boolean) => void;
   now: number;
 }) {
@@ -83,6 +84,7 @@ export function Lanes({
   const additions = new Map(usePrContext().additions.map((item) => [item.id, item]));
   const [drag, setDrag] = useState<{ key: string; dy: number } | null>(null);
   const rowPress = useRef<{ x: number; y: number; moved: boolean } | null>(null);
+  const agentRows = agentRowCounts({ agents, doneFree });
   const views = new Map(
     Object.values(model.lanes)
       .flat()
@@ -129,17 +131,16 @@ export function Lanes({
         </section>
       );
     }
-    if (box.key === UNASSIGNED_KEY || box.key === DONE_AGENTS_KEY) {
-      const isDone = box.key === DONE_AGENTS_KEY;
+    if (lane.id !== "for_you" && box.key === agentsKey(lane.id)) {
       const rows = [
-        ...(isDone ? done.agents : model.unassigned).map((agent) => ({
+        ...agents[lane.id].map((agent) => ({
           threadId: agent.threadId,
           title: agent.title,
           role: agent.role,
           status: ticketStatus([agent], now),
           detail: `${agent.role} · ${ago(agent.updatedAt)}`,
         })),
-        ...(isDone ? done.free : []).map((agent) => ({
+        ...(lane.id === "done" ? doneFree : []).map((agent) => ({
           threadId: agent.threadId,
           title: freeAgentLabel(agent.threadId),
           status: null,
@@ -149,18 +150,12 @@ export function Lanes({
       return (
         <section
           key={box.key}
-          aria-label={isDone ? "Done agents" : "Unassigned agents"}
-          data-testid={isDone ? "done-agents" : "unassigned"}
+          aria-label={`${LANE_LABEL[lane.id]} agents`}
+          data-testid="lane-agents"
           className="absolute rounded-lg border border-line bg-panel shadow-panel"
           style={{ left: box.x, top: box.y, width: box.width, height: box.height }}
         >
-          <p className="px-2.5 pt-2 text-[11px] text-faint" style={{ height: UNASSIGNED_HEAD }}>
-            {isDone ? "Agents finished or moved to Done" : "Started with no ticket"}
-          </p>
-          <div
-            className="flex flex-col"
-            style={{ gap: CARD_GAP, padding: `0 ${FRAME_PAD}px ${FRAME_PAD}px` }}
-          >
+          <div className="flex flex-col" style={{ gap: CARD_GAP, padding: FRAME_PAD }}>
             {rows.map((row) => (
               <button
                 key={row.threadId}
@@ -255,10 +250,7 @@ export function Lanes({
               {lane.id === "todo" && queued ? " · queued" : ""}
             </span>
             <span className="text-[11px] text-faint">
-              {laneCount(lane, views, forYouOpen, {
-                todo: model.unassigned.length,
-                done: done.agents.length + done.free.length,
-              })}
+              {laneCount(lane, views, forYouOpen, agentRows)}
             </span>
             <span className="flex-1" />
             {lane.id === "for_you" && (

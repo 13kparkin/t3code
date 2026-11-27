@@ -37,7 +37,7 @@ import {
   setCardState,
   startFreeAgent,
 } from "../state/boardCards";
-import { archivedBesideLanes, splitCards } from "../state/cardStates";
+import { agentRowCounts, archivedBesideLanes, splitCards } from "../state/cardStates";
 import { ContextMenu } from "../ui/ContextMenu";
 import type { PopMenuItem } from "../ui/MenuList";
 import { FREE_CARD } from "./FreeAgentCard";
@@ -123,7 +123,7 @@ export function BoardScreen({
   const openCardMenu = (event: MouseEvent, key: string, label: string, ticket: boolean) => {
     event.preventDefault();
     event.stopPropagation();
-    const inDone = [...cards.done.agents, ...cards.done.free].some(
+    const inDone = [...cards.agents.done, ...cards.doneFree].some(
       (agent) => agent.threadId === key,
     );
     const ticketless = fullModel.unassigned.some((agent) => agent.threadId === key);
@@ -210,7 +210,7 @@ export function BoardScreen({
   const artifacts = useBoardArtifacts(project, listed, fullModel);
   const flips = useAtomValue(filterFlipsAtom(board.id));
   const hidden = useMemo(() => hiddenFilters(new Set(flips.split(",")), visible), [flips, visible]);
-  const doneCount = cards.done.agents.length + cards.done.free.length;
+  const agentRows = useMemo(() => agentRowCounts(cards), [cards]);
   const layout = useMemo(() => {
     const laid = layoutBoard(
       model,
@@ -219,7 +219,7 @@ export function BoardScreen({
       hidden,
       visible,
       stats.problems.length,
-      doneCount,
+      agentRows,
       now,
     );
     return { ...laid, content: withCards(laid.content, cards.free, FREE_CARD) };
@@ -230,7 +230,7 @@ export function BoardScreen({
     hidden,
     visible,
     stats.problems.length,
-    doneCount,
+    agentRows,
     cards.free,
     now,
   ]);
@@ -343,8 +343,10 @@ export function BoardScreen({
                     hidden={hidden}
                     additions={additions}
                     onChangeHidden={changeHidden}
-                    doneCount={doneCount + model.lanes.merged.length + model.lanes.off_path.length}
-                    todoAgents={model.unassigned.length}
+                    doneCount={
+                      agentRows.done + model.lanes.merged.length + model.lanes.off_path.length
+                    }
+                    todoAgents={agentRows.todo}
                     archived={archived}
                     onUnarchive={(key) => saveCard(key, null)}
                   />
@@ -381,7 +383,8 @@ export function BoardScreen({
                   openAgentPanel(registry, threadId);
                 }}
                 onRemoveAddition={(id) => changeHidden((ids) => [...ids, id])}
-                done={cards.done}
+                agents={cards.agents}
+                doneFree={cards.doneFree}
                 onCardMenu={openCardMenu}
                 now={now}
               />
