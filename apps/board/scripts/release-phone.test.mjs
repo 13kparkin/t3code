@@ -120,12 +120,12 @@ NodeTest.test("a release runs the phone gates, the signed build, apksigner, note
   );
 });
 
-NodeTest.test("a dirty checkout is refused with the files named", (t) => {
+NodeTest.test("a dirty checkout is refused", (t) => {
   const work = checkout(t);
   NodeFS.writeFileSync(NodePath.join(work, "stray.txt"), "x\n");
   const result = dryRun(work, "0.1.0-test");
   NodeAssert.equal(result.status, 1);
-  NodeAssert.equal(result.stderr, "The checkout has uncommitted changes:\n?? stray.txt\n");
+  NodeAssert.match(result.stderr, /The checkout has uncommitted changes\.\n$/);
 });
 
 NodeTest.test("a version whose tag exists on origin is refused", (t) => {

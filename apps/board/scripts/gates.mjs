@@ -17,6 +17,32 @@ export function addUpstreamRemote(root) {
   }
 }
 
+/** Refuses a release from a tagged, dirty or unpushed checkout, and returns the commit to release. */
+export function releaseSha({ root, tag, version, prerelease, prereleaseHint }) {
+  const git = (...args) =>
+    NodeChildProcess.execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
+  const fail = (message) => {
+    console.error(message);
+    process.exit(1);
+  };
+  if (git("ls-remote", "--tags", "origin", `refs/tags/${tag}`) !== "") {
+    fail(`The tag ${tag} already exists, so ${version} is already released.`);
+  }
+  NodeChildProcess.execFileSync("git", ["fetch", "--no-tags", "origin", "main"], {
+    cwd: root,
+    stdio: "inherit",
+  });
+  const sha = git("rev-parse", "HEAD");
+  if (git("status", "--porcelain") !== "") fail("The checkout has uncommitted changes.");
+  if (!prerelease && sha !== git("rev-parse", "origin/main")) {
+    fail(`A release comes from origin/main. Check it out, or ${prereleaseHint}`);
+  }
+  if (git("branch", "-r", "--contains", sha) === "") {
+    fail(`${sha} is not pushed, and the release is created on GitHub's copy of it.`);
+  }
+  return sha;
+}
+
 /** The engine gate diffs against upstream/main, so it runs after this fetch. */
 export const UPSTREAM_FETCH = {
   name: "upstream",

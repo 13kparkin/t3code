@@ -10,7 +10,7 @@ import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
 import * as NodeUtil from "node:util";
 
-import { GATES } from "./gates.mjs";
+import { GATES, releaseSha } from "./gates.mjs";
 
 const SIGNING_PROPERTIES = [
   "AGENT_BOARD_PHONE_KEYSTORE",
@@ -159,23 +159,13 @@ function main() {
   )?.[1];
   if (!repository) fail("origin is not a GitHub remote");
 
-  const dirty = out("git", ["status", "--porcelain"], root);
-  if (dirty !== "") fail(`The checkout has uncommitted changes:\n${dirty}`);
-  const tag = `board-phone-v${version}`;
-  const prerelease = version.includes("-");
-  if (out("git", ["ls-remote", "--tags", "origin", `refs/tags/${tag}`], root) !== "") {
-    fail(`The tag ${tag} already exists, so ${version} is already released.`);
-  }
-  run({ command: "git", args: ["fetch", "--no-tags", "origin", "main"], cwd: root });
-  const sha = out("git", ["rev-parse", "HEAD"], root);
-  if (!prerelease && sha !== out("git", ["rev-parse", "origin/main"], root)) {
-    fail(
-      "A release comes from origin/main. Check it out, or give a -test version for a pre-release.",
-    );
-  }
-  if (out("git", ["branch", "-r", "--contains", sha], root) === "") {
-    fail(`${sha} is not pushed, and the release is created on GitHub's copy of it.`);
-  }
+  const sha = releaseSha({
+    root,
+    tag: `board-phone-v${version}`,
+    version,
+    prerelease: version.includes("-"),
+    prereleaseHint: "give a -test version for a pre-release.",
+  });
 
   const properties = gradleProperties();
   const missing = SIGNING_PROPERTIES.filter(
