@@ -20,7 +20,7 @@ const button =
 export function TicketDetails({ view }: SectionProps) {
   const { ticket } = view;
   const { overlay, project, folder } = usePrContext();
-  const { edit, link, unlink, error } = useTicketActions(ticket);
+  const { link, unlink, error } = useTicketActions(ticket);
   const [typed, setTyped] = useState("");
   const [rejected, setRejected] = useState(false);
   const status = useAtomValue(pullStatusAtom).get(pullStatusKey(project.id, folder, ticket.key));
@@ -38,28 +38,11 @@ export function TicketDetails({ view }: SectionProps) {
   };
   return (
     <div className="flex flex-col gap-2">
-      {held ? (
-        <p data-testid="ticket-description" className="break-words whitespace-pre-wrap text-fg">
-          {ticket.description === undefined || ticket.description === ""
-            ? "No description"
-            : ticket.description}
-        </p>
-      ) : (
-        <textarea
-          key={ticket.description ?? ""}
-          data-testid="ticket-description-input"
-          aria-label="Description"
-          placeholder="Add a description"
-          defaultValue={ticket.description ?? ""}
-          rows={4}
-          onBlur={(event) => {
-            if (event.target.value !== (ticket.description ?? "")) {
-              void edit({ description: event.target.value });
-            }
-          }}
-          className="w-full resize-y rounded border border-line bg-transparent p-1.5 text-fg outline-none focus:border-focus"
-        />
-      )}
+      <p data-testid="ticket-description" className="break-words whitespace-pre-wrap text-fg">
+        {ticket.description === undefined || ticket.description === ""
+          ? "No description"
+          : ticket.description}
+      </p>
       {held && tracker !== null && (
         <p data-testid="locked-note" className="text-[11px] text-muted">
           {`Title and description are held by ${tracker}. Prerequisites are kept on the board. `}
