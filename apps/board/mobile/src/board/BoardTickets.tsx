@@ -115,11 +115,11 @@ export function BoardTickets({ choice }: { choice: BoardChoice }) {
             >
               <CardLine
                 tag={item.key}
+                stage={item.stage}
                 title={item.title}
                 status={card?.status ?? null}
                 detail={
                   <>
-                    <StageTag stage={item.stage} />{" "}
                     {waiting.length > 0 && (
                       <AppText style={styles.warn}>{`Waiting on ${waiting.join(", ")} · `}</AppText>
                     )}

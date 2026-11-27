@@ -19,7 +19,7 @@ import { PairScreen } from "./connection/PairScreen";
 import { EngineHeader } from "./EngineHeader";
 import { forYouOpenCountAtom } from "./foryou/forYouAtoms";
 import { ForYouScreen } from "./foryou/ForYouScreen";
-import { navTheme } from "./styles";
+import { navTheme, styles } from "./styles";
 
 const Tab = createBottomTabNavigator();
 
@@ -31,7 +31,7 @@ export default function App() {
   const status = useAtomValue(engineStatusAtom).kind;
   const openCount = useAtomValue(forYouOpenCountAtom);
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider style={styles.sheet}>
       <StatusBar barStyle="light-content" />
       <NavigationContainer theme={navTheme}>
         <EngineHeader />

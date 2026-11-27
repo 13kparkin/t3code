@@ -1,18 +1,22 @@
 import type { CardStatus } from "@agent-board/app/board/ticketStatus";
+import type { TicketStage } from "@agent-board/app/domain/ticket";
 import { toneStyle } from "@agent-board/app/theme/tokens";
 import type { ReactNode } from "react";
 import { View } from "react-native";
 
 import { AppText } from "../AppText";
 import { styles } from "../styles";
+import { StageTag } from "./StageTag";
 
 export function CardLine({
   tag,
+  stage,
   title,
   status,
   detail,
 }: {
   tag: string;
+  stage: TicketStage;
   title: string;
   status: CardStatus | null;
   detail: ReactNode;
@@ -29,9 +33,12 @@ export function CardLine({
         </AppText>
         {status !== null && <AppText style={styles.cardStatus}>{status.word}</AppText>}
       </View>
-      <AppText style={styles.cardDetail} numberOfLines={2}>
-        {detail}
-      </AppText>
+      <View style={styles.cardDetail}>
+        <StageTag stage={stage} />
+        <AppText style={styles.cardDetailText} numberOfLines={1}>
+          {detail}
+        </AppText>
+      </View>
     </>
   );
 }

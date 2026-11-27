@@ -1,3 +1,4 @@
+import { COLORS } from "@agent-board/app/theme/tokens";
 import type { ExpoConfig } from "expo/config";
 import { withAppBuildGradle } from "expo/config-plugins";
 
@@ -54,7 +55,6 @@ export default withReleaseSigning({
   version: process.env.AGENT_BOARD_PHONE_VERSION ?? "0.0.0",
   scheme: development ? "agentboard-phone-dev" : "agentboard-phone",
   orientation: "default",
-  userInterfaceStyle: "dark",
   android: {
     package: development ? "dev.agentboard.phone.dev" : "dev.agentboard.phone",
     // The paired engine's session credential must not leave the phone in a backup.
@@ -76,6 +76,8 @@ export default withReleaseSigning({
     // A LAN engine is plain http, which Android blocks in release builds by default.
     ["expo-build-properties", { android: { minSdkVersion: 24, usesCleartextTraffic: true } }],
     "expo-secure-store",
+    // apps/mobile's way to a dark launch window: it holds the splash until React Native draws.
+    ["expo-splash-screen", { backgroundColor: COLORS.bg }],
     // One family, so React Native's fontWeight picks the file.
     [
       "expo-font",

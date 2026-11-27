@@ -578,6 +578,9 @@ importers:
       expo-secure-store:
         specifier: ~58.0.2
         version: 58.0.2(expo@58.0.23)
+      expo-splash-screen:
+        specifier: ~58.0.13
+        version: 58.0.13(expo@58.0.23)(supports-color@8.1.1)(typescript@6.0.3)
       react:
         specifier: 'catalog:'
         version: 19.3.0

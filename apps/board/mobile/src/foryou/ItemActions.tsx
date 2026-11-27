@@ -1,7 +1,9 @@
 import type { ForYouAnswer, ForYouItem } from "@agent-board/app/domain/forYou";
 import { useState } from "react";
+import { View } from "react-native";
 
 import { AppTextInput } from "../AppTextInput";
+import { styles } from "../styles";
 import { ChoiceButton } from "./ChoiceButton";
 
 export function ItemActions({
@@ -18,15 +20,17 @@ export function ItemActions({
     const text = typed.trim();
     return (
       <>
-        {(item.options ?? []).map((option) => (
-          <ChoiceButton
-            key={option}
-            disabled={sent}
-            onPress={() => send({ type: "text", text: option })}
-          >
-            {option}
-          </ChoiceButton>
-        ))}
+        <View style={styles.options}>
+          {(item.options ?? []).map((option) => (
+            <ChoiceButton
+              key={option}
+              disabled={sent}
+              onPress={() => send({ type: "text", text: option })}
+            >
+              {option}
+            </ChoiceButton>
+          ))}
+        </View>
         <AppTextInput
           multiline
           editable={!sent}
