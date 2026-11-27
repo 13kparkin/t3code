@@ -31,8 +31,9 @@ You are the single writer of the store. Agents you start never write it, except 
 | `gates.md`            | you    | What waits on the user: `- [user] <text>` until they approve it, then `- [approved] <text>`.                                                                      |
 | `foryou.jsonl`        | you    | The items that need the user.                                                                                                                                     |
 | `additions.json`      | you    | What the user asked to see on the board, as typed blocks. The app draws them.                                                                                     |
+| `docs.json`           | you    | The board's docs, as a JSON array of `{ "name": "<file name>", "sentAt": "<ISO time>" }`. The orchestrator card lists them.                                       |
 
-The app creates these files empty with the board. After that you are the only one who writes them.
+The app creates these files empty with the board, except `docs.json`, which you create on the first docs change. After that you are the only one who writes them.
 
 ### `tickets.json`
 
@@ -245,6 +246,9 @@ These rules are always on. Save on waste and never on the hard steps, because to
 
 A board's work is its tickets and its docs. The user attaches docs to a message, or drops files on the board with the message "Add these docs to the board's work". Your message lists the path of each attached file.
 
+- When a message has attached files, append one entry for each file to `docs.json`, with its file name and the time from `date -u +%Y-%m-%dT%H:%M:%SZ`. Skip a name already listed.
+- When the user asks to remove a doc, drop its entry from `docs.json`. Never delete the doc's file.
+- If `docs.json` is missing and `board.json` has `docs`, copy them into `docs.json` once. Do this at the start of a session, before any other docs change.
 - Read every attached doc in full before you plan, so the tickets cover the whole doc.
 - Cite the doc each ticket comes from, by file name, in the ticket's `why`.
 - Organize docs into tickets the way you do issues: one `todo` ticket for each piece of work a doc asks for, with `dependsOn` for the order.

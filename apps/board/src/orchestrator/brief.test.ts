@@ -59,6 +59,17 @@ describe("the orchestrator's standing rules and board facts", () => {
     ]);
   });
 
+  it("Given the rules, when they render, then docs.json is the orchestrator's, with the attach, remove, and one-time copy rules", () => {
+    const rules = renderRules();
+    expect(rules).toMatch(/\| `docs.json`\s+\| you\s+\|/);
+    expect(rules).toContain("append one entry for each file to `docs.json`");
+    expect(rules).toContain("When the user asks to remove a doc, drop its entry from `docs.json`.");
+    expect(rules).toContain("Never delete the doc's file.");
+    expect(rules).toContain(
+      "If `docs.json` is missing and `board.json` has `docs`, copy them into `docs.json` once.",
+    );
+  });
+
   it("Given the registry, when the rules render, then every role is listed with its delegate_task arguments", () => {
     const rules = renderRules();
     expect(rules).toContain(

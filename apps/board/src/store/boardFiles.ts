@@ -340,20 +340,3 @@ export const resolveRoleRequest = (
 
 export const setBuilderCap = (files: ProjectFiles, cwd: string, folder: string, cap: number) =>
   updateBoard(files, cwd, folder, { builderCap: cap });
-
-/** Adds the names to the board's docs in the board's own file. */
-export async function appendDocs(
-  files: ProjectFiles,
-  cwd: string,
-  folder: string,
-  names: ReadonlyArray<string>,
-  sentAt: string,
-): Promise<void> {
-  await changeBoard(files, cwd, folder, (board) => {
-    const docs = board.docs ?? [];
-    const added = names
-      .filter((name, at) => !docs.some((doc) => doc.name === name) && names.indexOf(name) === at)
-      .map((name) => ({ name, sentAt }));
-    return { ...board, docs: [...docs, ...added] };
-  });
-}

@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { applyOverlay, type Overlay, parseOverlay } from "../domain/ticketOverlay";
 import { type Addition, type ParsedAdditions, parseAdditions } from "../domain/additions";
+import { type Doc, parseDocs } from "../domain/board";
 import { parseTickets, type Ticket, type TicketsIssue } from "../domain/ticket";
 import { type OrchestratorStats, orchestratorStats } from "../orchestrator/brief";
 import type { ValidBoard } from "../store/boardFiles";
@@ -12,11 +13,19 @@ import { type BoardModel, joinBoard } from "./boardModel";
 import { useDriverOf, useThreadFamily } from "./family";
 import { boardStoreAtom } from "./orchestrator";
 
-const NO_FILES = { tickets: null, forYou: null, decisions: null, additions: null, details: null };
+const NO_FILES = {
+  tickets: null,
+  forYou: null,
+  decisions: null,
+  additions: null,
+  details: null,
+  docs: null,
+};
 const NO_OVERLAY: Overlay = {};
 const NO_TICKETS: ReadonlyArray<Ticket> = [];
 const NO_ITEMS: ReadonlyArray<Addition> = [];
 const NO_ADDITIONS: ParsedAdditions = { items: NO_ITEMS, problems: [] };
+const NO_DOCS: ReadonlyArray<Doc> = [];
 
 export interface BoardView {
   readonly model: BoardModel;
@@ -28,6 +37,8 @@ export interface BoardView {
   /** Every readable `additions.json` item, hidden ones too. A file that stops parsing keeps the last items. */
   readonly additions: ReadonlyArray<Addition>;
   readonly overlay: Overlay;
+  /** The orchestrator's `docs.json`. A file that stops parsing keeps the last docs. */
+  readonly docs: ReadonlyArray<Doc>;
 }
 
 /** The board's tickets joined with its orchestrator's agents. */
@@ -69,6 +80,14 @@ export function useBoardView(project: EnvironmentProject, listed: ValidBoard): B
   if (parsedAdditions.items !== null && parsedAdditions.items !== lastAdditions) {
     setLastAdditions(parsedAdditions.items);
   }
+  const parsedDocs = useMemo(
+    () => (files.docs === null ? Result.succeed(NO_DOCS) : parseDocs(files.docs)),
+    [files.docs],
+  );
+  const [lastDocs, setLastDocs] = useState(NO_DOCS);
+  if (Result.isSuccess(parsedDocs) && parsedDocs.success !== lastDocs) {
+    setLastDocs(parsedDocs.success);
+  }
   const stats = orchestratorStats(
     { ...files, tickets: Result.isSuccess(parsed) ? files.tickets : lastValid.text },
     board.builderCap,
@@ -95,10 +114,12 @@ export function useBoardView(project: EnvironmentProject, listed: ValidBoard): B
         ...stats.problems,
         ...parsedAdditions.problems,
         ...(Result.isFailure(parsedOverlay) ? [parsedOverlay.failure.message] : []),
+        ...(Result.isFailure(parsedDocs) ? [parsedDocs.failure.message] : []),
       ],
     },
     decisions: files.decisions,
     additions: parsedAdditions.items ?? lastAdditions,
     overlay,
+    docs: Result.isSuccess(parsedDocs) ? parsedDocs.success : lastDocs,
   };
 }

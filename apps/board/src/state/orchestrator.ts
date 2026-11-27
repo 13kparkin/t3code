@@ -210,7 +210,8 @@ const sameFiles = (left: StoreFiles | null, right: StoreFiles) =>
   left.forYou === right.forYou &&
   left.decisions === right.decisions &&
   left.additions === right.additions &&
-  left.details === right.details;
+  left.details === right.details &&
+  left.docs === right.docs;
 
 /**
  * The orchestrator's store files for one board, by `<projectId>/<folder>`. The orchestrator writes
@@ -240,9 +241,10 @@ export const boardStoreAtom = Atom.family((key: string) =>
           read("decisions.tsv"),
           read("additions.json"),
           read("ticket-details.json"),
+          read("docs.json"),
         ]).then(
-          ([tickets, forYou, decisions, additions, details]) => {
-            const next = { tickets, forYou, decisions, additions, details };
+          ([tickets, forYou, decisions, additions, details, docs]) => {
+            const next = { tickets, forYou, decisions, additions, details, docs };
             const last = Option.getOrNull(get.self<StoreFiles | null>()) ?? null;
             // Every read, not only on a change, so an item that waited on the provider list resolves once it loads.
             if (forYou?.includes('"role_target"')) {

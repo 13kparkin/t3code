@@ -71,6 +71,7 @@ export interface StoreFiles {
   readonly decisions: string | null;
   readonly additions: string | null;
   readonly details: string | null;
+  readonly docs: string | null;
 }
 
 export interface OrchestratorStats {
@@ -89,7 +90,7 @@ export interface OrchestratorStats {
  * open while its latest line says so, because the orchestrator resolves an item by appending a line.
  */
 export function orchestratorStats(
-  files: Omit<StoreFiles, "additions" | "details">,
+  files: Omit<StoreFiles, "additions" | "details" | "docs">,
   builderCap: number,
 ): OrchestratorStats {
   const problems: string[] = [];

@@ -1,7 +1,7 @@
 import * as Result from "effect/Result";
 import { describe, expect, it } from "vite-plus/test";
 
-import { parseBoard, serializeBoard, slugify, uniqueSlug } from "./board";
+import { parseBoard, parseDocs, serializeBoard, slugify, uniqueSlug } from "./board";
 
 const valid = {
   id: "7f4c2a6e-0d3b-4e3b-9a55-0b7a4c1d2e90",
@@ -80,6 +80,19 @@ describe("parseBoard", () => {
     if (!Result.isSuccess(first)) throw new Error("fixture must decode");
     const again = parseBoard(serializeBoard(first.success));
     expect(Result.isSuccess(again) && again.success).toEqual(first.success);
+  });
+});
+
+describe("parseDocs", () => {
+  it("Given a docs.json array, when decoded, then each entry keeps its name and time", () => {
+    const docs = [{ name: "image.png", sentAt: "2026-11-21T06:00:00.000Z" }];
+    expect(parseDocs(JSON.stringify(docs))).toEqual(Result.succeed(docs));
+  });
+
+  it("Given a docs.json entry with no name, when decoded, then the failure names docs.json and the field", () => {
+    expect(parseDocs('[{"sentAt":"2026-11-21T06:00:00.000Z"}]')).toEqual(
+      Result.fail({ message: "docs.json is invalid: 0.name Missing key" }),
+    );
   });
 });
 
