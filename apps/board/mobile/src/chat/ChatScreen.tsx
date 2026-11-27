@@ -1,27 +1,25 @@
 import { useAtomValue } from "@effect/atom-react";
 import { ThreadId } from "@t3tools/contracts";
-import { useTheme } from "@react-navigation/native";
-import { Text } from "react-native";
 
 import { shownBoardAtom } from "../board/files";
+import { AppText } from "../AppText";
 import { styles } from "../styles";
 import { Conversation } from "./Conversation";
 
 export function ChatScreen() {
-  const { colors } = useTheme();
   const shown = useAtomValue(shownBoardAtom);
   if (shown === null) {
-    return <Text style={[styles.body, { color: colors.text }]}>No board yet.</Text>;
+    return <AppText style={styles.body}>No board yet.</AppText>;
   }
   if (!shown.listed.ok) {
-    return <Text style={[styles.body, styles.error]}>{shown.listed.issue.message}</Text>;
+    return <AppText style={[styles.body, styles.error]}>{shown.listed.issue.message}</AppText>;
   }
   const threadId = shown.listed.board.orchestratorThreadId;
   if (threadId === null) {
     return (
-      <Text style={[styles.body, { color: colors.text }]}>
+      <AppText style={styles.body}>
         This board has no orchestrator yet. Start it in the Agent Board desktop app.
-      </Text>
+      </AppText>
     );
   }
   return (

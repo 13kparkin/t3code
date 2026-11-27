@@ -1,15 +1,15 @@
 import { RegistryContext, useAtom, useAtomMount, useAtomValue } from "@effect/atom-react";
-import { useTheme } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useContext, useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Pressable, View } from "react-native";
 
+import { AppText } from "../AppText";
+import { AppTextInput } from "../AppTextInput";
 import { styles } from "../styles";
 import { deepLinkPairingAtom, pair, pairingInputAtom, pairingStateAtom } from "./engine";
 import { pairingHost } from "./pairing";
 
 export function PairScreen() {
-  const { colors } = useTheme();
   const registry = useContext(RegistryContext);
   const { busy, error } = useAtomValue(pairingStateAtom);
   const [scanning, setScanning] = useState(false);
@@ -34,7 +34,7 @@ export function PairScreen() {
           }}
         />
         <Pressable style={styles.button} onPress={() => setScanning(false)}>
-          <Text style={styles.buttonText}>Cancel</Text>
+          <AppText style={styles.buttonText}>Cancel</AppText>
         </Pressable>
       </View>
     );
@@ -42,18 +42,16 @@ export function PairScreen() {
 
   return (
     <View style={[styles.body, styles.readable]}>
-      <Text style={[styles.title, { color: colors.text }]}>Pair with your PC</Text>
-      <Text style={{ color: colors.text }}>
+      <AppText style={styles.title}>Pair with your PC</AppText>
+      <AppText>
         On the PC, open Agent Board, then Settings, Phone, and press Pair a phone. Scan its QR code
         or paste its pairing link here.
-      </Text>
+      </AppText>
       <Pressable style={styles.button} disabled={busy} onPress={() => void scan()}>
-        <Text style={styles.buttonText}>Scan QR code</Text>
+        <AppText style={styles.buttonText}>Scan QR code</AppText>
       </Pressable>
-      <TextInput
-        style={[styles.input, { color: colors.text, borderColor: colors.border }]}
+      <AppTextInput
         placeholder="Pairing link"
-        placeholderTextColor={colors.border}
         autoCapitalize="none"
         autoCorrect={false}
         value={pasted}
@@ -64,14 +62,14 @@ export function PairScreen() {
         disabled={busy || pasted.trim() === ""}
         onPress={() => void pair(registry, pasted)}
       >
-        <Text style={styles.buttonText}>
+        <AppText style={styles.buttonText}>
           {busy ? "Pairing" : host === null ? "Pair" : `Pair with ${host}`}
-        </Text>
+        </AppText>
       </Pressable>
       {permission?.status === "denied" && (
-        <Text style={styles.error}>Allow the camera to scan the pairing code.</Text>
+        <AppText style={styles.error}>Allow the camera to scan the pairing code.</AppText>
       )}
-      {error !== null && <Text style={styles.error}>{error}</Text>}
+      {error !== null && <AppText style={styles.error}>{error}</AppText>}
     </View>
   );
 }

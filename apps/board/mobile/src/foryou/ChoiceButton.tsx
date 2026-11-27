@@ -1,6 +1,6 @@
-import { useTheme } from "@react-navigation/native";
-import { Pressable, Text } from "react-native";
+import { Pressable } from "react-native";
 
+import { AppText } from "../AppText";
 import { styles } from "../styles";
 
 export function ChoiceButton({
@@ -14,19 +14,15 @@ export function ChoiceButton({
   onPress: () => void;
   children: string;
 }) {
-  const { colors } = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={[
-        primary ? styles.button : [styles.chip, { borderColor: colors.border }],
-        disabled && styles.muted,
-      ]}
+      style={[primary ? styles.button : styles.quietButton, disabled && styles.disabled]}
     >
-      <Text style={primary ? styles.buttonText : { color: colors.text }}>{children}</Text>
+      <AppText style={primary ? styles.buttonText : styles.quietButtonText}>{children}</AppText>
     </Pressable>
   );
 }

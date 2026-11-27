@@ -5,7 +5,7 @@ import {
 import * as DateTime from "effect/DateTime";
 
 import type { Ticket, TicketStage } from "../domain/ticket";
-import { ROLES } from "../orchestrator/roles";
+import { ROLE_SPECS } from "../orchestrator/roleSpecs";
 
 /** What the board reads of a thread in the orchestrator's family, from the family read and the shell stream. */
 export type FamilyRow = Pick<
@@ -67,7 +67,7 @@ export interface BoardModel {
   readonly unassigned: ReadonlyArray<AgentView>;
 }
 
-const ROLE_NAMES: ReadonlySet<string> = new Set(ROLES.map((role) => role.name));
+const ROLE_NAMES: ReadonlySet<string> = new Set(ROLE_SPECS.map((role) => role.name));
 const TITLE = /^\[([^\]]+)\]\s*(.+)$/;
 const LIVE_STATUSES: ReadonlySet<string> = new Set([
   "queued",
@@ -185,7 +185,7 @@ export const allAgents = (model: BoardModel): ReadonlyArray<AgentView> => [
 ];
 
 const BUILDER_ROLES: ReadonlySet<string> = new Set(
-  ROLES.filter(
+  ROLE_SPECS.filter(
     (role) => role.t3Role === "implementation" || (!role.readOnly && role.isolation === "worktree"),
   ).map((role) => role.name),
 );

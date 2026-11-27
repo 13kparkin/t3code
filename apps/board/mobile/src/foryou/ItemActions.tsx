@@ -1,9 +1,7 @@
 import type { ForYouAnswer, ForYouItem } from "@agent-board/app/domain/forYou";
-import { useTheme } from "@react-navigation/native";
 import { useState } from "react";
-import { TextInput } from "react-native";
 
-import { styles } from "../styles";
+import { AppTextInput } from "../AppTextInput";
 import { ChoiceButton } from "./ChoiceButton";
 
 export function ItemActions({
@@ -15,7 +13,6 @@ export function ItemActions({
   sent: boolean;
   send: (answer: ForYouAnswer) => void;
 }) {
-  const { colors } = useTheme();
   const [typed, setTyped] = useState("");
   if (item.kind === "question") {
     const text = typed.trim();
@@ -30,15 +27,13 @@ export function ItemActions({
             {option}
           </ChoiceButton>
         ))}
-        <TextInput
+        <AppTextInput
           multiline
           editable={!sent}
           value={typed}
           onChangeText={setTyped}
           placeholder="Type your own answer"
-          placeholderTextColor={colors.border}
           accessibilityLabel="Your answer"
-          style={[styles.input, { color: colors.text, borderColor: colors.border }]}
         />
         <ChoiceButton
           primary

@@ -1,48 +1,23 @@
 import {
+  CARD_STATE,
+  cardKindLabel,
   cardTitle,
-  type CardState,
   type CardView,
   describeRoleTarget,
   type ForYouCard,
-  type ForYouItem,
   MERGE_CONDITIONS,
   sentLine,
 } from "@agent-board/app/domain/forYou";
 import { describeTrackerWrite } from "@agent-board/app/issues/issueLinks";
-import { useTheme } from "@react-navigation/native";
 import { type ReactNode, useState } from "react";
-import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
+import { AppText } from "../AppText";
 import { styles } from "../styles";
 import { answerItem, type ForYouTarget } from "./actions";
 import { ApprovalBody } from "./ApprovalBody";
 import { ItemActions } from "./ItemActions";
-
-const KIND_LABEL = {
-  merge_approval: "Merge approval",
-  question: "Question",
-  ticket_draft: "Ticket draft",
-  tracker_write: "Tracker write",
-  role_target: "Role change",
-  gate: "Gate",
-  read: "Read",
-  resume: "Resume",
-} as const satisfies Record<ForYouItem["kind"], string>;
-
-export const STATE_LABEL = {
-  open: "Open",
-  sent: "Sent",
-  held: "Held",
-  resolved: "Resolved",
-} as const satisfies Record<CardState, string>;
-
-export const kindLabel = (card: ForYouCard) =>
-  card.origin === "file"
-    ? KIND_LABEL[card.item.kind]
-    : card.request.kind === "approval"
-      ? "Approval"
-      : "Secret";
 
 function stateLine({ card, state, detail }: CardView): string | null {
   switch (state) {
@@ -72,8 +47,6 @@ export function CardSheet({
   target: ForYouTarget;
   onClose: () => void;
 }) {
-  const { colors } = useTheme();
-  const text = { color: colors.text };
   const [error, setError] = useState<string | null>(null);
   const { card, state } = view;
   const changed = content(card) !== content(shown);
@@ -85,7 +58,7 @@ export function CardSheet({
   if (card.origin === "engine") {
     body =
       card.request.kind === "secret" ? (
-        <Text style={text}>Answer on the desktop.</Text>
+        <AppText>Answer on the desktop.</AppText>
       ) : (
         <ApprovalBody target={target} card={card} sent={locked} onError={setError} />
       );
@@ -94,27 +67,25 @@ export function CardSheet({
     body = (
       <>
         {item.kind !== "role_target" && item.body.trim() !== "" && (
-          <Text selectable style={text}>
-            {item.body}
-          </Text>
+          <AppText selectable>{item.body}</AppText>
         )}
         {item.kind === "merge_approval" &&
           MERGE_CONDITIONS.map(({ key, label }) => {
             const condition = item.conditions[key];
             return (
-              <Text key={key} style={condition.met ? text : styles.error}>
+              <AppText key={key} style={condition.met ? undefined : styles.error}>
                 {condition.met ? "✓" : "✗"} {label}
                 {condition.note == null ? "" : `. ${condition.note}`}
-              </Text>
+              </AppText>
             );
           })}
         {item.kind === "tracker_write" && (
-          <Text selectable style={[styles.card, text, { borderColor: colors.border }]}>
+          <AppText selectable style={styles.card}>
             {describeTrackerWrite(item.write)}
-          </Text>
+          </AppText>
         )}
         {item.kind === "role_target" ? (
-          <Text style={text}>{describeRoleTarget(item.write)}</Text>
+          <AppText>{describeRoleTarget(item.write)}</AppText>
         ) : (
           !done && (
             <ItemActions
@@ -134,31 +105,31 @@ export function CardSheet({
   return (
     <Modal animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaProvider>
-        <SafeAreaView style={[styles.fill, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={styles.sheet}>
           <View style={[styles.header, styles.sheetTop]}>
-            <Text style={[styles.headerText, styles.muted, text]}>
-              {kindLabel(card)} · {STATE_LABEL[state]}
-            </Text>
+            <AppText style={[styles.headerText, styles.muted]}>
+              {cardKindLabel(card)} · {CARD_STATE[state].label}
+            </AppText>
             <Pressable accessibilityRole="button" onPress={onClose}>
-              <Text style={styles.link}>Close</Text>
+              <AppText style={styles.link}>Close</AppText>
             </Pressable>
           </View>
           <ScrollView
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={[styles.body, styles.readable]}
           >
-            <Text style={[styles.title, text]}>{cardTitle(card)}</Text>
+            <AppText style={styles.title}>{cardTitle(card)}</AppText>
             {body}
-            {status !== null && <Text style={[styles.small, text]}>{status}</Text>}
+            {status !== null && <AppText style={styles.small}>{status}</AppText>}
             {changed && (
-              <Text accessibilityRole="alert" style={styles.error}>
+              <AppText accessibilityRole="alert" style={styles.error}>
                 This card changed while open. Close it and open it again to answer.
-              </Text>
+              </AppText>
             )}
             {error !== null && (
-              <Text accessibilityRole="alert" style={styles.error}>
+              <AppText accessibilityRole="alert" style={styles.error}>
                 {error}
-              </Text>
+              </AppText>
             )}
           </ScrollView>
         </SafeAreaView>

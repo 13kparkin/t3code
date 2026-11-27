@@ -1,13 +1,13 @@
 import { type MouseEvent, type PointerEvent, useRef } from "react";
 
 import { cardFile, dropOnComposer } from "../chat/cardAttachment";
-import { missingPlan, missingSources, STAGE_LABEL } from "../domain/ticket";
+import { missingPlan, missingSources, STAGE_LABEL, STAGE_TAGS } from "../domain/ticket";
 import { waitingOn } from "../domain/ticketOverlay";
 import { usePrContext, useTicketNotes } from "../state/prStatus";
 import type { TicketView } from "../state/boardModel";
 import { ago } from "../ui/ago";
 import { CardLine } from "./CardLine";
-import { edgeScrollStep, type FrameBox, STAGE_TAGS } from "./layout";
+import { edgeScrollStep, type FrameBox } from "./layout";
 import { newestAgent, ticketStatus } from "./ticketStatus";
 import { useViewScale } from "./Viewport";
 

@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Pressable, Text } from "react-native";
+import { Pressable } from "react-native";
 
+import { AppText } from "../AppText";
 import { styles } from "../styles";
 import { ChatMessage } from "./ChatMessage";
 
-export function ChatBrief({ text, color }: { text: string; color: string }) {
+export function ChatBrief({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -13,9 +14,9 @@ export function ChatBrief({ text, color }: { text: string; color: string }) {
         accessibilityState={{ expanded: open }}
         onPress={() => setOpen(!open)}
       >
-        <Text style={[styles.small, styles.muted, { color }]}>Brief sent to the orchestrator</Text>
+        <AppText style={[styles.small, styles.faint]}>Brief sent to the orchestrator</AppText>
       </Pressable>
-      {open && <ChatMessage text={text} color={color} />}
+      {open && <ChatMessage text={text} />}
     </>
   );
 }

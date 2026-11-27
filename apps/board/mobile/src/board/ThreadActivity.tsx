@@ -4,15 +4,15 @@ import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import { LegendList } from "@legendapp/list/react-native";
 import { EMPTY_ENVIRONMENT_THREAD_STATE } from "@t3tools/client-runtime/state/threads";
 import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
-import { useTheme } from "@react-navigation/native";
 import * as Option from "effect/Option";
 import { AsyncResult } from "effect/reactivity";
 import { useContext } from "react";
-import { Modal, Pressable, Text, View } from "react-native";
+import { Modal, Pressable, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import { shouldRetryHistory } from "../chat/chat";
 import { environmentThreads, loadEarlier } from "../state/threads";
+import { AppText } from "../AppText";
 import { styles } from "../styles";
 
 function rowLines(row: TimelineRow): ReadonlyArray<{ id: string; text: string; error: boolean }> {
@@ -43,7 +43,6 @@ export function ThreadActivity({
   title: string;
   onClose: () => void;
 }) {
-  const { colors } = useTheme();
   const registry = useContext(RegistryContext);
   const state = AsyncResult.getOrElse(
     useAtomValue(environmentThreads.stateAtom(environmentId, threadId)),
@@ -55,19 +54,18 @@ export function ThreadActivity({
   return (
     <Modal animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaProvider>
-        <SafeAreaView style={[styles.fill, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={styles.sheet}>
           <View style={[styles.header, styles.sheetTop]}>
-            <Text style={[styles.headerText, { color: colors.text }]} numberOfLines={1}>
+            <AppText style={styles.headerText} numberOfLines={1}>
               {title}
-            </Text>
+            </AppText>
             <Pressable accessibilityRole="button" onPress={onClose}>
-              <Text style={styles.link}>Close</Text>
+              <AppText style={styles.link}>Close</AppText>
             </Pressable>
           </View>
           <LegendList
             data={rows}
             keyExtractor={(row) => row.id}
-            extraData={colors}
             estimatedItemSize={40}
             maintainScrollAtEnd
             maintainVisibleContentPosition
@@ -85,22 +83,18 @@ export function ThreadActivity({
             style={styles.readable}
             contentContainerStyle={styles.body}
             ListEmptyComponent={
-              <Text
-                style={
-                  projection === null && failure !== null
-                    ? styles.error
-                    : [styles.muted, { color: colors.text }]
-                }
+              <AppText
+                style={projection === null && failure !== null ? styles.error : styles.muted}
               >
                 {projection === null ? (failure ?? "Reading the thread") : "Nothing yet"}
-              </Text>
+              </AppText>
             }
             renderItem={({ item }) => (
               <View>
                 {rowLines(item).map((line) => (
-                  <Text key={line.id} style={line.error ? styles.error : { color: colors.text }}>
+                  <AppText key={line.id} style={line.error ? styles.error : undefined}>
                     {line.text}
-                  </Text>
+                  </AppText>
                 ))}
               </View>
             )}

@@ -33,13 +33,28 @@ const withReleaseSigning = (config: ExpoConfig) =>
     return nextConfig;
   });
 
+// Expo runs this file in Node, but React Native's global require type has no resolve.
+declare global {
+  interface NodeRequire {
+    resolve(id: string): string;
+  }
+}
+
+// require.resolve, unlike a bare path string, shows knip that the font package is used.
+const INTER_FILES = {
+  400: require.resolve("@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf"),
+  500: require.resolve("@expo-google-fonts/inter/500Medium/Inter_500Medium.ttf"),
+  600: require.resolve("@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf"),
+  700: require.resolve("@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf"),
+};
+
 export default withReleaseSigning({
   name: development ? "Agent Board Dev" : "Agent Board",
   slug: "agent-board-phone",
   version: process.env.AGENT_BOARD_PHONE_VERSION ?? "0.0.0",
   scheme: development ? "agentboard-phone-dev" : "agentboard-phone",
   orientation: "default",
-  userInterfaceStyle: "automatic",
+  userInterfaceStyle: "dark",
   android: {
     package: development ? "dev.agentboard.phone.dev" : "dev.agentboard.phone",
     // The paired engine's session credential must not leave the phone in a backup.
@@ -61,6 +76,23 @@ export default withReleaseSigning({
     // A LAN engine is plain http, which Android blocks in release builds by default.
     ["expo-build-properties", { android: { minSdkVersion: 24, usesCleartextTraffic: true } }],
     "expo-secure-store",
+    // One family, so React Native's fontWeight picks the file.
+    [
+      "expo-font",
+      {
+        android: {
+          fonts: [
+            {
+              fontFamily: "Inter",
+              fontDefinitions: Object.entries(INTER_FILES).map(([weight, path]) => ({
+                path,
+                weight: Number(weight),
+              })),
+            },
+          ],
+        },
+      },
+    ],
     [
       "expo-camera",
       {

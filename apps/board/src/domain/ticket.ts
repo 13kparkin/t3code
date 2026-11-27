@@ -27,6 +27,19 @@ export const STAGE_LABEL = {
   off_path: "Off path",
 } as const satisfies Record<TicketStage, string>;
 
+/** Each stage's tag colour. */
+export const STAGE_TAGS = {
+  todo: { tone: "text-zinc-300" },
+  planned: { tone: "text-zinc-400" },
+  building: { tone: "text-blue-300" },
+  reviewing: { tone: "text-violet-300" },
+  verifying: { tone: "text-cyan-300" },
+  pr: { tone: "text-indigo-300" },
+  awaiting_approval: { tone: "text-orange-300" },
+  merged: { tone: "text-emerald-300" },
+  off_path: { tone: "text-red-300" },
+} as const satisfies Record<TicketStage, { readonly tone: string }>;
+
 const Count = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 
 // The orchestrator writes this file by hand, and a field it does not know yet is left out.

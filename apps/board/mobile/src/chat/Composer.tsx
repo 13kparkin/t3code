@@ -1,9 +1,10 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
-import { useTheme } from "@react-navigation/native";
 import { useContext, useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import { View } from "react-native";
 
+import { AppText } from "../AppText";
+import { AppTextInput } from "../AppTextInput";
 import { connectedEnvironmentAtom } from "../board/files";
 import { ChoiceButton } from "../foryou/ChoiceButton";
 import { forYouEngine, stopTurn } from "../state/threads";
@@ -13,12 +14,13 @@ export function Composer({
   environmentId,
   threadId,
   live,
+  onSend,
 }: {
   environmentId: EnvironmentId;
   threadId: ThreadId;
   live: boolean;
+  onSend: () => void;
 }) {
-  const { colors } = useTheme();
   const registry = useContext(RegistryContext);
   const connected = useAtomValue(connectedEnvironmentAtom) === environmentId;
   const [draft, setDraft] = useState("");
@@ -43,19 +45,14 @@ export function Composer({
   return (
     <View style={styles.composer}>
       <View style={styles.composerRow}>
-        <TextInput
+        <AppTextInput
           value={draft}
           onChangeText={setDraft}
           editable={!busy}
           multiline
           placeholder="Message the orchestrator"
           accessibilityLabel="Message the orchestrator"
-          placeholderTextColor={colors.border}
-          style={[
-            styles.input,
-            styles.composerInput,
-            { borderColor: colors.border, color: colors.text },
-          ]}
+          style={styles.composerInput}
         />
         {live ? (
           <ChoiceButton
@@ -69,21 +66,22 @@ export function Composer({
           <ChoiceButton
             primary
             disabled={busy || text === ""}
-            onPress={() =>
+            onPress={() => {
+              onSend();
               void run(
                 () => forYouEngine(registry, environmentId, threadId).message(async () => text),
                 () => setDraft(""),
-              )
-            }
+              );
+            }}
           >
             {busy ? "Sending" : "Send"}
           </ChoiceButton>
         )}
       </View>
       {error !== null && (
-        <Text accessibilityRole="alert" style={styles.error}>
+        <AppText accessibilityRole="alert" style={styles.error}>
           {error}
-        </Text>
+        </AppText>
       )}
     </View>
   );
