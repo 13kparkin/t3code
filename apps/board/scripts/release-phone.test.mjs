@@ -48,15 +48,17 @@ NodeTest.test("a release runs the phone gates, the signed build, apksigner, note
   const apk = "/repo/apps/board/mobile/release/Agent-Board-Phone-1.2.3-test.apk";
   const notes = "/repo/apps/board/mobile/release/release-notes.md";
   NodeAssert.deepEqual(
-    [...release.build, release.verify, ...release.publish].map(({ command, args, env }) => [
+    [...release.build, release.verify, ...release.publish].map(({ command, args, cwd, env }) => [
+      cwd,
       command,
       ...args,
       ...(env ? [env] : []),
     ]),
     [
-      ["vp", "run", "--filter", "@agent-board/phone", "typecheck"],
-      ["vp", "run", "--filter", "@agent-board/phone", "test"],
+      ["/repo", "vp", "run", "--filter", "@agent-board/phone", "typecheck"],
+      ["/repo", "vp", "run", "--filter", "@agent-board/phone", "test"],
       [
+        "/repo/apps/board/mobile",
         "pnpm",
         "exec",
         "expo",
@@ -73,6 +75,7 @@ NodeTest.test("a release runs the phone gates, the signed build, apksigner, note
         },
       ],
       [
+        "/repo/apps/board/mobile/android",
         "./gradlew",
         ":app:assembleRelease",
         "-PreactNativeArchitectures=arm64-v8a,armeabi-v7a",
@@ -80,8 +83,9 @@ NodeTest.test("a release runs the phone gates, the signed build, apksigner, note
         "-Dorg.gradle.jvmargs=-Xmx2g",
         "--no-daemon",
       ],
-      ["/sdk/build-tools/36.0.0/apksigner", "verify", "--print-certs", apk],
+      ["/repo", "/sdk/build-tools/36.0.0/apksigner", "verify", "--print-certs", apk],
       [
+        "/repo",
         "node",
         "apps/board/scripts/release-notes.mjs",
         "--repository",
@@ -94,6 +98,7 @@ NodeTest.test("a release runs the phone gates, the signed build, apksigner, note
         notes,
       ],
       [
+        "/repo",
         "gh",
         "release",
         "create",

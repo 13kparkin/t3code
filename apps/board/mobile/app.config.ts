@@ -7,7 +7,7 @@ process.env.EXPO_NO_TYPESCRIPT_SETUP = "1";
 const development = process.env.APP_VARIANT === "development";
 
 // The keystore path, alias and passwords are Gradle properties in ~/.gradle/gradle.properties, never in the repo.
-// Without them a release build fails on the missing storeFile instead of shipping a debug-signed APK.
+// Without them the release build has no key, never the debug one, and release-phone.mjs stops first.
 const RELEASE_SIGNING_CONFIG = `
         release {
             if (project.hasProperty('AGENT_BOARD_PHONE_KEYSTORE')) {

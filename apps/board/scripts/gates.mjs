@@ -1,4 +1,4 @@
-// The checks a board change must pass, shared by release.mjs and ci-local.mjs so the two cannot drift.
+// The checks a board change must pass, shared by release.mjs, release-phone.mjs and ci-local.mjs so they cannot drift.
 // `cwd` is relative to the repo root.
 import * as NodeChildProcess from "node:child_process";
 

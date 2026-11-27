@@ -62,7 +62,7 @@ With `ANTHROPIC_API_KEY` set, the notes open with a Claude summary of the pull r
 
 When Actions is available on the repo, `gh workflow run agent-board.yml -f version=0.1.0` runs the same script in a `release` job, using the `ANTHROPIC_API_KEY` repo secret. Add `-f prerelease=true` for a pre-release.
 
-The fork runs no CI on pull requests, so local CI stands in. `scripts/gates.mjs` lists the release gates, and `release.mjs` and `ci-local.mjs` both run that list.
+The fork runs no CI on pull requests, so local CI stands in. `scripts/gates.mjs` lists the release gates, and `release.mjs` and `ci-local.mjs` both run that list. It includes the phone app's typecheck and tests.
 
 ```sh
 node apps/board/scripts/ci-local.mjs T-13 <board folder>/artifacts/T-13

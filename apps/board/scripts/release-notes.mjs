@@ -18,9 +18,9 @@ const tagPrefix = (tag) => tag.replace(/\d[\s\S]*$/, "");
 /** The release tag just before `tag` among tags with its prefix, so upstream's `v*` tags and the other app's never count. */
 export function previousTag(tags, tag) {
   const prefix = tagPrefix(tag);
-  const boardTags = [...new Set([...tags.filter((name) => name.startsWith(prefix)), tag])];
-  boardTags.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  return boardTags[boardTags.indexOf(tag) - 1];
+  const appTags = [...new Set([...tags.filter((name) => name.startsWith(prefix)), tag])];
+  appTags.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  return appTags[appTags.indexOf(tag) - 1];
 }
 
 /** The summary on top, GitHub's full list below. */

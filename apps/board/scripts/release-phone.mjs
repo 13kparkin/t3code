@@ -34,6 +34,7 @@ export function releaseCommands({ version, root, sha, repository, apksigner }) {
   const mobile = NodePath.join(root, "apps", "board", "mobile");
   const releaseDir = NodePath.join(mobile, "release");
   const tag = `board-phone-v${version}`;
+  const prerelease = version.includes("-");
   const notes = NodePath.join(releaseDir, "release-notes.md");
   const apk = NodePath.join(releaseDir, `Agent-Board-Phone-${version}.apk`);
   const sums = NodePath.join(releaseDir, "SHA256SUMS");
@@ -45,7 +46,7 @@ export function releaseCommands({ version, root, sha, repository, apksigner }) {
       ...GATES.filter((gate) => gate.name.startsWith("phone-")).map((gate) => ({
         command: gate.command,
         args: gate.args,
-        cwd: NodePath.join(root, gate.cwd ?? ""),
+        cwd: root,
       })),
       {
         command: "pnpm",
@@ -103,7 +104,7 @@ export function releaseCommands({ version, root, sha, repository, apksigner }) {
           notes,
           // Keeps the Releases page's Latest badge on the desktop app.
           "--latest=false",
-          ...(version.includes("-") ? ["--prerelease"] : []),
+          ...(prerelease ? ["--prerelease"] : []),
           apk,
           sums,
         ],
@@ -155,12 +156,13 @@ function main() {
   const dirty = out("git", ["status", "--porcelain"], root);
   if (dirty !== "") fail(`The checkout has uncommitted changes:\n${dirty}`);
   const tag = `board-phone-v${version}`;
+  const prerelease = version.includes("-");
   if (out("git", ["ls-remote", "--tags", "origin", `refs/tags/${tag}`], root) !== "") {
     fail(`The tag ${tag} already exists, so ${version} is already released.`);
   }
   run({ command: "git", args: ["fetch", "--no-tags", "origin", "main"], cwd: root });
   const sha = out("git", ["rev-parse", "HEAD"], root);
-  if (!version.includes("-") && sha !== out("git", ["rev-parse", "origin/main"], root)) {
+  if (!prerelease && sha !== out("git", ["rev-parse", "origin/main"], root)) {
     fail(
       "A release comes from origin/main. Check it out, or give a -test version for a pre-release.",
     );
@@ -186,7 +188,6 @@ function main() {
   const newest = NodeFS.readdirSync(buildTools)
     .toSorted((a, b) => a.localeCompare(b, undefined, { numeric: true }))
     .at(-1);
-
   const release = releaseCommands({
     version,
     root,
