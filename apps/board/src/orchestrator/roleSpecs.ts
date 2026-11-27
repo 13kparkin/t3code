@@ -1,8 +1,8 @@
 /** The task roles `delegate_task` accepts. */
-export type T3Role = "implementation" | "research" | "review" | "design" | "test" | "general";
-export type Isolation = "shared" | "worktree";
+type T3Role = "implementation" | "research" | "review" | "design" | "test" | "general";
+type Isolation = "shared" | "worktree";
 
-export interface ClaudeModel {
+interface ClaudeModel {
   readonly slug: string;
   readonly effort: string;
 }

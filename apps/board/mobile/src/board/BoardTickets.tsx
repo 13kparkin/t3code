@@ -7,7 +7,6 @@ import {
 } from "@agent-board/app/domain/ticket";
 import { waitingOn } from "@agent-board/app/domain/ticketOverlay";
 import { joinBoard } from "@agent-board/app/state/boardModel";
-import { PALETTE } from "@agent-board/app/theme/tokens";
 import { useAtomValue } from "@effect/atom-react";
 import { Atom } from "effect/reactivity";
 import * as Result from "effect/Result";
@@ -17,7 +16,7 @@ import { Pressable, SectionList, View } from "react-native";
 import { AppText } from "../AppText";
 import { styles } from "../styles";
 import { CardLine } from "./CardLine";
-import { threadFamilies, useFamilyMount } from "./family";
+import { familyThreadsAtom, useFamilyMount } from "./family";
 import { type BoardChoice, useBoardFiles } from "./files";
 import { StageTag } from "./StageTag";
 import { TicketSheet } from "./TicketSheet";
@@ -44,7 +43,7 @@ export function BoardTickets({ choice }: { choice: BoardChoice }) {
   const decisions = files?.decisions ?? null;
   const rootId = choice.listed.ok ? choice.listed.board.orchestratorThreadId : null;
   useFamilyMount(rootId);
-  const threads = useAtomValue(threadFamilies.snapshotAtom(choice.project.environmentId))?.threads;
+  const threads = useAtomValue(familyThreadsAtom(choice.project.environmentId));
   const now = useAtomValue(clockAtom);
   const cards = useMemo(() => {
     const model =
@@ -122,13 +121,9 @@ export function BoardTickets({ choice }: { choice: BoardChoice }) {
                   <>
                     <StageTag stage={item.stage} />{" "}
                     {waiting.length > 0 && (
-                      <AppText style={{ color: PALETTE["amber-300"] }}>
-                        {`Waiting on ${waiting.join(", ")} · `}
-                      </AppText>
+                      <AppText style={styles.warn}>{`Waiting on ${waiting.join(", ")} · `}</AppText>
                     )}
-                    {missingPlan(item) && (
-                      <AppText style={{ color: PALETTE["amber-300"] }}>No plan · </AppText>
-                    )}
+                    {missingPlan(item) && <AppText style={styles.warn}>No plan · </AppText>}
                     {card?.newest === undefined ? "No agents" : card.newest.role}
                   </>
                 }

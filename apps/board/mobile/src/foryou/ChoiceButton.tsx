@@ -22,7 +22,7 @@ export function ChoiceButton({
       onPress={onPress}
       style={[primary ? styles.button : styles.quietButton, disabled && styles.disabled]}
     >
-      <AppText style={primary ? styles.buttonText : styles.quietButtonText}>{children}</AppText>
+      <AppText style={primary ? styles.buttonText : styles.bold}>{children}</AppText>
     </Pressable>
   );
 }

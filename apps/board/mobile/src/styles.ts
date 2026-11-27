@@ -73,8 +73,9 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  quietButtonText: { fontWeight: "600" },
   error: { color: PALETTE["red-400"] },
+  warn: { color: PALETTE["amber-300"] },
+  working: { color: PALETTE["sky-400"] },
   bold: { fontWeight: "600" },
   small: { fontSize: 12 },
   card: {

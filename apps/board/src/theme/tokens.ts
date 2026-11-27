@@ -49,7 +49,7 @@ export function toneStyle(classes: string): ToneStyle {
   const style: ToneStyle = {};
   for (const name of classes.split(" ")) {
     const [, kind, color, alpha] = TONE.exec(name) ?? [];
-    const hex = color === undefined ? undefined : HEX.get(color);
+    const hex = HEX.get(color ?? "");
     if (hex === undefined) continue;
     const value =
       alpha === undefined

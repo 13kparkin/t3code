@@ -1,5 +1,4 @@
 import { isThreadWorking } from "@agent-board/app/domain/threadWork";
-import { PALETTE } from "@agent-board/app/theme/tokens";
 import { useAtomValue } from "@effect/atom-react";
 import { LegendList } from "@legendapp/list/react-native";
 import type { EnvironmentId, OrchestrationV2ThreadShell } from "@t3tools/contracts";
@@ -8,7 +7,7 @@ import { Pressable } from "react-native";
 
 import { AppText } from "../AppText";
 import { styles } from "../styles";
-import { threadFamilies, useFamilyMount } from "./family";
+import { familyThreadsAtom, useFamilyMount } from "./family";
 import { ThreadActivity } from "./ThreadActivity";
 
 function statusText(thread: OrchestrationV2ThreadShell) {
@@ -36,7 +35,7 @@ export function FamilyList({
   rootId: string;
 }) {
   useFamilyMount(rootId);
-  const threads = useAtomValue(threadFamilies.snapshotAtom(environmentId))?.threads;
+  const threads = useAtomValue(familyThreadsAtom(environmentId));
   const family = useMemo(
     () =>
       (threads ?? [])
@@ -68,12 +67,7 @@ export function FamilyList({
             <AppText style={[styles.bold, styles.cardTitle]} numberOfLines={1}>
               {item.title}
             </AppText>
-            <AppText
-              style={[
-                styles.small,
-                isThreadWorking(item) ? { color: PALETTE["sky-400"] } : styles.muted,
-              ]}
-            >
+            <AppText style={[styles.small, isThreadWorking(item) ? styles.working : styles.muted]}>
               {item.id === rootId ? "Orchestrator · " : ""}
               {statusText(item)}
             </AppText>

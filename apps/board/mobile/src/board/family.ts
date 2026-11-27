@@ -1,5 +1,5 @@
 import { createThreadFamilyAtoms } from "@t3tools/client-runtime/state/threads";
-import { ThreadId } from "@t3tools/contracts";
+import { type EnvironmentId, ThreadId } from "@t3tools/contracts";
 import { useIsFocused } from "@react-navigation/native";
 import { useAtomValue } from "@effect/atom-react";
 import { Atom } from "effect/reactivity";
@@ -8,9 +8,13 @@ import { environmentShell } from "../connection/engine";
 import { connectionAtomRuntime } from "../connection/runtime";
 import { connectedEnvironmentAtom } from "./files";
 
-export const threadFamilies = createThreadFamilyAtoms(
-  connectionAtomRuntime,
-  environmentShell.stateAtom,
+const threadFamilies = createThreadFamilyAtoms(connectionAtomRuntime, environmentShell.stateAtom);
+
+/** The snapshot changes on every shell event, but its threads only when a thread does. */
+export const familyThreadsAtom = Atom.family((environmentId: EnvironmentId) =>
+  Atom.make((get) => get(threadFamilies.snapshotAtom(environmentId))?.threads).pipe(
+    Atom.withLabel(`phone-family-threads:${environmentId}`),
+  ),
 );
 
 const familyMountAtom = Atom.family((rootId: string) =>

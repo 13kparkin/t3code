@@ -12,7 +12,7 @@ export function CardLine({
   status,
   detail,
 }: {
-  tag: string | null;
+  tag: string;
   title: string;
   status: CardStatus | null;
   detail: ReactNode;
@@ -23,7 +23,7 @@ export function CardLine({
         <View
           style={[styles.cardDot, status === null ? styles.emptyDot : toneStyle(status.tone)]}
         />
-        {tag !== null && <AppText style={styles.cardKey}>{tag}</AppText>}
+        <AppText style={styles.cardKey}>{tag}</AppText>
         <AppText style={[styles.cardTitle, styles.fill]} numberOfLines={1}>
           {title}
         </AppText>
