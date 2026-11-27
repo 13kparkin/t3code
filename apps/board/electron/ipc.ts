@@ -136,6 +136,10 @@ export function registerEngineIpc(options: {
   });
   ipcMain.handle("board:engine-state", () => engine.state());
   ipcMain.handle("board:engine-token", () => engine.token());
+  ipcMain.handle("board:network-access", () => engine.networkAccess());
+  ipcMain.handle("board:set-network-access", (_event, enabled) =>
+    engine.setNetworkAccess(enabled === true),
+  );
   ipcMain.on("board:prompt-answer", (_event, accepted) => {
     answer?.(accepted === true);
     answer = null;

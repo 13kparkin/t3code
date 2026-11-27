@@ -15,6 +15,16 @@ export type EngineState =
     }
   | { readonly phase: "offline"; readonly reason: string };
 
+/** Whether T3's service accepts phones on the local network and tailnet, as `t3 status --json` reports it. */
+export type NetworkAccess =
+  | {
+      readonly ok: true;
+      readonly enabled: boolean;
+      /** A `T3CODE_HOST` in the service's env, which wins over the switch. */
+      readonly hostOverride: string | null;
+    }
+  | { readonly ok: false; readonly detail: string };
+
 export type EngineTokenResult =
   | { readonly ok: true; readonly token: string }
   | { readonly ok: false; readonly error: "auth_failed" | "unavailable"; readonly detail: string };
@@ -28,6 +38,9 @@ export interface BoardBridge {
   readonly engineState: () => Promise<EngineState>;
   readonly onEngineState: (listener: (state: EngineState) => void) => () => void;
   readonly engineToken: () => Promise<EngineTokenResult>;
+  readonly networkAccess: () => Promise<NetworkAccess>;
+  /** Runs `t3 up --lan` or `--no-lan`, which restarts T3's service and stops running agent turns. */
+  readonly setNetworkAccess: (enabled: boolean) => Promise<NetworkAccess>;
   /** Answers the install or update question the footer is asking. */
   readonly answerPrompt: (accepted: boolean) => void;
   /** Shows the folder dialog in the user's WSL home. Null when the user cancels. */

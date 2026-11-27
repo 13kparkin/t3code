@@ -31,6 +31,8 @@ class FakeWsl {
   hasT3 = true;
   t3Version = CURRENT;
   rejectEveryToken = false;
+  lan = false;
+  hasStatus = true;
   readonly serviceEngine: RuntimeFile = { pid: 7001, origin: "http://127.0.0.1:3773" };
   mints = 0;
   installs = 0;
@@ -61,6 +63,16 @@ class FakeWsl {
       this.scripts.push(script);
       if (script.includes("service install")) {
         this.serviceInstalls += 1;
+        this.serve(this.serviceEngine, this.t3Version);
+        return ok();
+      }
+      if (script.includes("status --json")) {
+        if (!this.hasStatus) return { exitCode: 1, stdout: "", stderr: "Unknown command: status" };
+        return ok(JSON.stringify({ service: {}, lan: { enabled: this.lan, hostOverride: null } }));
+      }
+      const up = / up --(no-)?lan --yes/.exec(script);
+      if (up !== null) {
+        this.lan = up[1] === undefined;
         this.serve(this.serviceEngine, this.t3Version);
         return ok();
       }
@@ -339,5 +351,59 @@ describe("engine token", () => {
 
     expect(result).toEqual({ ok: true, token: "from-env" });
     expect(harness.wsl.mints).toBe(0);
+  });
+});
+
+describe("engine network access", () => {
+  it.each([true, false])(
+    "Given the service engine, when the board sets network access to %s, then t3 up applies it, the board rejoins, and reads it back",
+    async (enabled) => {
+      const { wsl, engine } = setup();
+      wsl.lan = !enabled;
+      wsl.serve(wsl.serviceEngine);
+      await engine.start();
+
+      expect(await engine.setNetworkAccess(enabled)).toEqual({
+        ok: true,
+        enabled,
+        hostOverride: null,
+      });
+      expect(wsl.scripts.filter((script) => script.includes(" up "))).toEqual([
+        expect.stringContaining(`'t3' up ${enabled ? "--lan" : "--no-lan"} --yes`),
+      ]);
+      expect(engine.state()).toEqual({
+        phase: "ready",
+        origin: wsl.serviceEngine.origin,
+        source: "service",
+      });
+    },
+  );
+
+  it("Given a t3 with no status command, when the board reads network access, then it says so", async () => {
+    const { wsl, engine } = setup();
+    wsl.hasStatus = false;
+    wsl.serve();
+    await engine.start();
+
+    expect(await engine.networkAccess()).toEqual({
+      ok: false,
+      detail: "t3 status failed: Unknown command: status",
+    });
+  });
+
+  it("Given AGENT_BOARD_ENGINE_URL, when the board reads or sets network access, then it touches nothing in WSL", async () => {
+    const { wsl, engine } = setup({ engineUrl: "http://127.0.0.1:4100" });
+    wsl.liveOrigins.set("http://127.0.0.1:4100", CURRENT);
+    await engine.start();
+
+    const refused = {
+      ok: false,
+      detail: "AGENT_BOARD_ENGINE_URL names this engine, so set its network access where it runs.",
+    };
+    expect([await engine.networkAccess(), await engine.setNetworkAccess(true)]).toEqual([
+      refused,
+      refused,
+    ]);
+    expect(wsl.commands).toEqual([]);
   });
 });

@@ -19,6 +19,8 @@ const bridge: BoardBridge = {
     return () => void ipcRenderer.off("board:engine-state", handler);
   },
   engineToken: () => ipcRenderer.invoke("board:engine-token"),
+  networkAccess: () => ipcRenderer.invoke("board:network-access"),
+  setNetworkAccess: (enabled) => ipcRenderer.invoke("board:set-network-access", enabled),
   answerPrompt: (accepted) => ipcRenderer.send("board:prompt-answer", accepted),
   pickFolder: () => ipcRenderer.invoke("board:pick-folder"),
   resolveFolder: (text) => ipcRenderer.invoke("board:resolve-folder", text),
