@@ -1,7 +1,11 @@
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
-import type { EngineState, EngineTokenResult } from "../src/connection/engineState.ts";
+import type {
+  EngineState,
+  EngineTokenResult,
+  NetworkAccess,
+} from "../src/connection/engineState.ts";
 import { type LinuxHost, shellQuote } from "./wslEngine.ts";
 
 export interface EngineConfig {
@@ -43,6 +47,9 @@ export interface Engine {
   readonly start: () => Promise<void>;
   /** A bearer the engine accepts right now, reissued once when the saved one is rejected. */
   readonly token: () => Promise<EngineTokenResult>;
+  readonly networkAccess: () => Promise<NetworkAccess>;
+  /** T3's own `t3 up --lan` or `--no-lan`, which restarts its service, then rejoins it. */
+  readonly setNetworkAccess: (enabled: boolean) => Promise<NetworkAccess>;
 }
 
 const TOKEN_ARGS = "auth session issue --token-only --label agent-board --ttl 30d";
@@ -57,6 +64,20 @@ const decodeDescriptor = Schema.decodeUnknownOption(
   Schema.Struct({ environmentId: Schema.String, serverVersion: Schema.String }),
 );
 const decodeSession = Schema.decodeUnknownOption(Schema.Struct({ authenticated: Schema.Boolean }));
+const decodeStatus = Schema.decodeOption(
+  Schema.fromJsonString(
+    Schema.Struct({
+      lan: Schema.Struct({ enabled: Schema.Boolean, hostOverride: Schema.NullOr(Schema.String) }),
+    }),
+  ),
+);
+const URL_ENGINE_ACCESS: NetworkAccess = {
+  ok: false,
+  detail: "AGENT_BOARD_ENGINE_URL names this engine, so set its network access where it runs.",
+};
+const NO_T3: NetworkAccess = { ok: false, detail: "T3 is not installed in WSL." };
+// The WSL runner and `run` reject only with an Error.
+const accessFailed = (error: Error): NetworkAccess => ({ ok: false, detail: error.message });
 
 /** The release number in a `t3 --version` line. */
 const releaseOf = (line: string): string => /\d+\.\d+\.\d+\S*/.exec(line)?.[0] ?? line.trim();
@@ -285,6 +306,37 @@ export function createEngine(deps: EngineDeps): Engine {
     }
   };
 
+  const networkAccess = async (): Promise<NetworkAccess> => {
+    if (config.engineUrl !== undefined) return URL_ENGINE_ACCESS;
+    const cli = await resolveCli();
+    if (cli === null) return NO_T3;
+    const result = await host.shell(
+      `${prelude}\n${cli.command} status --json ${baseDirArg} </dev/null\n`,
+      { loginPath: true },
+    );
+    const status = result.exitCode === 0 ? Option.getOrNull(decodeStatus(result.stdout)) : null;
+    if (status === null) {
+      return {
+        ok: false,
+        detail: `t3 status failed: ${(result.stderr || result.stdout).trim().slice(-300)}`,
+      };
+    }
+    return { ok: true, ...status.lan };
+  };
+
+  const setNetworkAccess = async (enabled: boolean): Promise<NetworkAccess> => {
+    if (config.engineUrl !== undefined) return URL_ENGINE_ACCESS;
+    const cli = await resolveCli();
+    if (cli === null) return NO_T3;
+    setState({ phase: "starting" });
+    const failure = await run(
+      `${cli.command} up ${enabled ? "--lan" : "--no-lan"} --yes ${baseDirArg} </dev/null`,
+      "t3 up",
+    ).then(() => null, accessFailed);
+    await joinService();
+    return failure ?? networkAccess();
+  };
+
   return {
     state: () => current,
     subscribe: (listener) => {
@@ -308,5 +360,7 @@ export function createEngine(deps: EngineDeps): Engine {
       }
     },
     token: () => (issuing ??= issueToken().finally(() => (issuing = null))),
+    networkAccess: () => networkAccess().catch(accessFailed),
+    setNetworkAccess: (enabled) => setNetworkAccess(enabled).catch(accessFailed),
   };
 }

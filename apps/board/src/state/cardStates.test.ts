@@ -2,7 +2,13 @@ import { describe, expect, it } from "vite-plus/test";
 
 import type { Ticket } from "../domain/ticket";
 import type { AgentView, BoardModel } from "./boardModel";
-import { agentLane, archivedBesideLanes, folderArchived, splitCards } from "./cardStates";
+import {
+  agentLane,
+  agentRowCounts,
+  archivedBesideLanes,
+  folderArchived,
+  splitCards,
+} from "./cardStates";
 
 const agent = (threadId: string, extra: Partial<AgentView> = {}): AgentView => ({
   threadId,
@@ -62,14 +68,14 @@ describe("splitting cards by their saved state", () => {
     );
     expect({
       tickets: split.model.lanes.building.map((view) => view.ticket.key),
-      unassigned: split.model.unassigned.map((entry) => entry.threadId),
+      todo: split.agents.todo.map((entry) => entry.threadId),
       free: split.free.map((entry) => entry.threadId),
-      doneAgents: split.done.agents.map((entry) => entry.threadId),
-      doneFree: split.done.free.map((entry) => entry.threadId),
+      doneAgents: split.agents.done.map((entry) => entry.threadId),
+      doneFree: split.doneFree.map((entry) => entry.threadId),
       archived: split.archived,
     }).toEqual({
       tickets: ["T-1"],
-      unassigned: ["a-live"],
+      todo: ["a-live"],
       free: ["f-live"],
       doneAgents: ["a-done"],
       doneFree: ["f-done"],
@@ -86,18 +92,24 @@ describe("an unclaimed agent's lane", () => {
   const ran = { latestRunId: "run-1" };
   it.each([
     { name: "never ran", extra: {}, state: undefined, lane: "todo" },
-    { name: "running", extra: { ...ran, runState: "working" }, state: undefined, lane: "todo" },
+    { name: "running", extra: { ...ran, runState: "working" }, state: undefined, lane: "running" },
     { name: "finished", extra: ran, state: undefined, lane: "done" },
     { name: "cancelled", extra: { ...ran, runState: "stopped" }, state: undefined, lane: "done" },
     { name: "failed", extra: { ...ran, runState: "failed" }, state: undefined, lane: "done" },
-    { name: "asking", extra: { ...ran, pendingRequest: true }, state: undefined, lane: "todo" },
+    { name: "asking", extra: { ...ran, pendingRequest: true }, state: undefined, lane: "waiting" },
     {
       name: "waiting on children",
       extra: { ...ran, waitingOnChildren: true },
       state: undefined,
-      lane: "todo",
+      lane: "running",
     },
-    { name: "finished, moved out of Done", extra: ran, state: "todo", lane: "todo" },
+    { name: "finished, moved out of Done", extra: ran, state: "todo", lane: "waiting" },
+    {
+      name: "running, moved out of Done",
+      extra: { ...ran, runState: "working" },
+      state: "todo",
+      lane: "running",
+    },
     {
       name: "running, moved to Done",
       extra: { ...ran, runState: "working" },
@@ -109,17 +121,24 @@ describe("an unclaimed agent's lane", () => {
     expect(agentLane(agent("a", extra), state, 0)).toBe(lane);
   });
 
-  it("Given a finished and a running agent with no saved state, when split, then only the finished one is in Done", () => {
+  it("Given a running, an asking and a finished agent with no saved state, when split, then each sits in its lane and Done also counts the free agents there", () => {
     const split = splitCards(
-      { ...model, unassigned: [agent("run", { ...ran, runState: "working" }), agent("end", ran)] },
-      [],
-      {},
+      {
+        ...model,
+        unassigned: [
+          agent("run", { ...ran, runState: "working" }),
+          agent("ask", { ...ran, pendingRequest: true }),
+          agent("end", ran),
+        ],
+      },
+      free,
+      { "f-done": "done" },
       0,
     );
-    expect({
-      todo: split.model.unassigned.map((entry) => entry.threadId),
-      done: split.done.agents.map((entry) => entry.threadId),
-    }).toEqual({ todo: ["run"], done: ["end"] });
+    expect([
+      Object.values(split.agents).map((rows) => rows.map((entry) => entry.threadId)),
+      agentRowCounts(split),
+    ]).toEqual([[[], ["run"], ["ask"], ["end"]], { todo: 0, running: 1, waiting: 1, done: 2 }]);
   });
 });
 

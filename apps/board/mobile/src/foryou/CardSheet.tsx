@@ -6,6 +6,7 @@ import {
   type ForYouCard,
   type ForYouItem,
   MERGE_CONDITIONS,
+  sentLine,
 } from "@agent-board/app/domain/forYou";
 import { describeTrackerWrite } from "@agent-board/app/issues/issueLinks";
 import { useTheme } from "@react-navigation/native";
@@ -46,9 +47,7 @@ export const kindLabel = (card: ForYouCard) =>
 function stateLine({ card, state, detail }: CardView): string | null {
   switch (state) {
     case "sent":
-      return card.origin === "file"
-        ? `Sent to the orchestrator: ${detail}. Waiting for it to record the answer.`
-        : `${detail}. Waiting for the engine.`;
+      return sentLine(card, detail);
     case "resolved":
       return detail === null ? "Resolved." : `Resolved: ${detail}`;
     default:

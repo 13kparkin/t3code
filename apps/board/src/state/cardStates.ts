@@ -1,6 +1,7 @@
 import * as Record from "effect/Record";
 
-import { hasFinished } from "../board/ticketStatus";
+import type { StageLane } from "../board/layout";
+import { hasFinished, isWorking } from "../board/ticketStatus";
 import type { CallEvent, CardState, FreeAgent } from "../domain/board";
 import type { AgentView, BoardModel } from "./boardModel";
 
@@ -10,23 +11,30 @@ export interface ArchivedCard {
 }
 
 export interface CardSplit {
-  /** The model without archived tickets, and with only the ticketless agents still on the canvas. */
+  /** The model without archived tickets. */
   readonly model: BoardModel;
+  /** Ticketless agents by the lane `agentLane` gives them. */
+  readonly agents: Readonly<Record<StageLane, ReadonlyArray<AgentView>>>;
   /** Free agents still on the canvas. */
   readonly free: ReadonlyArray<FreeAgent>;
-  /** Ticketless agents in Done, and free agents the user moved to Done. */
-  readonly done: {
-    readonly agents: ReadonlyArray<AgentView>;
-    readonly free: ReadonlyArray<FreeAgent>;
-  };
+  /** Free agents the user moved to Done. */
+  readonly doneFree: ReadonlyArray<FreeAgent>;
   readonly archived: ReadonlyArray<ArchivedCard>;
 }
 
 export const freeAgentLabel = (threadId: string) => `Agent ${threadId.slice(-8)}`;
 
-/** A ticketless agent's lane: the user's choice wins, else Done once its run has finished. */
-export const agentLane = (agent: AgentView, state: CardState | undefined, now: number) =>
-  state ?? (hasFinished(agent, now) ? "done" : "todo");
+/** A ticketless agent's lane, by a ticket card's rule. Done or archived by the user wins, and a finished run goes to Done unless the user moved it out. */
+export function agentLane(
+  agent: AgentView,
+  state: CardState | undefined,
+  now: number,
+): StageLane | "archived" {
+  if (state === "done" || state === "archived") return state;
+  if (isWorking([agent], now)) return "running";
+  if (state === undefined && hasFinished(agent, now)) return "done";
+  return agent.latestRunId === null ? "todo" : "waiting";
+}
 
 /** Sorts the board's cards by the state the user gave them in `board.json`, and ticketless agents by `agentLane`. */
 export function splitCards(
@@ -35,7 +43,7 @@ export function splitCards(
   states: Readonly<{ [key: string]: CardState }>,
   now: number,
 ): CardSplit {
-  const inLane = (lane: CardState) => (agent: AgentView) =>
+  const inLane = (lane: StageLane | "archived") => (agent: AgentView) =>
     agentLane(agent, states[agent.threadId], now) === lane;
   const tickets = Object.values(model.lanes).flat();
   const archived: ArchivedCard[] = [
@@ -51,19 +59,28 @@ export function splitCards(
   ];
   return {
     model: {
+      ...model,
       lanes: Record.map(model.lanes, (views) =>
         views.filter((view) => states[view.ticket.key] !== "archived"),
       ),
-      unassigned: model.unassigned.filter(inLane("todo")),
+    },
+    agents: {
+      todo: model.unassigned.filter(inLane("todo")),
+      running: model.unassigned.filter(inLane("running")),
+      waiting: model.unassigned.filter(inLane("waiting")),
+      done: model.unassigned.filter(inLane("done")),
     },
     free: freeAgents.filter((agent) => states[agent.threadId] === undefined),
-    done: {
-      agents: model.unassigned.filter(inLane("done")),
-      free: freeAgents.filter((agent) => states[agent.threadId] === "done"),
-    },
+    doneFree: freeAgents.filter((agent) => states[agent.threadId] === "done"),
     archived,
   };
 }
+
+/** Each lane's agent rows. Done also lists the free agents moved there. */
+export const agentRowCounts = ({ agents, doneFree }: Pick<CardSplit, "agents" | "doneFree">) => ({
+  ...Record.map(agents, (rows) => rows.length),
+  done: agents.done.length + doneFree.length,
+});
 
 /** Archived calls, and the files, folders, and take files archived from the Artifacts area, each by its name. */
 export const archivedBesideLanes = (

@@ -9,6 +9,7 @@ import { authEnvironment } from "../state/auth";
 import { serverEnvironment } from "../state/server";
 import { buttonClass } from "./controls/buttonClass";
 import { failureText } from "./failureText";
+import { NetworkAccessRow } from "./NetworkAccessRow";
 import { isPhone, PHONE_LABEL, phoneEndpoint, phonePairingUrl } from "./phonePairing";
 import { PairingLink } from "./PairingLink";
 import { SettingsRow } from "./SettingsRow";
@@ -81,13 +82,14 @@ export function PhonePage({ environmentId }: { environmentId: EnvironmentId }) {
         title="Pair a phone"
         note="Open Agent Board on the phone and scan the code, or paste the link. The link works once."
       >
+        <NetworkAccessRow />
         <SettingsRow
           title="Pairing link"
           description={
             config === null
               ? "Reading the engine's addresses."
               : endpoint === undefined
-                ? "The engine listens only on this PC, so a phone cannot reach it. Turn on network access in T3 Code's Settings, Connections."
+                ? "The engine listens only on this PC, so a phone cannot reach it. Turn on Network access above."
                 : endpoint.kind === "lan"
                   ? "Makes a one-time link through the engine. On this local network address the link and the phone's session travel unencrypted. A Tailscale address encrypts them."
                   : "Makes a one-time link through the engine."
