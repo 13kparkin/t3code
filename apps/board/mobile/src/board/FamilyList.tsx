@@ -7,7 +7,7 @@ import { Pressable } from "react-native";
 
 import { AppText } from "../AppText";
 import { styles } from "../styles";
-import { familyThreadsAtom, useFamilyMount } from "./family";
+import { familyThreadsAtom, inFamily, useFamilyMount } from "./family";
 import { ThreadActivity } from "./ThreadActivity";
 
 function statusText(thread: OrchestrationV2ThreadShell) {
@@ -39,12 +39,7 @@ export function FamilyList({
   const family = useMemo(
     () =>
       (threads ?? [])
-        .filter(
-          (thread) =>
-            thread.lineage.rootThreadId === rootId &&
-            thread.archivedAt === null &&
-            thread.deletedAt === null,
-        )
+        .filter((thread) => inFamily(thread, rootId))
         .toSorted((a, b) => Number(isThreadWorking(b)) - Number(isThreadWorking(a))),
     [threads, rootId],
   );

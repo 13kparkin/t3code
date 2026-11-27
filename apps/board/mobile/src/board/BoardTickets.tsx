@@ -16,7 +16,7 @@ import { Pressable, SectionList, View } from "react-native";
 import { AppText } from "../AppText";
 import { styles } from "../styles";
 import { CardLine } from "./CardLine";
-import { familyThreadsAtom, useFamilyMount } from "./family";
+import { familyThreadsAtom, inFamily, useFamilyMount } from "./family";
 import { type BoardChoice, useBoardFiles } from "./files";
 import { StageTag } from "./StageTag";
 import { TicketSheet } from "./TicketSheet";
@@ -51,7 +51,7 @@ export function BoardTickets({ choice }: { choice: BoardChoice }) {
         ? null
         : joinBoard({
             tickets,
-            family: threads.filter((thread) => thread.lineage.rootThreadId === rootId),
+            family: threads.filter((thread) => inFamily(thread, rootId)),
             orchestratorThreadId: rootId,
             driverOf: () => null,
           });

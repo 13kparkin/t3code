@@ -1,5 +1,5 @@
 import { createThreadFamilyAtoms } from "@t3tools/client-runtime/state/threads";
-import { type EnvironmentId, ThreadId } from "@t3tools/contracts";
+import { type EnvironmentId, type OrchestrationV2ThreadShell, ThreadId } from "@t3tools/contracts";
 import { useIsFocused } from "@react-navigation/native";
 import { useAtomValue } from "@effect/atom-react";
 import { Atom } from "effect/reactivity";
@@ -16,6 +16,10 @@ export const familyThreadsAtom = Atom.family((environmentId: EnvironmentId) =>
     Atom.withLabel(`phone-family-threads:${environmentId}`),
   ),
 );
+
+/** A live member of the orchestrator's family, by the desktop's useThreadFamily rule. */
+export const inFamily = (thread: OrchestrationV2ThreadShell, rootId: string) =>
+  thread.lineage.rootThreadId === rootId && thread.archivedAt === null && thread.deletedAt === null;
 
 const familyMountAtom = Atom.family((rootId: string) =>
   Atom.make((get) => {
