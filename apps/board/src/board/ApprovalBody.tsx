@@ -41,7 +41,11 @@ export function ApprovalBody({ target, card, request, sent, onError }: EngineBod
         </pre>
       )}
       <div className="flex gap-1.5">
-        <ActionButton tone="primary" disabled={sent} onClick={() => answer("accept")}>
+        <ActionButton
+          tone="primary"
+          disabled={sent || approval === undefined}
+          onClick={() => answer("accept")}
+        >
           Approve
         </ActionButton>
         <ActionButton disabled={sent} onClick={() => answer("decline")}>
