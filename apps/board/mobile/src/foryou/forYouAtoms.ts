@@ -9,6 +9,7 @@ import { Atom } from "effect/reactivity";
 
 import { boardFilesAtom, shownBoardAtom } from "../board/files";
 import { environmentSnapshot } from "../connection/engine";
+import { sentWritesAtom, settleWrites } from "./actions";
 
 const NO_REQUESTS: ReadonlyArray<EngineRequest> = [];
 
@@ -39,7 +40,11 @@ export const shownForYouAtom = Atom.make((get): ForYouList | null => {
   const shown = get(shownBoardAtom);
   if (shown === null || !shown.listed.ok) return null;
   const text = get(boardFilesAtom(shown.key))?.forYou ?? null;
-  return mergeForYou(text, get(shownRequestsAtom), shown.listed.board.roleRequests);
+  const list = mergeForYou(text, get(shownRequestsAtom), shown.listed.board.roleRequests);
+  const writes = get.once(sentWritesAtom);
+  const kept = settleWrites(writes, shown.key, list.cards);
+  if (kept !== writes) get.set(sentWritesAtom, kept);
+  return list;
 }).pipe(Atom.withLabel("phone-foryou-cards"));
 
 /** The For you tab badge. */

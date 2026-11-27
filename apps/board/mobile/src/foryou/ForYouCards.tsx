@@ -2,19 +2,13 @@ import { cardTitle, cardViews, type ForYouCard } from "@agent-board/app/domain/f
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import { LegendList } from "@legendapp/list/react-native";
 import { useTheme } from "@react-navigation/native";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { Pressable, Text } from "react-native";
 
 import { type BoardChoice, useBoardFiles } from "../board/files";
 import { forYouEngine } from "../state/threads";
 import { styles } from "../styles";
-import {
-  boardSent,
-  forgetSettledWrites,
-  type ForYouTarget,
-  forYouSentAtom,
-  sentWritesAtom,
-} from "./actions";
+import { boardSent, type ForYouTarget, forYouSentAtom, sentWritesAtom } from "./actions";
 import { CardSheet, kindLabel, STATE_LABEL } from "./CardSheet";
 import { shownForYouAtom } from "./forYouAtoms";
 
@@ -30,9 +24,6 @@ export function ForYouCards({ choice }: { choice: BoardChoice }) {
       list === null ? [] : cardViews(list.cards, boardSent(sent, writes, choice.key, list.cards)),
     [list, sent, writes, choice.key],
   );
-  useEffect(() => {
-    if (list !== null) forgetSettledWrites(registry, choice.key, list.cards);
-  }, [registry, choice.key, list]);
   const waiting = useMemo(() => views.filter((view) => view.state !== "resolved"), [views]);
   const orchestratorThreadId = choice.listed.ok ? choice.listed.board.orchestratorThreadId : null;
   const target = useMemo(

@@ -7,9 +7,9 @@ import {
   answerItem,
   boardSent,
   type ForYouEngine,
-  forgetSettledWrites,
   forYouSentAtom,
   sentWritesAtom,
+  settleWrites,
 } from "./actions";
 
 const met = { met: true };
@@ -100,7 +100,11 @@ function setup({
       boardSent(registry.get(forYouSentAtom), registry.get(sentWritesAtom), target.boardKey, cards);
     const stateOf = (id: string) =>
       cardViews(cards, sent()).find((view) => view.card.id === id)?.state;
-    const forgetSettled = () => forgetSettledWrites(registry, target.boardKey, cards);
+    const forgetSettled = () =>
+      registry.set(
+        sentWritesAtom,
+        settleWrites(registry.get(sentWritesAtom), target.boardKey, cards),
+      );
     return { answer, stateOf, forgetSettled };
   };
   return { calls, ...launch(), relaunch: launch };

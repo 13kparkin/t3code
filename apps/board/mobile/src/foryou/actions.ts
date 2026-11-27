@@ -98,17 +98,16 @@ export function boardSent(
 }
 
 /** Drops a board's sent tracker changes once the file moves their item off its status at sending. */
-export function forgetSettledWrites(
-  registry: AtomRegistry.AtomRegistry,
+export function settleWrites(
+  writes: ReadonlyArray<SentWrite>,
   boardKey: string,
   cards: ReadonlyArray<ForYouCard>,
-) {
-  const writes = registry.get(sentWritesAtom);
+): ReadonlyArray<SentWrite> {
   const kept = writes.filter((write) => {
     const card = cards.find((entry) => entry.id === write.id);
     return write.board !== boardKey || card?.origin !== "file" || card.item.status === write.status;
   });
-  if (kept.length !== writes.length) registry.set(sentWritesAtom, kept);
+  return kept.length === writes.length ? writes : kept;
 }
 
 type FileCard = Extract<ForYouCard, { readonly origin: "file" }>;
