@@ -79,12 +79,12 @@ export async function answerItem(
   let result: string | undefined;
   let failure: string | null;
   try {
-    let sent = answer;
+    let reply = answer;
     if (item.kind === "tracker_write" && answer.type === "choice" && answer.choice === "approve") {
       result = await target.engine.trackerCall(trackerCall(item.write, target.projectId));
-      sent = { ...answer, result };
+      reply = { ...answer, result };
     }
-    failure = await target.engine.message(forYouMessage(card.id, sent));
+    failure = await target.engine.message(forYouMessage(card.id, reply));
   } catch (error) {
     failure = error instanceof Error ? error.message : String(error);
   }

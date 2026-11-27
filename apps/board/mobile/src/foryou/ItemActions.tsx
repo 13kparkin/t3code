@@ -4,7 +4,7 @@ import { useState } from "react";
 import { TextInput } from "react-native";
 
 import { styles } from "../styles";
-import { ChoiceButton as Choice } from "./ChoiceButton";
+import { ChoiceButton } from "./ChoiceButton";
 
 /** The choices of a `foryou.jsonl` item, the same ones the desktop card offers. */
 export function ItemActions({
@@ -23,9 +23,13 @@ export function ItemActions({
     return (
       <>
         {(item.options ?? []).map((option) => (
-          <Choice key={option} disabled={sent} onPress={() => send({ type: "text", text: option })}>
+          <ChoiceButton
+            key={option}
+            disabled={sent}
+            onPress={() => send({ type: "text", text: option })}
+          >
             {option}
-          </Choice>
+          </ChoiceButton>
         ))}
         <TextInput
           multiline
@@ -37,29 +41,37 @@ export function ItemActions({
           accessibilityLabel="Your answer"
           style={[styles.input, { color: colors.text, borderColor: colors.border }]}
         />
-        <Choice primary disabled={sent || text === ""} onPress={() => send({ type: "text", text })}>
+        <ChoiceButton
+          primary
+          disabled={sent || text === ""}
+          onPress={() => send({ type: "text", text })}
+        >
           Send answer
-        </Choice>
+        </ChoiceButton>
       </>
     );
   }
   if (item.kind === "read") {
     return (
-      <Choice primary disabled={sent} onPress={() => send({ type: "choice", choice: "read" })}>
+      <ChoiceButton
+        primary
+        disabled={sent}
+        onPress={() => send({ type: "choice", choice: "read" })}
+      >
         Mark read
-      </Choice>
+      </ChoiceButton>
     );
   }
   const yes = item.kind === "resume" ? "resume" : "approve";
   return (
     <>
-      <Choice primary disabled={sent} onPress={() => send({ type: "choice", choice: yes })}>
+      <ChoiceButton primary disabled={sent} onPress={() => send({ type: "choice", choice: yes })}>
         {yes === "resume" ? "Resume" : "Approve"}
-      </Choice>
+      </ChoiceButton>
       {item.status !== "held" && (
-        <Choice disabled={sent} onPress={() => send({ type: "choice", choice: "hold" })}>
+        <ChoiceButton disabled={sent} onPress={() => send({ type: "choice", choice: "hold" })}>
           Hold
-        </Choice>
+        </ChoiceButton>
       )}
     </>
   );

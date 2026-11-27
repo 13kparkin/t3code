@@ -1,4 +1,5 @@
 import {
+  cardTitle,
   type CardState,
   type CardView,
   describeRoleTarget,
@@ -14,7 +15,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import { styles } from "../styles";
 import { answerApproval, answerItem, type ForYouTarget } from "./actions";
-import { ChoiceButton as Choice } from "./ChoiceButton";
+import { ChoiceButton } from "./ChoiceButton";
 import { ItemActions } from "./ItemActions";
 
 const KIND_LABEL = {
@@ -58,12 +59,10 @@ function stateLine({ card, state, detail }: CardView): string | null {
 /** One For you card in full, with its choices. The phone answers through the orchestrator or the engine, never the file. */
 export function CardSheet({
   view,
-  title,
   target,
   onClose,
 }: {
   view: CardView;
-  title: string;
   target: ForYouTarget;
   onClose: () => void;
 }) {
@@ -85,7 +84,7 @@ export function CardSheet({
           <Text style={text}>{card.request.threadTitle} asks to go on.</Text>
           {!done && (
             <>
-              <Choice
+              <ChoiceButton
                 primary
                 disabled={sent}
                 onPress={() => {
@@ -94,8 +93,8 @@ export function CardSheet({
                 }}
               >
                 Approve
-              </Choice>
-              <Choice
+              </ChoiceButton>
+              <ChoiceButton
                 disabled={sent}
                 onPress={() => {
                   setError(null);
@@ -103,7 +102,7 @@ export function CardSheet({
                 }}
               >
                 Decline
-              </Choice>
+              </ChoiceButton>
             </>
           )}
         </>
@@ -166,7 +165,7 @@ export function CardSheet({
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={[styles.body, styles.readable]}
           >
-            <Text style={[styles.title, text]}>{title}</Text>
+            <Text style={[styles.title, text]}>{cardTitle(card)}</Text>
             {body}
             {status !== null && <Text style={[styles.small, text]}>{status}</Text>}
             {error !== null && (

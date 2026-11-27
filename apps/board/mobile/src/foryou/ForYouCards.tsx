@@ -76,12 +76,7 @@ export function ForYouCards({ choice }: { choice: BoardChoice }) {
         )}
       />
       {openView !== null && (
-        <CardSheet
-          view={openView}
-          title={cardTitle(openView.card)}
-          target={target}
-          onClose={() => setOpen(null)}
-        />
+        <CardSheet view={openView} target={target} onClose={() => setOpen(null)} />
       )}
     </>
   );
