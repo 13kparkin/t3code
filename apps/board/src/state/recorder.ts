@@ -111,38 +111,55 @@ export const callSweepAtom = Atom.make((get) => {
 
 /** What the board asks before it records: the consent notice, or that another call records. */
 export const callPromptAtom = Atom.make<
-  | { readonly kind: "consent"; readonly project: EnvironmentProject; readonly listed: ValidBoard }
+  | {
+      readonly kind: "consent";
+      readonly project: EnvironmentProject;
+      readonly listed: ValidBoard;
+      readonly report: (failure: string | null) => void;
+    }
   | { readonly kind: "busy" }
   | null
 >(null).pipe(Atom.keepAlive, Atom.withLabel("call-prompt"));
 
-/** Adds a call that starts now and records it. Resolves to the failure text, or null. */
+/** The recorder reads idle until main answers the first start, so a second press waits on this. */
+let starting = false;
+
+/** Adds a call that starts now and records it. `report` gets the failure text, or null. */
 export async function recordNewCall(
   registry: AtomRegistry.AtomRegistry,
   project: EnvironmentProject,
   listed: ValidBoard,
-): Promise<string | null> {
-  if (recorder === undefined) return null;
+  report: (failure: string | null) => void,
+) {
+  if (recorder === undefined || starting) return;
   if ((registry.get(recorderAtom)?.state.status ?? "idle") !== "idle") {
-    registry.set(callPromptAtom, { kind: "busy" });
-    return null;
+    return registry.set(callPromptAtom, { kind: "busy" });
   }
-  if (!(await localState.read()).recordingConsent) {
-    registry.set(callPromptAtom, { kind: "consent", project, listed });
-    return null;
+  starting = true;
+  try {
+    if (!(await localState.read()).recordingConsent) {
+      return registry.set(callPromptAtom, { kind: "consent", project, listed, report });
+    }
+    // v1 records Chrome only, the one app verified on Windows.
+    const call: CallEvent = {
+      id: newId(),
+      title: "Call",
+      start: new Date().toISOString(),
+      app: "chrome",
+    };
+    const failure = await saveCall(registry, project, listed, call);
+    if (failure === null) {
+      recorder.start({
+        callId: call.id,
+        boardId: listed.board.id,
+        title: call.title,
+        app: call.app,
+      });
+    }
+    report(failure);
+  } finally {
+    starting = false;
   }
-  // v1 records Chrome only, the one app verified on Windows.
-  const call: CallEvent = {
-    id: newId(),
-    title: "Call",
-    start: new Date().toISOString(),
-    app: "chrome",
-  };
-  const failure = await saveCall(registry, project, listed, call);
-  if (failure === null) {
-    recorder.start({ callId: call.id, boardId: listed.board.id, title: call.title, app: call.app });
-  }
-  return failure;
 }
 
 export const acceptConsent = () =>

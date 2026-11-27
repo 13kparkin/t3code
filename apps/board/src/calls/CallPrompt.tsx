@@ -25,7 +25,9 @@ export function CallPrompt() {
         onClose={close}
         onAccept={() => {
           close();
-          void acceptConsent().then(() => recordNewCall(registry, prompt.project, prompt.listed));
+          void acceptConsent().then(() =>
+            recordNewCall(registry, prompt.project, prompt.listed, prompt.report),
+          );
         }}
       />
     );

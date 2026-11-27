@@ -117,7 +117,7 @@ export function BoardScreen({
     [fullModel, freeAgents, cardStates, now],
   );
   const { model } = cards;
-  const recordCall = () => void recordNewCall(registry, project, listed).then(setCardError);
+  const recordCall = () => void recordNewCall(registry, project, listed, setCardError);
   const saveCard = (key: string, state: CardState | null) =>
     void setCardState(registry, project, listed, key, state).then(setCardError);
   const openCardMenu = (event: MouseEvent, key: string, label: string, ticket: boolean) => {
