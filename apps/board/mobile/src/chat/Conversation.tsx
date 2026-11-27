@@ -1,17 +1,17 @@
 import { timelineSource } from "@agent-board/app/chat/projectionSource";
 import { isRunLive, timelineRows } from "@agent-board/app/chat/timeline";
-import { useAtomValue } from "@effect/atom-react";
+import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import { LegendList } from "@legendapp/list/react-native";
 import { EMPTY_ENVIRONMENT_THREAD_STATE } from "@t3tools/client-runtime/state/threads";
 import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
 import { useIsFocused, useTheme } from "@react-navigation/native";
 import * as Option from "effect/Option";
 import { AsyncResult } from "effect/reactivity";
-import { useRef, useState } from "react";
+import { useContext, useRef, useState } from "react";
 import { KeyboardAvoidingView, Text, View, type ViewInstance } from "react-native";
 
 import { appActiveAtom } from "../board/files";
-import { environmentThreads } from "../state/threads";
+import { environmentThreads, loadEarlier } from "../state/threads";
 import { styles } from "../styles";
 import { chatStream } from "./chat";
 import { ChatRow } from "./ChatRow";
@@ -25,6 +25,7 @@ export function Conversation({
   threadId: ThreadId;
 }) {
   const { colors } = useTheme();
+  const registry = useContext(RegistryContext);
   const result = useAtomValue(
     chatStream(
       environmentThreads.stateAtom(environmentId, threadId),
@@ -60,6 +61,8 @@ export function Conversation({
           estimatedItemSize={40}
           initialScrollAtEnd
           maintainScrollAtEnd
+          maintainVisibleContentPosition
+          onStartReached={() => void loadEarlier(registry, environmentId, threadId)}
           style={styles.fill}
           contentContainerStyle={styles.body}
           ListEmptyComponent={

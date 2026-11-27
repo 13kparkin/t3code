@@ -1,16 +1,17 @@
 import { timelineSource } from "@agent-board/app/chat/projectionSource";
 import { type TimelineRow, timelineRows } from "@agent-board/app/chat/timeline";
-import { useAtomValue } from "@effect/atom-react";
+import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import { LegendList } from "@legendapp/list/react-native";
 import { EMPTY_ENVIRONMENT_THREAD_STATE } from "@t3tools/client-runtime/state/threads";
 import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
 import { useTheme } from "@react-navigation/native";
 import * as Option from "effect/Option";
 import { AsyncResult } from "effect/reactivity";
+import { useContext } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
-import { environmentThreads } from "../state/threads";
+import { environmentThreads, loadEarlier } from "../state/threads";
 import { styles } from "../styles";
 
 function rowLines(row: TimelineRow): ReadonlyArray<{ id: string; text: string; error: boolean }> {
@@ -42,6 +43,7 @@ export function ThreadActivity({
   onClose: () => void;
 }) {
   const { colors } = useTheme();
+  const registry = useContext(RegistryContext);
   const state = AsyncResult.getOrElse(
     useAtomValue(environmentThreads.stateAtom(environmentId, threadId)),
     () => EMPTY_ENVIRONMENT_THREAD_STATE,
@@ -67,6 +69,8 @@ export function ThreadActivity({
             extraData={colors}
             estimatedItemSize={40}
             maintainScrollAtEnd
+            maintainVisibleContentPosition
+            onStartReached={() => void loadEarlier(registry, environmentId, threadId)}
             style={styles.readable}
             contentContainerStyle={styles.body}
             ListEmptyComponent={
