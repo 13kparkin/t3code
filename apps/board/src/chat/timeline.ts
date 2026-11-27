@@ -180,6 +180,10 @@ export function timelineRows(projection: TimelineSource): ReadonlyArray<Timeline
   return rows;
 }
 
+/** The thread's first message is the orchestrator's brief, which the chat folds. With older turns unloaded, the first row is not it. */
+export const isBrief = (row: TimelineRow, index: number, hasMoreHistory: boolean): boolean =>
+  !hasMoreHistory && index === 0 && row.kind === "user";
+
 /** A message the user sent that the engine has not echoed yet. */
 export interface PendingSend {
   readonly threadId: string;

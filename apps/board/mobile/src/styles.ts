@@ -29,4 +29,8 @@ export const styles = StyleSheet.create({
   chips: { gap: 8, paddingHorizontal: 16, paddingVertical: 8 },
   chip: { borderRadius: 8, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6 },
   sheetTop: { paddingTop: 16 },
+  code: { fontFamily: "monospace" },
+  composer: { gap: 6, paddingHorizontal: 16, paddingVertical: 8 },
+  composerRow: { alignItems: "flex-end", flexDirection: "row", gap: 8 },
+  composerInput: { flex: 1, maxHeight: 160 },
 });

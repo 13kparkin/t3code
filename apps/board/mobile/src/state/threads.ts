@@ -1,11 +1,19 @@
-import { respondToThreadApproval, startThreadTurn } from "@t3tools/client-runtime/operations";
+import {
+  interruptThreadTurn,
+  respondToThreadApproval,
+  startThreadTurn,
+} from "@t3tools/client-runtime/operations";
 import { createIssueEnvironmentAtoms } from "@t3tools/client-runtime/state/issues";
 import { createEnvironmentCommand, runAtomCommand } from "@t3tools/client-runtime/state/runtime";
-import { createEnvironmentThreadStateAtoms } from "@t3tools/client-runtime/state/threads";
+import {
+  createEnvironmentThreadStateAtoms,
+  createThreadEnvironmentAtoms,
+} from "@t3tools/client-runtime/state/threads";
 import { type EnvironmentId, MessageId, RuntimeRequestId, ThreadId } from "@t3tools/contracts";
 import type { AtomRegistry } from "effect/reactivity";
 import * as ExpoCrypto from "expo-crypto";
 
+import { userTurn } from "../chat/chat";
 import { commandError, environmentSnapshot } from "../connection/engine";
 import { connectionAtomRuntime } from "../connection/runtime";
 import type { ForYouEngine } from "../foryou/actions";
@@ -13,6 +21,11 @@ import type { ForYouEngine } from "../foryou/actions";
 const startTurn = createEnvironmentCommand(connectionAtomRuntime, {
   label: "phone:thread:start-turn",
   execute: startThreadTurn,
+});
+
+const interruptTurn = createEnvironmentCommand(connectionAtomRuntime, {
+  label: "phone:thread:interrupt-turn",
+  execute: interruptThreadTurn,
 });
 
 const respondApproval = createEnvironmentCommand(connectionAtomRuntime, {
@@ -25,7 +38,37 @@ export const environmentThreads = createEnvironmentThreadStateAtoms(connectionAt
 
 const issues = createIssueEnvironmentAtoms(connectionAtomRuntime);
 
+const threadCommands = createThreadEnvironmentAtoms(connectionAtomRuntime, environmentSnapshot);
+
 const quiet = { reportFailure: false } as const;
+
+/** Resolves to the failure text, or null when the engine accepts the interrupt. */
+export async function stopTurn(
+  registry: AtomRegistry.AtomRegistry,
+  environmentId: EnvironmentId,
+  threadId: ThreadId,
+): Promise<string | null> {
+  const result = await runAtomCommand(
+    registry,
+    interruptTurn,
+    { environmentId, input: { threadId } },
+    quiet,
+  );
+  return result._tag === "Success" ? null : commandError(result).message;
+}
+
+/** Pages older turns into a thread that the engine sent bounded. */
+export const loadEarlier = (
+  registry: AtomRegistry.AtomRegistry,
+  environmentId: EnvironmentId,
+  threadId: ThreadId,
+) =>
+  runAtomCommand(
+    registry,
+    threadCommands.loadEarlierHistory,
+    { environmentId, input: { threadId } },
+    quiet,
+  );
 
 export function forYouEngine(
   registry: AtomRegistry.AtomRegistry,
@@ -46,17 +89,7 @@ export function forYouEngine(
         startTurn,
         {
           environmentId,
-          input: {
-            threadId: thread.id,
-            message: {
-              messageId: MessageId.make(ExpoCrypto.randomUUID()),
-              role: "user",
-              text: await text(),
-              attachments: [],
-            },
-            runtimeMode: thread.runtimeMode,
-            interactionMode: thread.interactionMode,
-          },
+          input: userTurn(thread, MessageId.make(ExpoCrypto.randomUUID()), await text()),
         },
         quiet,
       );

@@ -6,6 +6,7 @@ import { NO_PICK } from "../providers/providers";
 import { userDelivery } from "./projectionSource";
 import {
   type ChatItem,
+  isBrief,
   isRunLive,
   type PendingSend,
   pendingRow,
@@ -164,6 +165,35 @@ describe("the chat rows of a thread", () => {
     );
     expect(rows).toEqual([{ kind: "notice", id: "e1", text: "Claude gave up.", error: true }]);
   });
+});
+
+describe("which row is the orchestrator brief", () => {
+  const user = { kind: "user", id: "u1", text: "brief", at: null, delivery: "delivered" } as const;
+  const reply = {
+    kind: "assistant",
+    id: "a1",
+    text: "ok",
+    streaming: false,
+    at: null,
+    turnStartedAt: null,
+  } as const;
+  it.each([
+    [
+      "the first row is a user message and the thread is loaded from its start",
+      user,
+      0,
+      false,
+      true,
+    ],
+    ["older turns are not loaded yet", user, 0, true, false],
+    ["a user message that is not the first row", user, 1, false, false],
+    ["a first row that is a reply", reply, 0, false, false],
+  ] as const)(
+    "Given %s, when it is read, then whether it is the brief follows",
+    (_case, row, index, more, brief) => {
+      expect(isBrief(row, index, more)).toBe(brief);
+    },
+  );
 });
 
 describe("whether a run is live", () => {
