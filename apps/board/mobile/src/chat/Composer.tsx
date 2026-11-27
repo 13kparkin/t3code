@@ -8,7 +8,6 @@ import { connectedEnvironmentAtom } from "../board/files";
 import { forYouEngine, stopTurn } from "../state/threads";
 import { styles } from "../styles";
 
-/** The box that messages the orchestrator, with Stop in place of Send while a turn runs. */
 export function Composer({
   environmentId,
   threadId,
@@ -44,7 +43,7 @@ export function Composer({
       async () =>
         connected
           ? forYouEngine(registry, environmentId, threadId).message(async () => text)
-          : "Not connected to the engine. Your message is kept; send it again once the header reads Connected.",
+          : "Not connected to the engine. The box keeps your message. Send it again once the header reads Connected.",
       () => setDraft(""),
     );
 

@@ -37,7 +37,7 @@ const issues = createIssueEnvironmentAtoms(connectionAtomRuntime);
 
 const quiet = { reportFailure: false } as const;
 
-/** Stops the thread's running turn. Resolves to the failure text, or null once stopped. */
+/** Resolves to the failure text, or null when the engine accepts the interrupt. */
 export async function stopTurn(
   registry: AtomRegistry.AtomRegistry,
   environmentId: EnvironmentId,

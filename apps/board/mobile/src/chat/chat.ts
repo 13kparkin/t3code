@@ -10,7 +10,7 @@ export interface CodeSpan {
 // A fence needs a newline after its info string, so "```a```" stays an inline span.
 const CODE = /```[^\n`]*\n([\s\S]*?)\n?```|`([^`\n]+)`/g;
 
-/** A message cut into plain text and code, without the backticks. An unclosed fence stays plain. */
+/** An unclosed fence stays plain text. */
 export function codeSpans(text: string): ReadonlyArray<CodeSpan> {
   const spans: CodeSpan[] = [];
   let at = 0;
@@ -25,14 +25,13 @@ export function codeSpans(text: string): ReadonlyArray<CodeSpan> {
 
 const NOT_STREAMING = Atom.make(null).pipe(Atom.withLabel("phone-chat-not-streaming"));
 
-/** The thread's stream while the Chat tab is focused and the app is in front. Otherwise nothing subscribes, which closes it. */
+/** Swapping to the null atom when blurred or backgrounded drops the subscription, which closes the stream. */
 export const chatStream = <A>(
   stream: Atom.Atom<A>,
   focused: boolean,
   active: boolean,
 ): Atom.Atom<A | null> => (focused && active ? stream : NOT_STREAMING);
 
-/** The user's turn to the orchestrator, in the thread's own runtime and interaction modes. */
 export const userTurn = (
   thread: { readonly id: ThreadId } & Pick<StartThreadTurnInput, "runtimeMode" | "interactionMode">,
   messageId: MessageId,

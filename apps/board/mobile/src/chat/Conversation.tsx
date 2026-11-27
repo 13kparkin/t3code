@@ -17,7 +17,6 @@ import { chatStream } from "./chat";
 import { ChatRow } from "./ChatRow";
 import { Composer } from "./Composer";
 
-/** The orchestrator's thread, streamed while the tab is focused, above the composer. */
 export function Conversation({
   environmentId,
   threadId,

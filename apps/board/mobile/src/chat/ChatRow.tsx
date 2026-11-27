@@ -4,7 +4,6 @@ import { Text, View } from "react-native";
 import { styles } from "../styles";
 import { ChatMessage } from "./ChatMessage";
 
-/** A thread row. A stretch of tool calls is one line, as the desktop folds it. */
 export function ChatRow({ row, color }: { row: TimelineRow; color: string }) {
   switch (row.kind) {
     case "user":

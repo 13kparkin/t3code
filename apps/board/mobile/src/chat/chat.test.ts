@@ -35,7 +35,7 @@ describe("chatStream", () => {
   }
 
   it("closes the thread stream when the tab blurs and opens it again on focus", () => {
-    // The registry removes an unmounted atom on a timer, which the engine's idle TTL of 0 keeps.
+    // The registry removes an unmounted atom on a scheduled task, as with the engine's idle TTL of 0, so timers run before each remount.
     using _timers = { [Symbol.dispose]: () => vi.useRealTimers() };
     vi.useFakeTimers();
     const { events, stream, registry } = setup();
