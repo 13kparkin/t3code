@@ -41,7 +41,7 @@ export function PairScreen() {
   }
 
   return (
-    <View style={styles.body}>
+    <View style={[styles.body, styles.readable]}>
       <Text style={[styles.title, { color: colors.text }]}>Pair with your PC</Text>
       <Text style={{ color: colors.text }}>
         On the PC, open T3 Code, then Settings, Connections, and add a client. Scan its QR code or

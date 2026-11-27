@@ -15,6 +15,8 @@ import { BoardScreen } from "./board/BoardScreen";
 import { engineStatusAtom } from "./connection/engine";
 import { PairScreen } from "./connection/PairScreen";
 import { EngineHeader } from "./EngineHeader";
+import { forYouOpenCountAtom } from "./foryou/forYouAtoms";
+import { ForYouScreen } from "./foryou/ForYouScreen";
 import { PlaceholderScreen } from "./PlaceholderScreen";
 
 const Tab = createBottomTabNavigator();
@@ -26,6 +28,7 @@ const tabIcon =
 export default function App() {
   const dark = useColorScheme() === "dark";
   const status = useAtomValue(engineStatusAtom).kind;
+  const openCount = useAtomValue(forYouOpenCountAtom);
   return (
     <SafeAreaProvider>
       <StatusBar barStyle={dark ? "light-content" : "dark-content"} />
@@ -47,8 +50,11 @@ export default function App() {
             />
             <Tab.Screen
               name="For you"
-              component={PlaceholderScreen}
-              options={{ tabBarIcon: tabIcon(IconInbox) }}
+              component={ForYouScreen}
+              options={{
+                tabBarIcon: tabIcon(IconInbox),
+                tabBarBadge: openCount > 0 ? openCount : undefined,
+              }}
             />
             <Tab.Screen
               name="Chat"

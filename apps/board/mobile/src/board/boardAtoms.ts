@@ -4,7 +4,6 @@ import {
   type ListedBoard,
   parseBoard,
 } from "@agent-board/app/domain/board";
-import * as Option from "effect/Option";
 import * as Result from "effect/Result";
 import { Atom } from "effect/reactivity";
 
@@ -23,6 +22,7 @@ export interface ProjectFiles {
 export interface StoreFiles {
   readonly tickets: string | null;
   readonly decisions: string | null;
+  readonly forYou: string | null;
 }
 
 export const boardKey = (cwd: string, folder: string) => `${cwd}/${BOARDS_DIR}/${folder}`;
@@ -49,44 +49,56 @@ export async function listBoards(
 }
 
 const sameFiles = (left: StoreFiles | null, right: StoreFiles) =>
-  left !== null && left.tickets === right.tickets && left.decisions === right.decisions;
+  left !== null &&
+  left.tickets === right.tickets &&
+  left.decisions === right.decisions &&
+  left.forYou === right.forYou;
 
+/**
+ * `poll(key)` reads the board's files every few seconds while mounted and the app is active.
+ * `files(key)` keeps the last read, so a blurred tab and the For you badge show it without polling.
+ */
 export function createBoardStore(
   filesAtom: Atom.Atom<ProjectFiles | null>,
   activeAtom: Atom.Atom<boolean>,
 ) {
-  return Atom.family((key: string) =>
-    Atom.make<StoreFiles | null>((get) => {
-      const files = get(filesAtom);
-      if (files !== null && get(activeAtom)) {
-        const split = key.lastIndexOf(`/${BOARDS_DIR}/`);
-        const cwd = key.slice(0, split);
-        const dir = key.slice(split + 1);
-        const read = (name: string) => files.read(cwd, `${dir}/${name}`);
-        let current = true;
-        let timer: ReturnType<typeof setTimeout> | undefined;
-        // The next round waits for this one, so a slow link never stacks reads.
-        const refresh = () =>
-          Promise.all([read("tickets.json"), read("decisions.tsv")])
-            .then(
-              ([tickets, decisions]) => {
-                const next = { tickets, decisions };
-                if (current && !sameFiles(Option.getOrNull(get.self<StoreFiles | null>()), next)) {
-                  get.setSelf(next);
-                }
-              },
-              () => undefined,
-            )
-            .then(() => {
-              if (current) timer = setTimeout(refresh, STORE_POLL_MS);
-            });
-        void refresh();
-        get.addFinalizer(() => {
-          current = false;
-          clearTimeout(timer);
-        });
-      }
-      return Option.getOrNull(get.self<StoreFiles | null>());
-    }).pipe(Atom.withLabel(`phone-board-store:${key}`)),
+  const files = Atom.family((key: string) =>
+    Atom.make<StoreFiles | null>(null).pipe(
+      Atom.keepAlive,
+      Atom.withLabel(`phone-board-files:${key}`),
+    ),
   );
+  const poll = Atom.family((key: string) =>
+    Atom.make((get) => {
+      const project = get(filesAtom);
+      if (project === null || !get(activeAtom)) return;
+      const split = key.lastIndexOf(`/${BOARDS_DIR}/`);
+      const cwd = key.slice(0, split);
+      const dir = key.slice(split + 1);
+      const read = (name: string) => project.read(cwd, `${dir}/${name}`);
+      let current = true;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      // The next round waits for this one, so a slow link never stacks reads.
+      const refresh = () =>
+        Promise.all([read("tickets.json"), read("decisions.tsv"), read("foryou.jsonl")])
+          .then(
+            ([tickets, decisions, forYou]) => {
+              const next = { tickets, decisions, forYou };
+              if (current && !sameFiles(get.registry.get(files(key)), next)) {
+                get.registry.set(files(key), next);
+              }
+            },
+            () => undefined,
+          )
+          .then(() => {
+            if (current) timer = setTimeout(refresh, STORE_POLL_MS);
+          });
+      void refresh();
+      get.addFinalizer(() => {
+        current = false;
+        clearTimeout(timer);
+      });
+    }).pipe(Atom.withLabel(`phone-board-poll:${key}`)),
+  );
+  return { files, poll };
 }

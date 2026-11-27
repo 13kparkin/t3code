@@ -46,7 +46,7 @@ export function TicketSheet({
               <Text style={styles.link}>Close</Text>
             </Pressable>
           </View>
-          <ScrollView contentContainerStyle={styles.body}>
+          <ScrollView contentContainerStyle={[styles.body, styles.readable]}>
             <Text style={[styles.title, text]}>{ticket.title}</Text>
             {ticket.summary != null && (
               <View>

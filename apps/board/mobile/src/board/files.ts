@@ -2,6 +2,8 @@ import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import type { ListedBoard } from "@agent-board/app/domain/board";
 import * as Option from "effect/Option";
 import { Atom } from "effect/reactivity";
+import { useAtomValue } from "@effect/atom-react";
+import { useIsFocused } from "@react-navigation/native";
 import { AppState } from "react-native";
 
 import { boardProjectsAtom, engineFiles, engineStatusAtom } from "../connection/engine";
@@ -25,7 +27,16 @@ const appActiveAtom = Atom.make((get) => {
   return AppState.currentState === "active";
 }).pipe(Atom.withLabel("phone-app-active"));
 
-export const boardStoreAtom = createBoardStore(engineFilesAtom, appActiveAtom);
+const boardStore = createBoardStore(engineFilesAtom, appActiveAtom);
+export const boardFilesAtom = boardStore.files;
+
+const NOT_POLLING = Atom.make<void>(undefined).pipe(Atom.withLabel("phone-board-poll:none"));
+
+/** Bottom tabs keep a visited screen mounted, so only the focused one polls. */
+export function useBoardFiles(key: string) {
+  useAtomValue(useIsFocused() ? boardStore.poll(key) : NOT_POLLING);
+  return useAtomValue(boardFilesAtom(key));
+}
 
 export interface BoardChoice {
   readonly key: string;

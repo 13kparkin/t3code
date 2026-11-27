@@ -40,7 +40,7 @@ export const engineStatusAtom = Atom.make((get): EngineStatus => {
 }).pipe(Atom.withLabel("engine-status"));
 
 export const environmentShell = createEnvironmentShellAtoms(connectionAtomRuntime);
-const environmentSnapshot = createEnvironmentSnapshotAtom(environmentShell.stateAtom);
+export const environmentSnapshot = createEnvironmentSnapshotAtom(environmentShell.stateAtom);
 const environmentProjects = createEnvironmentProjectAtoms({
   catalogValueAtom: environmentCatalog.catalogValueAtom,
   snapshotAtom: environmentSnapshot,
@@ -57,7 +57,7 @@ const isProjectListEntriesError = Schema.is(ProjectListEntriesError);
 
 type FailedCommand = Extract<AtomCommandResult<unknown, unknown>, { readonly _tag: "Failure" }>;
 
-const commandError = (result: FailedCommand) => {
+export const commandError = (result: FailedCommand) => {
   const failure = squashAtomCommandFailure(result);
   return failure instanceof Error ? failure : new Error(String(failure));
 };

@@ -1,4 +1,3 @@
-import { useAtomValue } from "@effect/atom-react";
 import { glanceLines } from "@agent-board/app/domain/glance";
 import {
   parseTickets,
@@ -6,28 +5,20 @@ import {
   TICKET_STAGES,
   type Ticket,
 } from "@agent-board/app/domain/ticket";
-import { useIsFocused, useTheme } from "@react-navigation/native";
+import { useTheme } from "@react-navigation/native";
 import * as Result from "effect/Result";
-import { Atom } from "effect/reactivity";
 import { useMemo, useState } from "react";
 import { Pressable, SectionList, Text, View } from "react-native";
 
 import { styles } from "../styles";
-import { type BoardChoice, boardStoreAtom } from "./files";
+import { type BoardChoice, useBoardFiles } from "./files";
 import { TicketSheet } from "./TicketSheet";
 
-const NOT_READING = Atom.make(null).pipe(Atom.withLabel("phone-board-store:none"));
 const NO_TICKETS: ReadonlyArray<Ticket> = [];
 
 export function BoardTickets({ choice }: { choice: BoardChoice }) {
   const { colors } = useTheme();
-  // Bottom tabs keep a visited screen mounted, so only the focused one subscribes and polls.
-  const focused = useIsFocused();
-  const read = useAtomValue(focused ? boardStoreAtom(choice.key) : NOT_READING);
-  // The store is dropped while the tab is blurred, so the last files stay up until it reads again.
-  const [lastRead, setLastRead] = useState(read);
-  if (read !== null && read !== lastRead) setLastRead(read);
-  const files = read ?? lastRead;
+  const files = useBoardFiles(choice.key);
   const ticketsText = files?.tickets ?? null;
   const parsed = useMemo(
     () => (ticketsText === null ? Result.succeed(NO_TICKETS) : parseTickets(ticketsText)),
@@ -66,6 +57,7 @@ export function BoardTickets({ choice }: { choice: BoardChoice }) {
       <SectionList
         sections={sections}
         keyExtractor={(ticket) => ticket.key}
+        style={styles.readable}
         contentContainerStyle={styles.body}
         ListEmptyComponent={
           <Text style={[styles.muted, { color: colors.text }]}>This board has no tickets.</Text>
