@@ -6,7 +6,7 @@ import * as NodePath from "node:path";
 import * as NodeTest from "node:test";
 import * as NodeURL from "node:url";
 
-import { releaseCommands, sha256sumsLine } from "./release-phone.mjs";
+import { releaseCommands, sha256sumsLine, signedByReleaseKey } from "./release-phone.mjs";
 
 const SCRIPT = NodeURL.fileURLToPath(new URL("./release-phone.mjs", import.meta.url));
 const ORIGIN_URL = "https://github.com/owner/board.git";
@@ -148,5 +148,23 @@ NodeTest.test("SHA256SUMS holds the hash and the asset name", (t) => {
   NodeAssert.equal(
     sha256sumsLine(apk),
     "de222ce948916db5c20da6efc782436544c1c2dd5b8f45068e3073a60e24437f  Agent-Board-Phone-0.1.0.apk\n",
+  );
+});
+
+NodeTest.test("only the release key's certificate digest passes the signer check", () => {
+  const signedBy = (digest) => `Signer #1 certificate DN: CN=Agent Board
+Signer #1 certificate SHA-256 digest: ${digest}
+Signer #1 certificate SHA-1 digest: 0123456789abcdef0123456789abcdef01234567`;
+  NodeAssert.equal(
+    signedByReleaseKey(
+      signedBy("66a57d763ca26b633c72c9cc21b6e7b9d12b13841c4b148a855cf49dd35b5d82"),
+    ),
+    true,
+  );
+  NodeAssert.equal(
+    signedByReleaseKey(
+      signedBy("1111111111111111111111111111111111111111111111111111111111111111"),
+    ),
+    false,
   );
 });

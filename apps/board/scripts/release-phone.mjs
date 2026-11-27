@@ -19,6 +19,12 @@ const SIGNING_PROPERTIES = [
   "AGENT_BOARD_PHONE_KEY_PASSWORD",
 ];
 
+/** Installed phones refuse an update signed by any other certificate. */
+const SIGNER_SHA256 = "66a57d763ca26b633c72c9cc21b6e7b9d12b13841c4b148a855cf49dd35b5d82";
+
+export const signedByReleaseKey = (certificates) =>
+  certificates.includes(`certificate SHA-256 digest: ${SIGNER_SHA256}`);
+
 /** Android refuses an update with a lower versionCode, so 1.2.3 becomes 1002003. */
 const versionCode = (version) => {
   const [major, minor, patch] = version.split(/[.-]/).map(Number);
@@ -184,19 +190,18 @@ function main() {
   }
   const androidHome = process.env["ANDROID_HOME"];
   if (!androidHome) fail("Set ANDROID_HOME to the Android SDK.");
-  const release = releaseCommands({
-    version,
-    root,
-    sha,
-    repository,
-    // apksigner 37 prints the digest as `V2 Signer: ...`; 36.0.0 prints `Signer #1 certificate SHA-256 digest`.
-    apksigner: NodePath.join(androidHome, "build-tools", "36.0.0", "apksigner"),
-  });
+  // apksigner 37 prints the digest as `V2 Signer: ...`; 36.0.0 prints `Signer #1 certificate SHA-256 digest`.
+  const apksigner = NodePath.join(androidHome, "build-tools", "36.0.0", "apksigner");
+  if (!NodeFS.existsSync(apksigner)) fail("Install build-tools 36.0.0 for apksigner.");
+  const release = releaseCommands({ version, root, sha, repository, apksigner });
   for (const step of release.build) run(step);
   NodeFS.rmSync(NodePath.dirname(release.apk), { recursive: true, force: true });
   NodeFS.mkdirSync(NodePath.dirname(release.apk), { recursive: true });
   NodeFS.copyFileSync(release.builtApk, release.apk);
   const certificates = out(release.verify.command, release.verify.args, release.verify.cwd);
+  if (!signedByReleaseKey(certificates)) {
+    fail(`${release.apk} is not signed with the release key ${SIGNER_SHA256}:\n${certificates}`);
+  }
   const sums = sha256sumsLine(release.apk);
   NodeFS.writeFileSync(release.sums, sums);
   console.log(`APK: ${release.apk}`);
