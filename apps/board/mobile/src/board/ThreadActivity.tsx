@@ -11,6 +11,7 @@ import { useTheme } from "@react-navigation/native";
 import * as Option from "effect/Option";
 import { AsyncResult } from "effect/reactivity";
 import { Modal, Pressable, Text, View } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 import { styles } from "../styles";
@@ -55,44 +56,46 @@ export function ThreadActivity({
   const failure = Option.getOrNull(state.error);
   return (
     <Modal animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={[styles.fill, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, styles.sheetTop]}>
-          <Text style={[styles.headerText, { color: colors.text }]} numberOfLines={1}>
-            {title}
-          </Text>
-          <Pressable accessibilityRole="button" onPress={onClose}>
-            <Text style={styles.link}>Close</Text>
-          </Pressable>
-        </View>
-        <LegendList
-          data={rows}
-          keyExtractor={(row) => row.id}
-          extraData={colors}
-          estimatedItemSize={40}
-          maintainScrollAtEnd
-          contentContainerStyle={styles.body}
-          ListEmptyComponent={
-            <Text
-              style={
-                projection === null && failure !== null
-                  ? styles.error
-                  : [styles.muted, { color: colors.text }]
-              }
-            >
-              {projection === null ? (failure ?? "Reading the thread") : "Nothing yet"}
+      <SafeAreaProvider>
+        <SafeAreaView style={[styles.fill, { backgroundColor: colors.background }]}>
+          <View style={[styles.header, styles.sheetTop]}>
+            <Text style={[styles.headerText, { color: colors.text }]} numberOfLines={1}>
+              {title}
             </Text>
-          }
-          renderItem={({ item }) => (
-            <View>
-              {rowLines(item).map((line) => (
-                <Text key={line.id} style={line.error ? styles.error : { color: colors.text }}>
-                  {line.text}
-                </Text>
-              ))}
-            </View>
-          )}
-        />
-      </View>
+            <Pressable accessibilityRole="button" onPress={onClose}>
+              <Text style={styles.link}>Close</Text>
+            </Pressable>
+          </View>
+          <LegendList
+            data={rows}
+            keyExtractor={(row) => row.id}
+            extraData={colors}
+            estimatedItemSize={40}
+            maintainScrollAtEnd
+            contentContainerStyle={styles.body}
+            ListEmptyComponent={
+              <Text
+                style={
+                  projection === null && failure !== null
+                    ? styles.error
+                    : [styles.muted, { color: colors.text }]
+                }
+              >
+                {projection === null ? (failure ?? "Reading the thread") : "Nothing yet"}
+              </Text>
+            }
+            renderItem={({ item }) => (
+              <View>
+                {rowLines(item).map((line) => (
+                  <Text key={line.id} style={line.error ? styles.error : { color: colors.text }}>
+                    {line.text}
+                  </Text>
+                ))}
+              </View>
+            )}
+          />
+        </SafeAreaView>
+      </SafeAreaProvider>
     </Modal>
   );
 }
