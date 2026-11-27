@@ -58,7 +58,7 @@ export const Board = Schema.Struct({
   builderCap: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
   /** The name of the board's review template. No value means the system template. */
   reviewTemplate: Schema.optionalKey(Text),
-  /** Docs from before `docs.json`, which the orchestrator copies there once. Kept so an app write does not drop them first. */
+  /** Docs from before `docs.json`, which the orchestrator copies there once. The schema keeps them so an app write cannot drop them before that copy. */
   docs: Schema.optionalKey(Schema.Array(Doc)),
   /** The `additions.json` item ids the user hid. Only the app writes this. */
   hiddenAdditions: Schema.optionalKey(Schema.Array(Text)),
