@@ -67,6 +67,9 @@ describe("the orchestrator's standing rules and board facts", () => {
     expect(rules).toContain("When the user asks to remove a doc, drop its entry from `docs.json`.");
     expect(rules).toContain("Never delete the doc's file.");
     expect(rules).toContain(
+      "When the last entry goes, keep `docs.json` as `[]`. Never delete `docs.json`.",
+    );
+    expect(rules).toContain(
       "If `docs.json` is missing and `board.json` has `docs`, copy them into `docs.json` once.",
     );
   });
