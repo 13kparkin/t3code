@@ -284,10 +284,10 @@ describe("recording a call", () => {
     });
   });
 
-  it("Given no saved consent, then nothing runs", async () => {
+  it("Given no saved consent, then nothing runs and the window still hears back", async () => {
     const rig = setup({ consented: false });
     await rig.recorder.start(REQUEST);
-    expect([rig.runs, rig.statuses()]).toEqual([[], []]);
+    expect([rig.runs, rig.statuses()]).toEqual([[], ["idle"]]);
   });
 
   it.each([

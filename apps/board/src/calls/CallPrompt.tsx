@@ -7,12 +7,11 @@ import {
   acceptConsent,
   callPromptAtom,
   boardCallsAtom,
-  recordCall,
+  recordNewCall,
   recorderAtom,
 } from "../state/recorder";
 import { ConsentNotice } from "./ConsentNotice";
 
-/** What a Record press asks first, from a card or a toast. */
 export function CallPrompt() {
   const registry = useContext(RegistryContext);
   const prompt = useAtomValue(callPromptAtom);
@@ -26,7 +25,9 @@ export function CallPrompt() {
         onClose={close}
         onAccept={() => {
           close();
-          void acceptConsent().then(() => recordCall(registry, prompt.request));
+          void acceptConsent().then(() =>
+            recordNewCall(registry, prompt.project, prompt.listed, prompt.report),
+          );
         }}
       />
     );
@@ -49,7 +50,7 @@ export function CallPrompt() {
         <h2 className="text-[15px] font-semibold">A call is recording</h2>
         <p className="text-muted">
           {running === undefined ? "Another call" : running.title} is recording, and the board
-          records one call at a time. Stop it to record {prompt.request.title}.
+          records one call at a time. Stop it to record another.
         </p>
         <div className="flex items-center justify-end gap-2">
           <button type="button" onClick={close} className="text-muted hover:text-fg">

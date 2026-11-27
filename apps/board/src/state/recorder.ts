@@ -1,43 +1,42 @@
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
-import { EnvironmentRegistry, EnvironmentSupervisor } from "@t3tools/client-runtime/connection";
 import { RemoteEnvironmentAuthUndeclaredStatusError } from "@t3tools/client-runtime/rpc";
-import {
-  getEnvironmentSpeechStatus,
-  transcribeEnvironmentPcm,
-} from "@t3tools/client-runtime/voice-input";
+import { transcribeEnvironmentPcm } from "@t3tools/client-runtime/voice-input";
 import {
   DEFAULT_SPEECH_TRANSCRIPTION_OPTIONS,
   EnvironmentRequestInvalidError,
 } from "@t3tools/contracts";
-import * as Effect from "effect/Effect";
-import type { HttpClient } from "effect/http";
-import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
-import * as SubscriptionRef from "effect/SubscriptionRef";
 import { Atom, AtomRegistry } from "effect/reactivity";
 
-import { dueCalls, isStarting, markNotified, nextWake, splitCalls } from "../calls/dueCalls";
+import { splitCalls } from "../calls/splitCalls";
+import { callsToTranscribe, type Transcription } from "../calls/recorder";
 import { sameTakes, transcribeTakes } from "../calls/transcribe";
 import type { RecorderSnapshot } from "../connection/engineState";
-import { connectionAtomRuntime } from "../connection/runtime";
 import { BOARDS_DIR, type CallEvent } from "../domain/board";
 import { callNotesMessage, callNotesPath } from "../domain/callNotes";
 import { messageOrchestrator } from "../foryou/actions";
-import type { RecordingFile, RecordRequest } from "../domain/recording";
+import type { RecordingFile } from "../domain/recording";
 import { readBoard, type ValidBoard } from "../store/boardFiles";
-import { deleteCall, markRecorded } from "./boardCards";
-import { boardEngine, localState, openBoard, projectBoardsAtom } from "./boards";
+import { deleteCall, markRecorded, saveCall } from "./boardCards";
+import { boardEngine, localState, newId, projectBoardsAtom } from "./boards";
 import { environmentProjects } from "./projects";
+import { errorText, modelInstalled, readSpeechStatus, runSpeech, speechStatusAtom } from "./speech";
 
 /** Undefined in `dev:web`, which has no main process to record with. */
 const recorder = window.board?.recorder;
-const calls = window.board?.calls;
+/** The recorder reads idle until main answers a start, so a press waits on this until main's next snapshot. */
+let starting = false;
 
-/** Null in `dev:web` and off Windows, where the call cards offer no Record. */
+/** Null in `dev:web` and off Windows, where the Calls group offers no Record a call. */
 export const recorderAtom = Atom.make((get): RecorderSnapshot | null => {
   if (recorder === undefined) return null;
   // Subscribe before the read so a change between the two is not lost.
-  get.addFinalizer(recorder.onSnapshot((snapshot) => get.setSelf(snapshot)));
+  get.addFinalizer(
+    recorder.onSnapshot((snapshot) => {
+      starting = false;
+      get.setSelf(snapshot);
+    }),
+  );
   void recorder.snapshot().then((snapshot) => get.setSelf(snapshot));
   return null;
 }).pipe(Atom.keepAlive, Atom.withLabel("call-recorder"));
@@ -70,24 +69,6 @@ export const boardCallsAtom = Atom.make((get): ReadonlyArray<BoardCall> =>
     }),
 ).pipe(Atom.withLabel("board-calls"));
 
-/** Saves each due call as notified before its toast shows, so a crash never shows it twice. */
-async function notifyDue(list: ReadonlyArray<BoardCall>, now: number) {
-  if (calls === undefined) return;
-  if (dueCalls(list, now, (await localState.read()).notifiedCalls).length === 0) return;
-  let due: ReadonlyArray<BoardCall> = [];
-  await localState.update((state) => {
-    due = dueCalls(list, now, state.notifiedCalls);
-    return { ...state, notifiedCalls: markNotified(state.notifiedCalls, due, now) };
-  });
-  for (const call of due) {
-    calls.notify({
-      projectId: call.project.id,
-      folder: call.listed.folder,
-      request: { callId: call.id, boardId: call.listed.board.id, title: call.title, app: call.app },
-    });
-  }
-}
-
 /** Each call with takes on this PC, to its first take's start. */
 const firstTakes = (snapshot: RecorderSnapshot) => {
   const first = new Map<string, string>();
@@ -113,34 +94,15 @@ export const splitHere = <C extends CallEvent>(
     snapshot === null ? null : firstTakes(snapshot),
   );
 
-const NONE: ReadonlySet<string> = new Set();
-/** A failed write still refreshes the boards, which runs the scheduler again, so a write is retried only after the next wake. */
+/** A failed write still refreshes the boards, which runs the sweep again, so a write is tried once per launch. */
 const tried = new Set<string>();
 const once = (key: string) => !tried.has(key) && Boolean(tried.add(key));
 
-/**
- * The ids of the Chrome calls in their starting window, the only app v1 records. Reading it notifies
- * due calls, marks every call this PC holds takes for, removes finished calls never recorded, and
- * sets the next wake.
- */
-export const startingCallsAtom = Atom.make((get): ReadonlySet<string> => {
+/** Marks every call this PC holds takes for, and removes finished calls never recorded. */
+export const callSweepAtom = Atom.make((get) => {
   const snapshot = get(recorderAtom);
-  if (calls === undefined || snapshot === null) return NONE;
-  const list = get(boardCallsAtom);
-  const now = Date.now();
-  get.addFinalizer(
-    calls.onWake(() => {
-      tried.clear();
-      get.refreshSelf();
-    }),
-  );
-  calls.wakeAt(nextWake(list, now));
-  const chrome = list.filter(
-    (call) =>
-      call.app === "chrome" && (call.listed.board.cardStates?.[call.id] ?? "todo") === "todo",
-  );
-  void notifyDue(chrome, now);
-  const split = splitHere(list, now, snapshot);
+  if (snapshot === null) return;
+  const split = splitHere(get(boardCallsAtom), Date.now(), snapshot);
   for (const call of split.mark) {
     if (once(`mark ${call.id}`)) {
       void markRecorded(get.registry, call.project, call.listed, call.id, call.recordedAt);
@@ -152,37 +114,59 @@ export const startingCallsAtom = Atom.make((get): ReadonlySet<string> => {
       void deleteCall(get.registry, call.project, call.listed, call.id, call);
     }
   }
-  return new Set(chrome.filter((call) => isStarting(call, now)).map((call) => call.id));
-}).pipe(Atom.withLabel("starting-calls"));
+}).pipe(Atom.withLabel("call-sweep"));
 
 /** What the board asks before it records: the consent notice, or that another call records. */
-export const callPromptAtom = Atom.make<{
-  readonly kind: "consent" | "busy";
-  readonly request: RecordRequest;
-} | null>(null).pipe(Atom.keepAlive, Atom.withLabel("call-prompt"));
+export const callPromptAtom = Atom.make<
+  | {
+      readonly kind: "consent";
+      readonly project: EnvironmentProject;
+      readonly listed: ValidBoard;
+      readonly report: (failure: string | null) => void;
+    }
+  | { readonly kind: "busy" }
+  | null
+>(null).pipe(Atom.keepAlive, Atom.withLabel("call-prompt"));
 
-/** The one start path, for a card's Record and a toast's. */
-export async function recordCall(registry: AtomRegistry.AtomRegistry, request: RecordRequest) {
-  const status = registry.get(recorderAtom)?.state.status ?? "idle";
-  if (status !== "idle") return registry.set(callPromptAtom, { kind: "busy", request });
-  if (!(await localState.read()).recordingConsent) {
-    return registry.set(callPromptAtom, { kind: "consent", request });
+/** Adds a call that starts now and records it. `report` gets the failure text, or null. */
+export async function recordNewCall(
+  registry: AtomRegistry.AtomRegistry,
+  project: EnvironmentProject,
+  listed: ValidBoard,
+  report: (failure: string | null) => void,
+) {
+  if (recorder === undefined || starting) return;
+  if ((registry.get(recorderAtom)?.state.status ?? "idle") !== "idle") {
+    return registry.set(callPromptAtom, { kind: "busy" });
   }
-  recorder?.start(request);
+  starting = true;
+  let sent = false;
+  try {
+    if (!(await localState.read()).recordingConsent) {
+      return registry.set(callPromptAtom, { kind: "consent", project, listed, report });
+    }
+    // v1 records Chrome only, the one app verified on Windows.
+    const call: CallEvent = {
+      id: newId(),
+      title: "Call",
+      start: new Date().toISOString(),
+      app: "chrome",
+    };
+    const failure = await saveCall(registry, project, listed, call);
+    if (failure === null) {
+      sent = true;
+      recorder.start({
+        callId: call.id,
+        boardId: listed.board.id,
+        title: call.title,
+        app: call.app,
+      });
+    }
+    report(failure);
+  } finally {
+    if (!sent) starting = false;
+  }
 }
-
-/** Opens the board of a toast whose Record was pressed, then records its call. */
-export const toastRecordAtom = Atom.make((get) => {
-  if (calls === undefined || get(recorderAtom) === null) return;
-  const take = () =>
-    void calls.takeRecord().then((toast) => {
-      if (toast === null) return;
-      void openBoard(get.registry, { projectId: toast.projectId, folder: toast.folder });
-      void recordCall(get.registry, toast.request);
-    });
-  get.addFinalizer(calls.onRecord(take));
-  take();
-}).pipe(Atom.withLabel("toast-record"));
 
 export const acceptConsent = () =>
   localState.update((state) => ({ ...state, recordingConsent: true }));
@@ -196,11 +180,6 @@ export const deleteAudio = (callId: string) =>
 /** Relative to the board folder. */
 export const transcriptPath = (callId: string) => `artifacts/calls/${callId}/transcript.md`;
 
-type Transcription =
-  | { readonly status: "running"; readonly done: number; readonly total: number }
-  | { readonly status: "failed"; readonly message: string }
-  | { readonly status: "written" };
-
 /** By call id, on this PC only. */
 export const transcriptionsAtom = Atom.make<Readonly<Record<string, Transcription>>>({}).pipe(
   Atom.keepAlive,
@@ -210,16 +189,20 @@ export const transcriptionsAtom = Atom.make<Readonly<Record<string, Transcriptio
 const isInvalidRequest = Schema.is(EnvironmentRequestInvalidError);
 const isUndeclaredStatus = Schema.is(RemoteEnvironmentAuthUndeclaredStatusError);
 
+const installIn = (model: string) => `Install ${model} in the board's Settings, Voice.`;
+
 /** The engine's errors in plain words. A missing model comes back as a generic invalid command. */
-function failure(cause: unknown, missingModel: string) {
-  if (isInvalidRequest(cause) && cause.reason === "invalid_command") return missingModel;
+function failure(cause: unknown, model: string) {
+  if (isInvalidRequest(cause) && cause.reason === "invalid_command") {
+    return `${installIn(model)} Then press Try again.`;
+  }
   if (isInvalidRequest(cause) && cause.reason === "speech_busy") {
     return "Another speech task is running on the engine. Try again when it finishes.";
   }
   if (isUndeclaredStatus(cause) && cause.status === 503) {
-    return "The engine stopped. Transcribe again once it is back.";
+    return "The engine stopped. Try again once it is back.";
   }
-  return cause instanceof Error ? cause.message : String(cause);
+  return errorText(cause);
 }
 
 type NotesRequest =
@@ -270,9 +253,27 @@ export async function requestCallNotes(
     );
     set(failure === null ? { status: "sent" } : { status: "failed", message: failure });
   } catch (cause) {
-    set({ status: "failed", message: cause instanceof Error ? cause.message : String(cause) });
+    set({ status: "failed", message: errorText(cause) });
   }
 }
+
+/** Runs each call whose takes on this PC have all ended, once, and again when its missing model is installed. */
+export const autoTranscribeAtom = Atom.make((get) => {
+  const snapshot = get(recorderAtom);
+  if (snapshot === null) return;
+  const due = callsToTranscribe(
+    get(boardCallsAtom),
+    snapshot.recordings,
+    get(transcriptionsAtom),
+    modelInstalled(get(speechStatusAtom)),
+  );
+  // A run writes the jobs this atom reads, so it starts after the read.
+  for (const call of due) {
+    queueMicrotask(
+      () => void transcribeCall(get.registry, call.project, call.listed.folder, call.id),
+    );
+  }
+}).pipe(Atom.withLabel("auto-transcribe"));
 
 /** Uses the engine's selected speech model. A failure keeps the audio and shows on the call. */
 export async function transcribeCall(
@@ -296,42 +297,24 @@ export async function transcribeCall(
   const [first] = takes;
   if (first === undefined) return;
   set({ status: "running", done: 0, total: 0 });
-  let missingModel = "Choose a speech model in T3's voice settings, then transcribe again.";
+  let model = "a speech model";
   try {
-    const speech = <A, E>(
-      effect: Effect.Effect<A, E, HttpClient.HttpClient | EnvironmentRegistry.EnvironmentRegistry>,
-    ) =>
-      Effect.runPromise(
-        AtomRegistry.getResult(registry, connectionAtomRuntime).pipe(
-          Effect.flatMap((context) => Effect.provide(effect, context)),
-        ),
-      );
-    // Read from the supervisor itself, since the session's atom is empty until a view mounts it.
-    const prepared = Option.getOrNull(
-      await speech(
-        EnvironmentRegistry.EnvironmentRegistry.pipe(
-          Effect.flatMap((environments) =>
-            environments.run(
-              project.environmentId,
-              EnvironmentSupervisor.EnvironmentSupervisor.pipe(
-                Effect.flatMap((supervisor) => SubscriptionRef.get(supervisor.prepared)),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    if (prepared === null) throw new Error("The engine is not connected.");
-    const status = await speech(getEnvironmentSpeechStatus(prepared));
+    const status = await readSpeechStatus(registry, project.environmentId);
     if (!status.supported) throw new Error(status.reason);
-    missingModel = `Install ${status.model} in T3's voice settings, then transcribe again.`;
-    if (status.state === "missing-model") throw new Error(missingModel);
+    model = status.model;
+    if (status.state === "missing-model") {
+      return set({
+        status: "failed",
+        message: `${installIn(model)} The board transcribes again once it is installed.`,
+        missingModel: true,
+      });
+    }
     await transcribeTakes({
       takes,
       read: recorder.readTrack,
       transcribe: async (pcm) =>
         (
-          await speech(
+          await runSpeech(registry, project.environmentId, (prepared) =>
             transcribeEnvironmentPcm(
               prepared,
               pcm,
@@ -352,6 +335,6 @@ export async function transcribeCall(
     set({ status: "written" });
     void requestCallNotes(registry, project, folder, { id: callId, title: first.title });
   } catch (cause) {
-    set({ status: "failed", message: failure(cause, missingModel) });
+    set({ status: "failed", message: failure(cause, model), missingModel: false });
   }
 }

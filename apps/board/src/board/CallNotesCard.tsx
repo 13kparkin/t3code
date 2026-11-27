@@ -139,7 +139,7 @@ export function CallNotesCard({
             "Ticket notes",
             notes.ticketNotes.map((note) => (
               <li key={note.ticket}>
-                {note.ticket}: {note.text} {forYou(`t-${note.ticket}`)}
+                {note.ticket}: {note.text}
               </li>
             )),
           )}

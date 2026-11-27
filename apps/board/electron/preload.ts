@@ -68,21 +68,6 @@ const bridge: BoardBridge = {
     openFile: (file) => ipcRenderer.invoke("board:recording-open", file),
     readTrack: (range) => ipcRenderer.invoke("board:recording-read", range),
   },
-  calls: {
-    wakeAt: (epochMs) => ipcRenderer.send("board:call-wake-at", epochMs),
-    onWake: (listener) => {
-      const handler = () => listener();
-      ipcRenderer.on("board:call-wake", handler);
-      return () => void ipcRenderer.off("board:call-wake", handler);
-    },
-    notify: (toast) => ipcRenderer.send("board:call-notify", toast),
-    onRecord: (listener) => {
-      const handler = () => listener();
-      ipcRenderer.on("board:call-record", handler);
-      return () => void ipcRenderer.off("board:call-record", handler);
-    },
-    takeRecord: () => ipcRenderer.invoke("board:call-record-take"),
-  },
 };
 
 contextBridge.exposeInMainWorld("board", bridge);

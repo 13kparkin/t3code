@@ -35,14 +35,6 @@ export const TrackRange = Schema.Struct({
 });
 export type TrackRange = typeof TrackRange.Type;
 
-/** A call start toast. Its Record button carries all of it, so a press after a restart still knows the call. */
-export const CallToast = Schema.Struct({
-  projectId: Schema.String.check(Schema.isMaxLength(200)),
-  folder: Schema.String.check(Schema.isMaxLength(200)),
-  request: RecordRequest,
-});
-export type CallToast = typeof CallToast.Type;
-
 /** One take of a call, kept beside its `me.wav` and `them.wav` as `recording.json`. */
 export const Recording = Schema.Struct({
   callId: Schema.String,

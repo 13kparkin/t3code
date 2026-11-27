@@ -3,51 +3,35 @@ import { type FormEvent, useState } from "react";
 
 import { CallApp, type CallEvent } from "../domain/board";
 import { Select } from "../settings/controls/Select";
-import { newId } from "../state/boards";
 import { CALL_APPS } from "./recorder";
 
 const APP_OPTIONS = CallApp.literals.map((value) => ({ value, title: CALL_APPS[value].title }));
 
-/** A date as a `datetime-local` value, which has no offset, in the viewer's time zone. */
-function toLocalInput(date: Date): string {
-  const pad = (value: number) => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
 const field =
   "min-w-0 rounded-md border border-line bg-bg px-2 py-1 text-fg placeholder:text-faint disabled:opacity-60";
 
-/** Adds a call event, or edits one. `onSave` resolves to the failure text, or null once saved. */
+/** Renames a call or changes its app. `onSave` resolves to the failure text, or null once saved. */
 export function CallEditor({
   call,
   onSave,
   onClose,
 }: {
-  call: CallEvent | null;
+  call: CallEvent;
   onSave: (call: CallEvent) => Promise<string | null>;
   onClose: () => void;
 }) {
-  const savedAt = call === null ? "" : toLocalInput(new Date(call.start));
-  const [title, setTitle] = useState(call?.title ?? "");
-  const [at, setAt] = useState(savedAt);
-  const [app, setApp] = useState<CallApp>(call?.app ?? "zoom");
+  const [title, setTitle] = useState(call.title);
+  const [app, setApp] = useState<CallApp>(call.app);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const start = new Date(at);
-  const ready = title.trim() !== "" && !Number.isNaN(start.getTime());
+  const ready = title.trim() !== "";
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
     if (!ready || busy) return;
     setBusy(true);
     setError(null);
-    const failure = await onSave({
-      id: call?.id ?? newId(),
-      title: title.trim(),
-      // An untouched time keeps its stored instant, which a repeated DST hour would otherwise move.
-      start: call !== null && at === savedAt ? call.start : start.toISOString(),
-      app,
-    });
+    const failure = await onSave({ id: call.id, title: title.trim(), start: call.start, app });
     setBusy(false);
     if (failure === null) onClose();
     else setError(failure);
@@ -63,11 +47,11 @@ export function CallEditor({
       <form
         role="dialog"
         aria-modal="true"
-        aria-label={call === null ? "Add call" : "Edit call"}
+        aria-label="Edit call"
         onSubmit={(event) => void save(event)}
         className="flex w-[400px] max-w-[92vw] flex-col gap-3 rounded-xl border border-line bg-panel p-4 shadow-panel"
       >
-        <h2 className="text-[15px] font-semibold">{call === null ? "Add a call" : "Edit call"}</h2>
+        <h2 className="text-[15px] font-semibold">Edit call</h2>
         <label className="flex flex-col gap-1 text-muted">
           Title
           <input
@@ -77,16 +61,6 @@ export function CallEditor({
             disabled={busy}
             onChange={(event) => setTitle(event.target.value)}
             placeholder="Design sync"
-            className={field}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-muted">
-          Starts
-          <input
-            type="datetime-local"
-            value={at}
-            disabled={busy}
-            onChange={(event) => setAt(event.target.value)}
             className={field}
           />
         </label>
@@ -119,7 +93,7 @@ export function CallEditor({
             disabled={busy || !ready}
             className="rounded-md bg-fg px-2.5 py-1 font-medium text-bg disabled:opacity-50"
           >
-            {call === null ? "Add call" : "Save"}
+            Save
           </button>
         </div>
       </form>

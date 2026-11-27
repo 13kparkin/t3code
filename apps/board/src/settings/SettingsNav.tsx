@@ -1,4 +1,15 @@
-import { ArrowLeft, Bot, Download, GitBranch, ListChecks, Plug, Trash2, Type } from "lucide-react";
+import {
+  ArrowLeft,
+  Bot,
+  Download,
+  GitBranch,
+  ListChecks,
+  Mic,
+  Plug,
+  Smartphone,
+  Trash2,
+  Type,
+} from "lucide-react";
 import type { ReactNode } from "react";
 
 import { SidebarRow } from "../sidebar/SidebarRow";
@@ -10,7 +21,9 @@ export type SettingsPage =
   | "updates"
   | "reviews"
   | "roles"
-  | "text";
+  | "text"
+  | "voice"
+  | "phone";
 
 const PAGES = [
   { id: "worktrees", title: "Worktrees", icon: <GitBranch className="size-3.5" /> },
@@ -20,6 +33,8 @@ const PAGES = [
   { id: "reviews", title: "Reviews", icon: <ListChecks className="size-3.5" /> },
   { id: "roles", title: "Roles", icon: <Bot className="size-3.5" /> },
   { id: "text", title: "Text models", icon: <Type className="size-3.5" /> },
+  { id: "voice", title: "Voice", icon: <Mic className="size-3.5" /> },
+  { id: "phone", title: "Phone", icon: <Smartphone className="size-3.5" /> },
 ] as const satisfies ReadonlyArray<{ id: SettingsPage; title: string; icon: ReactNode }>;
 
 export const pageTitle = (page: SettingsPage) =>

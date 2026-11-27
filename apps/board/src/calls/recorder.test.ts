@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import type { Recording } from "../domain/recording";
 
-import { callAudio, elapsed } from "./recorder";
+import { callAudio, callsToTranscribe, elapsed } from "./recorder";
 
 const take = (fields: Partial<Recording>): Recording => ({
   callId: "call-1",
@@ -50,6 +50,38 @@ describe("what a call card says about its audio", () => {
     ],
   ] as const)("Given %s, then it shows %j", (_name, recordings, shown) => {
     expect(callAudio(recordings, "call-1")).toEqual(shown);
+  });
+});
+
+describe("which calls the board transcribes by itself", () => {
+  const recording = take({ startedAt: "2026-11-25T10:30:00.000Z", endedAt: null, endReason: null });
+  const missing = { status: "failed", message: "Install it", missingModel: true } as const;
+  it.each([
+    ["a stopped take and no job", [take({})], {}, false, ["call-1"]],
+    ["no take on this PC", [], {}, false, []],
+    ["the take still recording", [recording], {}, false, []],
+    ["an ended take and a later one still recording", [take({}), recording], {}, false, []],
+    [
+      "a run already going",
+      [take({})],
+      { "call-1": { status: "running", done: 0, total: 0 } },
+      false,
+      [],
+    ],
+    ["a transcript just written", [take({})], { "call-1": { status: "written" } }, false, []],
+    [
+      "a failure that is not the model",
+      [take({})],
+      { "call-1": { status: "failed", message: "Busy", missingModel: false } },
+      true,
+      [],
+    ],
+    ["a missing model, still missing", [take({})], { "call-1": missing }, false, []],
+    ["a missing model, now installed", [take({})], { "call-1": missing }, true, ["call-1"]],
+  ] as const)("Given %s", (_name, recordings, jobs, installed, ids) => {
+    expect(
+      callsToTranscribe([{ id: "call-1" }], recordings, jobs, installed).map((call) => call.id),
+    ).toEqual(ids);
   });
 });
 

@@ -20,7 +20,7 @@ import { SidebarToggle } from "./sidebar/SidebarToggle";
 import { UpdateToasts } from "./sidebar/UpdateToasts";
 import { connectionWatchAtom } from "./state/engine";
 import { agentPanelAtom } from "./state/agentPanel";
-import { recorderAtom, startingCallsAtom, toastRecordAtom } from "./state/recorder";
+import { autoTranscribeAtom, callSweepAtom, recorderAtom } from "./state/recorder";
 import { settingsPageAtom } from "./state/settingsPage";
 import { updateWatcherAtom } from "./state/updatesAtoms";
 import { UsageBar } from "./usage/UsageBar";
@@ -34,8 +34,8 @@ export function App() {
   const setSettingsPage = (page: SettingsPage | null) => registry.set(settingsPageAtom, page);
   useAtomMount(updateWatcherAtom);
   useAtomMount(connectionWatchAtom);
-  useAtomMount(startingCallsAtom);
-  useAtomMount(toastRecordAtom);
+  useAtomMount(callSweepAtom);
+  useAtomMount(autoTranscribeAtom);
   return (
     <div className="grid h-full grid-rows-[var(--topbar-height)_minmax(0,1fr)_auto]">
       <header className="drag-region flex items-center justify-between border-b border-line bg-bg px-2">
