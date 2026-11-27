@@ -15,6 +15,7 @@ import {
   forYouMessage,
   mergeForYou,
   openCards,
+  sentLine,
 } from "./forYou";
 
 const item = (id: string, kind: string, status: string, createdAt: string, extra = {}) =>
@@ -190,6 +191,26 @@ describe("answering a card", () => {
       "For you item q-1: answer: Ship it",
     );
   });
+
+  it.each([
+    ["an answer with no period", "approve"],
+    ["an answer that ends in one", "approve."],
+  ])(
+    "Given %s, when the card is sent, then its line has one period after the answer",
+    (_name, answer) => {
+      const file = mergeForYou(item("q-1", "question", "open", "2026-11-21T10:00:00Z"), [])
+        .cards[0]!;
+      const engine: ForYouCard = {
+        origin: "engine",
+        id: "r-1",
+        request: request("approval", "r-1", ""),
+      };
+      expect([sentLine(file, answer), sentLine(engine, answer)]).toEqual([
+        "Sent to the orchestrator: approve. Waiting for it to record the answer.",
+        "approve. Waiting for the engine.",
+      ]);
+    },
+  );
 
   it("Given an approval that made a tracker change, when the message is worded, then the outcome follows on its own line", () => {
     expect(

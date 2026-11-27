@@ -8,6 +8,7 @@ import {
   type CardView,
   describeRoleTarget,
   type ForYouItem,
+  sentLine,
 } from "../domain/forYou";
 import { describeTrackerWrite } from "../issues/issueLinks";
 import { answerItem, type ForYouTarget } from "../foryou/actions";
@@ -199,9 +200,7 @@ export function ForYouCard({
       )}
       {sent && (
         <p data-testid="foryou-sent" className="text-[11px] text-sky-300">
-          {card.origin === "file"
-            ? `Sent to the orchestrator: ${detail}. Waiting for it to record the answer.`
-            : `${detail}. Waiting for the engine.`}
+          {sentLine(card, detail)}
         </p>
       )}
       {state === "held" && detail !== null && <p className="text-[11px] text-muted">{detail}</p>}

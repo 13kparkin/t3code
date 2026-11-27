@@ -317,6 +317,14 @@ export const forYouMessage = (id: string, answer: ForYouAnswer): string => {
 /** What the card is doing: waiting, answered and waiting on the orchestrator's record, or done. */
 export type CardState = "open" | "sent" | "held" | "resolved";
 
+/** What a sent card says until its answer is recorded. The answer may end in its own period. */
+export function sentLine(card: ForYouCard, detail: string | null): string {
+  const answer = (detail ?? "").replace(/\.$/, "");
+  return card.origin === "file"
+    ? `Sent to the orchestrator: ${answer}. Waiting for it to record the answer.`
+    : `${answer}. Waiting for the engine.`;
+}
+
 /** A card the user answered this session, with what they chose and the status it had then. */
 export interface SentCard {
   readonly card: ForYouCard;
