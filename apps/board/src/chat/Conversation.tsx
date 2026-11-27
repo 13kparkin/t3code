@@ -25,6 +25,7 @@ import { Composer } from "./Composer";
 import { PanelHeader } from "./PanelHeader";
 import { timelineSource } from "./projectionSource";
 import {
+  isBrief,
   isRunLive,
   type PendingSend,
   pendingRow,
@@ -157,7 +158,7 @@ export function Conversation({
             <TimelineRowView
               key={row.id}
               row={row}
-              brief={index === 0 && row.kind === "user"}
+              brief={isBrief(row, index, state.history.hasMoreHistory)}
               environmentId={environmentId}
             />
           ))}

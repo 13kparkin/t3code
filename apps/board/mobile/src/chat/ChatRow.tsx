@@ -4,10 +4,20 @@ import { Text, View } from "react-native";
 import { styles } from "../styles";
 import { ChatMessage } from "./ChatMessage";
 
-export function ChatRow({ row, color }: { row: TimelineRow; color: string }) {
+export function ChatRow({
+  row,
+  brief,
+  color,
+}: {
+  row: TimelineRow;
+  brief: boolean;
+  color: string;
+}) {
   switch (row.kind) {
     case "user":
-      return (
+      return brief ? (
+        <Text style={[styles.small, styles.muted, { color }]}>Brief sent to the orchestrator</Text>
+      ) : (
         <View>
           <Text style={[styles.small, styles.bold, { color }]}>You</Text>
           <ChatMessage text={row.text} color={color} />

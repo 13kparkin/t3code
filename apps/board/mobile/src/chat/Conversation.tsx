@@ -1,5 +1,5 @@
 import { timelineSource } from "@agent-board/app/chat/projectionSource";
-import { isRunLive, timelineRows } from "@agent-board/app/chat/timeline";
+import { isBrief, isRunLive, timelineRows } from "@agent-board/app/chat/timeline";
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import { LegendList } from "@legendapp/list/react-native";
 import { EMPTY_ENVIRONMENT_THREAD_STATE } from "@t3tools/client-runtime/state/threads";
@@ -76,7 +76,13 @@ export function Conversation({
               {projection === null ? (failure ?? "Reading the chat") : "No messages yet"}
             </Text>
           }
-          renderItem={({ item }) => <ChatRow row={item} color={colors.text} />}
+          renderItem={({ item, index }) => (
+            <ChatRow
+              row={item}
+              brief={isBrief(item, index, state.history.hasMoreHistory)}
+              color={colors.text}
+            />
+          )}
         />
         <Composer
           environmentId={environmentId}
