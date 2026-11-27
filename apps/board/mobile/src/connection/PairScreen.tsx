@@ -44,8 +44,8 @@ export function PairScreen() {
     <View style={[styles.body, styles.readable]}>
       <Text style={[styles.title, { color: colors.text }]}>Pair with your PC</Text>
       <Text style={{ color: colors.text }}>
-        On the PC, open Agent Board, then Settings, Phone, and press Pair a phone. Or add a client
-        in T3 Code's Settings, Connections. Scan its QR code or paste its pairing link here.
+        On the PC, open Agent Board, then Settings, Phone, and press Pair a phone. Scan its QR code
+        or paste its pairing link here.
       </Text>
       <Pressable style={styles.button} disabled={busy} onPress={() => void scan()}>
         <Text style={styles.buttonText}>Scan QR code</Text>

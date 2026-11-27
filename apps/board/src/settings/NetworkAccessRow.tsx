@@ -33,7 +33,11 @@ export function NetworkAccessRow() {
     const next = await bridge?.setNetworkAccess(enabled);
     setApplying(false);
     if (next?.ok === true) registry.set(networkAccessAtom, next);
-    else if (next !== undefined) setFailure(next.detail);
+    else if (next !== undefined) {
+      setFailure(next.detail);
+      // A failed or timed-out `t3 up` may still have changed the service, so show what it reports now.
+      registry.refresh(networkAccessAtom);
+    }
   };
 
   if (bridge === undefined) return null;
