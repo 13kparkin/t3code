@@ -8,6 +8,7 @@ import { Select } from "./controls/Select";
 import { IntegrationsPage } from "./IntegrationsPage";
 import { ReviewsPage } from "./ReviewsPage";
 import { RolesPage } from "./RolesPage";
+import { PhonePage } from "./PhonePage";
 import { pageTitle, SettingsNav, type SettingsPage } from "./SettingsNav";
 import { TextModelsPage } from "./TextModelsPage";
 import { UpdatesPage } from "./UpdatesPage";
@@ -48,6 +49,7 @@ const PAGE_PAINTED = {
   roles: paintedMarker("board:roles-painted"),
   text: paintedMarker("board:text-painted"),
   voice: paintedMarker("board:voice-painted"),
+  phone: paintedMarker("board:phone-painted"),
 } satisfies Record<SettingsPage, ReturnType<typeof paintedMarker>>;
 
 export function SettingsScreen({
@@ -121,6 +123,8 @@ export function SettingsScreen({
             <ReviewsPage environmentId={environmentId} />
           ) : page === "roles" ? (
             <RolesPage environmentId={environmentId} />
+          ) : page === "phone" ? (
+            <PhonePage environmentId={environmentId} />
           ) : page === "voice" ? (
             <VoicePage environmentId={environmentId} />
           ) : page === "text" ? (

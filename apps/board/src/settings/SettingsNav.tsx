@@ -6,6 +6,7 @@ import {
   ListChecks,
   Mic,
   Plug,
+  Smartphone,
   Trash2,
   Type,
 } from "lucide-react";
@@ -21,7 +22,8 @@ export type SettingsPage =
   | "reviews"
   | "roles"
   | "text"
-  | "voice";
+  | "voice"
+  | "phone";
 
 const PAGES = [
   { id: "worktrees", title: "Worktrees", icon: <GitBranch className="size-3.5" /> },
@@ -32,6 +34,7 @@ const PAGES = [
   { id: "roles", title: "Roles", icon: <Bot className="size-3.5" /> },
   { id: "text", title: "Text models", icon: <Type className="size-3.5" /> },
   { id: "voice", title: "Voice", icon: <Mic className="size-3.5" /> },
+  { id: "phone", title: "Phone", icon: <Smartphone className="size-3.5" /> },
 ] as const satisfies ReadonlyArray<{ id: SettingsPage; title: string; icon: ReactNode }>;
 
 export const pageTitle = (page: SettingsPage) =>
