@@ -19,7 +19,7 @@ const sameRequests = (left: ReadonlyArray<EngineRequest>, right: ReadonlyArray<E
       request.id === right[index]?.id && request.threadTitle === right[index]?.threadTitle,
   );
 
-/** What the shown board's agents wait on. Equal lists keep the old value, so a shell update does not re-parse the file. */
+/** Equal lists keep the old value, so a shell update does not re-parse the file. */
 const shownRequestsAtom = Atom.make((get): ReadonlyArray<EngineRequest> => {
   const shown = get(shownBoardAtom);
   const root = shown?.listed.ok ? shown.listed.board.orchestratorThreadId : null;
@@ -42,7 +42,7 @@ export const shownForYouAtom = Atom.make((get): ForYouList | null => {
   return mergeForYou(text, get(shownRequestsAtom), shown.listed.board.roleRequests);
 }).pipe(Atom.withLabel("phone-foryou-cards"));
 
-/** The tab badge: cards waiting on the user on the shown board, from its last read and the live engine requests. */
+/** The For you tab badge. */
 export const forYouOpenCountAtom = Atom.make((get) => {
   const list = get(shownForYouAtom);
   return list === null ? 0 : openCards(list.cards).length;

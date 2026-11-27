@@ -56,7 +56,6 @@ function stateLine({ card, state, detail }: CardView): string | null {
   }
 }
 
-/** One For you card in full, with its choices. The phone answers through the orchestrator or the engine, never the file. */
 export function CardSheet({
   view,
   target,

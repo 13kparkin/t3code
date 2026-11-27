@@ -32,7 +32,7 @@ export const boardFilesAtom = boardStore.files;
 
 const NOT_POLLING = Atom.make<void>(undefined).pipe(Atom.withLabel("phone-board-poll:none"));
 
-/** The board's last read files. Bottom tabs keep a visited screen mounted, so only the focused one polls. */
+/** Bottom tabs keep a visited screen mounted, so only the focused one polls. */
 export function useBoardFiles(key: string) {
   useAtomValue(useIsFocused() ? boardStore.poll(key) : NOT_POLLING);
   return useAtomValue(boardFilesAtom(key));

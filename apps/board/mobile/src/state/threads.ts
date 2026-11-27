@@ -23,7 +23,6 @@ const issues = createIssueEnvironmentAtoms(connectionAtomRuntime);
 
 const quiet = { reportFailure: false } as const;
 
-/** The engine calls behind a board's For you cards, the same ones the desktop makes. */
 export function forYouEngine(
   registry: AtomRegistry.AtomRegistry,
   environmentId: EnvironmentId,

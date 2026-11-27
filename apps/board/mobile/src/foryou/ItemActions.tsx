@@ -6,7 +6,6 @@ import { TextInput } from "react-native";
 import { styles } from "../styles";
 import { ChoiceButton } from "./ChoiceButton";
 
-/** The choices of a `foryou.jsonl` item, the same ones the desktop card offers. */
 export function ItemActions({
   item,
   sent,

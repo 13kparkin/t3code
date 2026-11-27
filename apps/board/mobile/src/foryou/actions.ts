@@ -8,7 +8,7 @@ import {
 import { type TrackerCall, trackerCall } from "@agent-board/app/issues/issueLinks";
 import { Atom, type AtomRegistry } from "effect/reactivity";
 
-/** What the phone can do about a card. It has no file write, so `foryou.jsonl` stays the orchestrator's. */
+/** It has no file write, so `foryou.jsonl` stays the orchestrator's. */
 export interface ForYouEngine {
   /** Sends `text` to the board's orchestrator as the user. Resolves to the failure text, or null once sent. */
   readonly message: (text: string) => Promise<string | null>;
@@ -24,7 +24,6 @@ export interface ForYouTarget {
   readonly registry: AtomRegistry.AtomRegistry;
   readonly engine: ForYouEngine;
   readonly boardKey: string;
-  /** The project the board is in, which tracker writes are made through. */
   readonly projectId: string;
 }
 
@@ -64,10 +63,8 @@ const setSent = (target: ForYouTarget, card: ForYouCard, choice: string | null) 
 };
 
 /**
- * Answers a `foryou.jsonl` item by messaging the orchestrator, which records the answer in the file.
- * The card reads Sent from the tap and goes back to open if the message does not go. Approving a
- * `tracker_write` item makes its change first and the message carries the outcome. Resolves to the
- * failure text, or null once sent.
+ * Messages the orchestrator, which records the answer in the file. Approving a `tracker_write` makes
+ * its change first. If the message then fails, the card stays Sent and the failure names the change.
  */
 export async function answerItem(
   target: ForYouTarget,
@@ -96,7 +93,7 @@ export async function answerItem(
   return `${failure} The tracker change was already made: ${result}`;
 }
 
-/** Answers an engine approval directly. The card leaves once the engine drops the request. */
+/** The card leaves once the engine drops the request. */
 export async function answerApproval(
   target: ForYouTarget,
   card: EngineCard,
