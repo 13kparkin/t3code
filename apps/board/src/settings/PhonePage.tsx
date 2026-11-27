@@ -46,7 +46,7 @@ export function PhonePage({ environmentId }: { environmentId: EnvironmentId }) {
     setPairing(false);
     if (result._tag === "Success") {
       // The page shows only the newest link, so the one it replaces stops working too.
-      if (live) {
+      if (created !== null) {
         void runAtomCommand(
           registry,
           authEnvironment.revokePairingLink,
