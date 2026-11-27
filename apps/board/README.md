@@ -95,7 +95,7 @@ The dev build's package id is `dev.agentboard.phone.dev`, so installing it does 
 
 ### Release the phone app
 
-The phone app ships as a signed APK on the fork's Releases page, tagged `board-phone-v<version>`, with a `SHA256SUMS` file. There is no Play Store build. To install it, open the APK on the phone and allow "Install unknown apps" for the browser once, or run `adb install` over wireless debugging. Installing a new release over the old one keeps the pairing.
+The phone app ships as a signed APK on the fork's Releases page, tagged `board-phone-v<version>`, with a `SHA256SUMS` file. There is no Play Store build. To install it, open the APK on the phone and allow "Install unknown apps" for the browser once, or run `adb install` over wireless debugging. After you tap Install, Google Play Protect may show "App scan recommended". Tap "More details", then "Install without scanning". "Scan app" uploads the APK to Google. Installing a new release over the old one keeps the pairing.
 
 One key signs every release. You make it once in WSL. Android installs an update only when it carries the same signature, so back up `~/.agent-board/phone-release.keystore` and `~/.gradle/gradle.properties`. If the key is lost, the next release installs only after you uninstall the app and pair again.
 
