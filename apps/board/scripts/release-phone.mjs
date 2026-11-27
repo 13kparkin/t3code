@@ -44,10 +44,11 @@ export function releaseCommands({ version, root, sha, repository, apksigner }) {
   const notes = NodePath.join(releaseDir, "release-notes.md");
   const apk = NodePath.join(releaseDir, `Agent-Board-Phone-${version}.apk`);
   const sums = NodePath.join(releaseDir, "SHA256SUMS");
+  const builtApk = NodePath.join(mobile, "android/app/build/outputs/apk/release/app-release.apk");
   return {
     apk,
     sums,
-    builtApk: NodePath.join(mobile, "android/app/build/outputs/apk/release/app-release.apk"),
+    builtApk,
     build: [
       ...GATES.filter((gate) => gate.name.startsWith("phone-")).map((gate) => ({
         command: gate.command,
@@ -77,7 +78,7 @@ export function releaseCommands({ version, root, sha, repository, apksigner }) {
         cwd: NodePath.join(mobile, "android"),
       },
     ],
-    verify: { command: apksigner, args: ["verify", "--print-certs", apk], cwd: root },
+    verify: { command: apksigner, args: ["verify", "--print-certs", builtApk], cwd: root },
     publish: [
       {
         command: "node",
@@ -185,13 +186,15 @@ function main() {
   if (!NodeFS.existsSync(apksigner)) fail("Install build-tools 36.0.0 for apksigner.");
   const release = releaseCommands({ version, root, sha, repository, apksigner });
   for (const step of release.build) run(step);
+  const certificates = out(release.verify.command, release.verify.args, release.verify.cwd);
+  if (!signedByReleaseKey(certificates)) {
+    fail(
+      `${release.builtApk} is not signed with the release key ${SIGNER_SHA256}:\n${certificates}`,
+    );
+  }
   NodeFS.rmSync(NodePath.dirname(release.apk), { recursive: true, force: true });
   NodeFS.mkdirSync(NodePath.dirname(release.apk), { recursive: true });
   NodeFS.copyFileSync(release.builtApk, release.apk);
-  const certificates = out(release.verify.command, release.verify.args, release.verify.cwd);
-  if (!signedByReleaseKey(certificates)) {
-    fail(`${release.apk} is not signed with the release key ${SIGNER_SHA256}:\n${certificates}`);
-  }
   const sums = sha256sumsLine(release.apk);
   NodeFS.writeFileSync(release.sums, sums);
   console.log(`APK: ${release.apk}`);

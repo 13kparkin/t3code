@@ -83,7 +83,13 @@ NodeTest.test("a release runs the phone gates, the signed build, apksigner, note
         "-Dorg.gradle.jvmargs=-Xmx2g",
         "--no-daemon",
       ],
-      ["/repo", "/sdk/build-tools/36.0.0/apksigner", "verify", "--print-certs", apk],
+      [
+        "/repo",
+        "/sdk/build-tools/36.0.0/apksigner",
+        "verify",
+        "--print-certs",
+        "/repo/apps/board/mobile/android/app/build/outputs/apk/release/app-release.apk",
+      ],
       [
         "/repo",
         "node",
