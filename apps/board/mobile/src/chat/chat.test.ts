@@ -2,7 +2,7 @@ import { MessageId, ThreadId } from "@t3tools/contracts";
 import { Atom, AtomRegistry } from "effect/reactivity";
 import { describe, expect, it, vi } from "vite-plus/test";
 
-import { chatStream, codeSpans, userTurn } from "./chat";
+import { chatStream, codeSpans, shouldRetryHistory, userTurn } from "./chat";
 
 describe("userTurn", () => {
   it("sends the literal text in the thread's own modes", () => {
@@ -55,6 +55,16 @@ describe("chatStream", () => {
     const { events, stream, registry } = setup();
     registry.mount(chatStream(stream, true, false));
     expect(events).toEqual([]);
+  });
+});
+
+describe("shouldRetryHistory", () => {
+  it.each([
+    ["a failed load, dragged at the top", "Request timed out.", 0, true],
+    ["a failed load, dragged far below the top", "Request timed out.", 2_000, false],
+    ["no failure, dragged at the top", null, 0, false],
+  ] as const)("%s", (_case, error, top, retry) => {
+    expect(shouldRetryHistory({ error }, top, 800)).toBe(retry);
   });
 });
 

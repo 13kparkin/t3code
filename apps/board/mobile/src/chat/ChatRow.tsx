@@ -2,6 +2,7 @@ import type { TimelineRow } from "@agent-board/app/chat/timeline";
 import { Text, View } from "react-native";
 
 import { styles } from "../styles";
+import { ChatBrief } from "./ChatBrief";
 import { ChatMessage } from "./ChatMessage";
 
 export function ChatRow({
@@ -16,7 +17,7 @@ export function ChatRow({
   switch (row.kind) {
     case "user":
       return brief ? (
-        <Text style={[styles.small, styles.muted, { color }]}>Brief sent to the orchestrator</Text>
+        <ChatBrief text={row.text} color={color} />
       ) : (
         <View>
           <Text style={[styles.small, styles.bold, { color }]}>You</Text>

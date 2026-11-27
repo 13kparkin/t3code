@@ -11,6 +11,7 @@ import { useContext } from "react";
 import { Modal, Pressable, Text, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
+import { shouldRetryHistory } from "../chat/chat";
 import { environmentThreads, loadEarlier } from "../state/threads";
 import { styles } from "../styles";
 
@@ -71,6 +72,16 @@ export function ThreadActivity({
             maintainScrollAtEnd
             maintainVisibleContentPosition
             onStartReached={() => void loadEarlier(registry, environmentId, threadId)}
+            onScrollBeginDrag={({ nativeEvent }) => {
+              if (
+                shouldRetryHistory(
+                  state.history,
+                  nativeEvent.contentOffset.y,
+                  nativeEvent.layoutMeasurement.height,
+                )
+              )
+                void loadEarlier(registry, environmentId, threadId);
+            }}
             style={styles.readable}
             contentContainerStyle={styles.body}
             ListEmptyComponent={

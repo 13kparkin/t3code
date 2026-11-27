@@ -32,6 +32,16 @@ export const chatStream = <A>(
   active: boolean,
 ): Atom.Atom<A | null> => (focused && active ? stream : NOT_STREAMING);
 
+/**
+ * LegendList fires onStartReached once per arrival at the top, so a failed older-history load never
+ * fires again there. A drag within its start zone, half the viewport, retries it.
+ */
+export const shouldRetryHistory = (
+  history: { readonly error: string | null },
+  top: number,
+  viewport: number,
+): boolean => history.error !== null && top <= viewport / 2;
+
 export const userTurn = (
   thread: { readonly id: ThreadId } & Pick<StartThreadTurnInput, "runtimeMode" | "interactionMode">,
   messageId: MessageId,

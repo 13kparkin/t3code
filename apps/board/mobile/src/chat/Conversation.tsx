@@ -13,7 +13,7 @@ import { KeyboardAvoidingView, Text, View, type ViewInstance } from "react-nativ
 import { appActiveAtom } from "../board/files";
 import { environmentThreads, loadEarlier } from "../state/threads";
 import { styles } from "../styles";
-import { chatStream } from "./chat";
+import { chatStream, shouldRetryHistory } from "./chat";
 import { ChatRow } from "./ChatRow";
 import { Composer } from "./Composer";
 
@@ -63,6 +63,16 @@ export function Conversation({
           maintainScrollAtEnd
           maintainVisibleContentPosition
           onStartReached={() => void loadEarlier(registry, environmentId, threadId)}
+          onScrollBeginDrag={({ nativeEvent }) => {
+            if (
+              shouldRetryHistory(
+                state.history,
+                nativeEvent.contentOffset.y,
+                nativeEvent.layoutMeasurement.height,
+              )
+            )
+              void loadEarlier(registry, environmentId, threadId);
+          }}
           style={styles.fill}
           contentContainerStyle={styles.body}
           ListEmptyComponent={
