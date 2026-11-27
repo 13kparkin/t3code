@@ -97,11 +97,6 @@ export function FamilyList({
               {item.id === rootId ? "Orchestrator · " : ""}
               {statusText(item)}
             </Text>
-            {item.latestVisibleMessage !== null && (
-              <Text style={[styles.small, styles.muted, { color: colors.text }]} numberOfLines={1}>
-                {item.latestVisibleMessage.text}
-              </Text>
-            )}
           </Pressable>
         )}
       />
