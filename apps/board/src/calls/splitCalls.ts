@@ -15,7 +15,7 @@ const isStarting = (call: Timed, now: number) => {
 };
 
 /**
- * Where each call goes: the Calls group (the recording, starting, and next call, then `later`),
+ * Where each call goes: the Calls group (the recording and recent calls, and an old board's next call, then `later`),
  * Artifacts for a finished call recorded on any PC while a take can still exist, or removal.
  * `takes` maps each call with takes on this PC to its first take's start, and is null while
  * unknown, which keeps every finished call. `mark` is the calls `board.json` should mark, with that start.

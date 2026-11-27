@@ -23,7 +23,7 @@ export function TranscriptionFailure({
   return (
     <div role="alert" className="flex items-start gap-1 text-[11px] text-red-400">
       <p className="min-w-0 flex-1 break-words">{job.message}</p>
-      {job.missingModel ? (
+      {job.missingModel && (
         <button
           type="button"
           onClick={() => registry.set(settingsPageAtom, "voice")}
@@ -31,15 +31,14 @@ export function TranscriptionFailure({
         >
           Voice settings
         </button>
-      ) : (
-        <button
-          type="button"
-          onClick={() => void transcribeCall(registry, project, folder, callId)}
-          className={BUTTON}
-        >
-          Try again
-        </button>
       )}
+      <button
+        type="button"
+        onClick={() => void transcribeCall(registry, project, folder, callId)}
+        className={BUTTON}
+      >
+        Try again
+      </button>
     </div>
   );
 }

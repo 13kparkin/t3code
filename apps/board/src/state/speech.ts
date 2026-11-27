@@ -74,7 +74,7 @@ export const errorText = (cause: unknown) =>
 /** Reads the status while something shows it. Holds why the read failed, or null. */
 export const speechCheckAtom = Atom.family((environmentId: EnvironmentId) =>
   Atom.make((get): string | null => {
-    readSpeechStatus(get.registry, environmentId).then(
+    void readSpeechStatus(get.registry, environmentId).then(
       () => get.setSelf(null),
       (cause) => get.setSelf(errorText(cause)),
     );
