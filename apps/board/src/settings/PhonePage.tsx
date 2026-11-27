@@ -1,6 +1,6 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import { runAtomCommand } from "@t3tools/client-runtime/state/runtime";
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { AuthSessionId, EnvironmentId } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 import { AsyncResult } from "effect/reactivity";
 import { useContext, useState } from "react";
@@ -46,7 +46,7 @@ export function PhonePage({ environmentId }: { environmentId: EnvironmentId }) {
     } else setFailure(failureText(result));
   };
 
-  const revoke = async (sessionId: (typeof phones)[number]["sessionId"]) => {
+  const revoke = async (sessionId: AuthSessionId) => {
     setBusy(sessionId);
     setFailure(null);
     const result = await runAtomCommand(
