@@ -24,13 +24,16 @@ export function NetworkAccessRow() {
   const access = useAtomValue(networkAccessAtom);
   const [asking, setAsking] = useState<boolean | null>(null);
   const [applying, setApplying] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
 
   const apply = async (enabled: boolean) => {
     setAsking(null);
+    setFailure(null);
     setApplying(true);
     const next = await bridge?.setNetworkAccess(enabled);
     setApplying(false);
-    if (next !== undefined) registry.set(networkAccessAtom, next);
+    if (next?.ok === true) registry.set(networkAccessAtom, next);
+    else if (next !== undefined) setFailure(next.detail);
   };
 
   if (bridge === undefined) return null;
@@ -45,13 +48,15 @@ export function NetworkAccessRow() {
             ? access.detail
             : access.hostOverride !== null
               ? `T3CODE_HOST=${access.hostOverride} in T3's service.env sets where the engine listens, and wins over this switch.`
-              : "Off by default. On lets devices on your local network and tailnet reach the engine, and each phone still needs a pairing link. On a local network address the link and the session travel unencrypted. A Tailscale address encrypts them."
+              : `${access.enabled ? "On. Devices on your local network and tailnet can reach the engine." : "Off. On lets devices on your local network and tailnet reach the engine."} Each phone still needs a pairing link. On a local network address the link and the session travel unencrypted. A Tailscale address encrypts them.`
       }
       control={
         <Switch
           label="Network access"
           checked={asking ?? enabled}
-          disabled={applying || asking !== null || access?.ok !== true}
+          disabled={
+            applying || asking !== null || access?.ok !== true || access.hostOverride !== null
+          }
           onChange={setAsking}
         />
       }
@@ -71,6 +76,11 @@ export function NetworkAccessRow() {
         </div>
       )}
       {applying && <p className="text-xs text-faint">Restarting T3's service.</p>}
+      {failure !== null && (
+        <p role="alert" className="text-xs break-words text-red-400">
+          {failure}
+        </p>
+      )}
     </SettingsRow>
   );
 }

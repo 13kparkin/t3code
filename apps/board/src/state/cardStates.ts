@@ -11,7 +11,7 @@ export interface ArchivedCard {
 }
 
 export interface CardSplit {
-  /** The model without archived tickets or archived ticketless agents. */
+  /** The model without archived tickets. */
   readonly model: BoardModel;
   /** Ticketless agents by the lane `agentLane` gives them. */
   readonly agents: Readonly<Record<StageLane, ReadonlyArray<AgentView>>>;
@@ -59,10 +59,10 @@ export function splitCards(
   ];
   return {
     model: {
+      ...model,
       lanes: Record.map(model.lanes, (views) =>
         views.filter((view) => states[view.ticket.key] !== "archived"),
       ),
-      unassigned: model.unassigned.filter((agent) => states[agent.threadId] !== "archived"),
     },
     agents: {
       todo: model.unassigned.filter(inLane("todo")),

@@ -5,7 +5,7 @@ import { type MouseEvent, type ReactNode, useContext, useRef, useState } from "r
 import { agentFile, dropOnComposer } from "../chat/cardAttachment";
 import type { FreeAgent } from "../domain/board";
 import type { AgentView, BoardModel } from "../state/boardModel";
-import { agentRowCounts, freeAgentLabel } from "../state/cardStates";
+import { freeAgentLabel } from "../state/cardStates";
 import { usePrContext } from "../state/prStatus";
 import type { TicketChoice } from "../browser/panel";
 import { laneKey, saveFrameOrder, toggleFolded } from "../state/boardUi";
@@ -62,6 +62,7 @@ export function Lanes({
   onRemoveAddition,
   agents,
   doneFree,
+  agentRows,
   onCardMenu,
   now,
 }: {
@@ -77,6 +78,7 @@ export function Lanes({
   onRemoveAddition: (id: string) => void;
   agents: Readonly<Record<StageLane, ReadonlyArray<AgentView>>>;
   doneFree: ReadonlyArray<FreeAgent>;
+  agentRows: Readonly<Record<StageLane, number>>;
   onCardMenu: (event: MouseEvent, key: string, label: string, ticket: boolean) => void;
   now: number;
 }) {
@@ -84,7 +86,6 @@ export function Lanes({
   const additions = new Map(usePrContext().additions.map((item) => [item.id, item]));
   const [drag, setDrag] = useState<{ key: string; dy: number } | null>(null);
   const rowPress = useRef<{ x: number; y: number; moved: boolean } | null>(null);
-  const agentRows = agentRowCounts({ agents, doneFree });
   const views = new Map(
     Object.values(model.lanes)
       .flat()

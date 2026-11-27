@@ -385,6 +385,7 @@ export function BoardScreen({
                 onRemoveAddition={(id) => changeHidden((ids) => [...ids, id])}
                 agents={cards.agents}
                 doneFree={cards.doneFree}
+                agentRows={agentRows}
                 onCardMenu={openCardMenu}
                 now={now}
               />

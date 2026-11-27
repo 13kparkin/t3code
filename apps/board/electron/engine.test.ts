@@ -33,6 +33,7 @@ class FakeWsl {
   rejectEveryToken = false;
   lan = false;
   hasStatus = true;
+  failUp = false;
   readonly serviceEngine: RuntimeFile = { pid: 7001, origin: "http://127.0.0.1:3773" };
   mints = 0;
   installs = 0;
@@ -72,6 +73,7 @@ class FakeWsl {
       }
       const up = / up --(no-)?lan --yes/.exec(script);
       if (up !== null) {
+        if (this.failUp) return { exitCode: 1, stdout: "", stderr: "Service setup failed" };
         this.lan = up[1] === undefined;
         this.serve(this.serviceEngine, this.t3Version);
         return ok();
@@ -378,6 +380,23 @@ describe("engine network access", () => {
       });
     },
   );
+
+  it("Given t3 up fails, when the board sets network access, then it says why and rejoins the engine", async () => {
+    const { wsl, engine } = setup();
+    wsl.failUp = true;
+    wsl.serve(wsl.serviceEngine);
+    await engine.start();
+
+    expect(await engine.setNetworkAccess(true)).toEqual({
+      ok: false,
+      detail: "t3 up failed: Service setup failed",
+    });
+    expect(engine.state()).toEqual({
+      phase: "ready",
+      origin: wsl.serviceEngine.origin,
+      source: "service",
+    });
+  });
 
   it("Given a t3 with no status command, when the board reads network access, then it says so", async () => {
     const { wsl, engine } = setup();

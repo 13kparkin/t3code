@@ -76,6 +76,8 @@ const URL_ENGINE_ACCESS: NetworkAccess = {
   detail: "AGENT_BOARD_ENGINE_URL names this engine, so set its network access where it runs.",
 };
 const NO_T3: NetworkAccess = { ok: false, detail: "T3 is not installed in WSL." };
+// The WSL runner and `run` reject only with an Error.
+const accessFailed = (error: Error): NetworkAccess => ({ ok: false, detail: error.message });
 
 /** The release number in a `t3 --version` line. */
 const releaseOf = (line: string): string => /\d+\.\d+\.\d+\S*/.exec(line)?.[0] ?? line.trim();
@@ -327,17 +329,12 @@ export function createEngine(deps: EngineDeps): Engine {
     const cli = await resolveCli();
     if (cli === null) return NO_T3;
     setState({ phase: "starting" });
-    try {
-      await run(
-        `${cli.command} up ${enabled ? "--lan" : "--no-lan"} --yes ${baseDirArg} </dev/null`,
-        "t3 up",
-      );
-    } catch (error) {
-      await joinService();
-      return { ok: false, detail: error instanceof Error ? error.message : String(error) };
-    }
+    const failure = await run(
+      `${cli.command} up ${enabled ? "--lan" : "--no-lan"} --yes ${baseDirArg} </dev/null`,
+      "t3 up",
+    ).then(() => null, accessFailed);
     await joinService();
-    return networkAccess();
+    return failure ?? networkAccess();
   };
 
   return {
@@ -363,7 +360,7 @@ export function createEngine(deps: EngineDeps): Engine {
       }
     },
     token: () => (issuing ??= issueToken().finally(() => (issuing = null))),
-    networkAccess,
-    setNetworkAccess,
+    networkAccess: () => networkAccess().catch(accessFailed),
+    setNetworkAccess: (enabled) => setNetworkAccess(enabled).catch(accessFailed),
   };
 }

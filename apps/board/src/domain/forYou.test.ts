@@ -195,6 +195,7 @@ describe("answering a card", () => {
   it.each([
     ["an answer with no period", "approve"],
     ["an answer that ends in one", "approve."],
+    ["an answer that ends in an ellipsis", "approve..."],
   ])(
     "Given %s, when the card is sent, then its line has one period after the answer",
     (_name, answer) => {
