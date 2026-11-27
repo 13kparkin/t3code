@@ -10,8 +10,12 @@ import { Atom, type AtomRegistry } from "effect/reactivity";
 
 /** It has no file write, so `foryou.jsonl` stays the orchestrator's. */
 export interface ForYouEngine {
-  /** Sends `text` to the board's orchestrator as the user. Resolves to the failure text, or null once sent. */
-  readonly message: (text: string) => Promise<string | null>;
+  /**
+   * Sends a message to the board's orchestrator as the user. `text` runs only once the orchestrator
+   * can take it, so nothing it does happens for a message that cannot go. Resolves to the failure
+   * text, or null once sent.
+   */
+  readonly message: (text: () => Promise<string>) => Promise<string | null>;
   readonly respondApproval: (
     request: EngineRequest,
     decision: "accept" | "decline",
@@ -71,17 +75,22 @@ export async function answerItem(
   card: FileCard,
   answer: ForYouAnswer,
 ): Promise<string | null> {
-  setSent(target, card, answerLabel(answer));
   const { item } = card;
   let result: string | undefined;
   let failure: string | null;
   try {
-    let reply = answer;
-    if (item.kind === "tracker_write" && answer.type === "choice" && answer.choice === "approve") {
-      result = await target.engine.trackerCall(trackerCall(item.write, target.projectId));
-      reply = { ...answer, result };
-    }
-    failure = await target.engine.message(forYouMessage(card.id, reply));
+    failure = await target.engine.message(async () => {
+      setSent(target, card, answerLabel(answer));
+      if (
+        item.kind === "tracker_write" &&
+        answer.type === "choice" &&
+        answer.choice === "approve"
+      ) {
+        result = await target.engine.trackerCall(trackerCall(item.write, target.projectId));
+        return forYouMessage(card.id, { ...answer, result });
+      }
+      return forYouMessage(card.id, answer);
+    });
   } catch (error) {
     failure = error instanceof Error ? error.message : String(error);
   }

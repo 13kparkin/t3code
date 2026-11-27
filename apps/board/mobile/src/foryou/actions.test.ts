@@ -44,11 +44,15 @@ const FILE = [
   .map((item) => JSON.stringify(item))
   .join("\n");
 
-function setup(sendFailure: string | null = null) {
+function setup({
+  notReady = null,
+  sendFailure = null,
+}: { notReady?: string | null; sendFailure?: string | null } = {}) {
   const calls: Array<string> = [];
   const engine: ForYouEngine = {
     message: async (text) => {
-      calls.push(`message: ${text}`);
+      if (notReady !== null) return notReady;
+      calls.push(`message: ${await text()}`);
       return sendFailure;
     },
     respondApproval: async (request, decision) => {
@@ -97,10 +101,27 @@ describe("answerItem", () => {
   });
 
   it("returns the card to open with the failure text when the message does not go", async () => {
-    const board = setup("Connection lost.");
+    const board = setup({ sendFailure: "Connection lost." });
     expect(await board.answer("m1", { type: "choice", choice: "approve" })).toBe(
       "Connection lost.",
     );
     expect(board.stateOf("m1")).toBe("open");
+  });
+
+  it("keeps a card Sent when its tracker change was made but the message did not go", async () => {
+    const board = setup({ sendFailure: "Connection lost." });
+    expect(await board.answer("t1", { type: "choice", choice: "approve" })).toBe(
+      'Connection lost. The tracker change was already made: Moved 12 to "closed"',
+    );
+    expect(board.stateOf("t1")).toBe("sent");
+  });
+
+  it("makes no tracker change when the orchestrator cannot take the message", async () => {
+    const board = setup({ notReady: "Start this board's orchestrator before answering." });
+    expect(await board.answer("t1", { type: "choice", choice: "approve" })).toBe(
+      "Start this board's orchestrator before answering.",
+    );
+    expect(board.calls).toEqual([]);
+    expect(board.stateOf("t1")).toBe("open");
   });
 });

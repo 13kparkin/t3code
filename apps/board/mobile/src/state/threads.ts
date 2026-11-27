@@ -47,7 +47,7 @@ export function forYouEngine(
             message: {
               messageId: MessageId.make(ExpoCrypto.randomUUID()),
               role: "user",
-              text,
+              text: await text(),
               attachments: [],
             },
             runtimeMode: thread.runtimeMode,
