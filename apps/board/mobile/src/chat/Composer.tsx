@@ -2,9 +2,10 @@ import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
 import { useTheme } from "@react-navigation/native";
 import { useContext, useState } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Text, TextInput, View } from "react-native";
 
 import { connectedEnvironmentAtom } from "../board/files";
+import { ChoiceButton } from "../foryou/ChoiceButton";
 import { forYouEngine, stopTurn } from "../state/threads";
 import { styles } from "../styles";
 
@@ -25,35 +26,22 @@ export function Composer({
   const [error, setError] = useState<string | null>(null);
   const text = draft.trim();
 
+  // A command sent over a dropped socket waits for it with no sign, so the composer refuses it up front.
   const run = async (action: () => Promise<string | null>, onDone?: () => void) => {
+    if (!connected) {
+      setError("Not connected to the engine. Try again once the header reads Connected.");
+      return;
+    }
     setBusy(true);
     setError(null);
-    try {
-      const failure = await action();
-      if (failure === null) onDone?.();
-      else setError(failure);
-    } finally {
-      setBusy(false);
-    }
+    const failure = await action();
+    setBusy(false);
+    if (failure === null) onDone?.();
+    else setError(failure);
   };
-
-  // A turn sent over a dropped socket waits for it with no sign, so the draft stays for a later send.
-  const send = () =>
-    run(
-      async () =>
-        connected
-          ? forYouEngine(registry, environmentId, threadId).message(async () => text)
-          : "Not connected to the engine. The box keeps your message. Send it again once the header reads Connected.",
-      () => setDraft(""),
-    );
 
   return (
     <View style={styles.composer}>
-      {error !== null && (
-        <Text accessibilityRole="alert" style={styles.error}>
-          {error}
-        </Text>
-      )}
       <View style={styles.composerRow}>
         <TextInput
           value={draft}
@@ -70,25 +58,33 @@ export function Composer({
           ]}
         />
         {live ? (
-          <Pressable
-            accessibilityRole="button"
+          <ChoiceButton
+            primary
             disabled={busy}
             onPress={() => void run(() => stopTurn(registry, environmentId, threadId))}
-            style={[styles.button, busy && styles.muted]}
           >
-            <Text style={styles.buttonText}>Stop</Text>
-          </Pressable>
+            Stop
+          </ChoiceButton>
         ) : (
-          <Pressable
-            accessibilityRole="button"
+          <ChoiceButton
+            primary
             disabled={busy || text === ""}
-            onPress={() => void send()}
-            style={[styles.button, (busy || text === "") && styles.muted]}
+            onPress={() =>
+              void run(
+                () => forYouEngine(registry, environmentId, threadId).message(async () => text),
+                () => setDraft(""),
+              )
+            }
           >
-            <Text style={styles.buttonText}>{busy ? "Sending" : "Send"}</Text>
-          </Pressable>
+            {busy ? "Sending" : "Send"}
+          </ChoiceButton>
         )}
       </View>
+      {error !== null && (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {error}
+        </Text>
+      )}
     </View>
   );
 }

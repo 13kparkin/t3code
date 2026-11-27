@@ -2,7 +2,7 @@ import type { StartThreadTurnInput } from "@t3tools/client-runtime/operations";
 import type { MessageId, ThreadId } from "@t3tools/contracts";
 import { Atom } from "effect/reactivity";
 
-export interface CodeSpan {
+interface CodeSpan {
   readonly code: boolean;
   readonly text: string;
 }
