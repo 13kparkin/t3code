@@ -56,12 +56,20 @@ function stateLine({ card, state, detail }: CardView): string | null {
   }
 }
 
+const content = (card: ForYouCard) =>
+  card.origin === "file"
+    ? JSON.stringify({ ...card.item, status: undefined, resolution: undefined })
+    : card.id;
+
+/** `shown` is the card when the sheet opened. If the file rewrites it, the answer buttons lock. */
 export function CardSheet({
   view,
+  shown,
   target,
   onClose,
 }: {
   view: CardView;
+  shown: ForYouCard;
   target: ForYouTarget;
   onClose: () => void;
 }) {
@@ -69,7 +77,8 @@ export function CardSheet({
   const text = { color: colors.text };
   const [error, setError] = useState<string | null>(null);
   const { card, state } = view;
-  const sent = state === "sent";
+  const changed = content(card) !== content(shown);
+  const locked = state === "sent" || changed;
   const done = state === "resolved";
   const status = stateLine(view);
 
@@ -79,7 +88,7 @@ export function CardSheet({
       card.request.kind === "secret" ? (
         <Text style={text}>Answer on the desktop.</Text>
       ) : (
-        <ApprovalBody target={target} card={card} sent={sent} onError={setError} />
+        <ApprovalBody target={target} card={card} sent={locked} onError={setError} />
       );
   } else {
     const { item } = card;
@@ -111,7 +120,7 @@ export function CardSheet({
           !done && (
             <ItemActions
               item={item}
-              sent={sent}
+              sent={locked}
               send={(answer) => {
                 setError(null);
                 void answerItem(target, card, answer).then(setError);
@@ -142,6 +151,11 @@ export function CardSheet({
             <Text style={[styles.title, text]}>{cardTitle(card)}</Text>
             {body}
             {status !== null && <Text style={[styles.small, text]}>{status}</Text>}
+            {changed && (
+              <Text accessibilityRole="alert" style={styles.error}>
+                This card changed while open. Close it and open it again to answer.
+              </Text>
+            )}
             {error !== null && (
               <Text accessibilityRole="alert" style={styles.error}>
                 {error}

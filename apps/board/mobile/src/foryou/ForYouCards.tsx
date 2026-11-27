@@ -1,4 +1,4 @@
-import { cardTitle, cardViews } from "@agent-board/app/domain/forYou";
+import { cardTitle, cardViews, type ForYouCard } from "@agent-board/app/domain/forYou";
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import { LegendList } from "@legendapp/list/react-native";
 import { useTheme } from "@react-navigation/native";
@@ -45,8 +45,8 @@ export function ForYouCards({ choice }: { choice: BoardChoice }) {
     }),
     [registry, choice, orchestratorThreadId],
   );
-  const [open, setOpen] = useState<string | null>(null);
-  const openView = views.find((view) => view.card.id === open) ?? null;
+  const [open, setOpen] = useState<ForYouCard | null>(null);
+  const openView = views.find((view) => view.card.id === open?.id) ?? null;
   const problems = list?.problems.length ?? 0;
   return (
     <>
@@ -71,7 +71,7 @@ export function ForYouCards({ choice }: { choice: BoardChoice }) {
         renderItem={({ item }) => (
           <Pressable
             accessibilityRole="button"
-            onPress={() => setOpen(item.card.id)}
+            onPress={() => setOpen(item.card)}
             style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
           >
             <Text style={[styles.bold, { color: colors.text }]} numberOfLines={2}>
@@ -88,8 +88,8 @@ export function ForYouCards({ choice }: { choice: BoardChoice }) {
           </Pressable>
         )}
       />
-      {openView !== null && (
-        <CardSheet view={openView} target={target} onClose={() => setOpen(null)} />
+      {open !== null && openView !== null && (
+        <CardSheet view={openView} shown={open} target={target} onClose={() => setOpen(null)} />
       )}
     </>
   );
