@@ -379,6 +379,31 @@ export const cardTitle = (card: ForYouCard): string => {
     : `${threadTitle} needs a secret`;
 };
 
+const KIND_LABEL = {
+  merge_approval: "Merge approval",
+  question: "Question",
+  ticket_draft: "Ticket draft",
+  tracker_write: "Tracker write",
+  role_target: "Role change",
+  gate: "Gate",
+  read: "Read",
+  resume: "Resume",
+} as const satisfies Record<ForYouItem["kind"], string>;
+
+export const CARD_STATE = {
+  open: { label: "Open", chip: "bg-amber-500/15 text-amber-300" },
+  sent: { label: "Sent", chip: "bg-sky-500/15 text-sky-300" },
+  held: { label: "Held", chip: "bg-hover text-muted" },
+  resolved: { label: "Resolved", chip: "bg-emerald-500/15 text-emerald-300" },
+} as const satisfies Record<CardState, { label: string; chip: string }>;
+
+export const cardKindLabel = (card: ForYouCard): string =>
+  card.origin === "file"
+    ? KIND_LABEL[card.item.kind]
+    : card.request.kind === "approval"
+      ? "Approval"
+      : "Secret";
+
 export interface BoardOpenItems {
   readonly projectId: string;
   readonly projectName: string;

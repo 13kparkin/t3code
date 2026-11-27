@@ -1,9 +1,10 @@
+import { glanceLines } from "@agent-board/app/domain/glance";
 import { evaluateReadiness } from "@agent-board/app/domain/readiness";
 import { STAGE_LABEL, type Ticket } from "@agent-board/app/domain/ticket";
-import { useTheme } from "@react-navigation/native";
-import { Linking, Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { Linking, Modal, Pressable, ScrollView, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
+import { AppText } from "../AppText";
 import { styles } from "../styles";
 
 function fileReadiness(ticket: Ticket, tickets: ReadonlyArray<Ticket>) {
@@ -25,65 +26,71 @@ function fileReadiness(ticket: Ticket, tickets: ReadonlyArray<Ticket>) {
 export function TicketSheet({
   ticket,
   tickets,
+  decisions,
   onClose,
 }: {
   ticket: Ticket;
   tickets: ReadonlyArray<Ticket>;
+  decisions: string | null;
   onClose: () => void;
 }) {
-  const { colors } = useTheme();
-  const text = { color: colors.text };
   const pr = ticket.pr == null ? null : String(ticket.pr).trim();
   return (
     <Modal animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaProvider>
-        <SafeAreaView style={[styles.fill, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={styles.sheet}>
           <View style={[styles.header, styles.sheetTop]}>
-            <Text style={[styles.headerText, styles.muted, text]}>
+            <AppText style={[styles.headerText, styles.muted]}>
               {ticket.key} · {STAGE_LABEL[ticket.stage]}
-            </Text>
+            </AppText>
             <Pressable accessibilityRole="button" onPress={onClose}>
-              <Text style={styles.link}>Close</Text>
+              <AppText style={styles.link}>Close</AppText>
             </Pressable>
           </View>
           <ScrollView contentContainerStyle={[styles.body, styles.readable]}>
-            <Text style={[styles.title, text]}>{ticket.title}</Text>
+            <AppText style={styles.title}>{ticket.title}</AppText>
+            {glanceLines({ ticket, tickets, size: null, smoke: null, decisions }).map((line) => (
+              <AppText key={line.label} style={styles.small}>
+                <AppText style={styles.muted}>{line.label}: </AppText>
+                {line.text}
+              </AppText>
+            ))}
             {ticket.summary != null && (
               <View>
-                <Text style={[styles.bold, text]}>Summary</Text>
-                <Text style={text}>{ticket.summary}</Text>
+                <AppText style={styles.bold}>Summary</AppText>
+                <AppText>{ticket.summary}</AppText>
               </View>
             )}
             {ticket.why != null && (
               <View>
-                <Text style={[styles.bold, text]}>Why</Text>
-                <Text style={text}>{ticket.why}</Text>
+                <AppText style={styles.bold}>Why</AppText>
+                <AppText>{ticket.why}</AppText>
               </View>
             )}
             <View>
-              <Text style={[styles.bold, text]}>Readiness</Text>
+              <AppText style={styles.bold}>Readiness</AppText>
               {fileReadiness(ticket, tickets).map((condition) => (
-                <Text key={condition.key} style={condition.met ? text : styles.error}>
+                <AppText key={condition.key} style={condition.met ? undefined : styles.error}>
                   {condition.met ? "✓" : "✗"} {condition.label}
                   {condition.missing === null ? "" : `. ${condition.missing}`}
-                </Text>
+                </AppText>
               ))}
-              <Text style={[styles.small, styles.muted, text]}>
+              <AppText style={[styles.small, styles.muted]}>
                 CI and evidence checks show on the desktop.
-              </Text>
+              </AppText>
             </View>
             {pr !== null && (
               <View>
-                <Text style={[styles.bold, text]}>Pull request</Text>
+                <AppText style={styles.bold}>Pull request</AppText>
                 {/^https?:\/\//.test(pr) ? (
                   <Pressable
                     accessibilityRole="link"
                     onPress={() => void Linking.openURL(pr).catch(() => undefined)}
                   >
-                    <Text style={styles.link}>{pr}</Text>
+                    <AppText style={styles.link}>{pr}</AppText>
                   </Pressable>
                 ) : (
-                  <Text style={text}>#{pr.replace(/^#/, "")}</Text>
+                  <AppText>#{pr.replace(/^#/, "")}</AppText>
                 )}
               </View>
             )}

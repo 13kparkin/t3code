@@ -1,15 +1,14 @@
 import type { ForYouCard } from "@agent-board/app/domain/forYou";
 import { useAtomValue } from "@effect/atom-react";
-import { useTheme } from "@react-navigation/native";
 import { derivePendingThreadRequests } from "@t3tools/client-runtime/state/thread-requests";
 import { EMPTY_ENVIRONMENT_THREAD_STATE } from "@t3tools/client-runtime/state/threads";
 import { ThreadId } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import { AsyncResult } from "effect/reactivity";
 import { useMemo } from "react";
-import { Text } from "react-native";
 
 import { environmentThreads } from "../state/threads";
+import { AppText } from "../AppText";
 import { styles } from "../styles";
 import { answerApproval, type ForYouTarget } from "./actions";
 import { ChoiceButton } from "./ChoiceButton";
@@ -26,8 +25,6 @@ export function ApprovalBody({
   sent: boolean;
   onError: (error: string | null) => void;
 }) {
-  const { colors } = useTheme();
-  const text = { color: colors.text };
   const { request } = card;
   const thread = useAtomValue(
     environmentThreads.stateAtom(target.environmentId, ThreadId.make(request.threadId)),
@@ -51,13 +48,13 @@ export function ApprovalBody({
   const detail = approval?.detail ?? approval?.reason;
   return (
     <>
-      <Text style={[styles.small, text]}>
+      <AppText style={styles.small}>
         {approval === undefined ? "Loading the request" : `Approval for: ${approval.requestKind}`}
-      </Text>
+      </AppText>
       {detail !== undefined && (
-        <Text selectable style={[styles.card, text, { borderColor: colors.border }]}>
+        <AppText selectable style={styles.card}>
           {detail}
-        </Text>
+        </AppText>
       )}
       <ChoiceButton
         primary

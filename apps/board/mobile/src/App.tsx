@@ -1,5 +1,6 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { DarkTheme, DefaultTheme, NavigationContainer } from "@react-navigation/native";
+import { COLORS } from "@agent-board/app/theme/tokens";
+import { NavigationContainer } from "@react-navigation/native";
 import type { Icon } from "@tabler/icons-react-native/types";
 /* Package-root imports eagerly register the entire Tabler icon set in Metro. */
 import IconInbox from "@tabler/icons-react-native/IconInbox";
@@ -7,7 +8,7 @@ import IconLayoutKanban from "@tabler/icons-react-native/IconLayoutKanban";
 import IconMessageCircle from "@tabler/icons-react-native/IconMessageCircle";
 import IconRobot from "@tabler/icons-react-native/IconRobot";
 import { useAtomValue } from "@effect/atom-react";
-import { StatusBar, useColorScheme } from "react-native";
+import { StatusBar } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AgentsScreen } from "./board/AgentsScreen";
@@ -18,6 +19,7 @@ import { PairScreen } from "./connection/PairScreen";
 import { EngineHeader } from "./EngineHeader";
 import { forYouOpenCountAtom } from "./foryou/forYouAtoms";
 import { ForYouScreen } from "./foryou/ForYouScreen";
+import { navTheme, styles } from "./styles";
 
 const Tab = createBottomTabNavigator();
 
@@ -26,18 +28,23 @@ const tabIcon =
   ({ color, size }: { color: string; size: number }) => <TabIcon color={color} size={size} />;
 
 export default function App() {
-  const dark = useColorScheme() === "dark";
   const status = useAtomValue(engineStatusAtom).kind;
   const openCount = useAtomValue(forYouOpenCountAtom);
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={dark ? "light-content" : "dark-content"} />
-      <NavigationContainer theme={dark ? DarkTheme : DefaultTheme}>
+    <SafeAreaProvider style={styles.sheet}>
+      <StatusBar barStyle="light-content" />
+      <NavigationContainer theme={navTheme}>
         <EngineHeader />
         {status === "unpaired" ? (
           <PairScreen />
         ) : status === "loading" ? null : (
-          <Tab.Navigator screenOptions={{ headerShown: false }}>
+          <Tab.Navigator
+            screenOptions={{
+              headerShown: false,
+              tabBarInactiveTintColor: COLORS.faint,
+              tabBarBadgeStyle: { color: COLORS.bg },
+            }}
+          >
             <Tab.Screen
               name="Board"
               component={BoardScreen}

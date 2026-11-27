@@ -1,20 +1,21 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
-import { useTheme } from "@react-navigation/native";
+import { COLORS, PALETTE } from "@agent-board/app/theme/tokens";
 import { useContext } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { AppText } from "./AppText";
 import { engineStatusAtom, unpair } from "./connection/engine";
 import type { EngineStatus } from "./connection/status";
 import { styles } from "./styles";
 
 const DOT = {
-  loading: "#9CA3AF",
-  unpaired: "#9CA3AF",
-  connecting: "#F5C451",
-  reconnecting: "#F5C451",
-  connected: "#22C55E",
-  refused: "#DC2626",
+  loading: COLORS.offline,
+  unpaired: COLORS.offline,
+  connecting: PALETTE["amber-400"],
+  reconnecting: PALETTE["amber-400"],
+  connected: PALETTE["emerald-400"],
+  refused: PALETTE["red-400"],
 } satisfies Record<EngineStatus["kind"], string>;
 
 function statusText(status: EngineStatus) {
@@ -35,25 +36,23 @@ function statusText(status: EngineStatus) {
 }
 
 export function EngineHeader() {
-  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const registry = useContext(RegistryContext);
   const status = useAtomValue(engineStatusAtom);
   return (
-    <View
-      style={[styles.header, { paddingTop: insets.top + 8, backgroundColor: colors.card }]}
-      accessibilityLiveRegion="polite"
-    >
+    <View style={[styles.header, { paddingTop: insets.top + 8 }]} accessibilityLiveRegion="polite">
       <View style={[styles.dot, { backgroundColor: DOT[status.kind] }]} />
-      <Text style={[styles.headerText, { color: colors.text }]} numberOfLines={2}>
+      <AppText style={styles.headerText} numberOfLines={2}>
         {statusText(status)}
-      </Text>
+      </AppText>
       {"environmentId" in status && (
         <Pressable
           accessibilityRole="button"
           onPress={() => void unpair(registry, status.environmentId)}
         >
-          <Text style={styles.link}>{status.kind === "refused" ? "Pair again" : "Unpair"}</Text>
+          <AppText style={styles.link}>
+            {status.kind === "refused" ? "Pair again" : "Unpair"}
+          </AppText>
         </Pressable>
       )}
     </View>

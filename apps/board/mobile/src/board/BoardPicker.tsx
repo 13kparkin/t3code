@@ -1,8 +1,8 @@
 import { RegistryContext } from "@effect/atom-react";
-import { useTheme } from "@react-navigation/native";
 import { useContext } from "react";
-import { Pressable, ScrollView, Text } from "react-native";
+import { Pressable, ScrollView } from "react-native";
 
+import { AppText } from "../AppText";
 import { styles } from "../styles";
 import { type BoardChoice, pickedBoardAtom } from "./files";
 
@@ -13,7 +13,6 @@ export function BoardPicker({
   boards: ReadonlyArray<BoardChoice>;
   shown: BoardChoice;
 }) {
-  const { colors } = useTheme();
   const registry = useContext(RegistryContext);
   return (
     <ScrollView horizontal contentContainerStyle={styles.chips} style={styles.chipRow}>
@@ -25,14 +24,12 @@ export function BoardPicker({
             accessibilityRole="button"
             accessibilityState={{ selected: picked }}
             onPress={() => registry.set(pickedBoardAtom, choice.key)}
-            style={[styles.chip, { borderColor: picked ? colors.primary : colors.border }]}
+            style={[styles.chip, picked && styles.chipPicked]}
           >
-            <Text style={{ color: picked ? colors.primary : colors.text }}>
+            <AppText style={styles.bold}>
               {choice.listed.ok ? choice.listed.board.name : choice.listed.folder}
-            </Text>
-            <Text style={[styles.small, styles.muted, { color: colors.text }]}>
-              {choice.project.title}
-            </Text>
+            </AppText>
+            <AppText style={[styles.small, styles.faint]}>{choice.project.title}</AppText>
           </Pressable>
         );
       })}

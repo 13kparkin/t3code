@@ -3,11 +3,12 @@ import { useCallback, useRef, useState } from "react";
 
 import { ChatMarkdown } from "../chat/Markdown";
 import {
+  CARD_STATE,
+  cardKindLabel,
   cardTitle,
   type CardState,
   type CardView,
   describeRoleTarget,
-  type ForYouItem,
   sentLine,
 } from "../domain/forYou";
 import { describeTrackerWrite } from "../issues/issueLinks";
@@ -18,24 +19,6 @@ import { ItemActions } from "./ItemActions";
 import { MergeApprovalConditions } from "./MergeApprovalConditions";
 import { SecretBody } from "./SecretBody";
 import { useRevealRef } from "./Viewport";
-
-const KIND_LABEL = {
-  merge_approval: "Merge approval",
-  question: "Question",
-  ticket_draft: "Ticket draft",
-  tracker_write: "Tracker write",
-  role_target: "Role change",
-  gate: "Gate",
-  read: "Read",
-  resume: "Resume",
-} as const satisfies Record<ForYouItem["kind"], string>;
-
-const STATE = {
-  open: { label: "Open", chip: "bg-amber-500/15 text-amber-300" },
-  sent: { label: "Sent", chip: "bg-sky-500/15 text-sky-300" },
-  held: { label: "Held", chip: "bg-hover text-muted" },
-  resolved: { label: "Resolved", chip: "bg-emerald-500/15 text-emerald-300" },
-} as const satisfies Record<CardState, { label: string; chip: string }>;
 
 export interface CardContext {
   readonly target: ForYouTarget;
@@ -86,13 +69,8 @@ export function ForYouCard({
   );
 
   const title = cardTitle(card);
-  const label =
-    card.origin === "file"
-      ? KIND_LABEL[card.item.kind]
-      : card.request.kind === "approval"
-        ? "Approval"
-        : "Secret";
-  const chip = STATE[state];
+  const label = cardKindLabel(card);
+  const chip = CARD_STATE[state];
   const sent = state === "sent";
 
   if (state === "resolved") {

@@ -18,19 +18,6 @@ export const LANE_LABEL = {
   done: "Done",
 } as const satisfies Record<LaneId, string>;
 
-/** Each stage's tag colour. */
-export const STAGE_TAGS = {
-  todo: { tone: "text-zinc-300" },
-  planned: { tone: "text-zinc-400" },
-  building: { tone: "text-blue-300" },
-  reviewing: { tone: "text-violet-300" },
-  verifying: { tone: "text-cyan-300" },
-  pr: { tone: "text-indigo-300" },
-  awaiting_approval: { tone: "text-orange-300" },
-  merged: { tone: "text-emerald-300" },
-  off_path: { tone: "text-red-300" },
-} as const satisfies Record<TicketStage, { readonly tone: string }>;
-
 /** A ticket sits in Running only while one of its agents is live, and an open ticket with none waits. */
 export function ticketLane(stage: TicketStage, live: boolean): StageLane {
   if (stage === "merged" || stage === "off_path") return "done";
