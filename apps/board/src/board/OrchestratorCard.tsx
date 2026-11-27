@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 
 import { useArtifacts } from "../artifacts/ArtifactsContext";
 import { type Addition, lineText } from "../domain/additions";
+import type { Doc } from "../domain/board";
 import { pickTemplate, SYSTEM_TEMPLATE } from "../domain/reviewTemplate";
 import { STAGE_LABEL, TICKET_STAGES } from "../domain/ticket";
 import { AddFromIssue } from "../issues/AddFromIssue";
@@ -41,6 +42,7 @@ export function OrchestratorCard({
   builders,
   hidden,
   additions,
+  docs,
   onChangeHidden,
   doneCount,
   todoAgents,
@@ -55,6 +57,8 @@ export function OrchestratorCard({
   hidden: ReadonlySet<string>;
   /** Every `additions.json` item, hidden ones too, so the menu can show them again. */
   additions: ReadonlyArray<Addition>;
+  /** The orchestrator's `docs.json` entries. */
+  docs: ReadonlyArray<Doc>;
   onChangeHidden: (change: (ids: ReadonlyArray<string>) => ReadonlyArray<string>) => void;
   /** Cards in the Done lane, shown or not. */
   doneCount: number;
@@ -77,7 +81,6 @@ export function OrchestratorCard({
   const custom = useAtomValue(reviewTemplatesAtom);
   const [pickError, setPickError] = useState<string | null>(null);
   const picked = pickTemplate(board.reviewTemplate, custom);
-  const docs = board.docs ?? [];
   const hiddenAdditions = board.hiddenAdditions ?? [];
   const context = usePrContext();
   const tickets = context.tickets.map((view) => view.ticket);
@@ -236,7 +239,7 @@ export function OrchestratorCard({
           </p>
           <ul data-scroll className="max-h-12 overflow-y-auto">
             {docs.map((doc) => (
-              <li key={doc.name} className="truncate text-[11px] text-muted">
+              <li key={`${doc.sentAt}:${doc.name}`} className="truncate text-[11px] text-muted">
                 {doc.name}
               </li>
             ))}

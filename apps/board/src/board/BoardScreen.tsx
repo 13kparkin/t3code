@@ -104,6 +104,7 @@ export function BoardScreen({
     decisions,
     additions,
     overlay,
+    docs,
   } = useBoardView(project, listed);
   const cardStates = board.cardStates ?? NO_STATES;
   const freeAgents = board.freeAgents ?? NO_FREE;
@@ -342,6 +343,7 @@ export function BoardScreen({
                     builders={builders}
                     hidden={hidden}
                     additions={additions}
+                    docs={docs}
                     onChangeHidden={changeHidden}
                     doneCount={
                       agentRows.done + model.lanes.merged.length + model.lanes.off_path.length

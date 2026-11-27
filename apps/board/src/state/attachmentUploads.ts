@@ -18,8 +18,7 @@ import type { AtomRegistry } from "effect/reactivity";
 import { attachmentInputs, sentAttachment } from "../chat/attachments";
 import { connectionAtomRuntime } from "../connection/runtime";
 import { messageOrchestrator } from "../foryou/actions";
-import { appendDocs, type ValidBoard } from "../store/boardFiles";
-import { boardEngine, projectBoardsAtom } from "./boards";
+import type { ValidBoard } from "../store/boardFiles";
 import { environmentSession } from "./server";
 
 const attachmentEnvironment = createAttachmentEnvironmentAtoms(connectionAtomRuntime);
@@ -74,33 +73,10 @@ export async function uploadAttachments(
   return attachments;
 }
 
-/** Lists the sent files among the board's docs in its `board.json`. Resolves to the failure text, or null once saved. */
-export async function recordDocs(
-  registry: AtomRegistry.AtomRegistry,
-  project: Pick<EnvironmentProject, "id" | "environmentId" | "workspaceRoot">,
-  listed: ValidBoard,
-  attachments: ReadonlyArray<ChatAttachment>,
-): Promise<string | null> {
-  try {
-    await appendDocs(
-      boardEngine(registry, project.environmentId).files,
-      project.workspaceRoot,
-      listed.folder,
-      attachments.map((attachment) => attachment.name),
-      new Date().toISOString(),
-    );
-    return null;
-  } catch (failure) {
-    return failure instanceof Error ? failure.message : String(failure);
-  } finally {
-    registry.refresh(projectBoardsAtom(project.id));
-  }
-}
-
 /** Sends the files to a board's orchestrator as its docs. Resolves to the failure text, or null once sent. */
 export async function addDocs(
   registry: AtomRegistry.AtomRegistry,
-  project: Pick<EnvironmentProject, "id" | "environmentId" | "workspaceRoot">,
+  project: Pick<EnvironmentProject, "environmentId">,
   listed: ValidBoard,
   files: ReadonlyArray<File>,
 ): Promise<string | null> {
@@ -115,7 +91,7 @@ export async function addDocs(
       files,
       checked.inputs,
     );
-    const failure = await messageOrchestrator(
+    return await messageOrchestrator(
       registry,
       project.environmentId,
       orchestratorThreadId,
@@ -123,7 +99,6 @@ export async function addDocs(
       undefined,
       attachments,
     );
-    return failure ?? (await recordDocs(registry, project, listed, attachments));
   } catch (failure) {
     return failure instanceof Error ? failure.message : String(failure);
   }

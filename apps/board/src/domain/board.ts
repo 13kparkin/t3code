@@ -11,6 +11,7 @@ export const DEFAULT_BUILDER_CAP = 2;
 const Text = Schema.String.check(Schema.isNonEmpty());
 
 const Doc = Schema.Struct({ name: Text, sentAt: Text });
+export type Doc = typeof Doc.Type;
 
 const RoleOverride = Schema.Struct({
   model: Text,
@@ -57,7 +58,7 @@ export const Board = Schema.Struct({
   builderCap: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
   /** The name of the board's review template. No value means the system template. */
   reviewTemplate: Schema.optionalKey(Text),
-  /** The files the user has sent the orchestrator as the board's docs, oldest first. */
+  /** Docs from before `docs.json`. The card shows them until the orchestrator copies them there once, and the schema keeps them so an app write cannot drop them first. */
   docs: Schema.optionalKey(Schema.Array(Doc)),
   /** The `additions.json` item ids the user hid. Only the app writes this. */
   hiddenAdditions: Schema.optionalKey(Schema.Array(Text)),
@@ -103,6 +104,19 @@ export function parseBoard(text: string): Result.Result<Board, BoardIssue> {
           : `board.json is not valid JSON or not a board: ${issues.map((issue) => issue.message).join("; ")}`,
     };
   });
+}
+
+const decodeDocsJson = Schema.decodeUnknownResult(Schema.fromJsonString(Schema.Array(Doc)));
+
+/** Decodes the orchestrator's `docs.json`, the files the user sent it as the board's docs. */
+export function parseDocs(
+  text: string,
+): Result.Result<ReadonlyArray<Doc>, { readonly message: string }> {
+  return Result.mapError(decodeDocsJson(text, { errors: "all" }), (error) => ({
+    message: `docs.json is invalid: ${formatIssues(error.issue)
+      .issues.map((issue) => `${issue.path?.join(".") || "(file)"} ${issue.message}`)
+      .join("; ")}`,
+  }));
 }
 
 export function serializeBoard(board: Board): string {

@@ -35,7 +35,6 @@ import { failureText } from "../settings/failureText";
 import { newId } from "../state/boards";
 import { engineConnectionAtom } from "../state/projects";
 import { engineProvidersAtom, serverEnvironment } from "../state/server";
-import { recordDocs } from "../state/attachmentUploads";
 import { threadKey, setThreadShown } from "../state/chatThread";
 import { cancelQueued, interruptTurn, startTurn, steerQueued } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
@@ -282,8 +281,6 @@ export function Composer({
       { reportFailure: false },
     );
     if (result._tag !== "Success") fail(pending.messageId, failureText(result));
-    else if (attachments.length > 0)
-      setError(await recordDocs(registry, project, listed, attachments));
   };
 
   const enqueue = (pending: PendingSend) => {
