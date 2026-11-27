@@ -72,6 +72,10 @@ describe("the orchestrator's standing rules and board facts", () => {
     expect(rules).toContain(
       "If `docs.json` is missing and `board.json` has `docs`, copy them into `docs.json` once.",
     );
+    expect(rules).toContain(
+      "Next, if `docs.json` is missing and `board.json` has `docs`, copy them into `docs.json` now, as the Docs section says.",
+    );
+    expect(rules).toContain("Do this in step 1 of How to work, before any other docs change.");
   });
 
   it("Given the registry, when the rules render, then every role is listed with its delegate_task arguments", () => {
