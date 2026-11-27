@@ -12,6 +12,7 @@
   "dependencies": {
     "@agent-board/app": "workspace:*",
     "@effect/atom-react": "catalog:",
+    "@legendapp/list": "catalog:",
     "@react-navigation/bottom-tabs": "7.21.0",
     "@react-navigation/native": "7.5.1",
     "@t3tools/client-runtime": "workspace:*",

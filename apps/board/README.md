@@ -72,11 +72,15 @@ It needs a clean checkout. It fetches upstream, runs `vp run check:changed` and 
 
 ## Phone app
 
-`apps/board/mobile` is the board's Android app, `@agent-board/phone`. It is an Expo app on the same Expo and React Native versions as T3's mobile app, and it reads the board's domain code from `@agent-board/app/domain/*`, the same files the desktop uses.
+`apps/board/mobile` is the board's Android app, `@agent-board/phone`. It is an Expo app on the same Expo and React Native versions as T3's mobile app, and it reads the board's domain code from `@agent-board/app/domain/*` and the chat timeline from `@agent-board/app/chat/*`, the same files the desktop uses.
 
 The phone pairs with the T3 engine over the local network or Tailscale. T3 Connect is not supported. To pair, open T3 Code on the PC, go to Settings, Connections, and add a client. Then scan its QR code with **Scan QR code**, paste its pairing link, or open an `agentboard-phone://pair?url=<pairing link>` link on the phone, which fills in the link. Then tap **Pair**. The phone never pairs from a link on its own, because any app can open that link. A pairing code works once, so a used link shows the engine's refusal.
 
-The header shows the engine's name and a dot for the connection. It reads Reconnecting while the network is down and reconnects by itself. When you revoke the phone's session in the desktop's Settings, Connections, the header shows the refusal and **Pair again**. **Unpair** forgets the engine. The Board tab lists the engine's projects that have a `.agentboard` folder.
+The header shows the engine's name and a dot for the connection. It reads Reconnecting while the network is down and reconnects by itself. When you revoke the phone's session in the desktop's Settings, Connections, the header shows the refusal and **Pair again**. **Unpair** forgets the engine.
+
+The **Board** tab shows one board's tickets grouped by stage, with a count on each stage. When the PC has more than one board, a row of board names at the top switches between them. Tap a ticket to see its summary, why, pull request link, and the readiness conditions that `tickets.json` decides. CI and evidence checks show only on the desktop. When `tickets.json` does not parse, a banner names the bad fields and the tab keeps the last tickets that parsed. The **Agents** tab lists the board's orchestrator and its agents, working ones first, each with its status. Tap one to read its messages and tool calls.
+
+The phone reads the board's files every 3 seconds while the Board tab is open and the app is in front. It stops when you switch tabs or leave the app. It never writes to the board folder.
 
 The phone keeps its session in Android's secure store and turns off Android backup, so the session never leaves the phone. A local network engine serves plain http, so pairing and the session travel unencrypted on that network, as they do for T3's own mobile app. A Tailscale address is encrypted end to end.
 

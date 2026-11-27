@@ -26,17 +26,13 @@ import {
   type FamilyThread,
   restoreBoard,
 } from "../store/boardArchive";
-import {
-  createBoard,
-  type ListedBoard,
-  listBoards,
-  type ProjectFiles,
-  type ValidBoard,
-} from "../store/boardFiles";
+import { createBoard, listBoards, type ProjectFiles, type ValidBoard } from "../store/boardFiles";
 import { createLocalState, type LocalState } from "../store/localState";
 import { ticketChoiceAtom } from "../browser/panel";
 import { closeAgentPanel } from "./agentPanel";
 import { closePage, showBoard } from "./filesView";
+import type { ListedBoard } from "../domain/board";
+import { isThreadWorking } from "../domain/threadWork";
 import { failureText } from "../settings/failureText";
 import {
   engineConnectionAtom,
@@ -78,27 +74,14 @@ export const newId = () =>
 
 const isProjectListEntriesError = Schema.is(ProjectListEntriesError);
 
-const LIVE_STATUSES: ReadonlySet<string> = new Set([
-  "queued",
-  "preparing",
-  "starting",
-  "running",
-  "waiting",
-]);
-
 type Shell = Pick<
   OrchestrationV2ThreadShell,
   "id" | "status" | "lineage" | "activityRunStatus" | "pendingBackgroundTasks"
 >;
 
-// An orchestrator's own run ends while its delegated tasks keep going, so the status alone says
-// nothing about them. The engine refuses an archive until the shell shows none of these.
 export const familyThread = (shell: Shell): FamilyThread => ({
   id: shell.id,
-  working:
-    LIVE_STATUSES.has(shell.status) ||
-    (shell.activityRunStatus ?? null) !== null ||
-    (shell.pendingBackgroundTasks?.length ?? 0) > 0,
+  working: isThreadWorking(shell),
   isRoot: shell.id === shell.lineage.rootThreadId,
 });
 

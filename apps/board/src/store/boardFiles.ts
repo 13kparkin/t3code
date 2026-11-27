@@ -6,7 +6,7 @@ import {
   type Board,
   BOARD_FILE,
   BOARDS_DIR,
-  type BoardIssue,
+  type ListedBoard,
   type CallEvent,
   type CardState,
   type FreeAgent,
@@ -33,10 +33,6 @@ export interface ProjectFiles {
   readonly read: (cwd: string, path: string) => Promise<string | null>;
   readonly write: (cwd: string, path: string, contents: string) => Promise<void>;
 }
-
-export type ListedBoard =
-  | { readonly ok: true; readonly folder: string; readonly board: Board }
-  | { readonly ok: false; readonly folder: string; readonly issue: BoardIssue };
 
 export type ValidBoard = Extract<ListedBoard, { readonly ok: true }>;
 

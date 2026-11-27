@@ -29,7 +29,8 @@ import {
 
 import { panelAtom } from "../browser/panel";
 import { baseInstanceId } from "../orchestrator/orchestratorInstance";
-import { NO_PICK, pickableInstances, type PickerValue, pickOf } from "../providers/providers";
+import type { PickerValue } from "../domain/picker";
+import { NO_PICK, pickableInstances, pickOf } from "../providers/providers";
 import { failureText } from "../settings/failureText";
 import { newId } from "../state/boards";
 import { engineConnectionAtom } from "../state/projects";

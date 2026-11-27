@@ -1,6 +1,6 @@
 import type { MessageId, ThreadId, TurnItemId } from "@t3tools/contracts";
 
-import type { PickerValue } from "../providers/providers";
+import type { PickerValue } from "../domain/picker";
 
 /** Where a user message stands on its way to the orchestrator, which the bubble shows until it is delivered. */
 export type Delivery = "sending" | "queued" | "steering" | "delivered" | "failed";

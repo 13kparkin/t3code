@@ -10,7 +10,8 @@ import { useAtomValue } from "@effect/atom-react";
 import { useColorScheme } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { BoardScreen } from "./BoardScreen";
+import { AgentsScreen } from "./board/AgentsScreen";
+import { BoardScreen } from "./board/BoardScreen";
 import { engineStatusAtom } from "./connection/engine";
 import { PairScreen } from "./connection/PairScreen";
 import { EngineHeader } from "./EngineHeader";
@@ -40,7 +41,7 @@ export default function App() {
             />
             <Tab.Screen
               name="Agents"
-              component={PlaceholderScreen}
+              component={AgentsScreen}
               options={{ tabBarIcon: tabIcon(IconRobot) }}
             />
             <Tab.Screen
