@@ -73,6 +73,7 @@ export function FamilyList({
         keyExtractor={(thread) => thread.id}
         extraData={colors}
         estimatedItemSize={72}
+        style={styles.readable}
         contentContainerStyle={styles.body}
         ListEmptyComponent={
           <Text style={[styles.muted, { color: colors.text }]}>

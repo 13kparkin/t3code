@@ -72,6 +72,7 @@ export function ThreadActivity({
             extraData={colors}
             estimatedItemSize={40}
             maintainScrollAtEnd
+            style={styles.readable}
             contentContainerStyle={styles.body}
             ListEmptyComponent={
               <Text

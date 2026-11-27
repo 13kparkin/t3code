@@ -12,6 +12,8 @@ export const styles = StyleSheet.create({
   dot: { borderRadius: 5, height: 10, width: 10 },
   link: { color: "#3B82F6", fontWeight: "600" },
   body: { gap: 12, padding: 16 },
+  // apps/mobile's Android reading width, so a foldable's inner screen keeps phone-length lines.
+  readable: { width: "100%", maxWidth: 720, alignSelf: "center" },
   fill: { flex: 1 },
   title: { fontSize: 18, fontWeight: "600" },
   muted: { opacity: 0.6 },

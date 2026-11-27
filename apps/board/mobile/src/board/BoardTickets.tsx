@@ -66,6 +66,7 @@ export function BoardTickets({ choice }: { choice: BoardChoice }) {
       <SectionList
         sections={sections}
         keyExtractor={(ticket) => ticket.key}
+        style={styles.readable}
         contentContainerStyle={styles.body}
         ListEmptyComponent={
           <Text style={[styles.muted, { color: colors.text }]}>This board has no tickets.</Text>
