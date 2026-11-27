@@ -1,20 +1,18 @@
-import { RegistryContext, useAtomValue } from "@effect/atom-react";
+import { useAtomValue } from "@effect/atom-react";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
-import { MoreHorizontal, Plus } from "lucide-react";
-import { type MouseEvent, useContext, useState } from "react";
+import { Circle, MoreHorizontal } from "lucide-react";
+import { type MouseEvent, useState } from "react";
 
 import { LANE_HEAD, LANE_WIDTH } from "../board/layout";
 import type { CallEvent, CardState } from "../domain/board";
 import {
   callNotesRequestsAtom,
   deleteAudio,
-  recordCall,
   recorderAtom,
-  startingCallsAtom,
-  transcribeCall,
   transcriptionsAtom,
 } from "../state/recorder";
 import { CALL_APPS, callAudio, transcribing } from "./recorder";
+import { TranscriptionFailure } from "./TranscriptionFailure";
 
 export const START = new Intl.DateTimeFormat(undefined, {
   weekday: "short",
@@ -25,31 +23,27 @@ export const START = new Intl.DateTimeFormat(undefined, {
 });
 
 /**
- * The calls recording or starting now and the next one, with the later ones behind a toggle, Done
+ * The call recording now and the calls just recorded, with any later ones behind a toggle, Done
  * calls marked. It stretches to the orchestrator card's height and scrolls inside.
  */
 export function CallCards({
   project,
   folder,
-  boardId,
   shown,
   later,
   states,
-  onAdd,
+  onRecord,
   onMenu,
 }: {
   project: EnvironmentProject;
   folder: string;
-  boardId: string;
   shown: ReadonlyArray<CallEvent>;
   later: ReadonlyArray<CallEvent>;
   states: Readonly<{ [key: string]: CardState }>;
-  onAdd: () => void;
+  onRecord: () => void;
   onMenu: (event: MouseEvent, call: CallEvent) => void;
 }) {
-  const registry = useContext(RegistryContext);
   const recorder = useAtomValue(recorderAtom);
-  const starting = useAtomValue(startingCallsAtom);
   const jobs = useAtomValue(transcriptionsAtom);
   const notes = useAtomValue(callNotesRequestsAtom);
   const [all, setAll] = useState(false);
@@ -80,20 +74,23 @@ export function CallCards({
               {all ? "Show less" : `${later.length} more`}
             </button>
           )}
-          <button
-            type="button"
-            aria-label="Add call"
-            onClick={onAdd}
-            className="grid size-5 place-items-center rounded text-faint hover:bg-hover hover:text-fg"
-          >
-            <Plus className="size-3.5" aria-hidden />
-          </button>
+          {recorder !== null && (
+            <button
+              type="button"
+              disabled={state?.status !== "idle"}
+              onClick={onRecord}
+              className="flex items-center gap-1 rounded px-1.5 text-[11px] text-muted hover:bg-hover hover:text-fg disabled:opacity-50"
+            >
+              <Circle className="size-2.5 fill-red-500 text-red-500" aria-hidden />
+              Record a call
+            </button>
+          )}
         </header>
         <ul
           data-scroll
           className="flex min-h-0 flex-col gap-1.5 overflow-y-auto px-3 pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {listed.length === 0 && <li className="text-[11px] text-faint">No calls coming up.</li>}
+          {listed.length === 0 && <li className="text-[11px] text-faint">No call recording.</li>}
           {listed.map((call) => {
             const done = states[call.id] === "done";
             const live = state?.status !== "idle" && state?.callId === call.id;
@@ -118,36 +115,11 @@ export function CallCards({
                       {done ? " · Done" : ""}
                     </p>
                   </div>
-                  {live ? (
+                  {live && (
                     <span className="flex shrink-0 items-center gap-1 text-[11px] text-red-400">
                       <span aria-hidden className="size-1.5 rounded-full bg-red-500" />
                       {state?.status === "starting" ? "Starting" : "Recording"}
                     </span>
-                  ) : (
-                    // v1 records Chrome only, the one app verified on Windows.
-                    recorder !== null &&
-                    call.app === "chrome" && (
-                      <>
-                        {starting.has(call.id) && (
-                          <span className="shrink-0 text-[11px] text-amber-300">Starting now</span>
-                        )}
-                        <button
-                          type="button"
-                          disabled={state?.status !== "idle"}
-                          onClick={() =>
-                            void recordCall(registry, {
-                              callId: call.id,
-                              boardId,
-                              title: call.title,
-                              app: call.app,
-                            })
-                          }
-                          className="shrink-0 rounded px-1.5 text-[11px] text-muted hover:bg-hover hover:text-fg disabled:opacity-50"
-                        >
-                          Record
-                        </button>
-                      </>
-                    )
                   )}
                   <button
                     type="button"
@@ -172,32 +144,28 @@ export function CallCards({
                       Audio on this PC · {audio.minutes} min
                       {audio.note === null ? "" : ` · ${audio.note}`}
                     </span>
+                    {!live && job?.status === "running" && (
+                      <span className="shrink-0 px-1.5 text-faint">{transcribing(job)}</span>
+                    )}
                     {!live && (
-                      <>
-                        <button
-                          type="button"
-                          disabled={job?.status === "running"}
-                          onClick={() => void transcribeCall(registry, project, folder, call.id)}
-                          className="shrink-0 rounded px-1.5 text-faint hover:bg-hover hover:text-fg disabled:hover:bg-transparent"
-                        >
-                          {job?.status === "running" ? transcribing(job) : "Transcribe"}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={job?.status === "running"}
-                          onClick={() => deleteAudio(call.id)}
-                          className="shrink-0 rounded px-1.5 text-faint hover:bg-hover hover:text-fg disabled:hover:bg-transparent"
-                        >
-                          Delete audio
-                        </button>
-                      </>
+                      <button
+                        type="button"
+                        disabled={job?.status === "running"}
+                        onClick={() => deleteAudio(call.id)}
+                        className="shrink-0 rounded px-1.5 text-faint hover:bg-hover hover:text-fg disabled:hover:bg-transparent"
+                      >
+                        Delete audio
+                      </button>
                     )}
                   </p>
                 )}
                 {job?.status === "failed" && (
-                  <p role="alert" className="text-[11px] break-words text-red-400">
-                    {job.message}
-                  </p>
+                  <TranscriptionFailure
+                    project={project}
+                    folder={folder}
+                    callId={call.id}
+                    job={job}
+                  />
                 )}
                 {request?.status === "failed" && (
                   <p role="alert" className="text-[11px] break-words text-red-400">

@@ -6,7 +6,6 @@ import { app, BrowserWindow, Menu, nativeTheme, net, protocol, shell } from "ele
 
 import { registerAppUpdater } from "./appUpdater";
 import { registerBrowserViews } from "./browserView";
-import { registerCallToasts } from "./callToasts";
 import { registerEngineIpc } from "./ipc";
 import { registerRecorder } from "./recorder";
 
@@ -115,7 +114,6 @@ void app.whenReady().then(() => {
   registerBrowserViews();
   registerAppUpdater();
   recorder = registerRecorder(platform);
-  registerCallToasts(platform);
   engine.start();
   openWindow();
 });

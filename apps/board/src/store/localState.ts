@@ -54,10 +54,6 @@ const LocalState = Schema.Struct({
   ),
   /** Whether the user accepted the call recording notice. The main process reads it too, and records nothing until it is true. */
   recordingConsent: Schema.Boolean.pipe(Schema.withDecodingDefaultKey(Effect.succeed(false))),
-  /** The start each call last notified for, by call id, so a restart does not notify again and a moved call does. */
-  notifiedCalls: Schema.Record(Schema.String, Schema.String).pipe(
-    Schema.withDecodingDefaultKey(Effect.succeed({})),
-  ),
   /**
    * The Artifacts area and the files sections opened from it, by board id then box key: `artifacts`,
    * `dir:<path>`, or `call:<id>`. `x` and `y` are canvas px from the area's place in the top row.
@@ -80,7 +76,6 @@ export const EMPTY_LOCAL_STATE: LocalState = {
   lastEditor: null,
   reviewTemplates: [],
   recordingConsent: false,
-  notifiedCalls: {},
   fileBoxes: {},
 };
 

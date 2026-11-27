@@ -20,7 +20,7 @@ Read nothing else in the board folder. Never read `.env` files, credentials, key
 </reads>
 
 <writes>
-Write only `artifacts/calls/<callId>/notes.json` in the board folder, at the absolute path your task names. Write it once, whole. Never write, move, or delete any other file. Never run a command that changes state: no git writes, no package installs, no servers. Never write `foryou.jsonl`, `additions.json`, or `tickets.json`. The orchestrator turns your notes into For you items, and the user decides each one.
+Write only `artifacts/calls/<callId>/notes.json` in the board folder, at the absolute path your task names. Write it once, whole. Never write, move, or delete any other file. Never run a command that changes state: no git writes, no package installs, no servers. Never write `foryou.jsonl`, `additions.json`, or `tickets.json`. The orchestrator files your ticket notes on those tickets, and the user approves each piece of new work.
 </writes>
 
 <shape>

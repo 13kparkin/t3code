@@ -43,6 +43,31 @@ export function callAudio(
   };
 }
 
+export type Transcription =
+  | { readonly status: "running"; readonly done: number; readonly total: number }
+  | { readonly status: "failed"; readonly message: string; readonly missingModel: boolean }
+  | { readonly status: "written" };
+
+/**
+ * The calls to transcribe now: every take on this PC has ended, and the call has no job yet or
+ * failed only because the speech model was missing and it is installed now.
+ */
+export const callsToTranscribe = <C extends { readonly id: string }>(
+  calls: ReadonlyArray<C>,
+  recordings: ReadonlyArray<Recording>,
+  jobs: Readonly<Record<string, Transcription>>,
+  modelInstalled: boolean,
+) =>
+  calls.filter((call) => {
+    const takes = recordings.filter((take) => take.callId === call.id);
+    const job = jobs[call.id];
+    return (
+      takes.length > 0 &&
+      takes.every((take) => take.endedAt !== null) &&
+      (job === undefined || (job.status === "failed" && job.missingModel && modelInstalled))
+    );
+  });
+
 /** What a running transcription says: its level pass has no segment count yet. */
 export const transcribing = ({ done, total }: { readonly done: number; readonly total: number }) =>
   total === 0 ? "Reading the audio" : `Transcribing ${done} of ${total}`;

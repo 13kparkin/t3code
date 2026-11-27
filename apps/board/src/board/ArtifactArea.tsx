@@ -1,11 +1,12 @@
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
-import { Captions, FileAudio, FileText, Folder, NotebookPen, Phone, X } from "lucide-react";
+import { FileAudio, FileText, Folder, NotebookPen, Phone, X } from "lucide-react";
 import { type MouseEvent, type ReactNode, useContext, useRef, useState } from "react";
 
 import { useArtifacts } from "../artifacts/ArtifactsContext";
 import { START } from "../calls/CallCards";
 import { transcribing } from "../calls/recorder";
+import { TranscriptionFailure } from "../calls/TranscriptionFailure";
 import { folderView } from "../domain/artifact";
 import type { CallEvent } from "../domain/board";
 import { callNotesPath } from "../domain/callNotes";
@@ -17,7 +18,6 @@ import {
   openRecordingFile,
   requestCallNotes,
   recorderAtom,
-  transcribeCall,
   transcriptionsAtom,
   transcriptPath,
 } from "../state/recorder";
@@ -260,31 +260,24 @@ export function ArtifactArea({
     }
     return [
       ...shown,
-      <li key="transcribe" className="min-w-0">
-        <Tile
-          icon={Captions}
-          title={transcript === undefined ? "Transcribe" : "Transcribe again"}
-          hint={
-            job?.status === "running"
-              ? transcribing(job)
-              : job?.status === "failed"
-                ? "Failed. Transcribe to try again."
-                : "Writes Me and Them lines on the engine"
-          }
-          onClick={() => void transcribeCall(registry, project, listed.folder, call.id)}
-        />
-      </li>,
-      ...(job?.status === "failed"
+      ...(job?.status === "running"
         ? [
-            <li
-              key="transcribe-error"
-              role="alert"
-              className="col-span-full text-[11px] break-words text-red-400"
-            >
-              {job.message}
+            <li key="transcribing" role="status" className="col-span-full text-[11px] text-faint">
+              {transcribing(job)}
             </li>,
           ]
-        : []),
+        : job?.status === "failed"
+          ? [
+              <li key="transcribe-error" className="col-span-full">
+                <TranscriptionFailure
+                  project={project}
+                  folder={listed.folder}
+                  callId={call.id}
+                  job={job}
+                />
+              </li>,
+            ]
+          : []),
       ...takeCards(call, takes),
     ];
   };

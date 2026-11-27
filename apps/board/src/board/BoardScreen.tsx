@@ -29,7 +29,7 @@ import { keptWorktreesAtom } from "../state/mergeCleanup";
 import { setHiddenAdditions } from "../state/reviews";
 import type { ValidBoard } from "../store/boardFiles";
 import { openAgentPanel } from "../state/agentPanel";
-import { deleteAudio, recorderAtom, splitHere } from "../state/recorder";
+import { deleteAudio, recordNewCall, recorderAtom, splitHere } from "../state/recorder";
 import {
   deleteCall,
   moveFreeAgent,
@@ -94,7 +94,7 @@ export function BoardScreen({
   const [cardError, setCardError] = useState<string | null>(null);
   const [sendFailed, setSendFailed] = useState(false);
   const [menu, setMenu] = useState<CardMenu | null>(null);
-  const [editing, setEditing] = useState<CallEvent | "new" | null>(null);
+  const [editing, setEditing] = useState<CallEvent | null>(null);
   const { board } = listed;
   const cardNotice = cardError ?? sendToChatError(sendFailed, board.orchestratorThreadId);
   const {
@@ -117,6 +117,7 @@ export function BoardScreen({
     [fullModel, freeAgents, cardStates, now],
   );
   const { model } = cards;
+  const recordCall = () => void recordNewCall(registry, project, listed).then(setCardError);
   const saveCard = (key: string, state: CardState | null) =>
     void setCardState(registry, project, listed, key, state).then(setCardError);
   const openCardMenu = (event: MouseEvent, key: string, label: string, ticket: boolean) => {
@@ -322,7 +323,9 @@ export function BoardScreen({
                       onSelect: () =>
                         void startFreeAgent(registry, project, listed, point).then(setCardError),
                     },
-                    { label: "Add call", onSelect: () => setEditing("new") },
+                    ...(recorder === null
+                      ? []
+                      : [{ label: "Record a call", onSelect: recordCall }]),
                   ],
                 })
               }
@@ -348,11 +351,10 @@ export function BoardScreen({
                   <CallCards
                     project={project}
                     folder={listed.folder}
-                    boardId={board.id}
                     shown={callSplit.shown}
                     later={callSplit.later}
                     states={cardStates}
-                    onAdd={() => setEditing("new")}
+                    onRecord={recordCall}
                     onMenu={openCallMenu}
                   />
                 </div>
@@ -475,7 +477,7 @@ export function BoardScreen({
           )}
           {editing !== null && (
             <CallEditor
-              call={editing === "new" ? null : editing}
+              call={editing}
               onSave={(call) => saveCall(registry, project, listed, call)}
               onClose={() => setEditing(null)}
             />
