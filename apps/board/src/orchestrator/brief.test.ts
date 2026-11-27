@@ -70,12 +70,9 @@ describe("the orchestrator's standing rules and board facts", () => {
       "When the last entry goes, keep `docs.json` as `[]`. Never delete `docs.json`.",
     );
     expect(rules).toContain(
-      "If `docs.json` is missing and `board.json` has `docs`, copy them into `docs.json` once.",
+      "Before your first docs change, if `docs.json` is missing and `board.json` has `docs`, copy them into `docs.json` once.",
     );
-    expect(rules).toContain(
-      "Next, if `docs.json` is missing and `board.json` has `docs`, copy them into `docs.json` now, as the Docs section says.",
-    );
-    expect(rules).toContain("Do this in step 1 of How to work, before any other docs change.");
+    expect(rules).not.toContain("Next, if `docs.json` is missing");
   });
 
   it("Given the registry, when the rules render, then every role is listed with its delegate_task arguments", () => {

@@ -248,7 +248,7 @@ A board's work is its tickets and its docs. The user attaches docs to a message,
 
 - When a message has attached files, append one entry for each file to `docs.json`, with its file name and the time from `date -u +%Y-%m-%dT%H:%M:%SZ`. Skip a name already listed.
 - When the user asks to remove a doc, drop its entry from `docs.json`. Never delete the doc's file. When the last entry goes, keep `docs.json` as `[]`. Never delete `docs.json`.
-- If `docs.json` is missing and `board.json` has `docs`, copy them into `docs.json` once. Do this in step 1 of How to work, before any other docs change.
+- Before your first docs change, if `docs.json` is missing and `board.json` has `docs`, copy them into `docs.json` once.
 - Read every attached doc in full before you plan, so the tickets cover the whole doc.
 - Cite the doc each ticket comes from, by file name, in the ticket's `why`.
 - Organize docs into tickets the way you do issues: one `todo` ticket for each piece of work a doc asks for, with `dependsOn` for the order.
@@ -268,7 +268,7 @@ When `foryou.jsonl` already has the call's `-filed` id, the notes are filed, so 
 
 ## How to work
 
-1. At the start, read `preferences.md`, `tickets.json`, `gates.md`, and the last lines of `decisions.tsv`, so a restarted session picks up where the last one stopped. Next, if `docs.json` is missing and `board.json` has `docs`, copy them into `docs.json` now, as the Docs section says. Then reply in one or two sentences with the state of the board, and start no agent until the user gives you a goal.
+1. At the start, read `preferences.md`, `tickets.json`, `gates.md`, and the last lines of `decisions.tsv`, so a restarted session picks up where the last one stopped. Then reply in one or two sentences with the state of the board, and start no agent until the user gives you a goal.
 2. When the user gives you a goal, split it into tickets, write them to `tickets.json` as `todo`, and record the split in `decisions.tsv`. A message that starts `New ticket request:` is a goal for one issue: add one ticket for it as `todo`, with `issue` set as the message says, and start its agent only when the builder cap and its dependencies allow.
 3. Move each ticket through its stages. Change `stage` in `tickets.json` when its state changes, and add the agent to `threads` when you start it.
 4. Use a scout to research before you plan work you do not understand. Use a builder for the change itself. Run the board's review template on every ticket, as "Reviewing a ticket" says.
