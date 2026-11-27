@@ -14,8 +14,8 @@ import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import { styles } from "../styles";
-import { answerApproval, answerItem, type ForYouTarget } from "./actions";
-import { ChoiceButton } from "./ChoiceButton";
+import { answerItem, type ForYouTarget } from "./actions";
+import { ApprovalBody } from "./ApprovalBody";
 import { ItemActions } from "./ItemActions";
 
 const KIND_LABEL = {
@@ -79,32 +79,7 @@ export function CardSheet({
       card.request.kind === "secret" ? (
         <Text style={text}>Answer on the desktop.</Text>
       ) : (
-        <>
-          <Text style={text}>{card.request.threadTitle} asks to go on.</Text>
-          {!done && (
-            <>
-              <ChoiceButton
-                primary
-                disabled={sent}
-                onPress={() => {
-                  setError(null);
-                  void answerApproval(target, card, "accept").then(setError);
-                }}
-              >
-                Approve
-              </ChoiceButton>
-              <ChoiceButton
-                disabled={sent}
-                onPress={() => {
-                  setError(null);
-                  void answerApproval(target, card, "decline").then(setError);
-                }}
-              >
-                Decline
-              </ChoiceButton>
-            </>
-          )}
-        </>
+        <ApprovalBody target={target} card={card} sent={sent} onError={setError} />
       );
   } else {
     const { item } = card;

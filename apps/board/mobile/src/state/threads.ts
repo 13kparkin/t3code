@@ -1,6 +1,7 @@
 import { respondToThreadApproval, startThreadTurn } from "@t3tools/client-runtime/operations";
 import { createIssueEnvironmentAtoms } from "@t3tools/client-runtime/state/issues";
 import { createEnvironmentCommand, runAtomCommand } from "@t3tools/client-runtime/state/runtime";
+import { createEnvironmentThreadStateAtoms } from "@t3tools/client-runtime/state/threads";
 import { type EnvironmentId, MessageId, RuntimeRequestId, ThreadId } from "@t3tools/contracts";
 import type { AtomRegistry } from "effect/reactivity";
 import * as ExpoCrypto from "expo-crypto";
@@ -18,6 +19,9 @@ const respondApproval = createEnvironmentCommand(connectionAtomRuntime, {
   label: "phone:foryou:respond-approval",
   execute: respondToThreadApproval,
 });
+
+/** A thread's live state, which the engine streams while it is shown. */
+export const environmentThreads = createEnvironmentThreadStateAtoms(connectionAtomRuntime);
 
 const issues = createIssueEnvironmentAtoms(connectionAtomRuntime);
 
