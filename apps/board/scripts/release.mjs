@@ -8,7 +8,7 @@ import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 import * as NodeUtil from "node:util";
 
-import { addUpstreamRemote, GATES, UPSTREAM_FETCH } from "./gates.mjs";
+import { addUpstreamRemote, GATES, releaseSha, UPSTREAM_FETCH } from "./gates.mjs";
 
 const { positionals, values } = NodeUtil.parseArgs({
   allowPositionals: true,
@@ -38,20 +38,13 @@ const repository = out("git", ["remote", "get-url", "origin"]).match(
 )?.[1];
 if (!repository) fail("origin is not a GitHub remote");
 
-if (out("git", ["ls-remote", "--tags", "origin", `refs/tags/${tag}`]) !== "") {
-  fail(`The tag ${tag} already exists, so ${version} is already released.`);
-}
-
-run("git", ["fetch", "--no-tags", "origin", "main"], root);
-const sha = out("git", ["rev-parse", "HEAD"], root);
-if (out("git", ["status", "--porcelain"], root) !== "")
-  fail("The checkout has uncommitted changes.");
-if (!values.prerelease && sha !== out("git", ["rev-parse", "origin/main"], root)) {
-  fail("A release comes from origin/main. Check it out, or pass --prerelease for a test release.");
-}
-if (out("git", ["branch", "-r", "--contains", sha], root) === "") {
-  fail(`${sha} is not pushed, and the release is created on GitHub's copy of it.`);
-}
+const sha = releaseSha({
+  root,
+  tag,
+  version,
+  prerelease: values.prerelease,
+  prereleaseHint: "pass --prerelease for a test release.",
+});
 
 addUpstreamRemote(root);
 for (const gate of [UPSTREAM_FETCH, ...GATES]) {

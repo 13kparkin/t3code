@@ -62,7 +62,7 @@ With `ANTHROPIC_API_KEY` set, the notes open with a Claude summary of the pull r
 
 When Actions is available on the repo, `gh workflow run agent-board.yml -f version=0.1.0` runs the same script in a `release` job, using the `ANTHROPIC_API_KEY` repo secret. Add `-f prerelease=true` for a pre-release.
 
-The fork runs no CI on pull requests, so local CI stands in. `scripts/gates.mjs` lists the release gates, and `release.mjs` and `ci-local.mjs` both run that list.
+The fork runs no CI on pull requests, so local CI stands in. `scripts/gates.mjs` lists the release gates, and `release.mjs` and `ci-local.mjs` both run that list. It includes the phone app's typecheck and tests.
 
 ```sh
 node apps/board/scripts/ci-local.mjs T-13 <board folder>/artifacts/T-13
@@ -92,6 +92,35 @@ vp run --filter @agent-board/phone dev:client   # start Metro for it
 ```
 
 The dev build's package id is `dev.agentboard.phone.dev`, so installing it does not replace T3 Code Dev.
+
+### Release the phone app
+
+The phone app ships as a signed APK on the fork's Releases page, tagged `board-phone-v<version>`, with a `SHA256SUMS` file. There is no Play Store build. To install it, open the APK on the phone and allow "Install unknown apps" for the browser once, or run `adb install` over wireless debugging. After you tap Install, Google Play Protect may show "App scan recommended". Tap "More details", then "Install without scanning". "Scan app" uploads the APK to Google. Installing a new release over the old one keeps the pairing.
+
+One key signs every release. You make it once in WSL. Android installs an update only when it carries the same signature, so back up `~/.agent-board/phone-release.keystore` and `~/.gradle/gradle.properties`. If the key is lost, the next release installs only after you uninstall the app and pair again.
+
+```sh
+keytool -genkeypair -v -storetype PKCS12 -keystore ~/.agent-board/phone-release.keystore \
+  -alias agent-board-phone -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=Agent Board Phone"
+```
+
+Then put these four lines in `~/.gradle/gradle.properties` and `chmod 600` both files. A PKCS12 keystore has one password, so both password lines carry the one you gave `keytool`. Never put them in the repo.
+
+```properties
+AGENT_BOARD_PHONE_KEYSTORE=/home/<you>/.agent-board/phone-release.keystore
+AGENT_BOARD_PHONE_KEY_ALIAS=agent-board-phone
+AGENT_BOARD_PHONE_STORE_PASSWORD=<password>
+AGENT_BOARD_PHONE_KEY_PASSWORD=<password>
+```
+
+Cut a release in WSL from a clean, pushed checkout, with JDK 17 in `JAVA_HOME` and the Android SDK, with build-tools 36.0.0, in `ANDROID_HOME`. The script runs the phone's typecheck and tests, builds the release APK for `arm64-v8a` and `armeabi-v7a`, checks its signature with `apksigner`, writes `SHA256SUMS`, and creates the GitHub release. `--dry-run` stops before the release notes and prints the APK path, its SHA-256 and the signer's certificate digest. A version with a suffix, such as `0.2.0-test`, is a pre-release and may come from any pushed branch. Any other version must be `origin/main`. A phone release never takes the Latest badge on the Releases page, which stays on the desktop app.
+
+```sh
+node apps/board/scripts/release-phone.mjs 0.2.0 --dry-run
+node apps/board/scripts/release-phone.mjs 0.2.0
+```
+
+The script writes the APK and `SHA256SUMS` to `apps/board/mobile/release/`, which git ignores.
 
 `react-native-screens` comes from T3's fork tarball at `apps/mobile/deps/`, by path. When an upstream merge renames that tarball, update the path in `apps/board/mobile/package.json`.
 

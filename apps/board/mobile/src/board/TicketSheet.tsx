@@ -38,15 +38,15 @@ export function TicketSheet({
     <Modal animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaProvider>
         <SafeAreaView style={[styles.fill, { backgroundColor: colors.background }]}>
+          <View style={[styles.header, styles.sheetTop]}>
+            <Text style={[styles.headerText, styles.muted, text]}>
+              {ticket.key} · {STAGE_LABEL[ticket.stage]}
+            </Text>
+            <Pressable accessibilityRole="button" onPress={onClose}>
+              <Text style={styles.link}>Close</Text>
+            </Pressable>
+          </View>
           <ScrollView contentContainerStyle={styles.body}>
-            <View style={styles.header}>
-              <Text style={[styles.headerText, styles.muted, text]}>
-                {ticket.key} · {STAGE_LABEL[ticket.stage]}
-              </Text>
-              <Pressable accessibilityRole="button" onPress={onClose}>
-                <Text style={styles.link}>Close</Text>
-              </Pressable>
-            </View>
             <Text style={[styles.title, text]}>{ticket.title}</Text>
             {ticket.summary != null && (
               <View>
