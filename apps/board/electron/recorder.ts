@@ -382,7 +382,8 @@ export function createRecorder(deps: {
   return {
     snapshot,
     start: async (request: RecordRequest) => {
-      if (state.status !== "idle" || !deps.consented()) return;
+      // Answers a refused start, so the window's pending press clears even before its first snapshot.
+      if (state.status !== "idle" || !deps.consented()) return deps.publish(snapshot());
       await begin(request).catch((cause: unknown) =>
         fail(request.callId, `The recorder could not start. ${String(cause)}`),
       );

@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 import { AtomRegistry } from "effect/reactivity";
 
+import type { RecorderSnapshot } from "../connection/engineState";
+
 const mocks = vi.hoisted(() => {
   const start = vi.fn();
+  const listeners: Array<(snapshot: RecorderSnapshot) => void> = [];
   Object.assign(globalThis, {
     window: {
       board: {
@@ -10,12 +13,15 @@ const mocks = vi.hoisted(() => {
           start,
           snapshot: () =>
             Promise.resolve({ state: { status: "idle", failed: null }, recordings: [] }),
-          onSnapshot: () => () => {},
+          onSnapshot: (listener: (snapshot: RecorderSnapshot) => void) => {
+            listeners.push(listener);
+            return () => {};
+          },
         },
       },
     },
   });
-  return { start, saveCall: vi.fn(() => Promise.resolve(null)) };
+  return { start, listeners, saveCall: vi.fn(() => Promise.resolve(null)) };
 });
 vi.mock("./boardCards", () => ({
   saveCall: mocks.saveCall,
@@ -49,5 +55,10 @@ describe("Record a call pressed twice", () => {
     await recordNewCall(registry, project, listed, report);
     expect(mocks.saveCall).toHaveBeenCalledTimes(1);
     expect(mocks.start).toHaveBeenCalledTimes(1);
+    for (const listener of mocks.listeners) {
+      listener({ state: { status: "idle", failed: null }, recordings: [] });
+    }
+    await recordNewCall(registry, project, listed, report);
+    expect(mocks.start).toHaveBeenCalledTimes(2);
   });
 });

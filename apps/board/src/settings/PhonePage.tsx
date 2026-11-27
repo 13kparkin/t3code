@@ -45,6 +45,15 @@ export function PhonePage({ environmentId }: { environmentId: EnvironmentId }) {
     );
     setPairing(false);
     if (result._tag === "Success") {
+      // The page shows only the newest link, so the one it replaces stops working too.
+      if (live) {
+        void runAtomCommand(
+          registry,
+          authEnvironment.revokePairingLink,
+          { environmentId, input: { id: created.id } },
+          { reportFailure: false },
+        );
+      }
       setCreated({
         id: result.value.id,
         credential: result.value.credential,
@@ -79,7 +88,9 @@ export function PhonePage({ environmentId }: { environmentId: EnvironmentId }) {
               ? "Reading the engine's addresses."
               : endpoint === undefined
                 ? "The engine listens only on this PC, so a phone cannot reach it. Turn on network access in T3 Code's Settings, Connections."
-                : "Makes a one-time link through the engine."
+                : endpoint.kind === "lan"
+                  ? "Makes a one-time link through the engine. On this local network address the link and the phone's session travel unencrypted. A Tailscale address encrypts them."
+                  : "Makes a one-time link through the engine."
           }
           control={
             <button
