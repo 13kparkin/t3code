@@ -1,4 +1,8 @@
-import { respondToThreadApproval, startThreadTurn } from "@t3tools/client-runtime/operations";
+import {
+  interruptThreadTurn,
+  respondToThreadApproval,
+  startThreadTurn,
+} from "@t3tools/client-runtime/operations";
 import { createIssueEnvironmentAtoms } from "@t3tools/client-runtime/state/issues";
 import { createEnvironmentCommand, runAtomCommand } from "@t3tools/client-runtime/state/runtime";
 import { createEnvironmentThreadStateAtoms } from "@t3tools/client-runtime/state/threads";
@@ -6,6 +10,7 @@ import { type EnvironmentId, MessageId, RuntimeRequestId, ThreadId } from "@t3to
 import type { AtomRegistry } from "effect/reactivity";
 import * as ExpoCrypto from "expo-crypto";
 
+import { userTurn } from "../chat/chat";
 import { commandError, environmentSnapshot } from "../connection/engine";
 import { connectionAtomRuntime } from "../connection/runtime";
 import type { ForYouEngine } from "../foryou/actions";
@@ -13,6 +18,11 @@ import type { ForYouEngine } from "../foryou/actions";
 const startTurn = createEnvironmentCommand(connectionAtomRuntime, {
   label: "phone:thread:start-turn",
   execute: startThreadTurn,
+});
+
+const interruptTurn = createEnvironmentCommand(connectionAtomRuntime, {
+  label: "phone:thread:interrupt-turn",
+  execute: interruptThreadTurn,
 });
 
 const respondApproval = createEnvironmentCommand(connectionAtomRuntime, {
@@ -26,6 +36,21 @@ export const environmentThreads = createEnvironmentThreadStateAtoms(connectionAt
 const issues = createIssueEnvironmentAtoms(connectionAtomRuntime);
 
 const quiet = { reportFailure: false } as const;
+
+/** Stops the thread's running turn. Resolves to the failure text, or null once stopped. */
+export async function stopTurn(
+  registry: AtomRegistry.AtomRegistry,
+  environmentId: EnvironmentId,
+  threadId: ThreadId,
+): Promise<string | null> {
+  const result = await runAtomCommand(
+    registry,
+    interruptTurn,
+    { environmentId, input: { threadId } },
+    quiet,
+  );
+  return result._tag === "Success" ? null : commandError(result).message;
+}
 
 export function forYouEngine(
   registry: AtomRegistry.AtomRegistry,
@@ -46,17 +71,7 @@ export function forYouEngine(
         startTurn,
         {
           environmentId,
-          input: {
-            threadId: thread.id,
-            message: {
-              messageId: MessageId.make(ExpoCrypto.randomUUID()),
-              role: "user",
-              text: await text(),
-              attachments: [],
-            },
-            runtimeMode: thread.runtimeMode,
-            interactionMode: thread.interactionMode,
-          },
+          input: userTurn(thread, MessageId.make(ExpoCrypto.randomUUID()), await text()),
         },
         quiet,
       );

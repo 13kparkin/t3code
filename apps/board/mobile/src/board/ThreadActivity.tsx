@@ -2,10 +2,7 @@ import { timelineSource } from "@agent-board/app/chat/projectionSource";
 import { type TimelineRow, timelineRows } from "@agent-board/app/chat/timeline";
 import { useAtomValue } from "@effect/atom-react";
 import { LegendList } from "@legendapp/list/react-native";
-import {
-  createEnvironmentThreadStateAtoms,
-  EMPTY_ENVIRONMENT_THREAD_STATE,
-} from "@t3tools/client-runtime/state/threads";
+import { EMPTY_ENVIRONMENT_THREAD_STATE } from "@t3tools/client-runtime/state/threads";
 import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
 import { useTheme } from "@react-navigation/native";
 import * as Option from "effect/Option";
@@ -13,10 +10,8 @@ import { AsyncResult } from "effect/reactivity";
 import { Modal, Pressable, Text, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
-import { connectionAtomRuntime } from "../connection/runtime";
+import { environmentThreads } from "../state/threads";
 import { styles } from "../styles";
-
-const environmentThreads = createEnvironmentThreadStateAtoms(connectionAtomRuntime);
 
 function rowLines(row: TimelineRow): ReadonlyArray<{ id: string; text: string; error: boolean }> {
   switch (row.kind) {

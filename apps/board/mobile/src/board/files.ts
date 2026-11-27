@@ -19,7 +19,7 @@ const engineFilesAtom = Atom.make((get): ProjectFiles | null => {
   return environmentId === null ? null : engineFiles(get.registry, environmentId);
 }).pipe(Atom.withLabel("phone-engine-files"));
 
-const appActiveAtom = Atom.make((get) => {
+export const appActiveAtom = Atom.make((get) => {
   const subscription = AppState.addEventListener("change", (state) =>
     get.setSelf(state === "active"),
   );

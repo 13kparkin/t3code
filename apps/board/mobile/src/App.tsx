@@ -12,12 +12,12 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AgentsScreen } from "./board/AgentsScreen";
 import { BoardScreen } from "./board/BoardScreen";
+import { ChatScreen } from "./chat/ChatScreen";
 import { engineStatusAtom } from "./connection/engine";
 import { PairScreen } from "./connection/PairScreen";
 import { EngineHeader } from "./EngineHeader";
 import { forYouOpenCountAtom } from "./foryou/forYouAtoms";
 import { ForYouScreen } from "./foryou/ForYouScreen";
-import { PlaceholderScreen } from "./PlaceholderScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -58,8 +58,8 @@ export default function App() {
             />
             <Tab.Screen
               name="Chat"
-              component={PlaceholderScreen}
-              options={{ tabBarIcon: tabIcon(IconMessageCircle) }}
+              component={ChatScreen}
+              options={{ tabBarIcon: tabIcon(IconMessageCircle), tabBarHideOnKeyboard: true }}
             />
           </Tab.Navigator>
         )}
