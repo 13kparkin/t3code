@@ -7,7 +7,8 @@
     ".": "./dist-electron/electron/main.cjs",
     "./preload": "./dist-electron/electron/preload.cjs",
     "./domain/*": "./src/domain/*.ts",
-    "./chat/*": "./src/chat/*.ts"
+    "./chat/*": "./src/chat/*.ts",
+    "./issues/*": "./src/issues/*.ts"
   },
   "scripts": {
     "dev": "node scripts/dev.mjs",

@@ -80,7 +80,9 @@ The header shows the engine's name and a dot for the connection. It reads Reconn
 
 The **Board** tab shows one board's tickets grouped by stage, with a count on each stage. When the PC has more than one board, a row of board names at the top switches between them. Tap a ticket to see its summary, why, pull request link, and the readiness conditions that `tickets.json` decides. CI and evidence checks show only on the desktop. When `tickets.json` does not parse, a banner names the bad fields and the tab keeps the last tickets that parsed. The **Agents** tab lists the board's orchestrator and its agents, working ones first, each with its status. Tap one to read its messages and tool calls.
 
-The phone reads the board's files every 3 seconds while the Board tab is open and the app is in front. It stops when you switch tabs or leave the app. It never writes to the board folder.
+The **For you** tab lists the board's open and held items and the approvals its agents wait on, with the open count on the tab. Tap an item to read it and answer. Approve, Hold, Resume, Mark read, a question's options and a typed answer go to the orchestrator as a chat message, the same one the desktop sends, and the orchestrator records the answer in `foryou.jsonl`. An item reads Sent until it does. If the message cannot go, the item is open again and shows why. Approving a tracker write makes the change through the engine first. An agent's approval is answered with the engine directly. A secret request says to answer it on the desktop.
+
+The phone reads the board's files every 3 seconds while the Board or For you tab is open and the app is in front. It stops when you switch to another tab or leave the app. It never writes to the board folder. On a tablet or the inner screen of a foldable, each screen keeps a phone-width column.
 
 The phone keeps its session in Android's secure store and turns off Android backup, so the session never leaves the phone. A local network engine serves plain http, so pairing and the session travel unencrypted on that network, as they do for T3's own mobile app. A Tailscale address is encrypted end to end.
 
