@@ -16,17 +16,17 @@ function setup() {
     },
   };
   const active = Atom.make(true);
-  const store = createBoardStore(
-    Atom.make<ProjectFiles | null>(files),
-    active,
-  )(boardKey("/repo", "board"));
+  const key = boardKey("/repo", "board");
+  const board = createBoardStore(Atom.make<ProjectFiles | null>(files), active);
+  const store = board.files(key);
   const registry = AtomRegistry.make();
-  const unmount = registry.mount(store);
+  const unmount = registry.mount(board.poll(key));
   return {
     reads,
     active,
     store,
     registry,
+    unmount,
     failReads: () => {
       fail = true;
     },
@@ -38,15 +38,16 @@ function setup() {
 }
 
 describe("createBoardStore", () => {
-  it("reads the tickets and decisions files each tick while the app is active", async () => {
+  it("reads the tickets, decisions and For you files each tick while the app is active", async () => {
     using board = setup();
     await vi.advanceTimersByTimeAsync(0);
     expect(board.reads).toEqual([
       ".agentboard/board/tickets.json",
       ".agentboard/board/decisions.tsv",
+      ".agentboard/board/foryou.jsonl",
     ]);
     await vi.advanceTimersByTimeAsync(STORE_POLL_MS);
-    expect(board.reads).toHaveLength(4);
+    expect(board.reads).toHaveLength(6);
   });
 
   it("reads nothing while the app is in the background", async () => {
@@ -58,14 +59,16 @@ describe("createBoardStore", () => {
     expect(board.reads).toEqual([]);
   });
 
-  it("keeps the last files when a read fails", async () => {
+  it("keeps the last files when a read fails and after polling stops", async () => {
     using board = setup();
     await vi.advanceTimersByTimeAsync(0);
-    const loaded = { tickets: "[]", decisions: null };
+    const loaded = { tickets: "[]", decisions: null, forYou: null };
     expect(board.registry.get(board.store)).toEqual(loaded);
     board.failReads();
     await vi.advanceTimersByTimeAsync(STORE_POLL_MS);
-    expect(board.reads).toHaveLength(4);
+    expect(board.reads).toHaveLength(6);
+    expect(board.registry.get(board.store)).toEqual(loaded);
+    board.unmount();
     expect(board.registry.get(board.store)).toEqual(loaded);
   });
 });
