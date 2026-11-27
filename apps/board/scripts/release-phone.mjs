@@ -184,16 +184,13 @@ function main() {
   }
   const androidHome = process.env["ANDROID_HOME"];
   if (!androidHome) fail("Set ANDROID_HOME to the Android SDK.");
-  const buildTools = NodePath.join(androidHome, "build-tools");
-  const newest = NodeFS.readdirSync(buildTools)
-    .toSorted((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-    .at(-1);
   const release = releaseCommands({
     version,
     root,
     sha,
     repository,
-    apksigner: NodePath.join(buildTools, newest, "apksigner"),
+    // apksigner 37 prints the digest as `V2 Signer: ...`; 36.0.0 prints `Signer #1 certificate SHA-256 digest`.
+    apksigner: NodePath.join(androidHome, "build-tools", "36.0.0", "apksigner"),
   });
   for (const step of release.build) run(step);
   NodeFS.rmSync(NodePath.dirname(release.apk), { recursive: true, force: true });

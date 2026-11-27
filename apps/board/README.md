@@ -113,7 +113,7 @@ AGENT_BOARD_PHONE_STORE_PASSWORD=<password>
 AGENT_BOARD_PHONE_KEY_PASSWORD=<password>
 ```
 
-Cut a release in WSL from a clean, pushed checkout, with JDK 17 in `JAVA_HOME` and the Android SDK in `ANDROID_HOME`. The script runs the phone's typecheck and tests, builds the release APK for `arm64-v8a` and `armeabi-v7a`, checks its signature with `apksigner`, writes `SHA256SUMS`, and creates the GitHub release. `--dry-run` stops before the release notes and prints the APK path, its SHA-256 and the signer's certificate digest. A version with a suffix, such as `0.2.0-test`, is a pre-release and may come from any pushed branch. Any other version must be `origin/main`. A phone release never takes the Latest badge on the Releases page, which stays on the desktop app.
+Cut a release in WSL from a clean, pushed checkout, with JDK 17 in `JAVA_HOME` and the Android SDK, with build-tools 36.0.0, in `ANDROID_HOME`. The script runs the phone's typecheck and tests, builds the release APK for `arm64-v8a` and `armeabi-v7a`, checks its signature with `apksigner`, writes `SHA256SUMS`, and creates the GitHub release. `--dry-run` stops before the release notes and prints the APK path, its SHA-256 and the signer's certificate digest. A version with a suffix, such as `0.2.0-test`, is a pre-release and may come from any pushed branch. Any other version must be `origin/main`. A phone release never takes the Latest badge on the Releases page, which stays on the desktop app.
 
 ```sh
 node apps/board/scripts/release-phone.mjs 0.2.0 --dry-run
