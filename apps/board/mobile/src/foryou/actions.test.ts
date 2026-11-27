@@ -1,8 +1,16 @@
 import { cardViews, type ForYouAnswer, mergeForYou } from "@agent-board/app/domain/forYou";
+import { EnvironmentId } from "@t3tools/contracts";
 import { AtomRegistry } from "effect/reactivity";
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
 
-import { answerItem, type ForYouEngine, forYouSentAtom } from "./actions";
+import {
+  answerItem,
+  boardSent,
+  type ForYouEngine,
+  forgetSettledWrites,
+  forYouSentAtom,
+  sentWritesAtom,
+} from "./actions";
 
 const met = { met: true };
 const FILE = [
@@ -44,6 +52,14 @@ const FILE = [
   .map((item) => JSON.stringify(item))
   .join("\n");
 
+const saved = vi.hoisted(() => new Map<string, string>());
+vi.mock("expo-secure-store", () => ({
+  getItem: (key: string) => saved.get(key) ?? null,
+  setItem: (key: string, value: string) => {
+    saved.set(key, value);
+  },
+}));
+
 function setup({
   notReady = null,
   sendFailure = null,
@@ -64,19 +80,30 @@ function setup({
       return `Moved ${call.operation === "setState" ? call.input.key : ""} to "closed"`;
     },
   };
-  const registry = AtomRegistry.make();
-  const target = { registry, engine, boardKey: "/repo/.agentboard/board", projectId: "p1" };
-  const cards = mergeForYou(FILE, []).cards;
-  const answer = (id: string, choice: ForYouAnswer) => {
-    const card = cards.find((entry) => entry.id === id);
-    if (card?.origin !== "file") throw new Error(`no file card ${id}`);
-    return answerItem(target, card, choice);
+  saved.clear();
+  const launch = (file = FILE) => {
+    const registry = AtomRegistry.make();
+    const target = {
+      registry,
+      engine,
+      environmentId: EnvironmentId.make("e1"),
+      boardKey: "/repo/.agentboard/board",
+      projectId: "p1",
+    };
+    const cards = mergeForYou(file, []).cards;
+    const answer = (id: string, choice: ForYouAnswer) => {
+      const card = cards.find((entry) => entry.id === id);
+      if (card?.origin !== "file") throw new Error(`no file card ${id}`);
+      return answerItem(target, card, choice);
+    };
+    const sent = () =>
+      boardSent(registry.get(forYouSentAtom), registry.get(sentWritesAtom), target.boardKey, cards);
+    const stateOf = (id: string) =>
+      cardViews(cards, sent()).find((view) => view.card.id === id)?.state;
+    const forgetSettled = () => forgetSettledWrites(registry, target.boardKey, cards);
+    return { answer, stateOf, forgetSettled };
   };
-  const stateOf = (id: string) =>
-    cardViews(cards, registry.get(forYouSentAtom)[target.boardKey] ?? new Map()).find(
-      (view) => view.card.id === id,
-    )?.state;
-  return { calls, answer, stateOf };
+  return { calls, ...launch(), relaunch: launch };
 }
 
 describe("answerItem", () => {
@@ -123,5 +150,20 @@ describe("answerItem", () => {
     );
     expect(board.calls).toEqual([]);
     expect(board.stateOf("t1")).toBe("open");
+  });
+
+  it("still shows a made tracker change as Sent after a relaunch", async () => {
+    const board = setup();
+    await board.answer("t1", { type: "choice", choice: "approve" });
+    expect(board.relaunch().stateOf("t1")).toBe("sent");
+  });
+
+  it("forgets a made tracker change once the file records it", async () => {
+    const board = setup();
+    await board.answer("t1", { type: "choice", choice: "approve" });
+    const recorded = board.relaunch(`${FILE}\n{"id":"t1","status":"resolved"}`);
+    recorded.forgetSettled();
+    expect(recorded.stateOf("t1")).toBe("resolved");
+    expect(board.relaunch().stateOf("t1")).toBe("open");
   });
 });

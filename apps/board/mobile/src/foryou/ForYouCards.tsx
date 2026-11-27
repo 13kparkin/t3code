@@ -1,32 +1,45 @@
-import { cardTitle, cardViews, type SentCard } from "@agent-board/app/domain/forYou";
+import { cardTitle, cardViews } from "@agent-board/app/domain/forYou";
 import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import { LegendList } from "@legendapp/list/react-native";
 import { useTheme } from "@react-navigation/native";
-import { useContext, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { Pressable, Text } from "react-native";
 
 import { type BoardChoice, useBoardFiles } from "../board/files";
 import { forYouEngine } from "../state/threads";
 import { styles } from "../styles";
-import { type ForYouTarget, forYouSentAtom } from "./actions";
+import {
+  boardSent,
+  forgetSettledWrites,
+  type ForYouTarget,
+  forYouSentAtom,
+  sentWritesAtom,
+} from "./actions";
 import { CardSheet, kindLabel, STATE_LABEL } from "./CardSheet";
 import { shownForYouAtom } from "./forYouAtoms";
-
-const NO_SENT: ReadonlyMap<string, SentCard> = new Map();
 
 export function ForYouCards({ choice }: { choice: BoardChoice }) {
   const { colors } = useTheme();
   const registry = useContext(RegistryContext);
   const files = useBoardFiles(choice.key);
   const list = useAtomValue(shownForYouAtom);
-  const sent = useAtomValue(forYouSentAtom)[choice.key] ?? NO_SENT;
-  const views = useMemo(() => (list === null ? [] : cardViews(list.cards, sent)), [list, sent]);
+  const sent = useAtomValue(forYouSentAtom);
+  const writes = useAtomValue(sentWritesAtom);
+  const views = useMemo(
+    () =>
+      list === null ? [] : cardViews(list.cards, boardSent(sent, writes, choice.key, list.cards)),
+    [list, sent, writes, choice.key],
+  );
+  useEffect(() => {
+    if (list !== null) forgetSettledWrites(registry, choice.key, list.cards);
+  }, [registry, choice.key, list]);
   const waiting = useMemo(() => views.filter((view) => view.state !== "resolved"), [views]);
   const orchestratorThreadId = choice.listed.ok ? choice.listed.board.orchestratorThreadId : null;
   const target = useMemo(
     (): ForYouTarget => ({
       registry,
       engine: forYouEngine(registry, choice.project.environmentId, orchestratorThreadId),
+      environmentId: choice.project.environmentId,
       boardKey: choice.key,
       projectId: choice.project.id,
     }),

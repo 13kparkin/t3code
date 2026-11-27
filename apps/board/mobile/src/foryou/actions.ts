@@ -1,12 +1,17 @@
 import {
   type EngineRequest,
+  FOR_YOU_STATUSES,
   type ForYouAnswer,
   type ForYouCard,
   forYouMessage,
   type SentCard,
 } from "@agent-board/app/domain/forYou";
 import { type TrackerCall, trackerCall } from "@agent-board/app/issues/issueLinks";
+import type { EnvironmentId } from "@t3tools/contracts";
+import * as Option from "effect/Option";
 import { Atom, type AtomRegistry } from "effect/reactivity";
+import * as Schema from "effect/Schema";
+import * as SecureStore from "expo-secure-store";
 
 /** It has no file write, so `foryou.jsonl` stays the orchestrator's. */
 export interface ForYouEngine {
@@ -27,6 +32,7 @@ export interface ForYouEngine {
 export interface ForYouTarget {
   readonly registry: AtomRegistry.AtomRegistry;
   readonly engine: ForYouEngine;
+  readonly environmentId: EnvironmentId;
   readonly boardKey: string;
   readonly projectId: string;
 }
@@ -38,6 +44,72 @@ export const forYouSentAtom = Atom.make<SentByBoard>({}).pipe(
   Atom.keepAlive,
   Atom.withLabel("phone-foryou-sent"),
 );
+
+const SENT_WRITES_KEY = "agentboard.foryou-sent-writes.v1";
+
+const SentWrites = Schema.Array(
+  Schema.Struct({
+    board: Schema.String,
+    id: Schema.String,
+    status: Schema.Literals(FOR_YOU_STATUSES),
+    choice: Schema.String,
+  }),
+);
+type SentWrite = (typeof SentWrites.Type)[number];
+const decodeSentWrites = Schema.decodeUnknownOption(Schema.fromJsonString(SentWrites));
+
+const readSentWrites = (): ReadonlyArray<SentWrite> => {
+  try {
+    return Option.getOrElse(decodeSentWrites(SecureStore.getItem(SENT_WRITES_KEY)), () => []);
+  } catch (error) {
+    console.warn("Could not read the sent tracker changes.", error);
+    return [];
+  }
+};
+
+/** Tracker changes made before the orchestrator recorded them, kept so a relaunch cannot repeat one. */
+export const sentWritesAtom = Atom.writable(
+  readSentWrites,
+  (ctx, writes: ReadonlyArray<SentWrite>) => {
+    ctx.setSelf(writes);
+    try {
+      SecureStore.setItem(SENT_WRITES_KEY, JSON.stringify(writes));
+    } catch (error) {
+      console.warn("Could not save the sent tracker changes.", error);
+    }
+  },
+).pipe(Atom.keepAlive, Atom.withLabel("phone-foryou-sent-writes"));
+
+/** A board's sent cards: this session's answers, and tracker changes made before a relaunch. */
+export function boardSent(
+  sent: SentByBoard,
+  writes: ReadonlyArray<SentWrite>,
+  boardKey: string,
+  cards: ReadonlyArray<ForYouCard>,
+): ReadonlyMap<string, SentCard> {
+  const board = new Map(sent[boardKey]);
+  for (const { board: key, id, choice, status } of writes) {
+    const card = cards.find((entry) => entry.id === id);
+    if (key === boardKey && card !== undefined && !board.has(id)) {
+      board.set(id, { card, choice, status });
+    }
+  }
+  return board;
+}
+
+/** Drops a board's sent tracker changes once the file moves their item off its status at sending. */
+export function forgetSettledWrites(
+  registry: AtomRegistry.AtomRegistry,
+  boardKey: string,
+  cards: ReadonlyArray<ForYouCard>,
+) {
+  const writes = registry.get(sentWritesAtom);
+  const kept = writes.filter((write) => {
+    const card = cards.find((entry) => entry.id === write.id);
+    return write.board !== boardKey || card?.origin !== "file" || card.item.status === write.status;
+  });
+  if (kept.length !== writes.length) registry.set(sentWritesAtom, kept);
+}
 
 type FileCard = Extract<ForYouCard, { readonly origin: "file" }>;
 type EngineCard = Extract<ForYouCard, { readonly origin: "engine" }>;
@@ -87,6 +159,10 @@ export async function answerItem(
         answer.choice === "approve"
       ) {
         result = await target.engine.trackerCall(trackerCall(item.write, target.projectId));
+        target.registry.set(sentWritesAtom, [
+          ...target.registry.get(sentWritesAtom),
+          { board: target.boardKey, id: card.id, status: item.status, choice: answerLabel(answer) },
+        ]);
         return forYouMessage(card.id, { ...answer, result });
       }
       return forYouMessage(card.id, answer);
