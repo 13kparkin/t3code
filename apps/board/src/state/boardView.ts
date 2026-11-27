@@ -37,7 +37,7 @@ export interface BoardView {
   /** Every readable `additions.json` item, hidden ones too. A file that stops parsing keeps the last items. */
   readonly additions: ReadonlyArray<Addition>;
   readonly overlay: Overlay;
-  /** The orchestrator's `docs.json`. A file that stops parsing keeps the last docs. */
+  /** The orchestrator's `docs.json`, or `board.json` docs while it is missing. A file that stops parsing keeps the last docs. */
   readonly docs: ReadonlyArray<Doc>;
 }
 
@@ -81,8 +81,8 @@ export function useBoardView(project: EnvironmentProject, listed: ValidBoard): B
     setLastAdditions(parsedAdditions.items);
   }
   const parsedDocs = useMemo(
-    () => (files.docs === null ? Result.succeed(NO_DOCS) : parseDocs(files.docs)),
-    [files.docs],
+    () => (files.docs === null ? Result.succeed(board.docs ?? NO_DOCS) : parseDocs(files.docs)),
+    [files.docs, board.docs],
   );
   const [lastDocs, setLastDocs] = useState(NO_DOCS);
   if (Result.isSuccess(parsedDocs) && parsedDocs.success !== lastDocs) {

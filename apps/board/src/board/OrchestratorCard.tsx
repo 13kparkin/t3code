@@ -239,7 +239,7 @@ export function OrchestratorCard({
           </p>
           <ul data-scroll className="max-h-12 overflow-y-auto">
             {docs.map((doc) => (
-              <li key={doc.name} className="truncate text-[11px] text-muted">
+              <li key={`${doc.sentAt}:${doc.name}`} className="truncate text-[11px] text-muted">
                 {doc.name}
               </li>
             ))}

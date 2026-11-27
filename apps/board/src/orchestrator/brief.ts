@@ -90,7 +90,7 @@ export interface OrchestratorStats {
  * open while its latest line says so, because the orchestrator resolves an item by appending a line.
  */
 export function orchestratorStats(
-  files: Omit<StoreFiles, "additions" | "details" | "docs">,
+  files: Pick<StoreFiles, "tickets" | "forYou" | "decisions">,
   builderCap: number,
 ): OrchestratorStats {
   const problems: string[] = [];

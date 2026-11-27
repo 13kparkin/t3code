@@ -63,6 +63,7 @@ describe("the orchestrator's standing rules and board facts", () => {
     const rules = renderRules();
     expect(rules).toMatch(/\| `docs.json`\s+\| you\s+\|/);
     expect(rules).toContain("append one entry for each file to `docs.json`");
+    expect(rules).toContain("Skip a name already listed.");
     expect(rules).toContain("When the user asks to remove a doc, drop its entry from `docs.json`.");
     expect(rules).toContain("Never delete the doc's file.");
     expect(rules).toContain(
