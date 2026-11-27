@@ -24,12 +24,19 @@ import { errorText, modelInstalled, readSpeechStatus, runSpeech, speechStatusAto
 
 /** Undefined in `dev:web`, which has no main process to record with. */
 const recorder = window.board?.recorder;
+/** The recorder reads idle until main answers a start, so a press waits on this until main's next snapshot. */
+let starting = false;
 
 /** Null in `dev:web` and off Windows, where the Calls group offers no Record a call. */
 export const recorderAtom = Atom.make((get): RecorderSnapshot | null => {
   if (recorder === undefined) return null;
   // Subscribe before the read so a change between the two is not lost.
-  get.addFinalizer(recorder.onSnapshot((snapshot) => get.setSelf(snapshot)));
+  get.addFinalizer(
+    recorder.onSnapshot((snapshot) => {
+      starting = false;
+      get.setSelf(snapshot);
+    }),
+  );
   void recorder.snapshot().then((snapshot) => get.setSelf(snapshot));
   return null;
 }).pipe(Atom.keepAlive, Atom.withLabel("call-recorder"));
@@ -121,9 +128,6 @@ export const callPromptAtom = Atom.make<
   | null
 >(null).pipe(Atom.keepAlive, Atom.withLabel("call-prompt"));
 
-/** The recorder reads idle until main answers the first start, so a second press waits on this. */
-let starting = false;
-
 /** Adds a call that starts now and records it. `report` gets the failure text, or null. */
 export async function recordNewCall(
   registry: AtomRegistry.AtomRegistry,
@@ -136,6 +140,7 @@ export async function recordNewCall(
     return registry.set(callPromptAtom, { kind: "busy" });
   }
   starting = true;
+  let sent = false;
   try {
     if (!(await localState.read()).recordingConsent) {
       return registry.set(callPromptAtom, { kind: "consent", project, listed, report });
@@ -149,6 +154,7 @@ export async function recordNewCall(
     };
     const failure = await saveCall(registry, project, listed, call);
     if (failure === null) {
+      sent = true;
       recorder.start({
         callId: call.id,
         boardId: listed.board.id,
@@ -158,7 +164,7 @@ export async function recordNewCall(
     }
     report(failure);
   } finally {
-    starting = false;
+    if (!sent) starting = false;
   }
 }
 

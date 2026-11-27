@@ -35,7 +35,7 @@ vi.mock("./boards", () => ({
 import { recordNewCall } from "./recorder";
 
 describe("Record a call pressed twice", () => {
-  it("Given two presses before main says starting, then one call is saved", async () => {
+  it("Given presses before main says starting, then one call is saved", async () => {
     const registry = AtomRegistry.make();
     // SAFETY: saveCall is mocked, so recordNewCall reads only listed.board.id.
     const project = {} as never;
@@ -46,6 +46,7 @@ describe("Record a call pressed twice", () => {
       recordNewCall(registry, project, listed, report),
       recordNewCall(registry, project, listed, report),
     ]);
+    await recordNewCall(registry, project, listed, report);
     expect(mocks.saveCall).toHaveBeenCalledTimes(1);
     expect(mocks.start).toHaveBeenCalledTimes(1);
   });
