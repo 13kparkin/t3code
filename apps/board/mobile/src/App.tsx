@@ -7,7 +7,7 @@ import IconLayoutKanban from "@tabler/icons-react-native/IconLayoutKanban";
 import IconMessageCircle from "@tabler/icons-react-native/IconMessageCircle";
 import IconRobot from "@tabler/icons-react-native/IconRobot";
 import { useAtomValue } from "@effect/atom-react";
-import { useColorScheme } from "react-native";
+import { StatusBar, useColorScheme } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AgentsScreen } from "./board/AgentsScreen";
@@ -28,6 +28,7 @@ export default function App() {
   const status = useAtomValue(engineStatusAtom).kind;
   return (
     <SafeAreaProvider>
+      <StatusBar barStyle={dark ? "light-content" : "dark-content"} />
       <NavigationContainer theme={dark ? DarkTheme : DefaultTheme}>
         <EngineHeader />
         {status === "unpaired" ? (
