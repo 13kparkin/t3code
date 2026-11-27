@@ -45,13 +45,16 @@ export default withReleaseSigning({
     // The paired engine's session credential must not leave the phone in a backup.
     allowBackup: false,
     versionCode: Number(process.env.AGENT_BOARD_PHONE_VERSION_CODE ?? 1),
-    // Expo's template and expo-network ask for these; the app draws no overlays, keeps no files, never vibrates and reads no Wi-Fi details.
+    // Expo's template, expo-network and expo-secure-store ask for these; the app draws no overlays, keeps no files,
+    // never vibrates, reads no Wi-Fi details and never sets SecureStore's requireAuthentication.
     blockedPermissions: [
       "android.permission.SYSTEM_ALERT_WINDOW",
       "android.permission.READ_EXTERNAL_STORAGE",
       "android.permission.WRITE_EXTERNAL_STORAGE",
       "android.permission.VIBRATE",
       "android.permission.ACCESS_WIFI_STATE",
+      "android.permission.USE_BIOMETRIC",
+      "android.permission.USE_FINGERPRINT",
     ],
   },
   plugins: [
