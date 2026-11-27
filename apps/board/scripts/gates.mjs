@@ -43,6 +43,12 @@ export const GATES = [
   },
   { name: "typecheck", command: "vp", args: ["run", "--filter", "@agent-board/app", "typecheck"] },
   { name: "board-suite", command: "vp", args: ["test", "run"], cwd: "apps/board" },
+  {
+    name: "phone-typecheck",
+    command: "vp",
+    args: ["run", "--filter", "@agent-board/phone", "typecheck"],
+  },
+  { name: "phone-test", command: "vp", args: ["run", "--filter", "@agent-board/phone", "test"] },
   { name: "call-capture-test", command: "cargo", args: ["test", "--locked", ...CALL_CAPTURE] },
   {
     name: "call-capture-check",
