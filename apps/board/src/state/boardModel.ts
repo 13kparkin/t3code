@@ -29,6 +29,14 @@ export type FamilyRow = Pick<
 
 export type RunState = "working" | "waiting" | "idle" | "failed" | "stopped";
 
+export const RUN_STATE_LABEL = {
+  working: "Working",
+  waiting: "Waiting",
+  idle: "Idle",
+  failed: "Failed",
+  stopped: "Stopped",
+} as const satisfies Record<RunState, string>;
+
 export interface AgentView {
   readonly threadId: string;
   readonly title: string;

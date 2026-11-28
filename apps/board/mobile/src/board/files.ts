@@ -29,6 +29,7 @@ export const appActiveAtom = Atom.make((get) => {
 
 const boardStore = createBoardStore(engineFilesAtom, appActiveAtom);
 export const boardFilesAtom = boardStore.files;
+export const boardPollAtom = boardStore.poll;
 
 const NOT_POLLING = Atom.make<void>(undefined).pipe(Atom.withLabel("phone-board-poll:none"));
 

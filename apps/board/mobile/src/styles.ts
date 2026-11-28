@@ -42,6 +42,7 @@ export const styles = StyleSheet.create({
   // apps/mobile's Android reading width, so a foldable's inner screen keeps phone-length lines.
   readable: { width: "100%", maxWidth: 720, alignSelf: "center" },
   fill: { flex: 1 },
+  centered: { alignItems: "center", flex: 1, gap: 12, justifyContent: "center" },
   sheet: { flex: 1, backgroundColor: COLORS.bg },
   title: { fontSize: 18, fontWeight: "600" },
   muted: { color: COLORS.muted },
@@ -103,13 +104,6 @@ export const styles = StyleSheet.create({
     lineHeight: 16,
     overflow: "hidden",
     paddingHorizontal: 4,
-  },
-  sectionHeader: {
-    alignItems: "center",
-    backgroundColor: COLORS.bg,
-    flexDirection: "row",
-    gap: 6,
-    paddingVertical: 6,
   },
   bubble: {
     alignSelf: "flex-end",

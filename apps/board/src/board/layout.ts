@@ -2,9 +2,11 @@ import type { Addition } from "../domain/additions";
 import type { CardView } from "../domain/forYou";
 import { TICKET_STAGES, type TicketStage } from "../domain/ticket";
 import type { BoardModel } from "../state/boardModel";
-import type { FrameOrder } from "../state/boardUi";
 import { isWorking } from "./ticketStatus";
 import type { Rect } from "./viewport";
+
+/** The saved order of each lane's frames, by lane id. */
+export type FrameOrder = Readonly<Record<string, ReadonlyArray<string>>>;
 
 export type StageLane = "todo" | "running" | "waiting" | "done";
 export type LaneId = "for_you" | StageLane;

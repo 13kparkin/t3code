@@ -1,11 +1,15 @@
 import { glanceLines } from "@agent-board/app/domain/glance";
 import { evaluateReadiness } from "@agent-board/app/domain/readiness";
 import { STAGE_LABEL, type Ticket } from "@agent-board/app/domain/ticket";
+import { type AgentView, RUN_STATE_LABEL } from "@agent-board/app/state/boardModel";
+import { type EnvironmentId, ThreadId } from "@t3tools/contracts";
+import { useState } from "react";
 import { Linking, Modal, Pressable, ScrollView, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import { AppText } from "../AppText";
 import { styles } from "../styles";
+import { ThreadActivity } from "./ThreadActivity";
 
 function fileReadiness(ticket: Ticket, tickets: ReadonlyArray<Ticket>) {
   return evaluateReadiness({
@@ -27,13 +31,18 @@ export function TicketSheet({
   ticket,
   tickets,
   decisions,
+  agents,
+  environmentId,
   onClose,
 }: {
   ticket: Ticket;
   tickets: ReadonlyArray<Ticket>;
   decisions: string | null;
+  agents: ReadonlyArray<AgentView>;
+  environmentId: EnvironmentId;
   onClose: () => void;
 }) {
+  const [agent, setAgent] = useState<AgentView | null>(null);
   const pr = ticket.pr == null ? null : String(ticket.pr).trim();
   return (
     <Modal animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -79,6 +88,31 @@ export function TicketSheet({
                 CI and evidence checks show on the desktop.
               </AppText>
             </View>
+            {agents.length > 0 && (
+              <View>
+                <AppText style={styles.bold}>Agents</AppText>
+                {agents.map((entry) => (
+                  <Pressable
+                    key={entry.threadId}
+                    accessibilityRole="button"
+                    onPress={() => setAgent(entry)}
+                    style={styles.card}
+                  >
+                    <AppText style={styles.cardTitle} numberOfLines={1}>
+                      {entry.title}
+                    </AppText>
+                    <AppText
+                      style={[
+                        styles.small,
+                        entry.runState === "working" ? styles.working : styles.muted,
+                      ]}
+                    >
+                      {entry.role} · {RUN_STATE_LABEL[entry.runState]}
+                    </AppText>
+                  </Pressable>
+                ))}
+              </View>
+            )}
             {pr !== null && (
               <View>
                 <AppText style={styles.bold}>Pull request</AppText>
@@ -95,6 +129,14 @@ export function TicketSheet({
               </View>
             )}
           </ScrollView>
+          {agent !== null && (
+            <ThreadActivity
+              environmentId={environmentId}
+              threadId={ThreadId.make(agent.threadId)}
+              title={agent.title}
+              onClose={() => setAgent(null)}
+            />
+          )}
         </SafeAreaView>
       </SafeAreaProvider>
     </Modal>

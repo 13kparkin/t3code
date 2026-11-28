@@ -1,9 +1,8 @@
 import { Atom, type AtomRegistry } from "effect/reactivity";
 
+import type { FrameOrder } from "../board/layout";
 import type { FileBox, LocalState } from "../store/localState";
 import { localState } from "./boards";
-
-export type FrameOrder = Readonly<Record<string, ReadonlyArray<string>>>;
 
 /** The order the user dragged each lane's frames to, by board id then lane. The saved order replaces the empty one on launch. */
 export const frameOrderAtom = Atom.writable(

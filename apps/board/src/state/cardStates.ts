@@ -1,9 +1,10 @@
 import * as Record from "effect/Record";
 
-import type { StageLane } from "../board/layout";
+import { type StageLane, ticketLane } from "../board/layout";
 import { hasFinished, isWorking } from "../board/ticketStatus";
 import type { CallEvent, CardState, FreeAgent } from "../domain/board";
-import type { AgentView, BoardModel } from "./boardModel";
+import { TICKET_STAGES } from "../domain/ticket";
+import type { AgentView, BoardModel, TicketView } from "./boardModel";
 
 export interface ArchivedCard {
   readonly key: string;
@@ -103,3 +104,23 @@ export const folderArchived = (states: { readonly [key: string]: CardState }, pa
   path
     .split("/")
     .some((_, at, parts) => states[`dir:${parts.slice(0, at + 1).join("/")}`] === "archived");
+
+export type RunningItem =
+  | { readonly kind: "agent"; readonly agent: AgentView }
+  | { readonly kind: "ticket"; readonly view: TicketView };
+
+/** What the desktop's Running lane holds, in its order: the ticketless agents running now, then tickets with a live agent. */
+export function runningItems(
+  { model, agents }: Pick<CardSplit, "model" | "agents">,
+  now: number,
+): ReadonlyArray<RunningItem> {
+  const tickets = TICKET_STAGES.flatMap((stage) =>
+    model.lanes[stage].filter(
+      (view) => ticketLane(stage, isWorking(view.agents, now)) === "running",
+    ),
+  ).toSorted((a, b) => b.position - a.position);
+  return [
+    ...agents.running.map((agent) => ({ kind: "agent" as const, agent })),
+    ...tickets.map((view) => ({ kind: "ticket" as const, view })),
+  ];
+}

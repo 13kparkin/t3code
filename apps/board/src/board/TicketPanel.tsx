@@ -16,7 +16,7 @@ import { filesViewAtom, openTicketPage } from "../state/filesView";
 import { Tooltip } from "../ui/Tooltip";
 import { EmptyFiles } from "../files/EmptyFiles";
 import { NO_ARTIFACTS } from "../state/artifacts";
-import type { BoardModel } from "../state/boardModel";
+import { type BoardModel, RUN_STATE_LABEL } from "../state/boardModel";
 import { foldedAtom, sectionKey, toggleFolded } from "../state/boardUi";
 import { usePrContext } from "../state/prStatus";
 import { AgentLog } from "./AgentLog";
@@ -25,14 +25,6 @@ import { TicketTitle } from "./TicketTitle";
 import { TicketMeta } from "./TicketMeta";
 import { TicketSection } from "./TicketSection";
 import { ticketSectionsFor } from "./ticketSections";
-
-const STATE_LABEL = {
-  working: "Working",
-  waiting: "Waiting",
-  idle: "Idle",
-  failed: "Failed",
-  stopped: "Stopped",
-} as const;
 
 /** The Ticket tab: a ticket's details as collapsible sections, or the log of an agent no ticket claims. The board's screen draws it into the panel. */
 export function TicketPanel({
@@ -137,7 +129,7 @@ export function TicketPanel({
         )}
         {agent !== null && (
           <p className="text-[11px] text-muted">
-            {agent.role} · {STATE_LABEL[agent.runState]}
+            {agent.role} · {RUN_STATE_LABEL[agent.runState]}
           </p>
         )}
       </header>

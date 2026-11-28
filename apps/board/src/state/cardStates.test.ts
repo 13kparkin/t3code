@@ -7,6 +7,7 @@ import {
   agentRowCounts,
   archivedBesideLanes,
   folderArchived,
+  runningItems,
   splitCards,
 } from "./cardStates";
 
@@ -170,5 +171,43 @@ describe("cards archived beside the lanes", () => {
     ["a folder whose name only starts the same", "artifacts/boards", false],
   ])("Given %s, then its section hides: %s", (_name, path, hidden) => {
     expect(folderArchived(states, path)).toBe(hidden);
+  });
+});
+
+describe("the Running lane's items", () => {
+  it("Given live and idle tickets and agents, then it lists live agents first, then live unfinished tickets by position", () => {
+    const live = { latestRunId: "run-1", runState: "working" } as const;
+    const lanes = {
+      ...model.lanes,
+      building: [
+        { ticket: ticket("T-1"), position: 0, agents: [agent("t1", live)] },
+        { ticket: ticket("T-2"), position: 1, agents: [agent("t2")] },
+      ],
+      pr: [
+        {
+          ticket: { ...ticket("T-3"), stage: "pr" as const },
+          position: 2,
+          agents: [agent("t3", live)],
+        },
+      ],
+      merged: [
+        {
+          ticket: { ...ticket("T-4"), stage: "merged" as const },
+          position: 3,
+          agents: [agent("t4", live)],
+        },
+      ],
+    };
+    const split = splitCards(
+      { lanes, unassigned: [agent("free-live", live), agent("free-idle")] },
+      [],
+      {},
+      0,
+    );
+    expect(
+      runningItems(split, 0).map((item) =>
+        item.kind === "agent" ? item.agent.threadId : item.view.ticket.key,
+      ),
+    ).toEqual(["free-live", "T-3", "T-1"]);
   });
 });
