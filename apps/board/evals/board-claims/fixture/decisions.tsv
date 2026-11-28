@@ -1,50 +1,50 @@
 time	decision	alternatives	reason	evidence
 2026-01-02T09:00:00Z	Split the goal into eight tickets, APP-1 through APP-8, all todo		One change per pull request	tickets.json
-2026-01-02T09:01:00Z	Move APP-1 to `planned`		The planned step started	thread-APP-1-build
-2026-01-02T09:02:00Z	Move APP-1 to `building`		The building step started	thread-APP-1-build
-2026-01-02T09:03:00Z	Move APP-1 to `reviewing`		The reviewing step started	thread-APP-1-build
-2026-01-02T09:04:00Z	Move APP-1 to `verifying`		The verifying step started	thread-APP-1-build
-2026-01-02T09:05:00Z	Move APP-1 to `pr`		The pr step started	thread-APP-1-build
-2026-01-02T09:06:00Z	Move APP-1 to `awaiting_approval`		The awaiting_approval step started	thread-APP-1-build
-2026-01-02T09:07:00Z	Move APP-1 to `merged`		The merged step started	thread-APP-1-build
-2026-01-02T09:08:00Z	Move APP-2 to `planned`		The planned step started	thread-APP-2-build
-2026-01-02T09:09:00Z	Move APP-2 to `building`		The building step started	thread-APP-2-build
-2026-01-02T09:10:00Z	Move APP-2 to `reviewing`		The reviewing step started	thread-APP-2-build
-2026-01-02T09:11:00Z	Move APP-2 to `verifying`		The verifying step started	thread-APP-2-build
-2026-01-02T09:12:00Z	Move APP-2 to `pr`		The pr step started	thread-APP-2-build
-2026-01-02T09:13:00Z	Move APP-2 to `awaiting_approval`		The awaiting_approval step started	thread-APP-2-build
-2026-01-02T09:14:00Z	Move APP-3 to `planned`		The planned step started	thread-APP-3-build
-2026-01-02T09:15:00Z	Move APP-3 to `building`		The building step started	thread-APP-3-build
-2026-01-02T09:16:00Z	Move APP-3 to `reviewing`		The reviewing step started	thread-APP-3-build
-2026-01-02T09:17:00Z	Move APP-3 to `verifying`		The verifying step started	thread-APP-3-build
-2026-01-02T09:18:00Z	Move APP-3 to `pr`		The pr step started	thread-APP-3-build
-2026-01-02T09:19:00Z	Move APP-3 to `awaiting_approval`		The awaiting_approval step started	thread-APP-3-build
-2026-01-02T09:20:00Z	Move APP-4 to `planned`		The planned step started	thread-APP-4-build
-2026-01-02T09:21:00Z	Move APP-4 to `building`		The building step started	thread-APP-4-build
-2026-01-02T09:22:00Z	Move APP-4 to `reviewing`		The reviewing step started	thread-APP-4-build
-2026-01-02T09:23:00Z	Move APP-4 to `verifying`		The verifying step started	thread-APP-4-build
-2026-01-02T09:24:00Z	Move APP-4 to `pr`		The pr step started	thread-APP-4-build
-2026-01-02T09:25:00Z	Move APP-4 to `awaiting_approval`		The awaiting_approval step started	thread-APP-4-build
-2026-01-02T09:26:00Z	Move APP-5 to `planned`		The planned step started	thread-APP-5-build
-2026-01-02T09:27:00Z	Move APP-5 to `building`		The building step started	thread-APP-5-build
-2026-01-02T09:28:00Z	Move APP-5 to `reviewing`		The reviewing step started	thread-APP-5-build
-2026-01-02T09:29:00Z	Move APP-5 to `verifying`		The verifying step started	thread-APP-5-build
-2026-01-02T09:30:00Z	Move APP-5 to `pr`		The pr step started	thread-APP-5-build
-2026-01-02T09:31:00Z	Move APP-5 to `awaiting_approval`		The awaiting_approval step started	thread-APP-5-build
-2026-01-02T09:32:00Z	Move APP-6 to `planned`		The planned step started	thread-APP-6-build
-2026-01-02T09:33:00Z	Move APP-6 to `building`		The building step started	thread-APP-6-build
-2026-01-02T09:34:00Z	Move APP-6 to `reviewing`		The reviewing step started	thread-APP-6-build
-2026-01-02T09:35:00Z	Move APP-6 to `verifying`		The verifying step started	thread-APP-6-build
-2026-01-02T09:36:00Z	Move APP-6 to `pr`		The pr step started	thread-APP-6-build
-2026-01-02T09:37:00Z	Move APP-6 to `awaiting_approval`		The awaiting_approval step started	thread-APP-6-build
-2026-01-02T09:38:00Z	Move APP-7 to `planned`		The planned step started	thread-APP-7-build
-2026-01-02T09:39:00Z	Move APP-7 to `building`		The building step started	thread-APP-7-build
-2026-01-02T09:40:00Z	Move APP-7 to `reviewing`		The reviewing step started	thread-APP-7-build
-2026-01-02T09:41:00Z	Move APP-7 to `verifying`		The verifying step started	thread-APP-7-build
-2026-01-02T09:42:00Z	Move APP-7 to `pr`		The pr step started	thread-APP-7-build
-2026-01-02T09:43:00Z	Move APP-7 to `awaiting_approval`		The awaiting_approval step started	thread-APP-7-build
-2026-01-02T09:44:00Z	Move APP-7 to `merged`		The merged step started	thread-APP-7-build
-2026-01-02T09:45:00Z	Move APP-8 to `planned`		The planned step started	thread-APP-8-build
-2026-01-02T09:46:00Z	Move APP-8 to `building`		The building step started	thread-APP-8-build
-2026-01-02T09:47:00Z	Move APP-8 to `reviewing`		The reviewing step started	thread-APP-8-build
-2026-01-02T09:48:00Z	Move APP-8 to `verifying`, then to `pr`		Reviews clean and the pull request is open	thread-APP-8-review
+2026-01-02T09:01:00Z	APP-1 todo -> planned		The planned step started	thread-APP-1-build
+2026-01-02T09:02:00Z	APP-1 planned->building		The building step started	thread-APP-1-build
+2026-01-02T09:03:00Z	APP-1 building -> reviewing		The reviewing step started	thread-APP-1-build
+2026-01-02T09:04:00Z	APP-1 reviewing->verifying		The verifying step started	thread-APP-1-build
+2026-01-02T09:05:00Z	APP-1 verifying -> pr		The pr step started	thread-APP-1-build
+2026-01-02T09:06:00Z	APP-1 pr->awaiting_approval		The awaiting_approval step started	thread-APP-1-build
+2026-01-02T09:07:00Z	APP-1 awaiting_approval->merged: PR 101 merged. Next ticket APP-2		The user approved the merge	https://github.com/acme/app/pull/101
+2026-01-02T09:08:00Z	APP-2 todo -> planned		The planned step started	thread-APP-2-build
+2026-01-02T09:09:00Z	APP-2 planned->building		The building step started	thread-APP-2-build
+2026-01-02T09:10:00Z	APP-2 building -> reviewing		The reviewing step started	thread-APP-2-build
+2026-01-02T09:11:00Z	APP-2 reviewing->verifying		The verifying step started	thread-APP-2-build
+2026-01-02T09:12:00Z	APP-2 verifying -> pr		The pr step started	thread-APP-2-build
+2026-01-02T09:13:00Z	APP-2 pr->awaiting_approval		The awaiting_approval step started	thread-APP-2-build
+2026-01-02T09:14:00Z	APP-3 todo -> planned		The planned step started	thread-APP-3-build
+2026-01-02T09:15:00Z	APP-3 planned->building		The building step started	thread-APP-3-build
+2026-01-02T09:16:00Z	APP-3 building -> reviewing		The reviewing step started	thread-APP-3-build
+2026-01-02T09:17:00Z	APP-3 reviewing->verifying		The verifying step started	thread-APP-3-build
+2026-01-02T09:18:00Z	APP-3 verifying -> pr		The pr step started	thread-APP-3-build
+2026-01-02T09:19:00Z	APP-3 pr->awaiting_approval		The awaiting_approval step started	thread-APP-3-build
+2026-01-02T09:20:00Z	APP-4 todo -> planned		The planned step started	thread-APP-4-build
+2026-01-02T09:21:00Z	APP-4 planned->building		The building step started	thread-APP-4-build
+2026-01-02T09:22:00Z	APP-4 building -> reviewing		The reviewing step started	thread-APP-4-build
+2026-01-02T09:23:00Z	APP-4 reviewing->verifying		The verifying step started	thread-APP-4-build
+2026-01-02T09:24:00Z	APP-4 verifying -> pr		The pr step started	thread-APP-4-build
+2026-01-02T09:25:00Z	APP-4 pr->awaiting_approval		The awaiting_approval step started	thread-APP-4-build
+2026-01-02T09:26:00Z	APP-5 todo -> planned		The planned step started	thread-APP-5-build
+2026-01-02T09:27:00Z	APP-5 planned->building		The building step started	thread-APP-5-build
+2026-01-02T09:28:00Z	APP-5 building -> reviewing		The reviewing step started	thread-APP-5-build
+2026-01-02T09:29:00Z	APP-5 reviewing->verifying		The verifying step started	thread-APP-5-build
+2026-01-02T09:30:00Z	APP-5 verifying -> pr		The pr step started	thread-APP-5-build
+2026-01-02T09:31:00Z	APP-5 pr->awaiting_approval		The awaiting_approval step started	thread-APP-5-build
+2026-01-02T09:32:00Z	APP-6 todo -> planned		The planned step started	thread-APP-6-build
+2026-01-02T09:33:00Z	APP-6 planned->building		The building step started	thread-APP-6-build
+2026-01-02T09:34:00Z	APP-6 building -> reviewing		The reviewing step started	thread-APP-6-build
+2026-01-02T09:35:00Z	APP-6 reviewing->verifying		The verifying step started	thread-APP-6-build
+2026-01-02T09:36:00Z	APP-6 verifying -> pr		The pr step started	thread-APP-6-build
+2026-01-02T09:37:00Z	APP-6 pr->awaiting_approval		The awaiting_approval step started	thread-APP-6-build
+2026-01-02T09:38:00Z	APP-7 todo -> planned		The planned step started	thread-APP-7-build
+2026-01-02T09:39:00Z	APP-7 planned->building		The building step started	thread-APP-7-build
+2026-01-02T09:40:00Z	APP-7 building -> reviewing		The reviewing step started	thread-APP-7-build
+2026-01-02T09:41:00Z	APP-7 reviewing->verifying		The verifying step started	thread-APP-7-build
+2026-01-02T09:42:00Z	APP-7 verifying -> pr		The pr step started	thread-APP-7-build
+2026-01-02T09:43:00Z	APP-7 pr->awaiting_approval		The awaiting_approval step started	thread-APP-7-build
+2026-01-02T09:44:00Z	APP-7 awaiting_approval -> merged		The merged step started	thread-APP-7-build
+2026-01-02T09:45:00Z	APP-8 todo -> planned		The planned step started	thread-APP-8-build
+2026-01-02T09:46:00Z	APP-8 planned->building		The building step started	thread-APP-8-build
+2026-01-02T09:47:00Z	APP-8 building -> reviewing		The reviewing step started	thread-APP-8-build
+2026-01-02T09:48:00Z	APP-8 reviewing->verifying->pr		Reviews clean and the pull request is open	thread-APP-8-review

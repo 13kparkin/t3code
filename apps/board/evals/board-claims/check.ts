@@ -27,7 +27,7 @@ const REVIEW_ROLES: ReadonlySet<string> = new Set(
 const PATH_STAGES: ReadonlyArray<TicketStage> = TICKET_STAGES.filter(
   (stage) => stage !== "todo" && stage !== "off_path",
 );
-const MOVE = new RegExp(`\\bto \`?(${TICKET_STAGES.join("|")})\`?(?![\\w-])`, "g");
+const MOVE = new RegExp(`(?:\\bto |->\\s*)\`?(${TICKET_STAGES.join("|")})\`?(?!\\w|-(?!>))`, "g");
 
 const readText = (path: string) =>
   NodeFS.existsSync(path) ? NodeFS.readFileSync(path, "utf8") : null;
@@ -57,9 +57,11 @@ export function checkClaims(boardDir: string): string[] {
       .slice(1)
       .flatMap((row) => {
         const decision = row.split("\t")[1] ?? "";
-        const named = keys.filter((key) => namesKey(decision, key));
-        const stages = [...decision.matchAll(MOVE)].map((match) => match[1]);
-        return named.length === 1 && stages.length === 1 ? [`${named[0]} ${stages[0]}`] : [];
+        const [move, ...more] = decision.matchAll(MOVE);
+        if (move === undefined || more.length > 0) return [];
+        // The line's ticket is the one key before the move; a key after it is context.
+        const named = keys.filter((key) => namesKey(decision.slice(0, move.index), key));
+        return named.length === 1 ? [`${named[0]} ${move[1]}`] : [];
       }),
   );
 
