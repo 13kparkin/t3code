@@ -14,14 +14,14 @@ const TOOL_TYPES: ReadonlySet<string> = new Set([
   "web_search",
   "subagent",
 ]);
-const EXIT = /\bexit(?:ed)?(?: code)?\s*[=:]?\s*(\d+)\b/gi;
+const EXIT = /\bexit(?:ed)?(?: code)?\s*(?:[=:]\s*)?(\d+)\b/gi;
 
 const COMMAND_RULES = [
   { message: "sleeps to wait", pattern: /\bsleep\s+\d[\d.]*[smhd]?\b/ },
   {
     message: "kills by name or pattern",
     pattern:
-      /\b(?:pkill|killall)\b|\b(?:pgrep|pidof)\b.*\|\s*(?:xargs\s+)?kill\b|\bkill\b[^;&|]*\$\((?:pgrep|pidof)\b/,
+      /\b(?:pkill|killall)\b|\b(?:pgrep|pidof)\b(?=.*\|\s*(?:xargs\s+)?kill\b)|\bkill\b(?=[^;&|]*\$\((?:pgrep|pidof)\b)/,
   },
 ];
 const TOKENS = [
@@ -57,7 +57,9 @@ const CLAIMS: ReadonlyArray<{
       tool.type === "command_execution" &&
       (tool.text ?? "")
         .split("\n")
-        .some((line) => /\btests?\b/i.test(line) && line.match(/\d+/g)?.includes(value) === true),
+        .some(
+          (line) => /\btests?\b/i.test(line) && line.match(/\b\d+\b/g)?.includes(value) === true,
+        ),
   },
 ];
 

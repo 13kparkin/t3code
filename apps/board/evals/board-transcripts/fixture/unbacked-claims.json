@@ -26,8 +26,8 @@
     "creationSource": null,
     "type": "command_execution",
     "status": "completed",
-    "title": "vp test run src/fetch.test.ts; echo \"exit=$?\"",
-    "text": "$ vp test run src/fetch.test.ts; echo \"exit=$?\"\n      Tests  3 passed (3)\nexit=0",
+    "title": "vp test run src/retry12.test.ts; echo \"exit=$?\"",
+    "text": "$ vp test run src/retry12.test.ts; echo \"exit=$?\"\n      Tests  3 passed (3)\nexit=0",
     "textTruncated": false,
     "updatedAt": "2026-01-01T00:00:00.000Z"
   },
@@ -43,7 +43,7 @@
     "type": "assistant_message",
     "status": "completed",
     "title": null,
-    "text": "Code-ready.\n\n- Ran `vp test run src/fetch.test.ts`: 3 tests pass, exit 0.\n- Ran `vp run typecheck`: exit 2.\n- 12 tests pass in the full suite.\n- The `pre-pr-reviewer` skill ran inline.",
+    "text": "Code-ready.\n\n- Ran `vp test run src/retry12.test.ts`: 3 tests pass, exit 0.\n- Ran `vp run typecheck`: exit 2.\n- 12 tests pass in the full suite.\n- The `pre-pr-reviewer` skill ran inline.",
     "textTruncated": false,
     "updatedAt": "2026-01-01T00:00:00.000Z"
   }

@@ -60,8 +60,8 @@ export const CASES: ReadonlyArray<TranscriptCase> = [
     source: "AGENTS.md: never kill by name or pattern",
     expected: [
       "1 kills by name or pattern: pkill",
-      "2 kills by name or pattern: pgrep -f acme-dev | xargs kill",
-      "3 kills by name or pattern: kill $(pgrep",
+      "2 kills by name or pattern: pgrep",
+      "3 kills by name or pattern: kill",
     ],
   },
 ];
