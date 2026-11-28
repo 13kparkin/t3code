@@ -3,7 +3,9 @@ import {
   cancelQueuedRun,
   interruptThreadTurn,
   promoteQueuedRun,
+  setThreadRuntimeMode,
   startThreadTurn,
+  type StartThreadTurnInput,
 } from "@t3tools/client-runtime/operations";
 import { createOrchestrationEnvironmentAtoms } from "@t3tools/client-runtime/state/orchestration";
 import { createEnvironmentCommand } from "@t3tools/client-runtime/state/runtime";
@@ -13,13 +15,22 @@ import {
   type EnvironmentThreadState,
 } from "@t3tools/client-runtime/state/threads";
 import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
+import * as Effect from "effect/Effect";
 import { AsyncResult, Atom } from "effect/reactivity";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 
 export const startTurn = createEnvironmentCommand(connectionAtomRuntime, {
   label: "board:thread:start-turn",
-  execute: startThreadTurn,
+  // `message.dispatch` carries no runtime mode, so a provider switch that changes it sets it first.
+  execute: Effect.fn("board.startTurn")(function* (
+    input: StartThreadTurnInput & { readonly setRuntimeMode?: boolean },
+  ) {
+    if (input.setRuntimeMode === true) {
+      yield* setThreadRuntimeMode({ threadId: input.threadId, runtimeMode: input.runtimeMode });
+    }
+    return yield* startThreadTurn(input);
+  }),
 });
 
 export const interruptTurn = createEnvironmentCommand(connectionAtomRuntime, {

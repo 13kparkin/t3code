@@ -2,7 +2,7 @@ import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import { useContext, useState } from "react";
 
 import { ModelPicker } from "../chat/ModelPicker";
-import { ASKS_NOTE, orchestratorMode } from "../orchestrator/launch";
+import { asksNote, orchestratorMode } from "../orchestrator/launch";
 import {
   DEFAULT_ORCHESTRATOR,
   orchestratorPreset,
@@ -30,7 +30,7 @@ export function DefaultOrchestratorSection() {
         description={[
           preset.reason ??
             `A new board or Start orchestrator preselects this. You can change it there before it starts. Built-in default: Claude Code on ${DEFAULT_ORCHESTRATOR.model}.`,
-          asks ? ASKS_NOTE : null,
+          asks ? asksNote(picked.driver) : null,
         ]
           .filter((line) => line !== null)
           .join(" ")}

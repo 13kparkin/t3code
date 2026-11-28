@@ -27,8 +27,11 @@ export interface OrchestratorTarget {
 export const orchestratorMode = (driver: string): RuntimeMode =>
   driver === "claudeAgent" ? "full-access" : "approval-required";
 
-export const ASKS_NOTE =
-  "Every command this orchestrator runs, and every tool call that changes something, asks for your approval first.";
+/** The approval note beside a non-Claude orchestrator; only Codex was checked to hold commands and writing tools. */
+export const asksNote = (driver: string) =>
+  driver === "codex"
+    ? "Every command this orchestrator runs, and every tool call that changes something, asks for your approval first."
+    : "This orchestrator runs in approval mode, so its commands and the tool calls that change something should ask for your approval first. That was checked on Codex, not on this provider.";
 
 export interface LaunchRequest {
   readonly title: string;

@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { ModelPicker } from "../chat/ModelPicker";
 import type { PickerValue } from "../domain/picker";
-import { ASKS_NOTE, orchestratorMode } from "../orchestrator/launch";
+import { asksNote, orchestratorMode } from "../orchestrator/launch";
 import { engineProvidersAtom } from "../state/server";
 import { engineEnvironmentIdAtom } from "../state/projects";
 import { pickableInstances, type PickableInstance } from "./providers";
@@ -61,7 +61,7 @@ export function OrchestratorPick({
         </p>
       )}
       {selected !== undefined && orchestratorMode(selected.driver) === "approval-required" && (
-        <p className="text-[11px] text-amber-300">{ASKS_NOTE}</p>
+        <p className="text-[11px] text-amber-300">{asksNote(selected.driver)}</p>
       )}
       {selected?.signIn === "signed-out" && environmentId !== null && (
         <SignIn environmentId={environmentId} instance={selected} />

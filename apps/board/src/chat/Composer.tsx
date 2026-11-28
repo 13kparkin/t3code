@@ -276,6 +276,7 @@ export function Composer({
             attachments,
           },
           runtimeMode: runtimeMode ?? projection.thread.runtimeMode,
+          setRuntimeMode: runtimeMode !== null && runtimeMode !== projection.thread.runtimeMode,
           interactionMode: projection.thread.interactionMode,
           ...(selection === null ? {} : { modelSelection: selection }),
           ...(pending.fresh ? { freshContext: true } : {}),
