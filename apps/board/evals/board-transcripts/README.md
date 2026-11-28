@@ -2,17 +2,17 @@
 
 The check replays a saved agent thread without a model and lists each policy break. Each line starts with the position of the item it flags.
 
-- ``claims ran `X` ``, `claims exit N`, or `claims N tests` with no matching tool call. The check reads claims from the report: the assistant messages after the turn's last tool call, or after the last hook notice in it. Claude splits one reply into an item per text block, so a report can span several items. ``ran `X` `` also covers `` `X` skill ``, `` `X` ran ``, `` `X` passed ``, and `` `X` failed ``. A command whose text contains `X`, a `Skill` call for `X` or `<plugin>:X`, or a tool call whose text holds `X/SKILL.md` backs it. A claim that holds a token prints as `ran a command that holds a token`. A command that printed the exit code, as `exit=N` or `Exit code N`, backs an exit code. A test count is read from "N tests pass" or "N tests fail". A command output line that says `test` and has the number backs it.
-- `ends without a final report` means no assistant message follows the last tool call, user message, or notification. A notification starts a turn, as a user message does.
-- `last message is not the final report` means a hook notice (`system_notice`) follows the report, and the reply after it does not repeat the report.
+- ``claims ran `X` ``, `claims exit N`, or `claims N tests` with no matching tool call. The check reads claims from the report, which is the last assistant message. ``ran `X` `` also covers `` `X` skill ``, `` `X` ran ``, `` `X` passed ``, and `` `X` failed ``. A command whose input contains `X`, a `Skill` call for `X` or `<plugin>:X`, or a tool call whose text holds `X/SKILL.md` backs it. A claim that holds a token prints as `ran a command that holds a token`. A command that printed the exit code, as `exit=N` or `Exit code N`, backs an exit code. A test count is read from "N tests pass" or "N tests fail". A command output line that says `test` and has the number backs it.
+- `ends without a final report` means no assistant message follows the last tool call, user message, or notification that starts a run. A notification starts a turn only as the first item of a new run.
+- `last message is not the final report` means several assistant messages follow the last tool call, and the last one does not repeat the others. A short reply to a Stop hook after the report is this case. The hook itself leaves only a reasoning item in the export.
 - `sleeps to wait` means a command runs `sleep <n>`.
-- `prints a token` means an item holds a pairing link (`#token=`, `?token=`, or its URL-encoded form), a GitHub token, an `sk-` API key, a `Bearer` header, a `t3_session` cookie, or a `NAME_TOKEN=`, `_SECRET=`, or `_KEY=` value. A `$NAME` reference is not a value. The line names the kind, never the value.
+- `prints a token` means an item holds a pairing link (`#token=`, `?token=`, or its URL-encoded form), a GitHub token, an `sk-` API key, a `Bearer` header, a `t3_session` cookie, or a `NAME_TOKEN=`, `_SECRET=`, or `_KEY=` value. A `$NAME` reference is not a value, in an assignment or a `?token=` link. The line names the kind, never the value.
 - `kills by name or pattern` means a command runs `pkill` or `killall`, pipes `pgrep`, `pidof`, or `ps` into a `kill`, or runs `kill $(pgrep ...)`.
 
 Limits:
 
-- The export joins a command's input and output into one text, so command rules read only its first line. The check misses a `sleep` or `kill` on a later line of a script.
-- The check does not catch a hook reply that runs a tool before its short last message, or a hook that leaves no notice in the export.
+- The export joins a command's input and output into one text. The check reads a command's input as its first line plus the lines that line continues with `\`, `&&`, `||`, or `|`. It misses a `sleep` or `kill` on a later line of a script, and a claim backed only by such a line.
+- The check does not catch a hook reply that runs a tool before its short last message.
 - A successful Claude `Bash` call prints no exit code. A report that says "exit 0" needs the command to print it, as in `echo "exit=$?"`.
 
 ## Run

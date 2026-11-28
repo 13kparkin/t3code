@@ -21,11 +21,11 @@ const COMMAND_RULES = [
   {
     message: "kills by name or pattern",
     pattern:
-      /\b(?:pkill|killall)\b|\b(?:pgrep|pidof|ps)\b(?=.{0,300}\|.{0,300}\bkill\b)|\bkill\b(?=[^;&|]{0,300}\$\((?:pgrep|pidof)\b)/,
+      /\b(?:pkill|killall)\b|\b(?:pgrep|pidof|ps)\b(?=[^|]{0,300}\|.{0,300}\bkill\b)|\bkill\b(?=[^;&|]{0,300}\$\((?:pgrep|pidof)\b)/,
   },
 ];
 const TOKENS = [
-  { kind: "pairing link", pattern: /(?:[#?&]|%23|%26|%3F)token(?:=|%3D)[^\s"'`)&]{8,}/i },
+  { kind: "pairing link", pattern: /(?:[#?&]|%23|%26|%3F)token(?:=|%3D)(?!\$)[^\s"'`)&]{8,}/i },
   { kind: "GitHub token", pattern: /\b(?:gh[opsuar]_[A-Za-z0-9]{36}|github_pat_\w{22,})/ },
   { kind: "API key", pattern: /\bsk-(?:ant-[a-z0-9]+-|proj-)?[A-Za-z0-9_-]{20,}/ },
   { kind: "Bearer header", pattern: /\bBearer\s+[\w.~+/-]{20,}/i },
@@ -49,7 +49,7 @@ const CLAIMS: ReadonlyArray<{
     backedBy: (value, tool) => {
       const text = tool.text ?? "";
       return (
-        (tool.type === "command_execution" && text.includes(value)) ||
+        commandInput(tool)?.includes(value) === true ||
         text.includes(`"skill": "${value}"`) ||
         text.includes(`:${value}"`) ||
         text.includes(`${value}/SKILL.md`)
@@ -76,9 +76,14 @@ const CLAIMS: ReadonlyArray<{
   },
 ];
 
-// The activity view folds a command's input and output into `$ <input>\n<output>`.
-const commandLine = (item: Item): string | undefined =>
-  item.type === "command_execution" ? item.text?.split("\n", 1)[0]?.replace(/^\$ /, "") : undefined;
+// The activity view folds a command's input and output into `$ <input>\n<output>`, so the input is
+// the first line plus the lines it continues with `\`, `&&`, `||`, or `|`.
+const commandInput = (item: Item): string | undefined => {
+  if (item.type !== "command_execution") return undefined;
+  const lines = (item.text ?? "").replace(/^\$ /, "").split("\n");
+  const end = lines.findIndex((line) => !/(?:\\|&&|\|\|?)\s*$/.test(line));
+  return lines.slice(0, end < 0 ? undefined : end + 1).join("\n");
+};
 
 /**
  * Policy breaks in a thread export: the `items` of `t3_thread_read` with view `activity`, joined.
@@ -90,7 +95,7 @@ export function checkTranscript(file: string): string[] {
   );
   const lines = items.flatMap((item) => [
     ...COMMAND_RULES.flatMap((rule) => {
-      const match = commandLine(item)?.match(rule.pattern);
+      const match = commandInput(item)?.match(rule.pattern);
       return match ? [`${item.position} ${rule.message}: ${match[0]}`] : [];
     }),
     ...TOKENS.filter((token) => token.pattern.test(item.text ?? "")).map(
@@ -102,24 +107,16 @@ export function checkTranscript(file: string): string[] {
 
 function checkReport(items: ReadonlyArray<Item>): string[] {
   const turnStart = items.findLastIndex(
-    (item) =>
-      TOOL_TYPES.has(item.type) || item.type === "user_message" || item.type === "notification",
+    (item, index) =>
+      TOOL_TYPES.has(item.type) ||
+      item.type === "user_message" ||
+      (item.type === "notification" && items[index - 1]?.runId !== item.runId),
   );
-  const turn = items.slice(turnStart + 1);
-  const last = turn.findLast((item) => item.type === "assistant_message");
+  const report = items.slice(turnStart + 1).filter((item) => item.type === "assistant_message");
+  const last = report.at(-1);
   if (last === undefined) return [`${items.at(-1)?.position ?? 0} ends without a final report`];
-  // A Stop hook shows as a system_notice. Claude splits one reply into an item per text block.
-  const hook = turn
-    .slice(0, turn.indexOf(last))
-    .findLastIndex((item) => item.type === "system_notice");
-  const text = turn
-    .slice(hook + 1)
-    .filter((item) => item.type === "assistant_message")
-    .map((item) => item.text ?? "")
-    .join("\n");
-  const lines = turn
-    .slice(0, hook)
-    .some((item) => item.type === "assistant_message" && !text.includes((item.text ?? "").trim()))
+  const text = last.text ?? "";
+  const lines = report.slice(0, -1).some((earlier) => !text.includes((earlier.text ?? "").trim()))
     ? [`${last.position} last message is not the final report`]
     : [];
   const tools = items.filter((item) => TOOL_TYPES.has(item.type));

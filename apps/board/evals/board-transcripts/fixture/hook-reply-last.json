@@ -56,10 +56,10 @@
     "messageId": null,
     "createdBy": null,
     "creationSource": null,
-    "type": "system_notice",
+    "type": "reasoning",
     "status": "completed",
-    "title": "Stop says: repeat your full report.",
-    "text": "Stop says: repeat your full report.",
+    "title": null,
+    "text": "The stop hook asks for the full report again.",
     "textTruncated": false,
     "updatedAt": "2026-01-01T00:00:00.000Z"
   },

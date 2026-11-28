@@ -15,7 +15,8 @@ export const CASES: ReadonlyArray<TranscriptCase> = [
   },
   {
     thread: "hook-repeat",
-    source: "Control: the task role's rule, the full report repeated after a hook reply",
+    source:
+      "Control: the task role's rule, the full report repeated after a hook reply. A Claude Stop hook leaves a reasoning item, not a notice (T-86 review r1)",
     expected: [],
   },
   {
@@ -31,7 +32,8 @@ export const CASES: ReadonlyArray<TranscriptCase> = [
   },
   {
     thread: "notification-turn",
-    source: "Control: a reply to a T3 notification turn is not a hook reply (T-86 review r0)",
+    source:
+      "Control: a reply to a notification that starts a new run is not a hook reply (T-86 review r0, r1)",
     expected: [],
   },
   {
@@ -41,20 +43,21 @@ export const CASES: ReadonlyArray<TranscriptCase> = [
     expected: ["3 ends without a final report"],
   },
   {
-    thread: "split-report",
+    thread: "notification-mid-run",
     source:
-      "Claude emits one assistant item per text block, so a report can span items; every block's claims count (T-86 review r0)",
-    expected: ["3 claims ran `vp run lint` with no matching tool call"],
+      "A notification inside a run does not start a turn, so a reply to it after the report hides the report (T-86 review r1)",
+    expected: ["4 last message is not the final report"],
   },
   {
     thread: "unbacked-claims",
     source:
-      'T-79 failure 8: builders claimed "pre-pr-reviewer ran inline" with no load (audit 2B, 11 unsupported claims in 38 threads)',
+      'T-79 failure 8: builders claimed "pre-pr-reviewer ran inline" with no load (audit 2B, 11 unsupported claims in 38 threads); a file that names a script does not back running it (T-86 review r1)',
     expected: [
-      "2 claims ran `vp run typecheck` with no matching tool call",
-      "2 claims ran `pre-pr-reviewer` with no matching tool call",
-      "2 claims exit 2 with no matching tool call",
-      "2 claims 12 tests with no matching tool call",
+      "3 claims ran `vp run lint` with no matching tool call",
+      "3 claims ran `vp run typecheck` with no matching tool call",
+      "3 claims ran `pre-pr-reviewer` with no matching tool call",
+      "3 claims exit 2 with no matching tool call",
+      "3 claims 12 tests with no matching tool call",
     ],
   },
   {
