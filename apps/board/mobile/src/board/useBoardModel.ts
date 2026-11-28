@@ -36,11 +36,11 @@ export function useBoardModel(choice: BoardChoice) {
   const threads = useAtomValue(familyThreadsAtom(choice.project.environmentId));
   const now = useAtomValue(clockAtom);
   const split = useMemo(() => {
-    if (rootId === null || threads === undefined) return null;
+    if (rootId !== null && threads === undefined) return null;
     const model = joinBoard({
       tickets,
-      family: threads.filter((thread) => inFamily(thread, rootId)),
-      orchestratorThreadId: rootId,
+      family: rootId === null ? [] : (threads ?? []).filter((thread) => inFamily(thread, rootId)),
+      orchestratorThreadId: rootId ?? "",
       driverOf: () => null,
     });
     return splitCards(model, board?.freeAgents ?? [], board?.cardStates ?? {}, now);
