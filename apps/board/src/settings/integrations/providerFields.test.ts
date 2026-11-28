@@ -1,3 +1,4 @@
+import { ProviderDriverKind } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
@@ -20,13 +21,9 @@ const settingsSchema = Schema.Struct({
 describe("a driver's settings fields", () => {
   it("Given ordered, hidden and defaulted fields, then they list in order, without the hidden one, with their labels and defaults", () => {
     expect(
-      providerFields({ settingsSchema }).map((field) => [
-        field.key,
-        field.label,
-        field.control,
-        field.placeholder,
-        field.defaultBoolean,
-      ]),
+      providerFields({ settingsSchema, driverKind: ProviderDriverKind.make("kiro") }, {}).map(
+        (field) => [field.key, field.label, field.control, field.placeholder, field.defaultBoolean],
+      ),
     ).toEqual([
       ["compactIdle", "Compact Idle", "switch", null, true],
       ["binaryPath", "Binary path", "text", "kiro-cli", null],

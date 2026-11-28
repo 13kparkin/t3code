@@ -18,7 +18,7 @@ const Snapshot = Schema.Struct({
 const decodeSnapshot = Schema.decodeUnknownOption(Schema.fromJsonString(Snapshot));
 
 /** Reads, never changes: the WSL VM's default inbound action and its inbound rules, with enums as names. */
-export const FIREWALL_QUERY = [
+const FIREWALL_QUERY = [
   `$id = '${WSL_VM_CREATOR_ID}'`,
   "$s = Get-NetFirewallHyperVVMSetting -PolicyStore ActiveStore -Name $id",
   '$r = @(Get-NetFirewallHyperVRule -VMCreatorId $id -Direction Inbound -ErrorAction SilentlyContinue | ForEach-Object { [pscustomobject]@{ Enabled = "$($_.Enabled)"; Action = "$($_.Action)"; Protocol = "$($_.Protocol)"; LocalPorts = @($_.LocalPorts | ForEach-Object { "$_" }) } })',

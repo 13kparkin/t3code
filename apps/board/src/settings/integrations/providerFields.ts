@@ -51,7 +51,12 @@ const decoderOf = (field: FieldSchema) =>
   Schema.decodeUnknownOption(field as Schema.Decoder<unknown>);
 
 /** The settings fields of one driver, in the order its schema asks for, without hidden ones. */
-export function providerFields(definition: Pick<ProviderClientDefinition, "settingsSchema">) {
+export function providerFields(
+  definition: Pick<ProviderClientDefinition, "settingsSchema" | "driverKind">,
+  config: InstanceConfig,
+) {
+  // A local ACP agent is only an executable, so the web shows just its source and command.
+  const isLocalAcp = definition.driverKind === "acpRegistry" && config["source"] === "local";
   const schemaAnnotation: ProviderSettingsFormSchemaAnnotation =
     Schema.resolveAnnotations(definition.settingsSchema)?.providerSettingsFormSchema ?? {};
   const order = new Map((schemaAnnotation.order ?? []).map((key, index) => [key, index] as const));
@@ -64,14 +69,18 @@ export function providerFields(definition: Pick<ProviderClientDefinition, "setti
       if (field === undefined) return [];
       const form: ProviderSettingsFormAnnotation = annotationsOf(field)?.providerSettingsForm ?? {};
       if (form.hidden === true) return [];
+      if (isLocalAcp && key !== "source" && key !== "commandPath") return [];
+      const localCommand = isLocalAcp && key === "commandPath";
       const decode = decoderOf(field);
       return [
         {
           key,
           control: form.control ?? "text",
-          label: textAnnotation(field, "title") ?? titleize(key),
-          description: textAnnotation(field, "description"),
-          placeholder: form.placeholder ?? null,
+          label: localCommand ? "Executable" : (textAnnotation(field, "title") ?? titleize(key)),
+          description: localCommand
+            ? "Executable name or path on this environment."
+            : textAnnotation(field, "description"),
+          placeholder: localCommand ? "e.g. dsh" : (form.placeholder ?? null),
           clearWhenEmpty: form.clearWhenEmpty ?? "omit",
           secret: isSecretSetting(field),
           defaultBoolean: Option.getOrNull(Option.filter(decode(undefined), isFlag)),

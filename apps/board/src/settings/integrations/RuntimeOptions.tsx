@@ -23,12 +23,12 @@ export function RuntimeOptions({
   const [rejected, setRejected] = useState<string | null>(null);
   const definition = providerClients.get(provider.driver);
   if (definition === undefined) return null;
-  const fields = providerFields(definition);
-  if (fields.length === 0) return null;
   const config = savedConfig(settings, provider);
   if (config === null) {
     return <p className="text-xs text-faint">Options are set outside the board.</p>;
   }
+  const fields = providerFields(definition, config);
+  if (fields.length === 0) return null;
   const save = (field: (typeof fields)[number], value: string | boolean) => {
     if (isText(value) && value !== "" && !field.accepts(value)) {
       setRejected(`${field.label} does not take "${value}".`);
