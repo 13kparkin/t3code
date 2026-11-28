@@ -11,26 +11,11 @@ export interface PromptInput {
   readonly prompt: string;
 }
 
-/** One row per evidence file the gate reads: the condition, a pattern any name meant for it has, and the names it accepts. */
-const EVIDENCE = [
-  {
-    condition: "ci_green",
-    stem: /\bci\b/,
-    label: CI_LOCAL_FILE,
-    reads: (name: string) => name === CI_LOCAL_FILE,
-  },
-  {
-    condition: "smoke_named",
-    stem: /smoke/,
-    label: SMOKE_FILE,
-    reads: (name: string) => name === SMOKE_FILE,
-  },
-  {
-    condition: "readmes_pass",
-    stem: /readme/,
-    label: `a name matching ${README_CHECK}`,
-    reads: (name: string) => README_CHECK.test(name),
-  },
+/** Each gated evidence file: its condition, a pattern any name meant for it has, and the name or names the gate reads. */
+const EVIDENCE: ReadonlyArray<{ condition: string; stem: RegExp; file: string | RegExp }> = [
+  { condition: "ci_green", stem: /\bci\b/, file: CI_LOCAL_FILE },
+  { condition: "smoke_named", stem: /smoke/, file: SMOKE_FILE },
+  { condition: "readmes_pass", stem: /readme/, file: README_CHECK },
 ];
 
 const backticked = (text: string) =>
@@ -53,7 +38,9 @@ export function checkPrompt({ roleNames, roleFiles, pstackFiles, prompt }: Promp
     }
   }
   const names = backticked(prompt);
-  for (const { condition, stem, label, reads } of EVIDENCE) {
+  for (const { condition, stem, file } of EVIDENCE) {
+    const reads = (name: string) => (file instanceof RegExp ? file.test(name) : name === file);
+    const label = file instanceof RegExp ? `a name matching ${file}` : file;
     const line = new RegExp(`^- \`${condition}\`:(.*)$`, "m").exec(prompt)?.[1] ?? "";
     if (!backticked(line).some(reads))
       problems.add(`\`${condition}\` names no file the gate reads (${label})`);
