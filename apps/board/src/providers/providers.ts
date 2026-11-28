@@ -195,15 +195,35 @@ export function defaultPick(instances: ReadonlyArray<PickableInstance>): Default
   };
 }
 
-/** The pick, or while nothing is picked yet the default, with a model typed before any pick kept. */
-export function resolvePick(
+/** What a new orchestrator flow preselects: the Settings default while its instance is on, otherwise the built-in default with the reason shown. */
+export function orchestratorPreset(
+  instances: ReadonlyArray<PickableInstance>,
+  saved: PickerValue | null,
+): DefaultPick {
+  if (saved === null) return defaultPick(instances);
+  if (instances.some((instance) => instance.instanceId === saved.instanceId)) {
+    return { value: saved, reason: null };
+  }
+  const fallback = defaultPick(instances);
+  const name = instances.find(
+    (instance) => instance.instanceId === fallback.value.instanceId,
+  )?.name;
+  return {
+    value: fallback.value,
+    reason:
+      name === undefined
+        ? `Your default, ${saved.instanceId}, is not on.`
+        : `Your default, ${saved.instanceId}, is not on. Starting on ${name} instead.`,
+  };
+}
+
+/** The user's pick while it names an instance that is on, otherwise the preset. */
+export const resolvePick = (
   instances: ReadonlyArray<PickableInstance>,
   pick: PickerValue,
-): PickerValue {
-  if (instances.some((instance) => instance.instanceId === pick.instanceId)) return pick;
-  const { value } = defaultPick(instances);
-  return pick.model === "" ? value : { ...value, model: pick.model, effort: "" };
-}
+  preset: DefaultPick,
+): PickerValue =>
+  instances.some((instance) => instance.instanceId === pick.instanceId) ? pick : preset.value;
 
 /** The effort control of the picked model, when the instance lists the model and it has one. */
 export function effortOf(

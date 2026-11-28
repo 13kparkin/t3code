@@ -3,6 +3,7 @@ import type { EnvironmentId } from "@t3tools/contracts";
 import { useContext, useState } from "react";
 
 import { ModelPicker } from "../chat/ModelPicker";
+import { DefaultOrchestratorSection } from "./DefaultOrchestratorSection";
 import type { RoleOverride } from "../domain/board";
 import { ROLES, roleTargetProblem } from "../orchestrator/roles";
 import { lastOpenedBoardAtom } from "../state/boards";
@@ -32,7 +33,10 @@ export function RolesPage({ environmentId }: { environmentId: EnvironmentId }) {
   const choice = boards.find((entry) => keyOf(entry) === wanted) ?? boards[0];
   if (choice === undefined) {
     return (
-      <p className="text-faint">No board yet. Create one from a project's + to set its roles.</p>
+      <div className="flex flex-col gap-6">
+        <DefaultOrchestratorSection />
+        <p className="text-faint">No board yet. Create one from a project's + to set its roles.</p>
+      </div>
     );
   }
 
@@ -51,80 +55,83 @@ export function RolesPage({ environmentId }: { environmentId: EnvironmentId }) {
   };
 
   return (
-    <SettingsSection
-      title="Roles"
-      clip={false}
-      note="An agent the orchestrator starts after a change runs on the new model. Agents already running keep theirs. You can also ask the orchestrator in chat to change a role."
-    >
-      <SettingsRow
-        title="Board"
-        description={
-          instance === null
-            ? "No Claude instance is running, so models cannot be picked."
-            : `Models from ${instance.name}.`
-        }
-        control={
-          <span className="flex items-center gap-3">
-            <span role="status" className="text-xs text-faint">
-              {status}
-            </span>
-            <Select
-              label="Board"
-              value={keyOf(choice)}
-              options={boards.map((entry) => ({
-                value: keyOf(entry),
-                title: `${entry.project.title} / ${entry.listed.board.name}`,
-              }))}
-              onChange={(next) => {
-                setStatus("");
-                setPicked(next);
-              }}
-            />
-          </span>
-        }
-      />
-      {ROLES.map((role) => {
-        const own = board.roleTargets?.[role.name];
-        const shown = own ?? { model: role.model.slug, effort: role.model.effort };
-        const problem =
-          own === undefined || instance === null
-            ? null
-            : roleTargetProblem(role.name, own, instance);
-        return (
-          <SettingsRow
-            key={role.name}
-            title={role.name}
-            description={`${firstSentence(role.description)} Default: ${role.model.slug} at ${role.model.effort}.`}
-            origin={{ inherited: own === undefined, onReset: () => save(role.name, null) }}
-            control={
-              <ModelPicker
-                dropDown
-                instances={instance === null ? [] : [instance]}
-                value={{
-                  instanceId: instance?.instanceId ?? "",
-                  model: shown.model,
-                  effort: shown.effort ?? "",
+    <div className="flex flex-col gap-6">
+      <DefaultOrchestratorSection />
+      <SettingsSection
+        title="Roles"
+        clip={false}
+        note="An agent the orchestrator starts after a change runs on the new model. Agents already running keep theirs. You can also ask the orchestrator in chat to change a role."
+      >
+        <SettingsRow
+          title="Board"
+          description={
+            instance === null
+              ? "No provider is running, so models cannot be picked."
+              : `Models from ${instance.name}.`
+          }
+          control={
+            <span className="flex items-center gap-3">
+              <span role="status" className="text-xs text-faint">
+                {status}
+              </span>
+              <Select
+                label="Board"
+                value={keyOf(choice)}
+                options={boards.map((entry) => ({
+                  value: keyOf(entry),
+                  title: `${entry.project.title} / ${entry.listed.board.name}`,
+                }))}
+                onChange={(next) => {
+                  setStatus("");
+                  setPicked(next);
                 }}
-                onChange={(next) =>
-                  save(role.name, {
-                    model: next.model,
-                    ...(next.effort === "" ? {} : { effort: next.effort }),
-                  })
-                }
-                switchBlocked={null}
-                open={open === role.name}
-                onOpenChange={(next) => setOpen(next ? role.name : null)}
               />
-            }
-          >
-            {problem !== null && (
-              <p role="alert" className="text-xs text-red-400">
-                {problem}
-              </p>
-            )}
-          </SettingsRow>
-        );
-      })}
-    </SettingsSection>
+            </span>
+          }
+        />
+        {ROLES.map((role) => {
+          const own = board.roleTargets?.[role.name];
+          const shown = own ?? { model: role.model.slug, effort: role.model.effort };
+          const problem =
+            own === undefined || instance === null
+              ? null
+              : roleTargetProblem(role.name, own, instance);
+          return (
+            <SettingsRow
+              key={role.name}
+              title={role.name}
+              description={`${firstSentence(role.description)} Default: ${role.model.slug} at ${role.model.effort}.`}
+              origin={{ inherited: own === undefined, onReset: () => save(role.name, null) }}
+              control={
+                <ModelPicker
+                  dropDown
+                  instances={instance === null ? [] : [instance]}
+                  value={{
+                    instanceId: instance?.instanceId ?? "",
+                    model: shown.model,
+                    effort: shown.effort ?? "",
+                  }}
+                  onChange={(next) =>
+                    save(role.name, {
+                      model: next.model,
+                      ...(next.effort === "" ? {} : { effort: next.effort }),
+                    })
+                  }
+                  switchBlocked={null}
+                  open={open === role.name}
+                  onOpenChange={(next) => setOpen(next ? role.name : null)}
+                />
+              }
+            >
+              {problem !== null && (
+                <p role="alert" className="text-xs text-red-400">
+                  {problem}
+                </p>
+              )}
+            </SettingsRow>
+          );
+        })}
+      </SettingsSection>
+    </div>
   );
 }

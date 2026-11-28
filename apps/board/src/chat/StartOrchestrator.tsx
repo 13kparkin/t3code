@@ -3,15 +3,16 @@ import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { type FormEvent, useContext, useState } from "react";
 
 import type { PickerValue } from "../domain/picker";
-import { ProviderPicker } from "../providers/ProviderPicker";
+import { OrchestratorPick } from "../providers/OrchestratorPick";
 import {
   canStart,
-  defaultPick,
   NO_PICK,
+  orchestratorPreset,
   pickableInstances,
   resolvePick,
   selectionOf,
 } from "../providers/providers";
+import { defaultOrchestratorAtom } from "../state/defaultOrchestrator";
 import { startBoardOrchestrator } from "../state/orchestrator";
 import { engineProvidersAtom } from "../state/server";
 import type { ValidBoard } from "../store/boardFiles";
@@ -29,8 +30,9 @@ export function StartOrchestrator({
   const [pick, setPick] = useState<PickerValue>(NO_PICK);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const chosen = resolvePick(instances, pick);
-  const reason = pick.instanceId === "" ? defaultPick(instances).reason : null;
+  const preset = orchestratorPreset(instances, useAtomValue(defaultOrchestratorAtom));
+  const chosen = resolvePick(instances, pick, preset);
+  const reason = pick.instanceId === "" ? preset.reason : null;
   const selected = instances.find((instance) => instance.instanceId === chosen.instanceId);
   const selection = selectionOf(instances, chosen);
 
@@ -50,8 +52,8 @@ export function StartOrchestrator({
 
   return (
     <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-3 p-3">
-      <p className="text-muted">This board has no orchestrator yet. Pick where to run it.</p>
-      <ProviderPicker instances={instances} value={chosen} onChange={setPick} reason={reason} />
+      <p className="text-muted">This board has no orchestrator yet. Pick its provider and model.</p>
+      <OrchestratorPick value={chosen} onChange={setPick} reason={reason} />
       <div>
         <button
           type="submit"

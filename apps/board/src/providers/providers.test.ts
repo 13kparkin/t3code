@@ -7,6 +7,7 @@ import {
   defaultPick,
   NO_PICK,
   pickableInstances,
+  orchestratorPreset,
   pickOf,
   resolvePick,
   searchModels,
@@ -232,19 +233,37 @@ describe("the orchestrator's pick", () => {
     expect(defaultPick([])).toEqual({ value: NO_PICK, reason: null });
   });
 
-  it("Given a model typed before any pick, when the pick resolves, then the typed model is kept on the default instance", () => {
-    const instances = pickableInstances([claude("unauthenticated")]);
-    expect(resolvePick(instances, { ...NO_PICK, model: "claude-nope" })).toEqual({
-      instanceId: "claudeAgent",
-      model: "claude-nope",
-      effort: "",
-    });
-  });
+  it.each([
+    [
+      "no saved default",
+      null,
+      { instanceId: "claudeAgent", model: "claude-opus-5-5", effort: "medium" },
+      null,
+    ],
+    [
+      "a saved default whose instance is on",
+      { instanceId: "claudeAgent", model: "claude-sonnet-5-5", effort: "low" },
+      { instanceId: "claudeAgent", model: "claude-sonnet-5-5", effort: "low" },
+      null,
+    ],
+    [
+      "a saved default whose instance is off",
+      { instanceId: "codex", model: "gpt-5", effort: "" },
+      { instanceId: "claudeAgent", model: "claude-opus-5-5", effort: "medium" },
+      "Your default, codex, is not on. Starting on Claude Code instead.",
+    ],
+  ])(
+    "Given %s, then a new orchestrator preselects it, saying why when it falls back",
+    (_name, saved, value, reason) => {
+      const instances = pickableInstances([claude("authenticated")]);
+      expect(orchestratorPreset(instances, saved)).toEqual({ value, reason });
+    },
+  );
 
-  it("Given a pick, when it resolves, then the pick stands", () => {
+  it("Given a pick, when it resolves, then the pick stands over the preset", () => {
     const instances = pickableInstances([claude("authenticated")]);
     const pick = { instanceId: "claudeAgent", model: "claude-sonnet-5-5", effort: "low" };
-    expect(resolvePick(instances, pick)).toBe(pick);
+    expect(resolvePick(instances, pick, orchestratorPreset(instances, null))).toBe(pick);
   });
 
   it("Given a picked effort, when the selection is made, then the model selection carries it under the model's effort option", () => {
