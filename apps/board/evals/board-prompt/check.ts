@@ -1,7 +1,6 @@
 import { CI_LOCAL_FILE, README_CHECK, SMOKE_FILE } from "../../src/domain/readiness";
 
 export interface PromptInput {
-  /** The registry's role names. */
   readonly roleNames: ReadonlyArray<string>;
   /** The file names in `roles/`. */
   readonly roleFiles: ReadonlySet<string>;
@@ -11,11 +10,10 @@ export interface PromptInput {
   readonly prompt: string;
 }
 
-/** Each gated evidence file: its condition, a pattern any name meant for it has, and the name or names the gate reads. */
-const EVIDENCE: ReadonlyArray<{ condition: string; stem: RegExp; file: string | RegExp }> = [
-  { condition: "ci_green", stem: /\bci\b/, file: CI_LOCAL_FILE },
-  { condition: "smoke_named", stem: /smoke/, file: SMOKE_FILE },
-  { condition: "readmes_pass", stem: /readme/, file: README_CHECK },
+const EVIDENCE: ReadonlyArray<{ condition: string; looksLike: RegExp; file: string | RegExp }> = [
+  { condition: "ci_green", looksLike: /\bci\b/, file: CI_LOCAL_FILE },
+  { condition: "smoke_named", looksLike: /smoke/, file: SMOKE_FILE },
+  { condition: "readmes_pass", looksLike: /readme/, file: README_CHECK },
 ];
 
 const backticked = (text: string) =>
@@ -38,14 +36,14 @@ export function checkPrompt({ roleNames, roleFiles, pstackFiles, prompt }: Promp
     }
   }
   const names = backticked(prompt);
-  for (const { condition, stem, file } of EVIDENCE) {
+  for (const { condition, looksLike, file } of EVIDENCE) {
     const reads = (name: string) => (file instanceof RegExp ? file.test(name) : name === file);
     const label = file instanceof RegExp ? `a name matching ${file}` : file;
     const line = new RegExp(`^- \`${condition}\`:(.*)$`, "m").exec(prompt)?.[1] ?? "";
     if (!backticked(line).some(reads))
       problems.add(`\`${condition}\` names no file the gate reads (${label})`);
     for (const name of names) {
-      if (name.endsWith(".txt") && stem.test(name) && !reads(name)) {
+      if (name.endsWith(".txt") && looksLike.test(name) && !reads(name)) {
         problems.add(`the prompt names ${name}, but the gate reads ${label}`);
       }
     }
