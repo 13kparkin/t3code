@@ -23,6 +23,6 @@ An eval that calls a model will take an entry `run.ts` with `--out`, `--model`, 
 
 - A case reproduces a real bad experience, or guards a real good one. Name its source.
 - A failure case must fail when the thing it guards breaks. Prove it once by breaking the real file and keeping the output in the ticket's evidence.
-- Add controls: cases where the correct answer is no problem.
+- Add controls. A control is a case whose correct answer is no problem.
 - Use a generic fixture board: `acme/app` at `/home/user/acme`. Never copy a real board's tickets, names, or paths into a case.
 - A no-model case passes when its result equals the expected value exactly. A model case will fail when half or more of its samples fail, compared against a baseline on the same model.
