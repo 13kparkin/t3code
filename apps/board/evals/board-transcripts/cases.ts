@@ -10,7 +10,7 @@ export const CASES: ReadonlyArray<TranscriptCase> = [
   {
     thread: "clean",
     source:
-      "Control: every claim backed, the report last, a kill by captured PID, a token name with no value",
+      "Control: every claim backed, the report last, a kill by captured PID, a token name with no value, sleep with no duration, and phrasings that are not claims",
     expected: [],
   },
   {
@@ -25,7 +25,8 @@ export const CASES: ReadonlyArray<TranscriptCase> = [
   },
   {
     thread: "ends-on-tool",
-    source: "T-79 failure 8: a thread whose last item is a tool call has no report",
+    source:
+      "Task role rule: the last message is the report. A thread that ends on a tool call has none",
     expected: ["1 ends without a final report"],
   },
   {

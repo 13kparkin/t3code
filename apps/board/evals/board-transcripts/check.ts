@@ -36,8 +36,7 @@ const CLAIMS: ReadonlyArray<{
   readonly backedBy: (value: string, tool: Item) => boolean;
 }> = [
   {
-    pattern:
-      /\b(?:ran|run|running|executed|invoked|loaded)\s+(?:the\s+)?`([^`\n]+)`|`([^`\n]+)`\s+(?:skill|ran|passed|failed)\b|\bskill\s+`([^`\n]+)`/gi,
+    pattern: /\bran\s+`([^`\n]+)`|`([^`\n]+)`\s+(?:skill|ran|passed|failed)\b/gi,
     label: (value) => `ran \`${value}\``,
     backedBy: (value, tool) =>
       commandLine(tool)?.includes(value) === true ||
@@ -52,7 +51,7 @@ const CLAIMS: ReadonlyArray<{
       [...(tool.text ?? "").matchAll(EXIT)].some((match) => match[1] === value),
   },
   {
-    pattern: /\b(\d+)\s+(?:[a-z-]+\s+)?tests?\b|\btests?\s+(\d+)\s+passed\b/gi,
+    pattern: /\b(\d+)\s+tests?\s+(?:pass|fail)/gi,
     label: (value) => `${value} tests`,
     backedBy: (value, tool) =>
       tool.type === "command_execution" &&
@@ -79,11 +78,9 @@ export function checkTranscript(file: string): string[] {
       const match = commandLine(item)?.match(rule.pattern);
       return match ? [`${item.position} ${rule.message}: ${match[0]}`] : [];
     }),
-    ...(item.type === "user_message"
-      ? []
-      : TOKENS.filter((token) => token.pattern.test(item.text ?? "")).map(
-          (token) => `${item.position} prints a token: ${token.kind}`,
-        )),
+    ...TOKENS.filter((token) => token.pattern.test(item.text ?? "")).map(
+      (token) => `${item.position} prints a token: ${token.kind}`,
+    ),
   ]);
   return [...lines, ...checkReport(items)];
 }
