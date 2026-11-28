@@ -74,7 +74,7 @@ const SIGN_IN = {
   unknown: "unknown",
 } as const satisfies Record<ServerProvider["auth"]["status"], SignInState>;
 
-function toPickable(provider: ServerProvider): PickableInstance {
+export function toPickable(provider: ServerProvider): PickableInstance {
   const models = provider.models.filter((model) => model.isLegacy !== true);
   const isDefault = provider.instanceId === defaultInstanceIdForDriver(provider.driver);
   return {

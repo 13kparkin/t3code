@@ -4,6 +4,7 @@ import type {
   DeviceConfigureInput,
   ProjectId,
   ProjectScript,
+  ProviderInstanceMutation,
   ProjectSettingsOverrides,
   ServerSettings,
   StorageCleanupReport,
@@ -17,6 +18,8 @@ import { DEFAULT_SETUP_SCRIPT } from "./defaultSetupScript";
 /** What `server.updateSettings` takes. */
 export interface SettingsInput {
   readonly patch: typeof ClientServerSettingsPatch.Type;
+  /** One provider instance created, replaced or removed, without rewriting the others. */
+  readonly providerInstanceMutation?: ProviderInstanceMutation;
 }
 
 type OverrideEntry = NonNullable<
