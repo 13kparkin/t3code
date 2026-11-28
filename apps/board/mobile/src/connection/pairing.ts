@@ -4,6 +4,10 @@ import {
   resolveRemotePairingTarget,
   type ResolvedRemotePairingTarget,
 } from "@t3tools/shared/remote";
+import type {
+  ConnectionBlockedReason,
+  ConnectionTransientReason,
+} from "@t3tools/client-runtime/connection";
 import * as Schema from "effect/Schema";
 
 const DEEP_LINK_PROTOCOL = /^agentboard-phone(?:-dev)?:$/;
@@ -47,4 +51,34 @@ function unwrapAppLink(value: string): string {
   const inner = url.host === "pair" ? url.searchParams.get("url")?.trim() : undefined;
   if (!inner) throw new PairingLinkInvalidError();
   return inner;
+}
+
+type FailureReason = ConnectionTransientReason | ConnectionBlockedReason;
+
+const UNREACHABLE =
+  "This phone cannot reach the PC. Check the phone and the PC are on the same Wi-Fi, then check the PC's firewall lets Agent Board in.";
+const RETRY =
+  "Pairing did not finish. Make a new link on the PC in Settings, Phone, and try again.";
+
+const PAIRING_FAILURE = {
+  timeout: UNREACHABLE,
+  network: UNREACHABLE,
+  transport: UNREACHABLE,
+  "endpoint-unavailable": UNREACHABLE,
+  "remote-unavailable": UNREACHABLE,
+  "relay-unavailable": RETRY,
+  "session-pending": RETRY,
+  "approval-pending": RETRY,
+  authentication:
+    "This pairing link has expired or was already used. Make a new one on the PC in Settings, Phone.",
+  permission: "The PC refused this phone. Make a new link on the PC in Settings, Phone.",
+  configuration:
+    "That pairing link is not complete. Scan the QR code, or copy the whole link from Settings, Phone.",
+  unsupported:
+    "This phone's Agent Board and the PC's engine do not match. Update both, then pair again.",
+} as const satisfies Record<FailureReason, string>;
+
+/** What a failed pairing means for the person holding the phone, and what to do about it. */
+export function pairingErrorText(reason: FailureReason | null): string {
+  return reason === null ? RETRY : PAIRING_FAILURE[reason];
 }

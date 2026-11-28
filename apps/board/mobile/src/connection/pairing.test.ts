@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { readPairingRequest } from "./pairing";
+import { pairingErrorText, readPairingRequest } from "./pairing";
 
 const LAN = "http://192.168.1.20:3773/pair#token=lan-code";
 const TAILNET = "https://desktop.tail1234.ts.net/pair#token=tailnet-code";
@@ -63,5 +63,26 @@ describe("readPairingRequest", () => {
     ],
   ])("rejects %s", (_, input, tag) => {
     expect(() => readPairingRequest(input)).toThrow(expect.objectContaining({ _tag: tag }));
+  });
+});
+
+describe("pairingErrorText", () => {
+  const unreachable =
+    "This phone cannot reach the PC. Check the phone and the PC are on the same Wi-Fi, then check the PC's firewall lets Agent Board in.";
+  it.each([
+    ["a timeout", "timeout", unreachable],
+    ["a network failure", "network", unreachable],
+    [
+      "a spent link",
+      "authentication",
+      "This pairing link has expired or was already used. Make a new one on the PC in Settings, Phone.",
+    ],
+    [
+      "a failure that names no reason",
+      null,
+      "Pairing did not finish. Make a new link on the PC in Settings, Phone, and try again.",
+    ],
+  ] as const)("Given %s, then it explains it in plain words", (_name, reason, text) => {
+    expect(pairingErrorText(reason)).toBe(text);
   });
 });

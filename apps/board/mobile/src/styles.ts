@@ -45,6 +45,7 @@ export const styles = StyleSheet.create({
   centered: { alignItems: "center", flex: 1, gap: 12, justifyContent: "center" },
   sheet: { flex: 1, backgroundColor: COLORS.bg },
   title: { fontSize: 18, fontWeight: "600" },
+  pairOr: { marginTop: 12 },
   muted: { color: COLORS.muted },
   faint: { color: COLORS.faint },
   disabled: { opacity: 0.4 },
