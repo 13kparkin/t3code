@@ -93,6 +93,7 @@ describe("launching an orchestrator", () => {
     expect(launched).toHaveLength(1);
     expect(launched[0]).toMatchObject({
       instanceId: "board-orchestrator-claudeAgent",
+      runtimeMode: "full-access",
       model: "claude-sonnet-5-5",
       options: [{ id: "effort", value: "medium" }],
       title: "Orchestrator: Claude connector",
@@ -103,12 +104,13 @@ describe("launching an orchestrator", () => {
     expect(launched[0]?.firstMessage).not.toContain("delegate_task");
   });
 
-  it("Given a provider that cannot carry standing rules, when the orchestrator launches, then it runs on the picked instance with the rules before the facts", async () => {
+  it("Given a provider that cannot carry standing rules, when the orchestrator launches, then it runs on the picked instance, every action asks, and the rules come before the facts", async () => {
     const { ports, launched } = harness([
       { ...PENDING, messages: [{ role: "assistant", text: "Ready." }] },
     ]);
     await launchOrchestrator(ports, target, { ...SELECTION, instanceId: "codex", driver: "codex" });
     expect(launched[0]?.instanceId).toBe("codex");
+    expect(launched[0]?.runtimeMode).toBe("approval-required");
     expect(launched[0]?.firstMessage).toMatch(/^STANDING RULES\n\n.*\/work\/project/s);
   });
 

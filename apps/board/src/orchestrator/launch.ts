@@ -1,4 +1,4 @@
-import type { ProviderOptionSelection } from "@t3tools/contracts";
+import type { ProviderOptionSelection, RuntimeMode } from "@t3tools/contracts";
 
 import { BOARDS_DIR, type Board } from "../domain/board";
 import type { ReviewTemplate } from "../domain/reviewTemplate";
@@ -20,6 +20,16 @@ export interface OrchestratorTarget {
   readonly standing: string | null;
 }
 
+/**
+ * Claude Code orchestrators keep full access, with the tracker-write ask rule in their launch
+ * arguments. Any other provider takes no such rule, so every action it takes asks first.
+ */
+export const orchestratorMode = (driver: string): RuntimeMode =>
+  driver === "claudeAgent" ? "full-access" : "approval-required";
+
+export const ASKS_NOTE =
+  "Every command this orchestrator runs, and every tool call that changes something, asks for your approval first.";
+
 export interface LaunchRequest {
   readonly title: string;
   /** The first message: the board facts, after the standing rules when the instance cannot carry them. */
@@ -27,6 +37,7 @@ export interface LaunchRequest {
   readonly instanceId: string;
   readonly model: string;
   readonly options: ReadonlyArray<ProviderOptionSelection>;
+  readonly runtimeMode: RuntimeMode;
 }
 
 /** The engine calls that start the orchestrator and watch its first run. */
@@ -114,6 +125,7 @@ export async function launchOrchestrator(
     instanceId,
     model: selection.model,
     options: selection.options,
+    runtimeMode: orchestratorMode(selection.driver),
   });
   const launched = await updateBoard(ports.files, cwd, folder, { orchestratorThreadId: threadId });
 

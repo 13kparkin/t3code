@@ -144,7 +144,7 @@ export async function startBoardOrchestrator(
                   model: request.model,
                   ...(request.options.length > 0 ? { options: request.options } : {}),
                 },
-                runtimeMode: "full-access",
+                runtimeMode: request.runtimeMode,
                 interactionMode: "default",
                 workspaceStrategy: { type: "root" },
                 initialMessage: { text: request.firstMessage, attachments: [] },

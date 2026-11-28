@@ -2,6 +2,7 @@ import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import { useContext, useState } from "react";
 
 import { ModelPicker } from "../chat/ModelPicker";
+import { ASKS_NOTE, orchestratorMode } from "../orchestrator/launch";
 import {
   DEFAULT_ORCHESTRATOR,
   orchestratorPreset,
@@ -19,15 +20,20 @@ export function DefaultOrchestratorSection() {
   const saved = useAtomValue(defaultOrchestratorAtom);
   const [open, setOpen] = useState(false);
   const preset = orchestratorPreset(instances, saved);
+  const picked = instances.find((instance) => instance.instanceId === preset.value.instanceId);
+  const asks = picked !== undefined && orchestratorMode(picked.driver) === "approval-required";
 
   return (
     <SettingsSection title="Default orchestrator model" clip={false}>
       <SettingsRow
         title="New orchestrators"
-        description={
+        description={[
           preset.reason ??
-          `A new board or Start orchestrator preselects this. You can change it there before it starts. Built-in default: Claude Code on ${DEFAULT_ORCHESTRATOR.model}.`
-        }
+            `A new board or Start orchestrator preselects this. You can change it there before it starts. Built-in default: Claude Code on ${DEFAULT_ORCHESTRATOR.model}.`,
+          asks ? ASKS_NOTE : null,
+        ]
+          .filter((line) => line !== null)
+          .join(" ")}
         origin={{
           inherited: saved === null,
           onReset: () => void saveDefaultOrchestrator(registry, null),
