@@ -4,14 +4,24 @@ import * as SecureRandom from "effect/crypto/SecureRandom";
 import * as Effect from "effect/Effect";
 import { expect, it, vi } from "vite-plus/test";
 
-const engine = vi.hoisted(() => ({ modes: new Array<RuntimeMode>(), refuseRestore: false }));
+const engine = vi.hoisted(() => ({
+  modes: new Array<RuntimeMode>(),
+  refuseRestore: false,
+  loseSetReply: false,
+}));
 
 vi.mock("@t3tools/client-runtime/operations", async (original) => ({
   ...(await original<object>()),
   setThreadRuntimeMode: (input: { runtimeMode: RuntimeMode }) =>
     engine.refuseRestore && engine.modes.length > 0
       ? Effect.fail("restore refused")
-      : Effect.sync(() => engine.modes.push(input.runtimeMode)),
+      : Effect.suspend(() => {
+          engine.modes.push(input.runtimeMode);
+          // The first set commits, but its reply never arrives.
+          return engine.loseSetReply && engine.modes.length === 1
+            ? Effect.fail("reply lost")
+            : Effect.void;
+        }),
   startThreadTurn: () => Effect.fail("dispatch refused"),
 }));
 
@@ -32,6 +42,7 @@ it.each([
     previous: "full-access",
     next: "approval-required",
     refuseRestore: false,
+    loseSetReply: false,
     error: "dispatch refused",
     modes: ["approval-required"],
   },
@@ -40,6 +51,7 @@ it.each([
     previous: "approval-required",
     next: "full-access",
     refuseRestore: false,
+    loseSetReply: false,
     error: "dispatch refused",
     modes: ["full-access", "approval-required"],
   },
@@ -48,12 +60,32 @@ it.each([
     previous: "approval-required",
     next: "full-access",
     refuseRestore: true,
+    loseSetReply: false,
     error: "The turn did not start, and the thread was left in full-access mode.",
     modes: ["full-access"],
+  },
+  {
+    name: "puts a stricter old mode back when the first mode set loses its reply",
+    previous: "approval-required",
+    next: "full-access",
+    refuseRestore: false,
+    loseSetReply: true,
+    error: "reply lost",
+    modes: ["full-access", "approval-required"],
+  },
+  {
+    name: "keeps the stricter mode when the old one was auto",
+    previous: "auto",
+    next: "approval-required",
+    refuseRestore: false,
+    loseSetReply: false,
+    error: "dispatch refused",
+    modes: ["approval-required"],
   },
 ] as const)("a failed turn after a mode change $name", async (row) => {
   engine.modes.length = 0;
   engine.refuseRestore = row.refuseRestore;
+  engine.loseSetReply = row.loseSetReply;
   const turn = runStartTurn({
     threadId: ThreadId.make("t"),
     message: { messageId: MessageId.make("m"), role: "user", text: "", attachments: [] },

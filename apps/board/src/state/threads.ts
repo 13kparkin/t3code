@@ -22,7 +22,7 @@ import { AsyncResult, Atom } from "effect/reactivity";
 import { connectionAtomRuntime } from "../connection/runtime";
 
 // `message.dispatch` carries no runtime mode, so a provider switch that changes it sets it first,
-// and puts a stricter old one back when the turn does not start.
+// and puts approval-required back when the switch or the turn fails.
 type StartTurnInput = StartThreadTurnInput & { readonly previousRuntimeMode?: RuntimeMode | null };
 type StartTurn = ReturnType<typeof startThreadTurn>;
 
@@ -45,10 +45,13 @@ export const runStartTurn: (
   if (previousRuntimeMode === undefined || previousRuntimeMode === null) {
     return yield* startThreadTurn(input);
   }
-  yield* setThreadRuntimeMode({ threadId, runtimeMode });
-  // A failure may still have started the turn, so never loosen back to full access.
-  if (previousRuntimeMode === "full-access") return yield* startThreadTurn(input);
-  return yield* startThreadTurn(input).pipe(
+  const switched = setThreadRuntimeMode({ threadId, runtimeMode }).pipe(
+    Effect.andThen(startThreadTurn(input)),
+  );
+  // A failure may still have changed the mode or started the turn, so only ever restore the
+  // strictest mode, the one no switch target is stricter than.
+  if (previousRuntimeMode !== "approval-required") return yield* switched;
+  return yield* switched.pipe(
     Effect.tapError(() =>
       setThreadRuntimeMode({ threadId, runtimeMode: previousRuntimeMode }).pipe(
         Effect.mapError(() => new ModeRestoreError({ runtimeMode })),
