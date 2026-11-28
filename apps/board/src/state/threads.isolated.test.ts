@@ -74,6 +74,15 @@ it.each([
     modes: ["full-access", "approval-required"],
   },
   {
+    name: "puts auto back when a switch to full access fails",
+    previous: "auto",
+    next: "full-access",
+    refuseRestore: false,
+    loseSetReply: false,
+    error: "dispatch refused",
+    modes: ["full-access", "auto"],
+  },
+  {
     name: "keeps the stricter mode when the old one was auto",
     previous: "auto",
     next: "approval-required",
