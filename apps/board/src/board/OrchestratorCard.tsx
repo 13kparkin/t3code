@@ -18,6 +18,7 @@ import { useEnvironmentThread } from "../state/threads";
 import type { ValidBoard } from "../store/boardFiles";
 import { BuilderCap } from "./BuilderCap";
 import { useOrchestratorStatus } from "./useOrchestratorStatus";
+import { lastDelegateFailure } from "../chat/projectionSource";
 import type { ArchivedCard } from "../state/cardStates";
 import {
   BOARD_SECTIONS,
@@ -98,6 +99,7 @@ export function OrchestratorCard({
     review: null,
   } as const satisfies Record<BoardSectionId, number | null>;
   const status = useOrchestratorStatus(board.orchestratorThreadId);
+  const delegateFailure = projection === null ? null : lastDelegateFailure(projection);
 
   return (
     <section
@@ -112,6 +114,15 @@ export function OrchestratorCard({
           {status}
         </span>
       </header>
+      {delegateFailure !== null && (
+        <p
+          role="alert"
+          data-testid="delegate-failure"
+          className="mt-1 text-[11px] break-words text-red-400"
+        >
+          A child agent could not start: {delegateFailure}
+        </p>
+      )}
       <div
         className="mt-1 flex items-center gap-1.5"
         onPointerDown={(event) => event.stopPropagation()}
