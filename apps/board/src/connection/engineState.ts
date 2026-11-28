@@ -1,4 +1,5 @@
 import type { Recording, RecordingFile, RecordRequest, TrackRange } from "../domain/recording";
+import type { PhoneFirewall } from "../settings/phoneFirewall";
 
 export type EngineState =
   | { readonly phase: "connecting" }
@@ -41,6 +42,8 @@ export interface BoardBridge {
   readonly networkAccess: () => Promise<NetworkAccess>;
   /** Runs `t3 up --lan` or `--no-lan`, which restarts T3's service and stops running agent turns. */
   readonly setNetworkAccess: (enabled: boolean) => Promise<NetworkAccess>;
+  /** Reads, never changes, whether the Hyper-V firewall keeps a phone from the engine's port. */
+  readonly phoneFirewall: (port: number) => Promise<PhoneFirewall>;
   /** Answers the install or update question the footer is asking. */
   readonly answerPrompt: (accepted: boolean) => void;
   /** Shows the folder dialog in the user's WSL home. Null when the user cancels. */

@@ -9,8 +9,9 @@ import { authEnvironment } from "../state/auth";
 import { serverEnvironment } from "../state/server";
 import { buttonClass } from "./controls/buttonClass";
 import { failureText } from "./failureText";
+import { FirewallRow } from "./FirewallRow";
 import { NetworkAccessRow } from "./NetworkAccessRow";
-import { isPhone, PHONE_LABEL, phoneEndpoint, phonePairingUrl } from "./phonePairing";
+import { endpointPort, isPhone, PHONE_LABEL, phoneEndpoint, phonePairingUrl } from "./phonePairing";
 import { PairingLink } from "./PairingLink";
 import { SettingsRow } from "./SettingsRow";
 import { SettingsSection } from "./SettingsSection";
@@ -119,6 +120,7 @@ export function PhonePage({ environmentId }: { environmentId: EnvironmentId }) {
             </p>
           )}
         </SettingsRow>
+        {endpoint !== undefined && <FirewallRow port={endpointPort(endpoint.httpBaseUrl)} />}
       </SettingsSection>
       <SettingsSection title="Paired phones">
         {AsyncResult.isFailure(access) ? (

@@ -9,6 +9,12 @@ export const phoneEndpoint = (endpoints: ReadonlyArray<ServerDirectEndpoint> | u
   endpoints?.find((entry) => entry.kind === "tailnet") ??
   endpoints?.find((entry) => entry.kind === "lan");
 
+/** The port an endpoint listens on, with the scheme's default when the URL names none. */
+export const endpointPort = (httpBaseUrl: string) => {
+  const url = new URL(httpBaseUrl);
+  return url.port === "" ? (url.protocol === "https:" ? 443 : 80) : Number(url.port);
+};
+
 /** T3's one-time `/pair` link, the same one its Connections page gives. */
 export function phonePairingUrl(endpoint: ServerDirectEndpoint, credential: string) {
   const url = new URL(endpoint.httpBaseUrl);
