@@ -259,7 +259,7 @@ export function Composer({
       fail(pending.messageId, prepared.error);
       return;
     }
-    const { selection, attachments } = prepared;
+    const { selection, standing, attachments } = prepared;
     if (deleted.current.has(pending.messageId)) return;
     setDispatched((all) => new Set(all).add(pending.messageId));
     const result = await runAtomCommand(
@@ -269,7 +269,12 @@ export function Composer({
         environmentId,
         input: {
           threadId,
-          message: { messageId: pending.messageId, role: "user", text: pending.text, attachments },
+          message: {
+            messageId: pending.messageId,
+            role: "user",
+            text: standing === null ? pending.text : `${standing}\n\n${pending.text}`,
+            attachments,
+          },
           runtimeMode: projection.thread.runtimeMode,
           interactionMode: projection.thread.interactionMode,
           ...(selection === null ? {} : { modelSelection: selection }),

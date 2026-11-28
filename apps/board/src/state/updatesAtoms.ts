@@ -145,7 +145,10 @@ const ENGINE_NAME = "T3 engine";
 export const updateItemsAtom = Atom.make((get): ReadonlyArray<UpdateItem> => {
   const runs = get(activeRunsAtom);
   const providers = get(engineProvidersAtom);
-  const instances = pickableInstances(providers);
+  // Only Claude Code updates from here; other provider CLIs update outside the board.
+  const instances = pickableInstances(providers).filter(
+    (instance) => instance.driver === "claudeAgent",
+  );
   const version = get(engineVersionAtom);
   const offer = get(engineUpdateOfferAtom);
   const update = get(engineUpdateStateAtom);

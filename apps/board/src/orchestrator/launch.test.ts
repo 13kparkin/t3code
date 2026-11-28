@@ -54,7 +54,10 @@ function harness(
       await whileLaunching?.(files);
       return "thread-1";
     },
-    orchestratorInstance: async (selection) => `board-orchestrator-${selection.instanceId}`,
+    orchestratorInstance: async (selection) =>
+      selection.driver === "claudeAgent"
+        ? { instanceId: `board-orchestrator-${selection.instanceId}`, standing: null }
+        : { instanceId: selection.instanceId, standing: "STANDING RULES" },
     projection: async () => answers[Math.min(polls++, answers.length - 1)] ?? PENDING,
     discard: async (id) => void discarded.push(id),
     sleep: async () => undefined,
@@ -98,6 +101,15 @@ describe("launching an orchestrator", () => {
     expect(launched[0]?.firstMessage).toContain("at most 2 builders at once");
     expect(launched[0]?.firstMessage).toContain("`Connector`, at `/work/project`");
     expect(launched[0]?.firstMessage).not.toContain("delegate_task");
+  });
+
+  it("Given a provider that cannot carry standing rules, when the orchestrator launches, then it runs on the picked instance with the rules before the facts", async () => {
+    const { ports, launched } = harness([
+      { ...PENDING, messages: [{ role: "assistant", text: "Ready." }] },
+    ]);
+    await launchOrchestrator(ports, target, { ...SELECTION, instanceId: "codex", driver: "codex" });
+    expect(launched[0]?.instanceId).toBe("codex");
+    expect(launched[0]?.firstMessage).toMatch(/^STANDING RULES\n\n.*\/work\/project/s);
   });
 
   it("Given a board whose role copy the user edited, when the orchestrator launches, then the edit is kept and the other roles are written", async () => {

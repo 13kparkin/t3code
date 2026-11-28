@@ -1,3 +1,4 @@
+import { providerClients } from "@t3tools/client-runtime/provider-clients";
 import {
   isReasoningSelect,
   selectableProviderOptionChoices,
@@ -32,7 +33,7 @@ export interface PickableModel {
 /** Where a new orchestrator starts: Claude Code on this model at this effort. */
 export const DEFAULT_ORCHESTRATOR = { model: "claude-opus-5-5", effort: "medium" } as const;
 
-/** A Claude Code instance the engine reports, as the picker lists it. */
+/** A provider instance the engine reports, as the picker lists it. */
 export interface PickableInstance {
   readonly instanceId: string;
   readonly driver: string;
@@ -40,7 +41,7 @@ export interface PickableInstance {
   readonly signIn: SignInState;
   /** The account the instance is signed in as. */
   readonly account: string | null;
-  /** Whether the engine can run a sign-in for this instance. Claude Code signs in on the machine that runs T3. */
+  /** Whether the engine can run a sign-in for this instance, on the machine that runs T3. */
   readonly canSignIn: boolean;
   /** Why the instance cannot start an orchestrator, or null. */
   readonly unavailable: string | null;
@@ -81,11 +82,17 @@ function toPickable(provider: ServerProvider): PickableInstance {
     name:
       isDefault && provider.driver === "claudeAgent"
         ? CLAUDE_CODE
-        : (provider.displayName ?? provider.instanceId),
+        : (provider.displayName ??
+          (isDefault ? providerClients.get(provider.driver)?.label : undefined) ??
+          provider.instanceId),
     signIn: SIGN_IN[provider.auth.status],
     account: provider.auth.email ?? provider.auth.label ?? null,
     canSignIn: provider.setup?.canAuthenticate === true,
-    unavailable: provider.installed ? null : "Not installed on the machine that runs T3",
+    unavailable: !provider.installed
+      ? "Not installed on the machine that runs T3"
+      : provider.availability === "unavailable"
+        ? (provider.unavailableReason ?? provider.message ?? "The engine cannot start it.")
+        : null,
     message: provider.message ?? null,
     offered: provider.models.map((model) => model.slug),
     models: models.map((model) => ({
@@ -100,12 +107,12 @@ function toPickable(provider: ServerProvider): PickableInstance {
 const byInstanceId = (left: PickableInstance, right: PickableInstance) =>
   left.instanceId.localeCompare(right.instanceId);
 
-/** The enabled Claude Code instances with each one's sign-in state and models. */
+/** Every enabled provider instance the engine runs, with each one's sign-in state and models. */
 export function pickableInstances(
   providers: ReadonlyArray<ServerProvider>,
 ): ReadonlyArray<PickableInstance> {
   return providers
-    .filter((provider) => provider.enabled && provider.driver === "claudeAgent")
+    .filter((provider) => provider.enabled)
     .map(toPickable)
     .toSorted(byInstanceId);
 }
@@ -173,11 +180,14 @@ export function defaultPick(instances: ReadonlyArray<PickableInstance>): Default
     };
   }
   const fallback = instances.find(instanceIsSignedIn) ?? instances.find(canStart) ?? instances[0];
-  const lead = instances[0];
-  if (fallback === undefined || lead === undefined) return { value: NO_PICK, reason: null };
-  const why = instances.some(instanceIsSignedIn)
-    ? `Claude Code does not offer ${DEFAULT_ORCHESTRATOR.model}.`
-    : `Claude Code is ${lead.unavailable === null ? "signed out" : "not installed"}.`;
+  if (fallback === undefined) return { value: NO_PICK, reason: null };
+  const claude = instances.find((instance) => instance.driver === "claudeAgent");
+  const why =
+    claude === undefined
+      ? "Claude Code is off."
+      : instanceIsSignedIn(claude)
+        ? `Claude Code does not offer ${DEFAULT_ORCHESTRATOR.model}.`
+        : `Claude Code is ${claude.unavailable === null ? "signed out" : "not installed"}.`;
   return {
     value: { instanceId: fallback.instanceId, model: fallback.defaultModel ?? "", effort: "" },
     reason: `${why} Starting on ${fallback.name} instead.`,

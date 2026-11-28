@@ -22,6 +22,8 @@ interface Fixture {
   readonly status?: "authenticated" | "unauthenticated" | "unknown";
   readonly email?: string;
   readonly installed?: boolean;
+  readonly enabled?: boolean;
+  readonly unavailableReason?: string;
   readonly canAuthenticate?: boolean;
   readonly message?: string;
   readonly displayName?: string;
@@ -41,8 +43,11 @@ const provider = (fixture: Fixture) =>
     instanceId: fixture.instanceId,
     driver: fixture.driver,
     displayName: fixture.displayName,
-    enabled: true,
+    enabled: fixture.enabled ?? true,
     installed: fixture.installed ?? true,
+    ...(fixture.unavailableReason === undefined
+      ? {}
+      : { availability: "unavailable", unavailableReason: fixture.unavailableReason }),
     version: null,
     status: "ready",
     auth: { status: fixture.status ?? "authenticated", email: fixture.email },
@@ -74,15 +79,21 @@ const provider = (fixture: Fixture) =>
   });
 
 describe("the provider picker's instances", () => {
-  it("Given Cursor and two Claude Code instances, when they are listed, then the Claude Code instances are named and Cursor is left out", () => {
+  it("Given Cursor, an unavailable Grok, a turned-off Codex and two Claude Code instances, when they are listed, then every enabled one is named with why it cannot start", () => {
     const listed = pickableInstances([
       provider({ instanceId: "cursor", driver: "cursor" }),
+      provider({ instanceId: "grok", driver: "grok", unavailableReason: "Grok needs an update" }),
+      provider({ instanceId: "codex", driver: "codex", enabled: false }),
       provider({ instanceId: "claudeZ", driver: "claudeAgent", displayName: "Claude Z" }),
       provider({ instanceId: "claudeAgent", driver: "claudeAgent", displayName: "Claude" }),
     ]);
-    expect(listed.map((instance) => [instance.instanceId, instance.name])).toEqual([
-      ["claudeAgent", "Claude Code"],
-      ["claudeZ", "Claude Z"],
+    expect(
+      listed.map((instance) => [instance.instanceId, instance.name, instance.unavailable]),
+    ).toEqual([
+      ["claudeAgent", "Claude Code", null],
+      ["claudeZ", "Claude Z", null],
+      ["cursor", "Cursor", null],
+      ["grok", "Grok", "Grok needs an update"],
     ]);
   });
 
@@ -188,6 +199,24 @@ describe("the orchestrator's pick", () => {
       "Claude Code is signed out. Starting on Claude Code instead.",
     );
   });
+
+  it.each([
+    ["signed out", [claude("unauthenticated")], "Claude Code is signed out."],
+    ["off", [], "Claude Code is off."],
+  ])(
+    "Given Claude Code %s beside an uninstalled provider that sorts first and a signed-in Codex, then the reason is about Claude Code and it starts on Codex",
+    (_name, claudes, why) => {
+      const instances = pickableInstances([
+        provider({ instanceId: "antigravity", driver: "antigravity", installed: false }),
+        ...claudes,
+        provider({ instanceId: "codex", driver: "codex", models: [{ slug: "gpt-6" }] }),
+      ]);
+      expect(defaultPick(instances)).toEqual({
+        value: { instanceId: "codex", model: "gpt-6", effort: "" },
+        reason: `${why} Starting on Codex instead.`,
+      });
+    },
+  );
 
   it("Given a signed-in Claude Code without Opus 5.5, when nothing is picked, then the reason names the missing model", () => {
     const instances = pickableInstances([

@@ -87,7 +87,7 @@ export const DEFAULT_ROLES: ReadonlyArray<ResolvedRole> = ROLES.map((role) => ({
   fallback: null,
 }));
 
-/** The parts of a Claude instance a role target is checked against. A picker's instance fits it. */
+/** The parts of a provider instance a role target is checked against. A picker's instance fits it. */
 export interface RoleInstance {
   readonly instanceId: string;
   readonly offered: ReadonlyArray<string>;
@@ -105,7 +105,7 @@ export function roleTargetProblem(
 ): string | null {
   if (!ROLES.some((entry) => entry.name === role)) return `${role} is not a role in the registry.`;
   if (pick === null) return null;
-  if (instance === null) return "No Claude instance is running to check the model against.";
+  if (instance === null) return "No provider is running to check the model against.";
   if (!instance.offered.includes(pick.model)) {
     return `${instance.instanceId} does not offer ${pick.model}.`;
   }
