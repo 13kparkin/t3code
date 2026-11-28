@@ -74,6 +74,11 @@ const family = [
   row("th-c", "[T-1] reviewer"),
   row("th-d", "[board] scout"),
   row("th-e", "[T-9] wizard", { status: "failed" }),
+  row("th-f", "[pre-pr] reviewer", { parent: "th-a" }),
+  row("th-g", "[pre-pr] scout", { parent: "th-f" }),
+  row("th-h", "[board] task", { parent: "th-d" }),
+  row("th-x", "[loop] scout", { parent: "th-y" }),
+  row("th-y", "[loop] scout", { parent: "th-x" }),
 ];
 
 describe("joining tickets with the thread family", () => {
@@ -84,13 +89,15 @@ describe("joining tickets with the thread family", () => {
       agents.map((agent) => [agent.threadId, agent.role, agent.runState]),
     ]);
 
-  it("Given a ticket that lists a thread, when joined, then the thread is its first agent and a title with the key adds the others", () => {
+  it("Given a ticket that lists a thread, when joined, then the thread is its first agent, and a title with the key or a claimed ancestor adds the others", () => {
     expect(summary("building")).toEqual([
       [
         "T-1",
         [
           ["th-a", "task", "working"],
           ["th-c", "reviewer", "idle"],
+          ["th-f", "reviewer", "idle"],
+          ["th-g", "scout", "idle"],
         ],
       ],
       ["T-2", [["th-b", "scout", "idle"]]],
@@ -99,11 +106,14 @@ describe("joining tickets with the thread family", () => {
     expect(model.lanes.planned).toEqual([]);
   });
 
-  it("Given children no ticket claims, when joined, then they sit in unassigned", () => {
+  it("Given children no ticket claims, by key or through an ancestor, when joined, then they sit in unassigned", () => {
     expect(model.unassigned.map((agent) => [agent.threadId, agent.role, agent.registered])).toEqual(
       [
         ["th-d", "scout", true],
         ["th-e", "wizard", false],
+        ["th-h", "task", true],
+        ["th-x", "scout", true],
+        ["th-y", "scout", true],
       ],
     );
   });
