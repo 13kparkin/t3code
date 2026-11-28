@@ -13,6 +13,7 @@ import {
 } from "../browser/panel";
 import { iconButton } from "../browser/styles";
 import { filesViewAtom, openTicketPage } from "../state/filesView";
+import { DocPage } from "../ui/DocPage";
 import { Tooltip } from "../ui/Tooltip";
 import { EmptyFiles } from "../files/EmptyFiles";
 import { NO_ARTIFACTS } from "../state/artifacts";
@@ -91,6 +92,28 @@ export function TicketPanel({
           artifacts: groups.byTicket.get(view.ticket.key) ?? NO_ARTIFACTS,
         };
   const sections = props === null ? [] : allSections.filter((section) => section.shows(props));
+  if (page && view !== undefined && props !== null) {
+    return (
+      <div ref={markPainted} className="flex min-h-0 flex-1 flex-col">
+        <DocPage
+          title={<TicketTitle ticket={view.ticket} page />}
+          lead={
+            <TicketMeta
+              view={view}
+              onOpenThread={(threadId) =>
+                chooseTicket(registry, { threadId, ticketKey: view.ticket.key })
+              }
+            />
+          }
+          sections={sections.map(({ id, title, Body }) => ({
+            id,
+            title,
+            body: <Body {...props} />,
+          }))}
+        />
+      </div>
+    );
+  }
   const open = sections.filter((section) => !folded.has(sectionKey(section.id)));
   const bars = sections.filter((section) => folded.has(sectionKey(section.id)));
   return (
