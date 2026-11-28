@@ -6,6 +6,7 @@ import {
   agentLane,
   agentRowCounts,
   archivedBesideLanes,
+  findTicketView,
   folderArchived,
   runningItems,
   splitCards,
@@ -175,7 +176,7 @@ describe("cards archived beside the lanes", () => {
 });
 
 describe("the Running lane's items", () => {
-  it("Given live and idle tickets and agents, then it lists live agents first, then live unfinished tickets by position", () => {
+  it("Given live and idle tickets and agents, then it lists live agents first, then live unfinished tickets by position, and an idle ticket is still found when opened", () => {
     const live = { latestRunId: "run-1", runState: "working" } as const;
     const lanes = {
       ...model.lanes,
@@ -209,5 +210,6 @@ describe("the Running lane's items", () => {
         item.kind === "agent" ? item.agent.threadId : item.view.ticket.key,
       ),
     ).toEqual(["free-live", "T-3", "T-1"]);
+    expect(findTicketView(split.model, "T-2")?.ticket.key).toBe("T-2");
   });
 });

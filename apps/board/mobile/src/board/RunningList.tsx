@@ -1,5 +1,5 @@
 import type { AgentView } from "@agent-board/app/state/boardModel";
-import { type RunningItem, runningItems } from "@agent-board/app/state/cardStates";
+import { findTicketView, type RunningItem, runningItems } from "@agent-board/app/state/cardStates";
 import { ThreadId } from "@t3tools/contracts";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
@@ -24,7 +24,7 @@ export function RunningList({ choice }: { choice: ShownBoard }) {
     return <AppText style={styles.body}>This board's orchestrator has not started.</AppText>;
   }
   const items = split === null ? [] : runningItems(split, now);
-  const openView = items.find((item) => item.kind === "ticket" && item.view.ticket.key === open);
+  const openView = split === null ? undefined : findTicketView(split.model, open);
   return (
     <>
       {failure !== null && (
@@ -69,12 +69,12 @@ export function RunningList({ choice }: { choice: ShownBoard }) {
           ),
         )}
       </ScrollView>
-      {openView?.kind === "ticket" && (
+      {openView !== undefined && (
         <TicketSheet
-          ticket={openView.view.ticket}
+          ticket={openView.ticket}
           tickets={tickets}
           decisions={files.decisions ?? null}
-          agents={openView.view.agents}
+          agents={openView.agents}
           environmentId={choice.project.environmentId}
           onClose={() => setOpen(null)}
         />

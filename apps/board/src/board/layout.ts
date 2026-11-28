@@ -46,6 +46,19 @@ export const stageTagCount = (
 /** The filter id of the Done lane, which starts hidden. */
 export const DONE_TAG = "done";
 export const stageTagId = (stage: TicketStage) => `stage:${stage}`;
+
+/** The tickets in one lane, newest first, from each stage's tickets and whether an agent works them now. */
+export const laneTickets = (
+  model: Pick<BoardModel, "lanes">,
+  lane: StageLane,
+  now: number,
+  stages: ReadonlyArray<TicketStage> = TICKET_STAGES,
+) =>
+  stages
+    .flatMap((stage) =>
+      model.lanes[stage].filter((view) => ticketLane(stage, isWorking(view.agents, now)) === lane),
+    )
+    .toSorted((a, b) => b.position - a.position);
 export const additionLaneId = (id: string) => `add:${id}`;
 
 /** The board's sections beside the orchestrator card, which its buttons show and hide. */
@@ -187,14 +200,8 @@ export function layoutBoard(
       }
       if (agentRows[id] > 0)
         items.push({ key: agentsKey(id), height: agentsHeight(agentRows[id]) });
-      const keys = TICKET_STAGES.filter((stage) => !hidden.has(stageTagId(stage)))
-        .flatMap((stage) =>
-          model.lanes[stage].filter(
-            (view) => ticketLane(stage, isWorking(view.agents, now)) === id,
-          ),
-        )
-        .toSorted((a, b) => b.position - a.position)
-        .map((view) => view.ticket.key);
+      const shown = TICKET_STAGES.filter((stage) => !hidden.has(stageTagId(stage)));
+      const keys = laneTickets(model, id, now, shown).map((view) => view.ticket.key);
       for (const key of orderedKeys(keys, order[id])) items.push({ key, height: CARD_HEIGHT });
     }
     let y = top + LANE_HEAD;

@@ -1,6 +1,6 @@
 import * as Record from "effect/Record";
 
-import { type StageLane, ticketLane } from "../board/layout";
+import { laneTickets, type StageLane } from "../board/layout";
 import { hasFinished, isWorking } from "../board/ticketStatus";
 import type { CallEvent, CardState, FreeAgent } from "../domain/board";
 import { TICKET_STAGES } from "../domain/ticket";
@@ -114,13 +114,12 @@ export function runningItems(
   { model, agents }: Pick<CardSplit, "model" | "agents">,
   now: number,
 ): ReadonlyArray<RunningItem> {
-  const tickets = TICKET_STAGES.flatMap((stage) =>
-    model.lanes[stage].filter(
-      (view) => ticketLane(stage, isWorking(view.agents, now)) === "running",
-    ),
-  ).toSorted((a, b) => b.position - a.position);
   return [
     ...agents.running.map((agent) => ({ kind: "agent" as const, agent })),
-    ...tickets.map((view) => ({ kind: "ticket" as const, view })),
+    ...laneTickets(model, "running", now).map((view) => ({ kind: "ticket" as const, view })),
   ];
 }
+
+/** A ticket's view in whichever lane it sits, so a sheet opened from Running stays open when the ticket leaves it. */
+export const findTicketView = (model: BoardModel, key: string | null) =>
+  TICKET_STAGES.flatMap((stage) => model.lanes[stage]).find((view) => view.ticket.key === key);
