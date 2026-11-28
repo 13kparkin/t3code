@@ -53,14 +53,18 @@ export function checkClaims(boardDir: string): string[] {
     if (key !== null) cards.set(key, item);
   }
 
-  const moves = (readText(NodePath.join(boardDir, "decisions.tsv")) ?? "")
-    .split("\n")
-    .slice(1)
-    .map((row) => row.split("\t")[1] ?? "")
-    .map((decision) => ({
-      keys: keys.filter((key) => namesKey(decision, key)),
-      stages: [...decision.matchAll(MOVE)].map((match) => match[1]),
-    }));
+  // A move's own line names one ticket and one stage, so it reads as `<key> <stage>`.
+  const ownMoves = new Set(
+    (readText(NodePath.join(boardDir, "decisions.tsv")) ?? "")
+      .split("\n")
+      .slice(1)
+      .flatMap((row) => {
+        const decision = row.split("\t")[1] ?? "";
+        const named = keys.filter((key) => namesKey(decision, key));
+        const stages = [...decision.matchAll(MOVE)].map((match) => match[1]);
+        return named.length === 1 && stages.length === 1 ? [`${named[0]} ${stages[0]}`] : [];
+      }),
+  );
 
   const cardProblems = (ticket: Ticket): string[] => {
     const card = cards.get(ticket.key);
@@ -102,16 +106,7 @@ export function checkClaims(boardDir: string): string[] {
       .filter((step) => step.state === "pending")
       .map((step) => `${ticket.key} merged with a pending step: ${step.text}`),
     ...movesOf(ticket.stage)
-      .filter(
-        (stage) =>
-          !moves.some(
-            (move) =>
-              move.keys.length === 1 &&
-              move.keys[0] === ticket.key &&
-              move.stages.length === 1 &&
-              move.stages[0] === stage,
-          ),
-      )
+      .filter((stage) => !ownMoves.has(`${ticket.key} ${stage}`))
       .map((stage) => `${ticket.key} move to ${stage} has no decision line of its own`),
   ]);
 }
