@@ -20,6 +20,15 @@ export const LANE_LABEL = {
   done: "Done",
 } as const satisfies Record<LaneId, string>;
 
+/** Each lane's header tag, as Tailwind classes the phone reads through `toneStyle`. */
+export const LANE_TONE = {
+  for_you: "bg-amber-500 text-black",
+  todo: "bg-zinc-700 text-white",
+  running: "bg-blue-600 text-white",
+  waiting: "bg-amber-700 text-white",
+  done: "bg-emerald-700 text-white",
+} as const satisfies Record<LaneId, string>;
+
 /** A ticket sits in Running only while one of its agents is live, and an open ticket with none waits. */
 export function ticketLane(stage: TicketStage, live: boolean): StageLane {
   if (stage === "merged" || stage === "off_path") return "done";

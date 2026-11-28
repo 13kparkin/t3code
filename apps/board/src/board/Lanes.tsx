@@ -21,11 +21,11 @@ import {
   clampDrag,
   type FrameBox,
   type LaneBox,
-  type LaneId,
   type Layout,
   LANE_BORDER,
   LANE_HEAD,
   LANE_LABEL,
+  LANE_TONE,
   LANE_MAX_HEIGHT,
   laneCardsHeight,
   laneCount,
@@ -39,14 +39,6 @@ import { TicketFrame } from "./TicketFrame";
 import { ticketStatus } from "./ticketStatus";
 
 const DRAG_THRESHOLD_PX = 4;
-
-const LANE_TONE = {
-  for_you: "bg-amber-500 text-black",
-  todo: "bg-zinc-700 text-white",
-  running: "bg-blue-600 text-white",
-  waiting: "bg-amber-700 text-white",
-  done: "bg-emerald-700 text-white",
-} as const satisfies Record<LaneId, string>;
 
 export function Lanes({
   layout,

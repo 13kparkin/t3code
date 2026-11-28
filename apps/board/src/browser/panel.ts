@@ -1,5 +1,6 @@
 import { Atom, type AtomRegistry } from "effect/reactivity";
 
+import type { SidebarMode } from "../domain/sidebar";
 import { filesViewAtom } from "../state/filesView";
 import { appAtomRegistry } from "../state/registry";
 
@@ -13,8 +14,6 @@ export interface PanelState {
   readonly width: number;
 }
 
-/** The left sidebar in full, or folded to its icon rail. Kept per device. */
-export type SidebarMode = "expanded" | "rail";
 const SIDEBAR_MODE_KEY = "board:sidebar:mode";
 
 export const sidebarModeAtom = Atom.writable(

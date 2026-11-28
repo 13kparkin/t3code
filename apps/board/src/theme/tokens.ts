@@ -18,20 +18,24 @@ export const COLORS = {
 export const PALETTE = {
   "zinc-300": "#d4d4d8",
   "zinc-400": "#9f9fa9",
+  "zinc-700": "#3f3f46",
   "red-300": "#ffa2a2",
   "red-400": "#ff6467",
   "orange-300": "#ffb86a",
   "amber-300": "#ffd230",
   "amber-400": "#ffb900",
   "amber-500": "#fe9a00",
+  "amber-700": "#bb4d00",
   "emerald-300": "#5ee9b5",
   "emerald-400": "#00d492",
   "emerald-500": "#00bc7d",
+  "emerald-700": "#007a55",
   "cyan-300": "#53eafd",
   "sky-300": "#74d4ff",
   "sky-400": "#00bcff",
   "sky-500": "#00a6f4",
   "blue-300": "#8ec5ff",
+  "blue-600": "#155dfc",
   "indigo-300": "#a3b3ff",
   "violet-300": "#c4b4ff",
 } as const;
@@ -39,6 +43,8 @@ export const PALETTE = {
 type ToneStyle = { color?: string; backgroundColor?: string };
 
 const HEX: ReadonlyMap<string, string> = new Map([
+  ["black", "#000000"],
+  ["white", "#ffffff"],
   ...Object.entries(COLORS),
   ...Object.entries(PALETTE),
 ]);
