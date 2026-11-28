@@ -1,11 +1,12 @@
 # Board evals
 
-An eval checks the text a board's orchestrator and agents see: the rules in `src/orchestrator/brief.md`, the vendored pstack skills in `pstack/`, the role files in `roles/`, and the review template. An eval can also check a board folder's own records, such as its tickets, merge cards, and decision lines. These evals follow the shape of the engine's [`evals/`](../../../evals/README.md). They live here because board code stays in `apps/board`.
+An eval checks the text a board's orchestrator and agents see: the rules in `src/orchestrator/brief.md`, the vendored pstack skills in `pstack/`, the role files in `roles/`, and the review template. An eval can also check a board folder's own records, such as its tickets, merge cards, and decision lines, or a saved agent thread. These evals follow the shape of the engine's [`evals/`](../../../evals/README.md). They live here because board code stays in `apps/board`.
 
-| Eval                          | Measures                                                                                                           | Model |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----- |
-| [board-prompt](board-prompt/) | Whether the orchestrator's prompt names role files, skills, and evidence files that exist and match the gate code. | None  |
-| [board-claims](board-claims/) | Whether a board folder's merge cards, merged tickets, and stage moves are backed by its own records.               | None  |
+| Eval                                    | Measures                                                                                                                             | Model |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----- |
+| [board-prompt](board-prompt/)           | Whether the orchestrator's prompt names role files, skills, and evidence files that exist and match the gate code.                   | None  |
+| [board-claims](board-claims/)           | Whether a board folder's merge cards, merged tickets, and stage moves are backed by its own records.                                 | None  |
+| [board-transcripts](board-transcripts/) | Whether a saved agent thread backs its report's claims, ends with the report, and never sleeps, prints a token, or kills by pattern. | None  |
 
 ## Run an eval
 
