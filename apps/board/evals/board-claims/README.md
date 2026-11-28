@@ -6,7 +6,7 @@ Checks a board folder's records without a model. It reads `tickets.json`, `foryo
 - a merged ticket has a `pending` step;
 - a stage move has no decision line of its own. A move is `-> <stage>` in a decision, as in `APP-1 todo -> planned`, or `to <stage>`, or `entered <stage>`. Its own line has one move, and the only ticket key before the move is that ticket. A key after the move is context. Every stage from `planned` to the ticket's current one needs one, and an `off_path` ticket needs only its `off_path` line.
 
-Each line starts with the ticket key.
+Each line starts with the ticket key. The one exception is a `tickets.json` the check cannot read, which gives a single line that starts with `tickets.json is invalid:`.
 
 A stage named with no move word, as in `Folded APP-3 into APP-2 (APP-3 off_path)`, is not read as a move, so that ticket shows its `off_path` move as missing.
 
