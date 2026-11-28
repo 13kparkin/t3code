@@ -9,6 +9,7 @@ import {
   pickableInstances,
   pickOf,
   resolvePick,
+  searchModels,
   selectionOf,
   selectionWarning,
   textInstances,
@@ -360,5 +361,25 @@ describe("the text model settings", () => {
 
   it("Given the default Claude Code instance, when text instances are listed, then it is named Claude Code", () => {
     expect(textInstances([claude]).map((entry) => entry.name)).toEqual(["Claude Code"]);
+  });
+});
+
+describe("searching the picker's models", () => {
+  const instances = pickableInstances([
+    provider({
+      instanceId: "claudeAgent",
+      driver: "claudeAgent",
+      models: [{ slug: "claude-opus-5-5" }, { slug: "claude-sonnet-5-5" }],
+    }),
+    provider({ instanceId: "cursor", driver: "cursor", models: [{ slug: "gpt-5" }] }),
+  ]);
+  it.each([
+    ["part of a model name", "sonn", ["claudeAgent/claude-sonnet-5-5"]],
+    ["a provider's name", "cursor", ["cursor/gpt-5"]],
+    ["nothing that matches", "zzzz", []],
+  ])("Given %s, then it lists the matching models", (_name, query, expected) => {
+    expect(
+      searchModels(instances, query).map((row) => `${row.instance.instanceId}/${row.model.slug}`),
+    ).toEqual(expected);
   });
 });

@@ -1,3 +1,4 @@
+import { rankModelPickerSearch } from "@t3tools/client-runtime/model-search";
 import { providerClients } from "@t3tools/client-runtime/provider-clients";
 import {
   isReasoningSelect,
@@ -261,3 +262,25 @@ export function modelSelectionOf(
     ...(selection.options.length > 0 ? { options: selection.options } : {}),
   };
 }
+
+/** One model of one instance, as the picker's search lists it. */
+export interface ModelRow {
+  readonly instance: PickableInstance;
+  readonly model: PickableModel;
+}
+
+/** Every instance's models ranked against the query by T3's own picker ranking. */
+export const searchModels = (
+  instances: ReadonlyArray<PickableInstance>,
+  query: string,
+): ReadonlyArray<ModelRow> =>
+  rankModelPickerSearch(
+    instances.flatMap((instance) => instance.models.map((model) => ({ instance, model }))),
+    query,
+    ({ instance, model }) => ({
+      driverKind: instance.driver,
+      providerDisplayName: instance.name,
+      name: model.name,
+      shortName: model.slug,
+    }),
+  );
