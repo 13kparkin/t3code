@@ -1,4 +1,5 @@
 import * as NodeFS from "node:fs";
+import * as NodePath from "node:path";
 
 import { OrchestratorMcpThreadTimelineItem } from "@t3tools/contracts";
 import * as Schema from "effect/Schema";
@@ -21,7 +22,7 @@ const COMMAND_RULES = [
   {
     message: "kills by name or pattern",
     pattern:
-      /\b(?:pkill|killall)\b|\b(?:pgrep|pidof|ps)\b(?=[^|]{0,300}\|.{0,300}\bkill\b)|\bkill\b(?=[^;&|]{0,300}\$\((?:pgrep|pidof)\b)/,
+      /\b(?:pkill|killall)\b|\b(?:pgrep|pidof|ps)\b(?=[^|]{0,300}\|[\s\S]{0,300}\bkill\b)|\bkill\b(?=[^;&|]{0,300}\$\((?:pgrep|pidof)\b)/,
   },
 ];
 const TOKENS = [
@@ -49,7 +50,7 @@ const CLAIMS: ReadonlyArray<{
     backedBy: (value, tool) => {
       const text = tool.text ?? "";
       return (
-        commandInput(tool)?.includes(value) === true ||
+        (tool.type === "command_execution" && atCommandPosition(text.replace(/^\$ /, ""), value)) ||
         text.includes(`"skill": "${value}"`) ||
         text.includes(`:${value}"`) ||
         text.includes(`${value}/SKILL.md`)
@@ -76,6 +77,13 @@ const CLAIMS: ReadonlyArray<{
   },
 ];
 
+// The export cannot split a script's input from its output, so a claim is backed where `value`
+// starts a command on any line: at line start, or after `;`, `&`, `|`, or `(`.
+const atCommandPosition = (text: string, value: string): boolean =>
+  new RegExp(String.raw`(?:^|[;&|(])\s*${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "m").test(
+    text,
+  );
+
 // The activity view folds a command's input and output into `$ <input>\n<output>`, so the input is
 // the first line plus the lines it continues with `\`, `&&`, `||`, or `|`.
 const commandInput = (item: Item): string | undefined => {
@@ -86,13 +94,29 @@ const commandInput = (item: Item): string | undefined => {
 };
 
 /**
- * Policy breaks in a thread export: the `items` of `t3_thread_read` with view `activity`, joined.
- * Each line starts with the position of the item it flags.
+ * Policy breaks in a thread export: a file with the `items` of `t3_thread_read` pages (view
+ * `activity`), or a directory with one such file per page. Each line starts with an item position.
  */
-export function checkTranscript(file: string): string[] {
-  const items = decodeThread(JSON.parse(NodeFS.readFileSync(file, "utf8"))).toSorted(
-    (left, right) => left.position - right.position,
-  );
+export function checkTranscript(path: string): string[] {
+  const files = NodeFS.statSync(path).isDirectory()
+    ? NodeFS.readdirSync(path)
+        .filter((name) => name.endsWith(".json"))
+        .toSorted((left, right) => left.localeCompare(right, undefined, { numeric: true }))
+        .map((name) => NodePath.join(path, name))
+    : [path];
+  // A continuation page repeats an item with the next slice of its text.
+  const byId = new Map<string, Item>();
+  for (const item of files.flatMap((file) =>
+    decodeThread(JSON.parse(NodeFS.readFileSync(file, "utf8"))),
+  )) {
+    const key = `${item.sourceThreadId}:${item.itemId}`;
+    const seen = byId.get(key);
+    byId.set(
+      key,
+      seen === undefined ? item : { ...seen, text: `${seen.text ?? ""}${item.text ?? ""}` },
+    );
+  }
+  const items = [...byId.values()].toSorted((left, right) => left.position - right.position);
   const lines = items.flatMap((item) => [
     ...COMMAND_RULES.flatMap((rule) => {
       const match = commandInput(item)?.match(rule.pattern);

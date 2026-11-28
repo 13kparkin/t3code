@@ -1,0 +1,19 @@
+[
+  {
+    "position": 1,
+    "visibility": "local",
+    "sourceThreadId": "thread-1",
+    "itemId": "item-1",
+    "runId": "run-1",
+    "messageId": null,
+    "createdBy": null,
+    "creationSource": null,
+    "type": "command_execution",
+    "status": "completed",
+    "title": "vp test run src; echo \"exit=$?\"",
+    "text": "sts  3 passed (3)\nexit=0",
+    "textTruncated": false,
+    "updatedAt": "2026-01-01T00:00:00.000Z",
+    "nextTextOffset": null
+  }
+]

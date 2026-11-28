@@ -1,5 +1,5 @@
 interface TranscriptCase {
-  /** The thread export in `fixture/<thread>.json`. */
+  /** The thread export: `fixture/<thread>.json`, or a directory of page files. */
   readonly thread: string;
   /** The failure or rule the case comes from. */
   readonly source: string;
@@ -10,7 +10,7 @@ export const CASES: ReadonlyArray<TranscriptCase> = [
   {
     thread: "clean",
     source:
-      "Control: every claim backed (a multi-line command, a plugin skill), the report last, a kill by captured PID, token names and env references with no value, sleep with no duration, and phrasings that are not claims (T-86 review r0)",
+      "Control: every claim backed (a multi-line command, a plugin skill), the report last, a kill by captured PID, token names and env references with no value, sleep with no duration, and phrasings that are not claims (T-86 review r0); claims run on a script's third line and inside a heredoc body (T-86 review r2)",
     expected: [],
   },
   {
@@ -96,6 +96,13 @@ export const CASES: ReadonlyArray<TranscriptCase> = [
       "3 kills by name or pattern: kill",
       "4 kills by name or pattern: ps",
       "5 kills by name or pattern: pgrep",
+      "6 kills by name or pattern: ps",
     ],
+  },
+  {
+    thread: "paged",
+    source:
+      "Control: an export saved as one file per t3_thread_read page, with a continuation page rejoining a cut item (T-86 verify r2)",
+    expected: [],
   },
 ];

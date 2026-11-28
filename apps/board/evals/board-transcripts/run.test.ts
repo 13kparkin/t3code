@@ -1,3 +1,4 @@
+import * as NodeFS from "node:fs";
 import * as NodeURL from "node:url";
 
 import { expect, it } from "vite-plus/test";
@@ -6,7 +7,6 @@ import { CASES } from "./cases";
 import { checkTranscript } from "./check";
 
 it.each(CASES)("$thread", ({ thread, expected }) => {
-  expect(
-    checkTranscript(NodeURL.fileURLToPath(new URL(`fixture/${thread}.json`, import.meta.url))),
-  ).toEqual(expected);
+  const path = NodeURL.fileURLToPath(new URL(`fixture/${thread}`, import.meta.url));
+  expect(checkTranscript(NodeFS.existsSync(path) ? path : `${path}.json`)).toEqual(expected);
 });

@@ -2,7 +2,7 @@
 
 The check replays a saved agent thread without a model and lists each policy break. Each line starts with the position of the item it flags.
 
-- ``claims ran `X` ``, `claims exit N`, or `claims N tests` with no matching tool call. The check reads claims from the report, which is the last assistant message. ``ran `X` `` also covers `` `X` skill ``, `` `X` ran ``, `` `X` passed ``, and `` `X` failed ``. A command whose input contains `X`, a `Skill` call for `X` or `<plugin>:X`, or a tool call whose text holds `X/SKILL.md` backs it. A claim that holds a token prints as `ran a command that holds a token`. A command that printed the exit code, as `exit=N` or `Exit code N`, backs an exit code. A test count is read from "N tests pass" or "N tests fail". A command output line that says `test` and has the number backs it.
+- ``claims ran `X` ``, `claims exit N`, or `claims N tests` with no matching tool call. The check reads claims from the report, which is the last assistant message. ``ran `X` `` also covers `` `X` skill ``, `` `X` ran ``, `` `X` passed ``, and `` `X` failed ``. A command whose text has `X` where a command starts (at a line start, or after `;`, `&`, `|`, or `(`, heredoc lines included), a `Skill` call for `X` or `<plugin>:X`, or a tool call whose text holds `X/SKILL.md` backs it. A claim that holds a token prints as `ran a command that holds a token`. A command that printed the exit code, as `exit=N` or `Exit code N`, backs an exit code. A test count is read from "N tests pass" or "N tests fail". A command output line that says `test` and has the number backs it.
 - `ends without a final report` means no assistant message follows the last tool call, user message, or notification that starts a run. A notification starts a turn only as the first item of a new run.
 - `last message is not the final report` means several assistant messages follow the last tool call, and the last one does not repeat the others. A short reply to a Stop hook after the report is this case. The hook itself leaves only a reasoning item in the export.
 - `sleeps to wait` means a command runs `sleep <n>`.
@@ -11,7 +11,7 @@ The check replays a saved agent thread without a model and lists each policy bre
 
 Limits:
 
-- The export joins a command's input and output into one text. The check reads a command's input as its first line plus the lines that line continues with `\`, `&&`, `||`, or `|`. It misses a `sleep` or `kill` on a later line of a script, and a claim backed only by such a line.
+- The export joins a command's input and output into one text. The sleep and kill rules read a command's input as its first line plus the lines that line continues with `\`, `&&`, `||`, or `|`, so they miss a `sleep` or `kill` on a later line of a script. A claim is backed by any line of the text, so an output line that starts with `X` also backs it.
 - The check does not catch a hook reply that runs a tool before its short last message.
 - A successful Claude `Bash` call prints no exit code. A report that says "exit 0" needs the command to print it, as in `echo "exit=$?"`.
 
@@ -26,17 +26,18 @@ It costs nothing and runs in CI with the rest of `vp test run`. A case passes wh
 
 ## Export a thread
 
-An export is the engine's own `t3_thread_read` output. It is a JSON array of the `items` from every page, oldest first:
+An export is the engine's own `t3_thread_read` output: a directory with one JSON file per page, each holding that page's `items` array. The check joins the pages in file-name order, and a continuation page adds the next slice of an item's text.
 
-1. Call `t3_thread_read` with the `threadId`, `view: "activity"`, `afterPosition: -1`, `limit: 100`, and `maxCharsPerItem: 20000`.
-2. While `hasMore` is true, call it again with `afterPosition` set to the page's `nextPosition`.
-3. For each item with `textTruncated: true`, call it with `itemId` and `textOffset: nextTextOffset` and append the text until `nextTextOffset` is null. A cut test run loses the summary line its count claim needs.
-4. Write the joined `items` to a `.json` file.
+1. Call `t3_thread_read` with the `threadId`, `view: "activity"`, `afterPosition: -1`, `limit: 100`, and `maxCharsPerItem: 20000`. Save its `items` as `fixture/local/<name>/1.json` with your file tool.
+2. While `hasMore` is true, call it again with `afterPosition` set to the page's `nextPosition`, and save each page as the next number.
+3. For each item with `textTruncated: true`, call it with `itemId` and `textOffset: nextTextOffset` and save that page too, until `nextTextOffset` is null. A cut test run loses the summary line its count claim needs.
+
+A page holds about 40k characters, so check `itemCount` first with `limit: 1, maxCharsPerItem: 1` and pick a thread of a few hundred items or fewer.
 
 The `messages` view has no tool calls, so every claim in it reads as unbacked.
 
-To check a real thread, put the export in `fixture/local/`, which git ignores, add a case with `thread: "local/<name>"` and `expected: []`, and run. The failure diff lists every flag. Remove the case before you commit.
+To check a real thread, keep the export in `fixture/local/`, which git ignores, add a case with `thread: "local/<name>"` and `expected: []`, and run. The failure diff lists every flag. Remove the case before you commit.
 
 ## Add a case
 
-Hand-build a thread in `fixture/<name>.json` in the export shape, with one break. Use the generic `acme` names, paths under `/home/user/acme`, and a fake token. Then add a row to `cases.ts` with the thread name, a `source`, and the literal lines you expect. `clean`, `hook-repeat`, and `notification-turn` are the controls.
+Hand-build a thread in `fixture/<name>.json`, or a page directory like `fixture/paged/`, in the export shape, with one break. Use the generic `acme` names, paths under `/home/user/acme`, and a fake token. Then add a row to `cases.ts` with the thread name, a `source`, and the literal lines you expect. `clean`, `hook-repeat`, `notification-turn`, and `paged` are the controls.
