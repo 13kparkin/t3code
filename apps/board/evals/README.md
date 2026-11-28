@@ -10,8 +10,6 @@ An eval checks the text a board's orchestrator and agents see: the rules in `src
 
 From `apps/board`, run `vp test run evals`. A no-model eval needs no keys, costs nothing, and runs in CI with `vp test run`. That is the agent-board job's unit-test step, and the `board-suite` gate in `scripts/ci-local.mjs`.
 
-An eval that calls a model will take an entry `run.ts` with `--out`, `--model`, `--baseline` and `--case`, as the engine's do. CI will not call paid models. It will run that eval's grader tests only.
-
 ## The shape of an eval
 
 - `evals/<eval>/README.md` says what the eval measures, how to run it, how to add a case, and what a run costs.
@@ -25,4 +23,4 @@ An eval that calls a model will take an entry `run.ts` with `--out`, `--model`, 
 - A failure case must fail when the thing it guards breaks. Prove it once by breaking the real file and keeping the output in the ticket's evidence.
 - Add controls. A control is a case whose correct answer is no problem.
 - Use a generic fixture board: `acme/app` at `/home/user/acme`. Never copy a real board's tickets, names, or paths into a case.
-- A no-model case passes when its result equals the expected value exactly. A model case will fail when half or more of its samples fail, compared against a baseline on the same model.
+- A case passes when its result equals the expected value exactly.

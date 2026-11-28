@@ -34,7 +34,7 @@ const BOARD: PromptInput = {
 const without = (files: ReadonlySet<string>, file: string) =>
   new Set([...files].filter((entry) => entry !== file));
 
-export interface PromptCase {
+interface PromptCase {
   readonly id: string;
   /** The failure or rule the case comes from. */
   readonly source: string;
@@ -57,13 +57,13 @@ export const CASES: ReadonlyArray<PromptCase> = [
   },
   {
     id: "role-without-file",
-    source: "T-79 failure 8: a role the registry starts must have a role file",
+    source: "T-79 B1: every role in the registry has a role file",
     input: { ...BOARD, roleNames: [...BOARD.roleNames, "planner"] },
     expected: ["role planner has no file roles/planner.md"],
   },
   {
     id: "missing-role-file",
-    source: "T-79 failure 3: the verifier was followed by hand",
+    source: "T-79 B1: every role file the brief names exists in roles/",
     input: { ...BOARD, roleFiles: without(BOARD.roleFiles, "verifier.md") },
     expected: [
       "role verifier has no file roles/verifier.md",
