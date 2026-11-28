@@ -1,0 +1,522 @@
+[
+  {
+    "key": "APP-1",
+    "title": "Add a search box to the project list",
+    "stage": "merged",
+    "branch": "feat/app-1",
+    "base": "main",
+    "worktreePath": "/home/user/acme-worktrees/app-1",
+    "pr": 101,
+    "headSha": "1111111111111111111111111111111111111111",
+    "playbook": "feature.md",
+    "steps": [
+      {
+        "text": "how over the affected subsystem",
+        "state": "done"
+      },
+      {
+        "text": "architect for parallel design exploration",
+        "state": "done"
+      },
+      {
+        "text": "Delegate code-writing to a task agent",
+        "state": "done"
+      },
+      {
+        "text": "Verify on the matching surface",
+        "state": "done"
+      },
+      {
+        "text": "Run Opening a PR",
+        "state": "done"
+      }
+    ],
+    "threads": [
+      {
+        "threadId": "thread-APP-1-build",
+        "role": "task"
+      },
+      {
+        "threadId": "thread-APP-1-review",
+        "role": "reviewer",
+        "round": 0
+      },
+      {
+        "threadId": "thread-APP-1-verify",
+        "role": "verifier"
+      }
+    ],
+    "verdicts": [
+      {
+        "role": "review-loop",
+        "p0": 0,
+        "p1": 0,
+        "p2": 1,
+        "p3": 0
+      },
+      {
+        "role": "verify",
+        "p0": 0,
+        "p1": 0,
+        "p2": 0,
+        "p3": 0
+      }
+    ],
+    "fixRounds": 0
+  },
+  {
+    "key": "APP-2",
+    "title": "Show the build time on each run",
+    "stage": "awaiting_approval",
+    "branch": "feat/app-2",
+    "base": "main",
+    "worktreePath": "/home/user/acme-worktrees/app-2",
+    "pr": 102,
+    "headSha": "2222222222222222222222222222222222222222",
+    "playbook": "feature.md",
+    "steps": [
+      {
+        "text": "how over the affected subsystem",
+        "state": "done"
+      },
+      {
+        "text": "architect for parallel design exploration",
+        "state": "done"
+      },
+      {
+        "text": "Delegate code-writing to a task agent",
+        "state": "done"
+      },
+      {
+        "text": "Verify on the matching surface",
+        "state": "done"
+      },
+      {
+        "text": "Run Opening a PR",
+        "state": "done"
+      }
+    ],
+    "threads": [
+      {
+        "threadId": "thread-APP-2-build",
+        "role": "task"
+      },
+      {
+        "threadId": "thread-APP-2-review",
+        "role": "reviewer",
+        "round": 0
+      },
+      {
+        "threadId": "thread-APP-2-verify",
+        "role": "verifier"
+      }
+    ],
+    "verdicts": [
+      {
+        "role": "review-loop",
+        "p0": 0,
+        "p1": 0,
+        "p2": 1,
+        "p3": 0
+      },
+      {
+        "role": "verify",
+        "p0": 0,
+        "p1": 0,
+        "p2": 0,
+        "p3": 0
+      }
+    ],
+    "fixRounds": 0
+  },
+  {
+    "key": "APP-3",
+    "title": "Retry a failed upload once",
+    "stage": "awaiting_approval",
+    "branch": "feat/app-3",
+    "base": "main",
+    "worktreePath": "/home/user/acme-worktrees/app-3",
+    "pr": 103,
+    "headSha": "3333333333333333333333333333333333333333",
+    "playbook": "feature.md",
+    "steps": [
+      {
+        "text": "how over the affected subsystem",
+        "state": "done"
+      },
+      {
+        "text": "architect for parallel design exploration",
+        "state": "done"
+      },
+      {
+        "text": "Delegate code-writing to a task agent",
+        "state": "done"
+      },
+      {
+        "text": "Verify on the matching surface",
+        "state": "done"
+      },
+      {
+        "text": "Run Opening a PR",
+        "state": "done"
+      }
+    ],
+    "threads": [
+      {
+        "threadId": "thread-APP-3-build",
+        "role": "task"
+      },
+      {
+        "threadId": "thread-APP-3-review",
+        "role": "reviewer",
+        "round": 1
+      },
+      {
+        "threadId": "thread-APP-3-verify",
+        "role": "verifier"
+      }
+    ],
+    "verdicts": [
+      {
+        "role": "review-loop",
+        "p0": 0,
+        "p1": 1,
+        "p2": 0,
+        "p3": 0
+      },
+      {
+        "role": "verify",
+        "p0": 0,
+        "p1": 0,
+        "p2": 0,
+        "p3": 0
+      }
+    ],
+    "fixRounds": 2
+  },
+  {
+    "key": "APP-4",
+    "title": "Document the export command",
+    "stage": "awaiting_approval",
+    "branch": "feat/app-4",
+    "base": "main",
+    "worktreePath": "/home/user/acme-worktrees/app-4",
+    "pr": 104,
+    "headSha": "4444444444444444444444444444444444444444",
+    "playbook": "feature.md",
+    "steps": [
+      {
+        "text": "how over the affected subsystem",
+        "state": "done"
+      },
+      {
+        "text": "architect for parallel design exploration",
+        "state": "done"
+      },
+      {
+        "text": "Delegate code-writing to a task agent",
+        "state": "done"
+      },
+      {
+        "text": "Verify on the matching surface",
+        "state": "done"
+      },
+      {
+        "text": "Run Opening a PR",
+        "state": "done"
+      }
+    ],
+    "threads": [
+      {
+        "threadId": "thread-APP-4-build",
+        "role": "task"
+      },
+      {
+        "threadId": "thread-APP-4-review",
+        "role": "reviewer",
+        "round": 0
+      },
+      {
+        "threadId": "thread-APP-4-verify",
+        "role": "verifier"
+      }
+    ],
+    "verdicts": [
+      {
+        "role": "review-loop",
+        "p0": 0,
+        "p1": 0,
+        "p2": 1,
+        "p3": 0
+      },
+      {
+        "role": "verify",
+        "p0": 0,
+        "p1": 0,
+        "p2": 0,
+        "p3": 0
+      }
+    ],
+    "fixRounds": 0
+  },
+  {
+    "key": "APP-5",
+    "title": "Cache the settings page",
+    "stage": "awaiting_approval",
+    "branch": "feat/app-5",
+    "base": "main",
+    "worktreePath": "/home/user/acme-worktrees/app-5",
+    "pr": 105,
+    "headSha": "5555555555555555555555555555555555555555",
+    "playbook": "feature.md",
+    "steps": [
+      {
+        "text": "how over the affected subsystem",
+        "state": "done"
+      },
+      {
+        "text": "architect for parallel design exploration",
+        "state": "done"
+      },
+      {
+        "text": "Delegate code-writing to a task agent",
+        "state": "done"
+      },
+      {
+        "text": "Verify on the matching surface",
+        "state": "done"
+      },
+      {
+        "text": "Run Opening a PR",
+        "state": "done"
+      }
+    ],
+    "threads": [
+      {
+        "threadId": "thread-APP-5-build",
+        "role": "task"
+      },
+      {
+        "threadId": "thread-APP-5-review",
+        "role": "reviewer",
+        "round": 0
+      },
+      {
+        "threadId": "thread-APP-5-verify",
+        "role": "verifier"
+      }
+    ],
+    "verdicts": [
+      {
+        "role": "review-loop",
+        "p0": 0,
+        "p1": 0,
+        "p2": 1,
+        "p3": 0
+      },
+      {
+        "role": "verify",
+        "p0": 0,
+        "p1": 0,
+        "p2": 0,
+        "p3": 0
+      }
+    ],
+    "fixRounds": 0
+  },
+  {
+    "key": "APP-6",
+    "title": "Sort runs by start time",
+    "stage": "awaiting_approval",
+    "branch": "feat/app-6",
+    "base": "main",
+    "worktreePath": "/home/user/acme-worktrees/app-6",
+    "pr": 106,
+    "headSha": "6666666666666666666666666666666666666666",
+    "playbook": "feature.md",
+    "steps": [
+      {
+        "text": "how over the affected subsystem",
+        "state": "done"
+      },
+      {
+        "text": "architect for parallel design exploration",
+        "state": "done"
+      },
+      {
+        "text": "Delegate code-writing to a task agent",
+        "state": "done"
+      },
+      {
+        "text": "Verify on the matching surface",
+        "state": "done"
+      },
+      {
+        "text": "Run Opening a PR",
+        "state": "done"
+      }
+    ],
+    "threads": [
+      {
+        "threadId": "thread-APP-6-build",
+        "role": "task"
+      },
+      {
+        "threadId": "thread-APP-6-review",
+        "role": "reviewer",
+        "round": 0
+      },
+      {
+        "threadId": "thread-APP-6-verify",
+        "role": "verifier"
+      }
+    ],
+    "verdicts": [
+      {
+        "role": "review-loop",
+        "p0": 0,
+        "p1": 0,
+        "p2": 1,
+        "p3": 0
+      },
+      {
+        "role": "verify",
+        "p0": 0,
+        "p1": 0,
+        "p2": 0,
+        "p3": 0
+      }
+    ],
+    "fixRounds": 0
+  },
+  {
+    "key": "APP-7",
+    "title": "Rename the default branch setting",
+    "stage": "merged",
+    "branch": "feat/app-7",
+    "base": "main",
+    "worktreePath": "/home/user/acme-worktrees/app-7",
+    "pr": 107,
+    "headSha": "7777777777777777777777777777777777777777",
+    "playbook": "feature.md",
+    "steps": [
+      {
+        "text": "how over the affected subsystem",
+        "state": "done"
+      },
+      {
+        "text": "architect for parallel design exploration",
+        "state": "done"
+      },
+      {
+        "text": "Delegate code-writing to a task agent",
+        "state": "done"
+      },
+      {
+        "text": "Verify on the matching surface",
+        "state": "pending"
+      },
+      {
+        "text": "Run Opening a PR",
+        "state": "done"
+      }
+    ],
+    "threads": [
+      {
+        "threadId": "thread-APP-7-build",
+        "role": "task"
+      },
+      {
+        "threadId": "thread-APP-7-review",
+        "role": "reviewer",
+        "round": 0
+      },
+      {
+        "threadId": "thread-APP-7-verify",
+        "role": "verifier"
+      }
+    ],
+    "verdicts": [
+      {
+        "role": "review-loop",
+        "p0": 0,
+        "p1": 0,
+        "p2": 1,
+        "p3": 0
+      },
+      {
+        "role": "verify",
+        "p0": 0,
+        "p1": 0,
+        "p2": 0,
+        "p3": 0
+      }
+    ],
+    "fixRounds": 0
+  },
+  {
+    "key": "APP-8",
+    "title": "Keep the sidebar width per project",
+    "stage": "pr",
+    "branch": "feat/app-8",
+    "base": "main",
+    "worktreePath": "/home/user/acme-worktrees/app-8",
+    "pr": 108,
+    "headSha": "8888888888888888888888888888888888888888",
+    "playbook": "feature.md",
+    "steps": [
+      {
+        "text": "how over the affected subsystem",
+        "state": "done"
+      },
+      {
+        "text": "architect for parallel design exploration",
+        "state": "done"
+      },
+      {
+        "text": "Delegate code-writing to a task agent",
+        "state": "done"
+      },
+      {
+        "text": "Verify on the matching surface",
+        "state": "done"
+      },
+      {
+        "text": "Run Opening a PR",
+        "state": "done"
+      }
+    ],
+    "threads": [
+      {
+        "threadId": "thread-APP-8-build",
+        "role": "task"
+      },
+      {
+        "threadId": "thread-APP-8-review",
+        "role": "reviewer",
+        "round": 0
+      },
+      {
+        "threadId": "thread-APP-8-verify",
+        "role": "verifier"
+      }
+    ],
+    "verdicts": [
+      {
+        "role": "review-loop",
+        "p0": 0,
+        "p1": 0,
+        "p2": 1,
+        "p3": 0
+      },
+      {
+        "role": "verify",
+        "p0": 0,
+        "p1": 0,
+        "p2": 0,
+        "p3": 0
+      }
+    ],
+    "fixRounds": 0
+  }
+]

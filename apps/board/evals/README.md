@@ -1,10 +1,11 @@
 # Board evals
 
-An eval checks the text a board's orchestrator and agents see: the rules in `src/orchestrator/brief.md`, the vendored pstack skills in `pstack/`, the role files in `roles/`, and the review template. These evals follow the shape of the engine's [`evals/`](../../../evals/README.md). They live here because board code stays in `apps/board`.
+An eval checks the text a board's orchestrator and agents see: the rules in `src/orchestrator/brief.md`, the vendored pstack skills in `pstack/`, the role files in `roles/`, and the review template. An eval can also check a board folder's own records, such as its tickets, merge cards, and decision lines. These evals follow the shape of the engine's [`evals/`](../../../evals/README.md). They live here because board code stays in `apps/board`.
 
 | Eval                          | Measures                                                                                                           | Model |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----- |
 | [board-prompt](board-prompt/) | Whether the orchestrator's prompt names role files, skills, and evidence files that exist and match the gate code. | None  |
+| [board-claims](board-claims/) | Whether a board folder's merge cards, merged tickets, and stage moves are backed by its own records.               | None  |
 
 ## Run an eval
 
@@ -13,7 +14,7 @@ From `apps/board`, run `vp test run evals`. A no-model eval needs no keys, costs
 ## The shape of an eval
 
 - `evals/<eval>/README.md` says what the eval measures, how to run it, how to add a case, and what a run costs.
-- Cases are data in `cases.ts`. Each case has an `id`, a `source` that names where it came from (a decisions line, an audit, a ticket), and its expected result.
+- Cases are data in `cases.ts`. Each case has a name the test shows (an `id`, or the fixture `ticket` it reads), a `source` that names where it came from (a decisions line, an audit, a ticket), and its expected result.
 - The eval imports the code under test from source. Never copy the brief, a role file, or a gate's file name into an eval, so it always tests the current text.
 - `run.test.ts` runs the cases and asserts each against its literal expected result.
 

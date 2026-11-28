@@ -1,0 +1,3 @@
+Surface: no UI: ran vp test run
+PASS 1 the new behaviour has a test
+PASS 2 the old behaviour still passes
