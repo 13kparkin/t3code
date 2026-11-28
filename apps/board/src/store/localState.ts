@@ -61,6 +61,10 @@ const LocalState = Schema.Struct({
   fileBoxes: Schema.Record(Schema.String, Schema.Record(Schema.String, FileBox)).pipe(
     Schema.withDecodingDefaultKey(Effect.succeed({})),
   ),
+  /** The provider instance, model and effort a new orchestrator starts on, set in Settings > Roles; null for the built-in default. */
+  defaultOrchestrator: Schema.NullOr(
+    Schema.Struct({ instanceId: Schema.String, model: Schema.String, effort: Schema.String }),
+  ).pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
 });
 export type LocalState = typeof LocalState.Type;
 
@@ -77,6 +81,7 @@ export const EMPTY_LOCAL_STATE: LocalState = {
   reviewTemplates: [],
   recordingConsent: false,
   fileBoxes: {},
+  defaultOrchestrator: null,
 };
 
 const decode = Schema.decodeUnknownOption(Schema.fromJsonString(LocalState));

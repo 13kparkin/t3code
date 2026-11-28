@@ -1,23 +1,15 @@
 import { useAtomValue } from "@effect/atom-react";
-import { Fragment, useSyncExternalStore } from "react";
+import { Fragment } from "react";
 
 import { ProviderGlyph } from "./ProviderGlyph";
 import { Tooltip } from "../ui/Tooltip";
 import { engineProvidersAtom } from "../state/server";
 import { describeUsage, UNAVAILABLE_DASH } from "./usage";
-
-const TICK_MS = 30_000;
-
-// Reset times shown in minutes and hours change slowly, so the clock moves in whole ticks.
-function subscribeToClock(onTick: () => void) {
-  const timer = setInterval(onTick, TICK_MS);
-  return () => clearInterval(timer);
-}
-const readClock = () => Math.floor(Date.now() / TICK_MS) * TICK_MS;
+import { useUsageClock } from "./useUsageClock";
 
 export function UsageBar() {
   const providers = useAtomValue(engineProvidersAtom);
-  const now = useSyncExternalStore(subscribeToClock, readClock);
+  const now = useUsageClock();
   const usage = describeUsage(providers, now);
 
   return (

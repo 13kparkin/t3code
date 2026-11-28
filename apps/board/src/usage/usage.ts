@@ -1,3 +1,4 @@
+import { providerClients } from "@t3tools/client-runtime/provider-clients";
 import type { ServerProvider, ServerProviderUsageWindow } from "@t3tools/contracts";
 
 export const UNAVAILABLE_DASH = "–";
@@ -64,13 +65,16 @@ const unavailable = (key: string, reason: string): ReadonlyArray<UsageSegment> =
   { key, text: UNAVAILABLE_DASH, title: reason },
 ];
 
-function segmentsFor(provider: ServerProvider, nowMs: number): ReadonlyArray<UsageSegment> {
+function segmentsFor(
+  provider: ServerProvider,
+  name: string,
+  nowMs: number,
+): ReadonlyArray<UsageSegment> {
   const limits = provider.usageLimits;
   if (limits === undefined) {
-    return unavailable(
-      "signed-out",
-      provider.message ?? "Signed out, so there are no usage limits.",
-    );
+    return provider.auth.status === "unauthenticated"
+      ? unavailable("signed-out", provider.message ?? "Signed out, so there are no usage limits.")
+      : unavailable("no-limits", `${name} reports no usage limits.`);
   }
   if (limits.unavailable !== undefined) {
     return unavailable(
@@ -87,26 +91,21 @@ function segmentsFor(provider: ServerProvider, nowMs: number): ReadonlyArray<Usa
   return orderWindows(limits.windows).map((window) => formatWindow(window, nowMs));
 }
 
-/**
- * One section per installed Claude Code instance that reports limits, or is signed out and so shows a dash.
- * A signed-in instance with no limits at all, such as one that cannot report them, has no section.
- */
+/** One section per provider that is on and installed. One with no limits to read shows a dash that says why. */
 export function describeUsage(
   providers: ReadonlyArray<ServerProvider>,
   nowMs: number,
 ): ReadonlyArray<ProviderUsage> {
   return providers
-    .filter(
-      (provider) =>
-        provider.driver === "claudeAgent" &&
-        provider.enabled &&
-        provider.installed &&
-        (provider.usageLimits !== undefined || provider.auth.status === "unauthenticated"),
-    )
-    .map((provider) => ({
-      instanceId: provider.instanceId,
-      driver: provider.driver,
-      name: provider.displayName ?? provider.driver,
-      segments: segmentsFor(provider, nowMs),
-    }));
+    .filter((provider) => provider.enabled && provider.installed)
+    .map((provider) => {
+      const name =
+        provider.displayName ?? providerClients.get(provider.driver)?.label ?? provider.driver;
+      return {
+        instanceId: provider.instanceId,
+        driver: provider.driver,
+        name,
+        segments: segmentsFor(provider, name, nowMs),
+      };
+    });
 }

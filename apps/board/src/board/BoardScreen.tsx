@@ -12,7 +12,6 @@ import { chatSlotAtom, chooseTicket, ticketChoiceAtom, ticketSlotAtom } from "..
 import { agentFile, cardFile, sendToChatError, sendToComposer } from "../chat/cardAttachment";
 import { OrchestratorPanel } from "../chat/OrchestratorPanel";
 import { MainTabs } from "../files/MainTabs";
-import { visibleAdditions } from "../domain/additions";
 import type { CallEvent, CardState, FreeAgent } from "../domain/board";
 import { mergeTicketKey } from "../domain/readiness";
 import { applyThreadShown, threadKey, threadShownAtom } from "../state/chatThread";
@@ -26,7 +25,6 @@ import { FreeAgents } from "./FreeAgents";
 import { useBoardView } from "../state/boardView";
 import { issuePullAtom } from "../state/issuePull";
 import { keptWorktreesAtom } from "../state/mergeCleanup";
-import { setHiddenAdditions } from "../state/reviews";
 import type { ValidBoard } from "../store/boardFiles";
 import { openAgentPanel } from "../state/agentPanel";
 import { deleteAudio, recordNewCall, recorderAtom, splitHere } from "../state/recorder";
@@ -42,7 +40,7 @@ import { ContextMenu } from "../ui/ContextMenu";
 import type { PopMenuItem } from "../ui/MenuList";
 import { FREE_CARD } from "./FreeAgentCard";
 import { AgentPanel } from "./AgentPanel";
-import { ArtifactArea } from "./ArtifactArea";
+import { BoardSections } from "./BoardSections";
 import { ForYouLane } from "./ForYouLane";
 import { ForYouPage } from "./ForYouPage";
 import { Lanes } from "./Lanes";
@@ -61,7 +59,6 @@ import { useStoreErrorReports } from "./useStoreErrorReports";
 import { Viewport } from "./Viewport";
 
 const NO_ORDER = {};
-const NO_IDS: ReadonlyArray<string> = [];
 const NO_STATES: Readonly<{ [key: string]: CardState }> = {};
 const NO_FREE: ReadonlyArray<FreeAgent> = [];
 const NO_CALLS: ReadonlyArray<CallEvent> = [];
@@ -90,7 +87,6 @@ export function BoardScreen({
   const stored = useAtomValue(threadShownAtom)[threadKey(project.id, listed.folder)] ?? false;
   useLayoutEffect(() => applyThreadShown(registry, stored), [registry, stored]);
   const [dropError, setDropError] = useState<string | null>(null);
-  const [hideError, setHideError] = useState<string | null>(null);
   const [cardError, setCardError] = useState<string | null>(null);
   const [sendFailed, setSendFailed] = useState(false);
   const [menu, setMenu] = useState<CardMenu | null>(null);
@@ -196,21 +192,11 @@ export function BoardScreen({
     [cards.archived, calls, cardStates],
   );
   useAtomValue(issuePullAtom(`${project.id}/${listed.folder}`));
-  const hiddenAdditions = board.hiddenAdditions ?? NO_IDS;
-  const visible = useMemo(
-    () => visibleAdditions(additions, hiddenAdditions),
-    [additions, hiddenAdditions],
-  );
-  // Only ids still in the file are written, so the list cannot grow past the file.
-  const changeHidden = (change: (ids: ReadonlyArray<string>) => ReadonlyArray<string>) =>
-    void setHiddenAdditions(registry, project, listed, (ids) =>
-      change(ids).filter((id) => additions.some((item) => item.id === id)),
-    ).then(setHideError);
   const order = useAtomValue(frameOrderAtom)[board.id] ?? NO_ORDER;
   const forYou = useBoardForYou(project, listed);
   const artifacts = useBoardArtifacts(project, listed, fullModel);
   const flips = useAtomValue(filterFlipsAtom(board.id));
-  const hidden = useMemo(() => hiddenFilters(new Set(flips.split(",")), visible), [flips, visible]);
+  const hidden = useMemo(() => hiddenFilters(new Set(flips.split(","))), [flips]);
   const agentRows = useMemo(() => agentRowCounts(cards), [cards]);
   const layout = useMemo(() => {
     const laid = layoutBoard(
@@ -218,7 +204,7 @@ export function BoardScreen({
       order,
       forYouHeight(forYou.views),
       hidden,
-      visible,
+      additions,
       stats.problems.length,
       agentRows,
       now,
@@ -229,7 +215,7 @@ export function BoardScreen({
     order,
     forYou.views,
     hidden,
-    visible,
+    additions,
     stats.problems.length,
     agentRows,
     cards.free,
@@ -258,7 +244,7 @@ export function BoardScreen({
       mergeOrderNotes,
       keptWorktrees,
       decisions,
-      additions: visible,
+      additions,
       overlay,
     };
   }, [
@@ -270,7 +256,7 @@ export function BoardScreen({
     forYou.views,
     keptWorktrees,
     decisions,
-    visible,
+    additions,
     overlay,
   ]);
   const chatSlot = useAtomValue(chatSlotAtom);
@@ -342,15 +328,12 @@ export function BoardScreen({
                     stats={{ ...stats, forYouOpen: forYou.open }}
                     builders={builders}
                     hidden={hidden}
-                    additions={additions}
                     docs={docs}
-                    onChangeHidden={changeHidden}
                     doneCount={
                       agentRows.done + model.lanes.merged.length + model.lanes.off_path.length
                     }
                     todoAgents={agentRows.todo}
                     archived={archived}
-                    onUnarchive={(key) => saveCard(key, null)}
                   />
                   <CallCards
                     project={project}
@@ -362,7 +345,14 @@ export function BoardScreen({
                     onMenu={openCallMenu}
                   />
                 </div>
-                <ArtifactArea project={project} listed={listed} calls={callSplit.finished} />
+                <BoardSections
+                  project={project}
+                  listed={listed}
+                  hidden={hidden}
+                  calls={callSplit.finished}
+                  archived={archived}
+                  onUnarchive={(key) => saveCard(key, null)}
+                />
               </div>
               <Lanes
                 layout={layout}
@@ -384,7 +374,6 @@ export function BoardScreen({
                   registry.set(ticketChoiceAtom, { threadId, ticketKey });
                   openAgentPanel(registry, threadId);
                 }}
-                onRemoveAddition={(id) => changeHidden((ids) => [...ids, id])}
                 agents={cards.agents}
                 doneFree={cards.doneFree}
                 agentRows={agentRows}
@@ -406,32 +395,22 @@ export function BoardScreen({
               />
             </Viewport>
             <div className="absolute bottom-3.5 left-3.5 z-10 flex max-w-[60%] flex-col gap-2">
-              {dropError !== null && (
-                <p
-                  role="alert"
-                  data-testid="drop-error"
-                  className="rounded-lg border border-red-400/40 bg-panel px-3 py-2 break-words text-red-300 shadow-panel"
-                >
-                  {dropError}
-                </p>
-              )}
-              {cardNotice !== null && (
-                <p
-                  role="alert"
-                  data-testid="card-error"
-                  className="rounded-lg border border-red-400/40 bg-panel px-3 py-2 break-words text-red-300 shadow-panel"
-                >
-                  {cardNotice}
-                </p>
-              )}
-              {hideError !== null && (
-                <p
-                  role="alert"
-                  data-testid="additions-error"
-                  className="rounded-lg border border-red-400/40 bg-panel px-3 py-2 break-words text-red-300 shadow-panel"
-                >
-                  {hideError}
-                </p>
+              {(
+                [
+                  ["drop-error", dropError],
+                  ["card-error", cardNotice],
+                ] as const
+              ).map(([testId, text]) =>
+                text === null ? null : (
+                  <p
+                    key={testId}
+                    role="alert"
+                    data-testid={testId}
+                    className="rounded-lg border border-red-400/40 bg-panel px-3 py-2 break-words text-red-300 shadow-panel"
+                  >
+                    {text}
+                  </p>
+                ),
               )}
               {issue !== null && (
                 <div

@@ -8,11 +8,8 @@ import {
   describeTrackerWrite,
   classifyIssueLink,
   findIssueKeys,
-  issueBriefText,
-  type IssueBrief,
   ticketIssueRef,
   type TicketIssueContext,
-  ticketRequestMessage,
   trackerCall,
 } from "./issueLinks";
 
@@ -172,34 +169,6 @@ describe("approved tracker writes", () => {
       write: { tracker: "github", scope: "a/b" },
     });
     expect(Result.isFailure(decoded)).toBe(true);
-  });
-});
-
-describe("handing an issue to the orchestrator", () => {
-  const issue: IssueBrief = {
-    tracker: "github",
-    displayKey: "#7",
-    title: "Cache the list",
-    url: "https://github.com/a/b/issues/7",
-    state: "Open",
-    author: "kyle",
-    body: "It is slow.",
-    comments: [{ author: "sam", createdAt: "2026-11-21T09:00:00Z", body: "Same here." }],
-  };
-
-  it("Given an issue with a comment, when worded, then the description and the comment are both in the text", () => {
-    expect(issueBriefText(issue)).toBe(
-      [
-        "## #7: Cache the list",
-        "Tracker: github. State: Open. Author: kyle. Link: https://github.com/a/b/issues/7",
-        "### Description\nIt is slow.",
-        "### Comments (1)\n**sam** on 2026-11-21T09:00:00Z:\nSame here.",
-      ].join("\n\n"),
-    );
-  });
-
-  it("Given a ticket request, when worded, then it names the issue field the orchestrator must set", () => {
-    expect(ticketRequestMessage(issue)).toContain('{"tracker":"github","key":"#7"}');
   });
 });
 

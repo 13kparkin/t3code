@@ -15,6 +15,7 @@ import { UpdatesPage } from "./UpdatesPage";
 import { VoicePage } from "./VoicePage";
 import { type SaveStatus, useSettingsWrite } from "./useSettingsWrite";
 import { WorktreesPage } from "./WorktreesPage";
+import { DOC_COLUMN, DOC_TITLE } from "../ui/docStyles";
 
 const ENVIRONMENT = "";
 
@@ -87,9 +88,9 @@ export function SettingsScreen({
         ref={PAGE_PAINTED[page]}
         className="min-h-0 min-w-0 overflow-y-auto scrollbar-gutter-both"
       >
-        <div className="mx-auto flex max-w-[720px] flex-col gap-6 px-8 py-6">
+        <div className={`${DOC_COLUMN} mx-auto flex flex-col gap-10`}>
           <header className="flex items-center justify-between gap-4">
-            <h1 className="text-lg font-semibold tracking-tight">{pageTitle(page)}</h1>
+            <h1 className={DOC_TITLE}>{pageTitle(page)}</h1>
             <div className="flex items-center gap-3">
               <span
                 role="status"

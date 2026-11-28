@@ -3,15 +3,16 @@ import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { type FormEvent, useContext, useState } from "react";
 
 import type { PickerValue } from "../domain/picker";
-import { ProviderPicker } from "../providers/ProviderPicker";
+import { OrchestratorPick } from "../providers/OrchestratorPick";
 import {
   canStart,
-  defaultPick,
   NO_PICK,
+  orchestratorPreset,
   pickableInstances,
   resolvePick,
   selectionOf,
 } from "../providers/providers";
+import { defaultOrchestratorAtom } from "../state/defaultOrchestrator";
 import { addBoard, openBoard } from "../state/boards";
 import { startBoardOrchestrator } from "../state/orchestrator";
 import { engineProvidersAtom } from "../state/server";
@@ -32,8 +33,9 @@ export function CreateBoard({
   const [created, setCreated] = useState<ValidBoard | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const chosen = resolvePick(instances, pick);
-  const reason = pick.instanceId === "" ? defaultPick(instances).reason : null;
+  const preset = orchestratorPreset(instances, useAtomValue(defaultOrchestratorAtom));
+  const chosen = resolvePick(instances, pick, preset);
+  const reason = pick.instanceId === "" ? preset.reason : null;
   const selected = instances.find((instance) => instance.instanceId === chosen.instanceId);
   const selection = selectionOf(instances, chosen);
 
@@ -84,7 +86,7 @@ export function CreateBoard({
         </label>
         <div className="flex flex-col gap-1 text-muted">
           Orchestrator
-          <ProviderPicker instances={instances} value={chosen} onChange={setPick} reason={reason} />
+          <OrchestratorPick value={chosen} onChange={setPick} reason={reason} />
         </div>
         {error !== null && (
           <p role="alert" className="break-words text-red-400">

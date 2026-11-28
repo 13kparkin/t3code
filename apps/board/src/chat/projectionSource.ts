@@ -200,3 +200,16 @@ export function timelineSource(projection: Projection): TimelineSource {
       .flatMap(({ item }) => chatItem(item) ?? []),
   };
 }
+
+const isDelegateCall = (item: TurnItem) =>
+  item.type === "dynamic_tool" && item.toolName?.endsWith("delegate_task") === true;
+
+/** The engine's first line on why the newest finished `delegate_task` call failed, or null when it went through. */
+export function lastDelegateFailure(projection: Pick<Projection, "visibleTurnItems">) {
+  const last = projection.visibleTurnItems
+    .toSorted((a, b) => a.position - b.position)
+    .map(({ item }) => item)
+    .findLast((item) => isDelegateCall(item) && !RUNNING_ITEM.includes(item.status));
+  if (last?.status !== "failed") return null;
+  return firstLine(turnItemOutputText(last)?.trim() ?? "") || "The engine gave no reason.";
+}

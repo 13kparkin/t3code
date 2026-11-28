@@ -4,7 +4,7 @@ import { useCallback, useContext, useSyncExternalStore } from "react";
 
 import type { ForYouToast } from "../domain/forYou";
 import { forYouToastsAtom } from "../state/forYou";
-import { showForYouCard } from "./ForYouRow";
+import { showForYouCard } from "../foryou/showForYouCard";
 
 const TOAST_MS = 8_000;
 

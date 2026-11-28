@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { DOC_HEADING } from "../ui/docStyles";
+
 export function SettingsSection({
   title,
   note,
@@ -12,14 +14,12 @@ export function SettingsSection({
   children: ReactNode;
 }) {
   return (
-    <section className="flex flex-col gap-1.5">
-      <h2 className="px-1 text-[13px] font-medium text-muted">{title}</h2>
-      <div
-        className={`divide-y divide-line rounded-lg border border-line bg-panel ${clip ? "overflow-hidden" : ""}`}
-      >
+    <section className="flex flex-col gap-3">
+      <h2 className={DOC_HEADING}>{title}</h2>
+      <div className={`divide-y divide-line border-y border-line ${clip ? "overflow-hidden" : ""}`}>
         {children}
       </div>
-      {note && <p className="px-1 text-xs text-faint">{note}</p>}
+      {note && <p className="text-xs text-faint">{note}</p>}
     </section>
   );
 }

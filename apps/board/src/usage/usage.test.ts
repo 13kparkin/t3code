@@ -136,27 +136,33 @@ describe("describeUsage", () => {
     ]);
   });
 
-  it("Given a disabled provider and a signed-in one that reports nothing, when described, then neither has a section", () => {
-    expect(
-      describeUsage([provider({ enabled: false, usageLimits: undefined }), provider({})], NOW),
-    ).toEqual([]);
-  });
-
-  it("Given another driver's provider beside Claude Code, when described, then only Claude Code has a section", () => {
+  it("Given a disabled provider, a Kiro that reports no limits and a Cursor with limits beside Claude Code, when described, then every enabled one has a section and Kiro says it reports no limits", () => {
     const limits = { checkedAt: at(0), windows: [window({ id: "w", usedPercent: 1 })] };
-
     const described = describeUsage(
       [
+        provider({ enabled: false, usageLimits: undefined }),
+        provider({
+          instanceId: ProviderInstanceId.make("kiro"),
+          driver: ProviderDriverKind.make("kiro"),
+          displayName: undefined,
+          usageLimits: undefined,
+        }),
         provider({
           instanceId: ProviderInstanceId.make("cursor"),
           driver: ProviderDriverKind.make("cursor"),
+          displayName: undefined,
           usageLimits: limits,
         }),
         provider({ usageLimits: limits }),
       ],
       NOW,
     );
-
-    expect(described.map((entry) => entry.driver)).toEqual(["claudeAgent"]);
+    expect(
+      described.map((entry) => [entry.name, entry.segments.map((segment) => segment.title)]),
+    ).toEqual([
+      ["Kiro", ["Kiro reports no usage limits."]],
+      ["Cursor", ["Session"]],
+      ["Claude", ["Session"]],
+    ]);
   });
 });

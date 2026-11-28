@@ -15,6 +15,7 @@ import {
   type RoleOverride,
   serializeBoard,
   uniqueSlug,
+  withCardState,
 } from "../domain/board";
 import { ROLES, roleFiles } from "../orchestrator/roles";
 
@@ -217,17 +218,6 @@ export const updateBoard = (
     return reviewTemplate === undefined ? rest : { ...rest, reviewTemplate };
   });
 
-export const changeHiddenAdditions = (
-  files: ProjectFiles,
-  cwd: string,
-  folder: string,
-  change: (ids: ReadonlyArray<string>) => ReadonlyArray<string>,
-) =>
-  changeBoard(files, cwd, folder, (board) => ({
-    ...board,
-    hiddenAdditions: [...new Set(change(board.hiddenAdditions ?? []))],
-  }));
-
 /** Sets one card's state; null puts it back on the canvas. */
 export const changeCardState = (
   files: ProjectFiles,
@@ -235,11 +225,7 @@ export const changeCardState = (
   folder: string,
   key: string,
   state: CardState | null,
-) =>
-  changeBoard(files, cwd, folder, (board) => {
-    const { [key]: _replaced, ...others } = board.cardStates ?? {};
-    return { ...board, cardStates: state === null ? others : { ...others, [key]: state } };
-  });
+) => changeBoard(files, cwd, folder, (board) => withCardState(board, key, state));
 
 /** Adds a free agent, or moves the one with the same thread. */
 export const placeFreeAgent = (

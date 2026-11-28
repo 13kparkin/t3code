@@ -23,6 +23,7 @@ export function FileBox({
   place,
   fallback,
   title,
+  label,
   actions,
   children,
 }: {
@@ -31,6 +32,8 @@ export function FileBox({
   place: "row" | "free";
   fallback: Box;
   title: ReactNode;
+  /** The box's accessible name. A files section is named by its key. */
+  label?: string;
   actions?: ReactNode;
   children: ReactNode;
 }) {
@@ -93,14 +96,14 @@ export function FileBox({
   return (
     <section
       ref={ref}
-      aria-label={boxKey === "artifacts" ? "Artifacts" : `Files ${boxKey}`}
+      aria-label={label ?? `Files ${boxKey}`}
       data-testid="file-box"
       data-box={boxKey}
       onPointerDown={(event) => {
         event.stopPropagation();
         raise();
       }}
-      className={`rounded-xl border border-dashed border-line bg-bg ${place === "row" ? "relative shrink-0 self-stretch" : "absolute top-0 left-0"}`}
+      className={`rounded-xl border border-dashed border-line ${place === "row" ? "relative shrink-0 self-stretch" : "absolute top-0 left-0 bg-bg"}`}
       style={{
         // Above the lanes, which have no z-index, and in the order the user last pressed the boxes.
         zIndex: 5 + z,

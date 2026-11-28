@@ -4,13 +4,17 @@ import { AsyncResult } from "effect/reactivity";
 import { useContext } from "react";
 
 import { issueTrackerEnvironment } from "../state/issues";
+import { engineProvidersAtom } from "../state/server";
 import { sourceControlEnvironment } from "../state/sourceControl";
+import { useUsageClock } from "../usage/useUsageClock";
 import { buttonClass } from "./controls/buttonClass";
+import { AgentProviderCard } from "./integrations/AgentProviderCard";
 import { DevicesSection } from "./integrations/DevicesSection";
 import { IntegrationGroup } from "./integrations/IntegrationGroup";
 import { JiraCard } from "./integrations/JiraCard";
 import { LinearCard } from "./integrations/LinearCard";
 import { ProviderCard } from "./integrations/ProviderCard";
+import { useSettingsWrite } from "./useSettingsWrite";
 
 export function IntegrationsPage({
   environmentId,
@@ -20,6 +24,9 @@ export function IntegrationsPage({
   settings: ServerSettings;
 }) {
   const registry = useContext(RegistryContext);
+  const providers = useAtomValue(engineProvidersAtom);
+  const now = useUsageClock();
+  const { status, save } = useSettingsWrite();
   const trackersAtom = issueTrackerEnvironment.connections({ environmentId, input: {} });
   const discoveryAtom = sourceControlEnvironment.discovery({ environmentId, input: {} });
   const trackers = useAtomValue(trackersAtom);
@@ -41,6 +48,29 @@ export function IntegrationsPage({
 
   return (
     <div className="flex flex-col gap-8">
+      <IntegrationGroup
+        title="Agent providers"
+        description="Every agent CLI the engine can run. A provider that is on can run orchestrators and agents, and shows its usage in the bar at the bottom."
+      >
+        {providers.length === 0 && (
+          <p className="px-4 py-3 text-xs text-faint">Asking the engine for its providers.</p>
+        )}
+        {providers.map((provider) => (
+          <AgentProviderCard
+            key={provider.instanceId}
+            environmentId={environmentId}
+            provider={provider}
+            settings={settings}
+            now={now}
+            onSave={(input) => void save(input)}
+          />
+        ))}
+        {status.kind === "failed" && (
+          <p role="alert" className="px-4 py-3 text-xs break-words text-red-400">
+            {status.message}
+          </p>
+        )}
+      </IntegrationGroup>
       <IntegrationGroup
         title="Source control"
         description="Connect the hosts the board can use for pull requests, checks and review status."

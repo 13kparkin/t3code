@@ -1,5 +1,9 @@
 import { BOARDS_DIR } from "@agent-board/app/domain/board";
-import { AVAILABLE_CONNECTION_STATE } from "@t3tools/client-runtime/connection";
+import {
+  AVAILABLE_CONNECTION_STATE,
+  ConnectionBlockedError,
+  ConnectionTransientError,
+} from "@t3tools/client-runtime/connection";
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
 import { createEnvironmentProjectAtoms } from "@t3tools/client-runtime/state/projects";
 import {
@@ -21,7 +25,7 @@ import { Linking } from "react-native";
 
 import type { ProjectFiles } from "../board/boardAtoms";
 import { type BoardProject, foldBoardScan } from "./boardScan";
-import { readPairingRequest } from "./pairing";
+import { pairingErrorText, readPairingRequest } from "./pairing";
 import { connectionAtomRuntime, connectPairingUrl, environmentCatalog } from "./runtime";
 import { type EngineStatus, pairedEngineStatus } from "./status";
 
@@ -52,6 +56,10 @@ const listEntries = createEnvironmentRpcCommand(connectionAtomRuntime, {
 const readFile = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "phone:board:read-file",
   tag: WS_METHODS.projectsReadFile,
+});
+const writeFile = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "phone:board:write-file",
+  tag: WS_METHODS.projectsWriteFile,
 });
 const isProjectListEntriesError = Schema.is(ProjectListEntriesError);
 
@@ -89,6 +97,21 @@ export function engineFiles(registry: AtomRegistry.AtomRegistry, environmentId: 
       return result.value.exists === false ? null : result.value.contents;
     },
   } satisfies ProjectFiles;
+}
+
+/** Writes one project file through the engine; the phone's only write is a card's Archive. */
+export async function writeEngineFile(
+  registry: AtomRegistry.AtomRegistry,
+  environmentId: EnvironmentId,
+  input: { readonly cwd: string; readonly relativePath: string; readonly contents: string },
+) {
+  const result = await runAtomCommand(
+    registry,
+    writeFile,
+    { environmentId, input },
+    { reportFailure: false },
+  );
+  if (result._tag === "Failure") throw commandError(result);
 }
 
 const engineSyncedAtom = Atom.make((get) => {
@@ -133,6 +156,10 @@ export const pairingStateAtom = Atom.make<PairingState>({ busy: false, error: nu
   Atom.withLabel("pairing-state"),
 );
 
+const isConnectionError = Schema.is(
+  Schema.Union([ConnectionTransientError, ConnectionBlockedError]),
+);
+
 /** Validates the input before anything is sent or saved, then redeems it with the engine. */
 export async function pair(registry: AtomRegistry.AtomRegistry, input: string) {
   let pairingUrl: string;
@@ -150,7 +177,10 @@ export async function pair(registry: AtomRegistry.AtomRegistry, input: string) {
   const failure = result._tag === "Failure" ? squashAtomCommandFailure(result) : null;
   registry.set(pairingStateAtom, {
     busy: false,
-    error: failure === null ? null : failure instanceof Error ? failure.message : String(failure),
+    error:
+      failure === null
+        ? null
+        : pairingErrorText(isConnectionError(failure) ? failure.reason : null),
   });
 }
 

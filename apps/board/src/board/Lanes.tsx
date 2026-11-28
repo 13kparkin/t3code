@@ -21,11 +21,11 @@ import {
   clampDrag,
   type FrameBox,
   type LaneBox,
-  type LaneId,
   type Layout,
   LANE_BORDER,
   LANE_HEAD,
   LANE_LABEL,
+  LANE_TONE,
   LANE_MAX_HEIGHT,
   laneCardsHeight,
   laneCount,
@@ -35,19 +35,10 @@ import {
   CARD_HEIGHT,
   FRAME_PAD,
 } from "./layout";
-import { RemoveAddition } from "./RemoveAddition";
 import { TicketFrame } from "./TicketFrame";
 import { ticketStatus } from "./ticketStatus";
 
 const DRAG_THRESHOLD_PX = 4;
-
-const LANE_TONE = {
-  for_you: "bg-amber-500 text-black",
-  todo: "bg-zinc-700 text-white",
-  running: "bg-blue-600 text-white",
-  waiting: "bg-amber-700 text-white",
-  done: "bg-emerald-700 text-white",
-} as const satisfies Record<LaneId, string>;
 
 export function Lanes({
   layout,
@@ -59,7 +50,6 @@ export function Lanes({
   choice,
   onChoose,
   onOpenAgent,
-  onRemoveAddition,
   agents,
   doneFree,
   agentRows,
@@ -75,7 +65,6 @@ export function Lanes({
   choice: TicketChoice | null;
   onChoose: (choice: TicketChoice) => void;
   onOpenAgent: (threadId: string, ticketKey: string | null) => void;
-  onRemoveAddition: (id: string) => void;
   agents: Readonly<Record<StageLane, ReadonlyArray<AgentView>>>;
   doneFree: ReadonlyArray<FreeAgent>;
   agentRows: Readonly<Record<StageLane, number>>;
@@ -120,7 +109,6 @@ export function Lanes({
         >
           <header className="flex shrink-0 items-center gap-1.5 px-2.5 pt-1.5">
             <h4 className="min-w-0 flex-1 truncate text-[12px] font-semibold">{added.title}</h4>
-            <RemoveAddition title={added.title} onRemove={() => onRemoveAddition(added.id)} />
           </header>
           <div
             data-scroll
@@ -302,21 +290,6 @@ export function Lanes({
               <span className="min-w-0 truncate rounded-md bg-zinc-800 px-2 text-[11px] leading-5 font-semibold text-white">
                 {item.title}
               </span>
-              <span className="flex-1" />
-              <Tooltip text="Hide lane" side="bottom" align="end">
-                <button
-                  type="button"
-                  aria-label={`Hide the ${item.title} lane`}
-                  onPointerDown={(event) => event.stopPropagation()}
-                  onClick={() =>
-                    void toggleFolded(registry, laneKey(boardId, additionLaneId(item.id)))
-                  }
-                  className="grid size-5 place-items-center rounded text-faint hover:bg-hover hover:text-fg"
-                >
-                  <EyeOff className="size-3" aria-hidden />
-                </button>
-              </Tooltip>
-              <RemoveAddition title={item.title} onRemove={() => onRemoveAddition(item.id)} />
             </header>
             <div
               data-testid="addition-card"

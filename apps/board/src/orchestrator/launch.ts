@@ -1,4 +1,4 @@
-import type { ProviderOptionSelection } from "@t3tools/contracts";
+import type { ProviderOptionSelection, RuntimeMode } from "@t3tools/contracts";
 
 import { BOARDS_DIR, type Board } from "../domain/board";
 import type { ReviewTemplate } from "../domain/reviewTemplate";
@@ -14,20 +14,40 @@ export interface OrchestratorSelection extends OrchestratorModel {
   readonly options: ReadonlyArray<ProviderOptionSelection>;
 }
 
+export interface OrchestratorTarget {
+  readonly instanceId: string;
+  /** Null when the instance carries the rules itself, as a Claude Code board instance does. */
+  readonly standing: string | null;
+}
+
+/**
+ * Claude Code orchestrators keep full access, with the tracker-write ask rule in their launch
+ * arguments. Any other provider takes no such rule, so every action it takes asks first.
+ */
+export const orchestratorMode = (driver: string): RuntimeMode =>
+  driver === "claudeAgent" ? "full-access" : "approval-required";
+
+/** The approval note beside a non-Claude orchestrator; only Codex was checked on a real engine. */
+export const asksNote = (driver: string) =>
+  driver === "codex"
+    ? "Every command this orchestrator runs asks for your approval first, and so does a tool call that changes something, such as filing an issue. Read-only tool calls do not ask."
+    : "This orchestrator runs in approval mode, so its commands and the tool calls that change something should ask for your approval first. That was checked on Codex, not on this provider.";
+
 export interface LaunchRequest {
   readonly title: string;
-  /** The first message, which holds the board facts. The standing rules ride on the instance. */
+  /** The first message: the board facts, after the standing rules when the instance cannot carry them. */
   readonly firstMessage: string;
   readonly instanceId: string;
   readonly model: string;
   readonly options: ReadonlyArray<ProviderOptionSelection>;
+  readonly runtimeMode: RuntimeMode;
 }
 
 /** The engine calls that start the orchestrator and watch its first run. */
 export interface LaunchPorts {
   readonly files: ProjectFiles;
-  /** The orchestrator instance for the picked instance, created or updated with the standing rules. */
-  readonly orchestratorInstance: (selection: OrchestratorSelection) => Promise<string>;
+  /** The instance the orchestrator runs on, and the standing rules when they must ride in the first message instead. */
+  readonly orchestratorInstance: (selection: OrchestratorSelection) => Promise<OrchestratorTarget>;
   readonly launchThread: (request: LaunchRequest) => Promise<string>;
   readonly projection: (threadId: string) => Promise<LaunchProjection>;
   /** Archives the thread of a launch that failed, so it does not stay in the thread list. */
@@ -93,20 +113,22 @@ export async function launchOrchestrator(
   const boardPath = `${BOARDS_DIR}/${folder}`;
   await refreshRoles(ports.files, cwd, folder);
 
-  const instanceId = await ports.orchestratorInstance(selection);
+  const { instanceId, standing } = await ports.orchestratorInstance(selection);
+  const facts = renderFacts({
+    boardDir: `${cwd}/${boardPath}`,
+    builderCap: board.builderCap,
+    project,
+    projectDir: cwd,
+    reviewTemplate,
+    usage,
+  });
   const threadId = await ports.launchThread({
     title: `Orchestrator: ${board.name}`,
-    firstMessage: renderFacts({
-      boardDir: `${cwd}/${boardPath}`,
-      builderCap: board.builderCap,
-      project,
-      projectDir: cwd,
-      reviewTemplate,
-      usage,
-    }),
+    firstMessage: standing === null ? facts : `${standing}\n\n${facts}`,
     instanceId,
     model: selection.model,
     options: selection.options,
+    runtimeMode: orchestratorMode(selection.driver),
   });
   const launched = await updateBoard(ports.files, cwd, folder, { orchestratorThreadId: threadId });
 

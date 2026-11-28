@@ -21,8 +21,13 @@ import {
   launchOrchestrator,
   type LaunchPorts,
   type OrchestratorSelection,
+  type OrchestratorTarget,
 } from "../orchestrator/launch";
-import { planAgentsInstance, planOrchestratorInstance } from "../orchestrator/orchestratorInstance";
+import {
+  planAgentsInstance,
+  planOrchestratorInstance,
+  standingInstructions,
+} from "../orchestrator/orchestratorInstance";
 import { resolveRoles, ROLES } from "../orchestrator/roles";
 import { defaultSetupPatch } from "../settings/settingsModel";
 import type { ValidBoard } from "../store/boardFiles";
@@ -47,20 +52,31 @@ type BoardProject = Pick<
   "id" | "environmentId" | "workspaceRoot" | "title" | "scripts"
 >;
 
+// The adapter above is written for Claude Code, which loads the checkout as a plugin; other providers do not.
+const pluginlessNote = (dir: string) =>
+  `This provider does not load pstack-t3 as a plugin, and CLAUDE_CODE_PLUGIN_DIRS is not set. The checkout is \`${dir}\`: every skill is \`${dir}/skills/<name>/SKILL.md\` and the role files are in \`${dir}/agents/\`. Read a skill from there wherever the rules above say to load it. Your provider's own subagent tool is not turned off, so start agents only with \`delegate_task\`.`;
+
 /**
- * The orchestrator instance for the picked instance, with the standing instructions in its launch
- * arguments, and the instance its children run on. Both load the pstack-t3 checkout. The engine's
- * settings are written only for an instance that is missing or differs.
+ * For Claude Code: the orchestrator instance for the picked instance, with the standing instructions
+ * in its launch arguments, and the instance its children run on. Both load the pstack-t3 checkout.
+ * The engine's settings are written only for an instance that is missing or differs. Other drivers
+ * take no such arguments, so they run on the picked instance with the rules in the first message.
  */
 export async function ensureOrchestratorInstance(
   registry: AtomRegistry.AtomRegistry,
   environmentId: EnvironmentId,
   selection: OrchestratorSelection,
-): Promise<string> {
-  const settings = registry.get(engineSettingsAtom);
-  if (settings === null) throw new Error("The engine's settings have not loaded yet.");
+): Promise<OrchestratorTarget> {
   const pstack = await engineBridge.ensurePstack();
   if (!pstack.ok) throw new Error(pstack.reason);
+  if (selection.driver !== "claudeAgent") {
+    return {
+      instanceId: selection.instanceId,
+      standing: `${standingInstructions(renderRules(resolveRoles(ROLES, selection)))}\n\n${pluginlessNote(pstack.dir)}`,
+    };
+  }
+  const settings = registry.get(engineSettingsAtom);
+  if (settings === null) throw new Error("The engine's settings have not loaded yet.");
   const base = { instanceId: selection.instanceId, driver: selection.driver };
   const agents = planAgentsInstance({
     providerInstances: settings.providerInstances,
@@ -84,7 +100,7 @@ export async function ensureOrchestratorInstance(
       ),
     );
   }
-  return orchestrator.instanceId;
+  return { instanceId: orchestrator.instanceId, standing: null };
 }
 
 /** Starts the board's orchestrator on the chosen instance and model, and saves its thread in `board.json`. */
@@ -128,7 +144,7 @@ export async function startBoardOrchestrator(
                   model: request.model,
                   ...(request.options.length > 0 ? { options: request.options } : {}),
                 },
-                runtimeMode: "full-access",
+                runtimeMode: request.runtimeMode,
                 interactionMode: "default",
                 workspaceStrategy: { type: "root" },
                 initialMessage: { text: request.firstMessage, attachments: [] },

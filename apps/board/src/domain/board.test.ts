@@ -1,7 +1,14 @@
 import * as Result from "effect/Result";
 import { describe, expect, it } from "vite-plus/test";
 
-import { parseBoard, parseDocs, serializeBoard, slugify, uniqueSlug } from "./board";
+import {
+  isArchivedBoard,
+  parseBoard,
+  parseDocs,
+  serializeBoard,
+  slugify,
+  uniqueSlug,
+} from "./board";
 
 const valid = {
   id: "7f4c2a6e-0d3b-4e3b-9a55-0b7a4c1d2e90",
@@ -117,5 +124,24 @@ describe("uniqueSlug", () => {
     ["2 taken too", ["claude-connector", "claude-connector-2"], "claude-connector-3"],
   ])("Given %s, when slugified, then it is %s", (_clash, taken, expected) => {
     expect(uniqueSlug("Claude connector", taken)).toBe(expected);
+  });
+});
+
+describe("isArchivedBoard", () => {
+  const listed = (archived: boolean) => ({
+    ok: true as const,
+    folder: "b",
+    board: { ...valid, archived },
+  });
+  const broken = { ok: false as const, folder: "b", issue: { fields: [], message: "bad" } };
+
+  it.each([
+    ["a live board of a live project", null, listed(false), false],
+    ["an archived board", null, listed(true), true],
+    ["a live board of an archived project", "2026-11-20T06:00:00.000Z", listed(false), true],
+    ["a board.json that did not parse", null, broken, false],
+    ["a broken board of an archived project", "2026-11-20T06:00:00.000Z", broken, true],
+  ])("Given %s", (_name, archivedAt, board, expected) => {
+    expect(isArchivedBoard({ archivedAt }, board)).toBe(expected);
   });
 });

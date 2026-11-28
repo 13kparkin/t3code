@@ -5,9 +5,8 @@ import { type ReactNode, useState } from "react";
 import { updateNoticeAtom } from "../state/updatesAtoms";
 import { Tooltip } from "../ui/Tooltip";
 import { AddProject } from "./AddProject";
-import { ArchivedRow } from "./ArchivedRow";
-import { BrowserRow } from "./BrowserRow";
-import { ForYouRow } from "./ForYouRow";
+import { useNavItems } from "./navItems";
+import { NavRow } from "./NavRow";
 import { ProjectList } from "./ProjectList";
 import { Section } from "./Section";
 
@@ -22,6 +21,7 @@ export function Sidebar({
   onOpenSettings: () => void;
 }) {
   const [adding, setAdding] = useState(false);
+  const nav = useNavItems();
   const updateOffered = useAtomValue(updateNoticeAtom);
   const settingsLabel = updateOffered ? "Settings, update available" : "Settings";
   return (
@@ -35,8 +35,8 @@ export function Sidebar({
         </div>
         Agent Board
       </div>
-      <ForYouRow />
-      <BrowserRow />
+      <NavRow item={nav.foryou} />
+      <NavRow item={nav.browser} />
       <Section
         title="Projects"
         className="min-h-0 shrink"
@@ -58,7 +58,7 @@ export function Sidebar({
         <ProjectList />
       </Section>
       <div className="flex-1" />
-      <ArchivedRow />
+      <NavRow item={nav.archived} />
       <div className="flex shrink-0 flex-col gap-2 border-t border-line p-2 text-xs text-muted">
         <div className="flex items-center gap-1">
           <Tooltip text={settingsLabel}>

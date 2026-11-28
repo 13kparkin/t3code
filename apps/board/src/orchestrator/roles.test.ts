@@ -115,9 +115,9 @@ describe("checking a role target", () => {
     expect(roleTargetProblem(role, pick, instance)).toBe(problem);
   });
 
-  it("Given no Claude instance, when checked, then it says nothing can be checked", () => {
+  it("Given no provider, when checked, then it says nothing can be checked", () => {
     expect(roleTargetProblem("reviewer", { model: "claude-opus-5-5" }, null)).toBe(
-      "No Claude instance is running to check the model against.",
+      "No provider is running to check the model against.",
     );
   });
 });

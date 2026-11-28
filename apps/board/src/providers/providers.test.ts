@@ -7,8 +7,10 @@ import {
   defaultPick,
   NO_PICK,
   pickableInstances,
+  orchestratorPreset,
   pickOf,
   resolvePick,
+  searchModels,
   selectionOf,
   selectionWarning,
   textInstances,
@@ -22,6 +24,8 @@ interface Fixture {
   readonly status?: "authenticated" | "unauthenticated" | "unknown";
   readonly email?: string;
   readonly installed?: boolean;
+  readonly enabled?: boolean;
+  readonly unavailableReason?: string;
   readonly canAuthenticate?: boolean;
   readonly message?: string;
   readonly displayName?: string;
@@ -41,8 +45,11 @@ const provider = (fixture: Fixture) =>
     instanceId: fixture.instanceId,
     driver: fixture.driver,
     displayName: fixture.displayName,
-    enabled: true,
+    enabled: fixture.enabled ?? true,
     installed: fixture.installed ?? true,
+    ...(fixture.unavailableReason === undefined
+      ? {}
+      : { availability: "unavailable", unavailableReason: fixture.unavailableReason }),
     version: null,
     status: "ready",
     auth: { status: fixture.status ?? "authenticated", email: fixture.email },
@@ -74,19 +81,25 @@ const provider = (fixture: Fixture) =>
   });
 
 describe("the provider picker's instances", () => {
-  it("Given Cursor and two Claude Code instances, when they are listed, then the Claude Code instances are named and Cursor is left out", () => {
+  it("Given Cursor, an unavailable Grok, a turned-off Codex and two Claude Code instances, when they are listed, then every enabled one is named with why it cannot start", () => {
     const listed = pickableInstances([
       provider({ instanceId: "cursor", driver: "cursor" }),
+      provider({ instanceId: "grok", driver: "grok", unavailableReason: "Grok needs an update" }),
+      provider({ instanceId: "codex", driver: "codex", enabled: false }),
       provider({ instanceId: "claudeZ", driver: "claudeAgent", displayName: "Claude Z" }),
       provider({ instanceId: "claudeAgent", driver: "claudeAgent", displayName: "Claude" }),
     ]);
-    expect(listed.map((instance) => [instance.instanceId, instance.name])).toEqual([
-      ["claudeAgent", "Claude Code"],
-      ["claudeZ", "Claude Z"],
+    expect(
+      listed.map((instance) => [instance.instanceId, instance.name, instance.unavailable]),
+    ).toEqual([
+      ["claudeAgent", "Claude Code", null],
+      ["claudeZ", "Claude Z", null],
+      ["cursor", "Cursor", null],
+      ["grok", "Grok", "Grok needs an update"],
     ]);
   });
 
-  it("Given models with a default and a legacy one, when they are listed, then the legacy one is dropped and the default is named", () => {
+  it("Given models with a default and a legacy one, when they are listed, then every model is offered with the legacy one last and the default named", () => {
     const [listed] = pickableInstances([
       provider({
         instanceId: "claudeAgent",
@@ -98,23 +111,12 @@ describe("the provider picker's instances", () => {
         ],
       }),
     ]);
-    expect(listed?.models.map((model) => model.slug)).toEqual([
-      "claude-sonnet-5-5",
-      "claude-opus-5-5",
+    expect(listed?.models.map((model) => [model.slug, model.legacy])).toEqual([
+      ["claude-sonnet-5-5", false],
+      ["claude-opus-5-5", false],
+      ["claude-old", true],
     ]);
     expect(listed?.defaultModel).toBe("claude-opus-5-5");
-  });
-
-  it("Given a legacy model, when the instance is listed, then the picker drops it but the instance still offers it to a role", () => {
-    const [listed] = pickableInstances([
-      provider({
-        instanceId: "claudeAgent",
-        driver: "claudeAgent",
-        models: [{ slug: "claude-fable-5-1", isLegacy: true }, { slug: "claude-opus-5-5" }],
-      }),
-    ]);
-    expect(listed?.models.map((model) => model.slug)).toEqual(["claude-opus-5-5"]);
-    expect(listed?.offered).toEqual(["claude-fable-5-1", "claude-opus-5-5"]);
   });
 
   it("Given a signed-out Claude instance and a signed-in one, when they are listed, then each shows its sign-in state and account", () => {
@@ -189,6 +191,24 @@ describe("the orchestrator's pick", () => {
     );
   });
 
+  it.each([
+    ["signed out", [claude("unauthenticated")], "Claude Code is signed out."],
+    ["off", [], "Claude Code is off."],
+  ])(
+    "Given Claude Code %s beside an uninstalled provider that sorts first and a signed-in Codex, then the reason is about Claude Code and it starts on Codex",
+    (_name, claudes, why) => {
+      const instances = pickableInstances([
+        provider({ instanceId: "antigravity", driver: "antigravity", installed: false }),
+        ...claudes,
+        provider({ instanceId: "codex", driver: "codex", models: [{ slug: "gpt-6" }] }),
+      ]);
+      expect(defaultPick(instances)).toEqual({
+        value: { instanceId: "codex", model: "gpt-6", effort: "" },
+        reason: `${why} Starting on Codex instead.`,
+      });
+    },
+  );
+
   it("Given a signed-in Claude Code without Opus 5.5, when nothing is picked, then the reason names the missing model", () => {
     const instances = pickableInstances([
       claude("authenticated", [{ slug: "claude-sonnet-5-5", isDefault: true }]),
@@ -202,19 +222,37 @@ describe("the orchestrator's pick", () => {
     expect(defaultPick([])).toEqual({ value: NO_PICK, reason: null });
   });
 
-  it("Given a model typed before any pick, when the pick resolves, then the typed model is kept on the default instance", () => {
-    const instances = pickableInstances([claude("unauthenticated")]);
-    expect(resolvePick(instances, { ...NO_PICK, model: "claude-nope" })).toEqual({
-      instanceId: "claudeAgent",
-      model: "claude-nope",
-      effort: "",
-    });
-  });
+  it.each([
+    [
+      "no saved default",
+      null,
+      { instanceId: "claudeAgent", model: "claude-opus-5-5", effort: "medium" },
+      null,
+    ],
+    [
+      "a saved default whose instance is on",
+      { instanceId: "claudeAgent", model: "claude-sonnet-5-5", effort: "low" },
+      { instanceId: "claudeAgent", model: "claude-sonnet-5-5", effort: "low" },
+      null,
+    ],
+    [
+      "a saved default whose instance is off",
+      { instanceId: "codex", model: "gpt-5", effort: "" },
+      { instanceId: "claudeAgent", model: "claude-opus-5-5", effort: "medium" },
+      "Your default, codex, is not on. Starting on Claude Code instead.",
+    ],
+  ])(
+    "Given %s, then a new orchestrator preselects it, saying why when it falls back",
+    (_name, saved, value, reason) => {
+      const instances = pickableInstances([claude("authenticated")]);
+      expect(orchestratorPreset(instances, saved)).toEqual({ value, reason });
+    },
+  );
 
-  it("Given a pick, when it resolves, then the pick stands", () => {
+  it("Given a pick, when it resolves, then the pick stands over the preset", () => {
     const instances = pickableInstances([claude("authenticated")]);
     const pick = { instanceId: "claudeAgent", model: "claude-sonnet-5-5", effort: "low" };
-    expect(resolvePick(instances, pick)).toBe(pick);
+    expect(resolvePick(instances, pick, orchestratorPreset(instances, null))).toBe(pick);
   });
 
   it("Given a picked effort, when the selection is made, then the model selection carries it under the model's effort option", () => {
@@ -331,5 +369,25 @@ describe("the text model settings", () => {
 
   it("Given the default Claude Code instance, when text instances are listed, then it is named Claude Code", () => {
     expect(textInstances([claude]).map((entry) => entry.name)).toEqual(["Claude Code"]);
+  });
+});
+
+describe("searching the picker's models", () => {
+  const instances = pickableInstances([
+    provider({
+      instanceId: "claudeAgent",
+      driver: "claudeAgent",
+      models: [{ slug: "claude-opus-5-5" }, { slug: "claude-sonnet-5-5" }],
+    }),
+    provider({ instanceId: "cursor", driver: "cursor", models: [{ slug: "gpt-5" }] }),
+  ]);
+  it.each([
+    ["part of a model name", "sonn", ["claudeAgent/claude-sonnet-5-5"]],
+    ["a provider's name", "cursor", ["cursor/gpt-5"]],
+    ["nothing that matches", "zzzz", []],
+  ])("Given %s, then it lists the matching models", (_name, query, expected) => {
+    expect(
+      searchModels(instances, query).map((row) => `${row.instance.instanceId}/${row.model.slug}`),
+    ).toEqual(expected);
   });
 });

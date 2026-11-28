@@ -32,11 +32,14 @@ export function ForYouCard({
   view,
   context,
   onExpand,
+  page = false,
 }: {
   view: CardView;
   context: CardContext;
   /** Opens the card as a full-page tab. The page itself leaves it out. */
   onExpand?: () => void;
+  /** Drawn as the body of its full page, which shows the title and state, so no card chrome. */
+  page?: boolean;
 }) {
   const { card, state, detail } = view;
   const { target, orchestratorThreadId, focused } = context;
@@ -99,39 +102,47 @@ export function ForYouCard({
       data-kind={card.origin === "file" ? card.item.kind : card.request.kind}
       data-state={state}
       aria-label={`${title}, ${chip.label.toLowerCase()}`}
-      className={`flex flex-col gap-2 rounded-lg border bg-panel p-2.5 shadow-panel ${focused ? "border-focus ring-1 ring-focus" : "border-line"}`}
+      className={
+        page
+          ? "flex flex-col gap-4"
+          : `flex flex-col gap-2 rounded-lg border bg-panel p-2.5 shadow-panel ${focused ? "border-focus ring-1 ring-focus" : "border-line"}`
+      }
     >
-      <header className="flex items-center gap-1.5">
-        <span className="rounded bg-hover px-1.5 text-[10px] leading-4 font-semibold text-muted">
-          {label}
-        </span>
-        <span className="flex-1" />
-        <span
-          data-testid="foryou-state"
-          className={`rounded px-1.5 text-[10px] leading-4 font-medium ${chip.chip}`}
-        >
-          {chip.label}
-        </span>
-        {onExpand !== undefined && (
-          <Tooltip text="Open as a tab" side="bottom" align="end">
-            <button
-              type="button"
-              aria-label={`Open ${title} as a tab`}
-              // A press here is a click, not the start of a pan.
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={onExpand}
-              className="grid size-5 place-items-center rounded text-faint hover:bg-hover hover:text-fg"
-            >
-              <Maximize2 className="size-3" aria-hidden />
-            </button>
-          </Tooltip>
-        )}
-      </header>
-      <h4 className="text-[13px] leading-[18px] font-semibold break-words text-fg">{title}</h4>
+      {!page && (
+        <header className="flex items-center gap-1.5">
+          <span className="rounded bg-hover px-1.5 text-[10px] leading-4 font-semibold text-muted">
+            {label}
+          </span>
+          <span className="flex-1" />
+          <span
+            data-testid="foryou-state"
+            className={`rounded px-1.5 text-[10px] leading-4 font-medium ${chip.chip}`}
+          >
+            {chip.label}
+          </span>
+          {onExpand !== undefined && (
+            <Tooltip text="Open as a tab" side="bottom" align="end">
+              <button
+                type="button"
+                aria-label={`Open ${title} as a tab`}
+                // A press here is a click, not the start of a pan.
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={onExpand}
+                className="grid size-5 place-items-center rounded text-faint hover:bg-hover hover:text-fg"
+              >
+                <Maximize2 className="size-3" aria-hidden />
+              </button>
+            </Tooltip>
+          )}
+        </header>
+      )}
+      {!page && (
+        <h4 className="text-[13px] leading-[18px] font-semibold break-words text-fg">{title}</h4>
+      )}
       {card.origin === "file" ? (
         <>
           {card.item.kind !== "role_target" && card.item.body.trim() !== "" && (
-            <div className="text-[12px] break-words text-muted">
+            <div className={page ? "break-words" : "text-[12px] break-words text-muted"}>
               <ChatMarkdown text={card.item.body} untrusted />
             </div>
           )}

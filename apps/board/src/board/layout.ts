@@ -2,9 +2,11 @@ import type { Addition } from "../domain/additions";
 import type { CardView } from "../domain/forYou";
 import { TICKET_STAGES, type TicketStage } from "../domain/ticket";
 import type { BoardModel } from "../state/boardModel";
-import type { FrameOrder } from "../state/boardUi";
 import { isWorking } from "./ticketStatus";
 import type { Rect } from "./viewport";
+
+/** The saved order of each lane's frames, by lane id. */
+export type FrameOrder = Readonly<Record<string, ReadonlyArray<string>>>;
 
 export type StageLane = "todo" | "running" | "waiting" | "done";
 export type LaneId = "for_you" | StageLane;
@@ -16,6 +18,15 @@ export const LANE_LABEL = {
   running: "Running",
   waiting: "Waiting",
   done: "Done",
+} as const satisfies Record<LaneId, string>;
+
+/** Each lane's header tag, as Tailwind classes the phone reads through `toneStyle`. */
+export const LANE_TONE = {
+  for_you: "bg-amber-500 text-black",
+  todo: "bg-zinc-700 text-white",
+  running: "bg-blue-600 text-white",
+  waiting: "bg-amber-700 text-white",
+  done: "bg-emerald-700 text-white",
 } as const satisfies Record<LaneId, string>;
 
 /** A ticket sits in Running only while one of its agents is live, and an open ticket with none waits. */
@@ -35,23 +46,43 @@ export const stageTagCount = (
 /** The filter id of the Done lane, which starts hidden. */
 export const DONE_TAG = "done";
 export const stageTagId = (stage: TicketStage) => `stage:${stage}`;
+
+/** The tickets in one lane, newest first, from each stage's tickets and whether an agent works them now. */
+export const laneTickets = (
+  model: Pick<BoardModel, "lanes">,
+  lane: StageLane,
+  now: number,
+  stages: ReadonlyArray<TicketStage> = TICKET_STAGES,
+) =>
+  stages
+    .flatMap((stage) =>
+      model.lanes[stage].filter((view) => ticketLane(stage, isWorking(view.agents, now)) === lane),
+    )
+    .toSorted((a, b) => b.position - a.position);
 export const additionLaneId = (id: string) => `add:${id}`;
 
+/** The board's sections beside the orchestrator card, which its buttons show and hide. */
+export const BOARD_SECTIONS = [
+  { id: "artifacts", label: "Artifacts", startsHidden: false },
+  { id: "archived", label: "Archived", startsHidden: true },
+  { id: "review", label: "Review", startsHidden: true },
+] as const;
+export type BoardSectionId = (typeof BOARD_SECTIONS)[number]["id"];
+export const sectionFilterId = (id: BoardSectionId) => `section:${id}`;
+
 /**
- * The filter ids that hide their cards or lane: the For you and Done lanes, each stage's tag, and
- * each `canvas` addition's lane. The saved set holds the ids the user flipped from their default.
+ * The filter ids that hide their cards, lane or section: the For you and Done lanes, each stage's
+ * tag, and each board section. The saved set holds the ids the user flipped from their default.
  */
-export function hiddenFilters(
-  flipped: ReadonlySet<string>,
-  additions: ReadonlyArray<Addition>,
-): ReadonlySet<string> {
+export function hiddenFilters(flipped: ReadonlySet<string>): ReadonlySet<string> {
   const filters = [
     { id: "for_you", starts: false },
     { id: DONE_TAG, starts: true },
     ...TICKET_STAGES.map((stage) => ({ id: stageTagId(stage), starts: false })),
-    ...additions.flatMap((item) =>
-      item.place === "canvas" ? [{ id: additionLaneId(item.id), starts: false }] : [],
-    ),
+    ...BOARD_SECTIONS.map((section) => ({
+      id: sectionFilterId(section.id),
+      starts: section.startsHidden,
+    })),
   ];
   return new Set(
     filters.filter(({ id, starts }) => starts !== flipped.has(id)).map(({ id }) => id),
@@ -169,14 +200,8 @@ export function layoutBoard(
       }
       if (agentRows[id] > 0)
         items.push({ key: agentsKey(id), height: agentsHeight(agentRows[id]) });
-      const keys = TICKET_STAGES.filter((stage) => !hidden.has(stageTagId(stage)))
-        .flatMap((stage) =>
-          model.lanes[stage].filter(
-            (view) => ticketLane(stage, isWorking(view.agents, now)) === id,
-          ),
-        )
-        .toSorted((a, b) => b.position - a.position)
-        .map((view) => view.ticket.key);
+      const shown = TICKET_STAGES.filter((stage) => !hidden.has(stageTagId(stage)));
+      const keys = laneTickets(model, id, now, shown).map((view) => view.ticket.key);
       for (const key of orderedKeys(keys, order[id])) items.push({ key, height: CARD_HEIGHT });
     }
     let y = top + LANE_HEAD;
@@ -197,7 +222,7 @@ export function layoutBoard(
     });
   });
   const additionLanes = additions
-    .filter((item) => item.place === "canvas" && !hidden.has(additionLaneId(item.id)))
+    .filter((item) => item.place === "canvas")
     .map((item, at) => ({
       key: item.id,
       x: LEFT + (lanes.length + at) * (LANE_WIDTH + LANE_GAP),

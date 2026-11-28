@@ -1,5 +1,5 @@
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
-import type { ListedBoard } from "@agent-board/app/domain/board";
+import { BOARDS_DIR, isArchivedBoard, type ListedBoard } from "@agent-board/app/domain/board";
 import * as Option from "effect/Option";
 import { Atom } from "effect/reactivity";
 import { useAtomValue } from "@effect/atom-react";
@@ -29,6 +29,24 @@ export const appActiveAtom = Atom.make((get) => {
 
 const boardStore = createBoardStore(engineFilesAtom, appActiveAtom);
 export const boardFilesAtom = boardStore.files;
+export const boardPollAtom = boardStore.poll;
+
+type BoardEntries = ReadonlyArray<{ readonly path: string; readonly kind: string }>;
+
+/** The entries at the top of a board's folder, read once, for the wide canvas's Artifacts section. */
+export const boardEntriesAtom = Atom.family((key: string) =>
+  Atom.make((get): BoardEntries | null => {
+    const files = get(engineFilesAtom);
+    if (files !== null) {
+      const split = key.lastIndexOf(`/${BOARDS_DIR}/`);
+      void files.list(key.slice(0, split), key.slice(split + 1)).then(
+        (entries) => get.setSelf(entries ?? []),
+        () => get.setSelf([]),
+      );
+    }
+    return Option.getOrNull(get.self<BoardEntries | null>());
+  }).pipe(Atom.withLabel(`phone-board-entries:${key}`)),
+);
 
 const NOT_POLLING = Atom.make<void>(undefined).pipe(Atom.withLabel("phone-board-poll:none"));
 
@@ -62,12 +80,14 @@ export const boardListAtom = Atom.make((get): BoardList | Error | null => {
       const boards: Array<BoardChoice> = [];
       const problems: Array<string> = [];
       for (const { project, error } of projects) {
+        if (project.archivedAt != null) continue;
         if (error !== null) {
           problems.push(`${project.title}: ${error}`);
           continue;
         }
         try {
           for (const listed of await listBoards(files, project.workspaceRoot)) {
+            if (isArchivedBoard(project, listed)) continue;
             boards.push({ key: boardKey(project.workspaceRoot, listed.folder), project, listed });
           }
         } catch (cause) {

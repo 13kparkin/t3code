@@ -1,5 +1,6 @@
 import { Atom, type AtomRegistry } from "effect/reactivity";
 
+import type { SidebarMode } from "../domain/sidebar";
 import { filesViewAtom } from "../state/filesView";
 import { appAtomRegistry } from "../state/registry";
 
@@ -13,7 +14,15 @@ export interface PanelState {
   readonly width: number;
 }
 
-export const sidebarOpenAtom = Atom.make(true).pipe(Atom.keepAlive, Atom.withLabel("left-sidebar"));
+const SIDEBAR_MODE_KEY = "board:sidebar:mode";
+
+export const sidebarModeAtom = Atom.writable(
+  (): SidebarMode => (localStorage.getItem(SIDEBAR_MODE_KEY) === "rail" ? "rail" : "expanded"),
+  (context, mode: SidebarMode) => {
+    localStorage.setItem(SIDEBAR_MODE_KEY, mode);
+    context.setSelf(mode);
+  },
+).pipe(Atom.keepAlive, Atom.withLabel("left-sidebar"));
 
 export const PANEL_MIN_WIDTH = 320;
 export const PANEL_DEFAULT_WIDTH = 420;

@@ -119,7 +119,7 @@ describe("placing a ticket by its stage and its agents", () => {
 });
 
 describe("laying out the lanes", () => {
-  const defaults = hiddenFilters(new Set(), []);
+  const defaults = hiddenFilters(new Set());
   const layout = layoutBoard(model, {}, 0, defaults);
   const lane = (id: string, from = layout) => from.lanes.find((entry) => entry.id === id);
   const keys = (id: string, from = layout) => lane(id, from)?.frames.map((frame) => frame.key);
@@ -146,22 +146,21 @@ describe("laying out the lanes", () => {
   });
 
   it.each([
-    { flipped: [], hidden: ["done"] },
+    { flipped: [], hidden: ["done", "section:archived", "section:review"] },
     {
-      flipped: ["for_you", "done", "stage:building", "add:wait"],
-      hidden: ["for_you", "stage:building", "add:wait"],
+      flipped: ["for_you", "done", "stage:building", "section:artifacts", "section:review"],
+      hidden: ["for_you", "stage:building", "section:artifacts", "section:archived"],
     },
   ])(
     "Given the flips $flipped, when the filters resolve, then $hidden hide",
     ({ flipped, hidden }) => {
-      const wait: Addition = { id: "wait", title: "w", asOf: "", place: "canvas", blocks: [] };
-      expect([...hiddenFilters(new Set(flipped), [wait])]).toEqual(hidden);
+      expect([...hiddenFilters(new Set(flipped))]).toEqual(hidden);
     },
   );
 
   it("Given the Done lane shown and ticketless agents in To do, Running and Done, when laid out, then each agents frame leads its lane, and each header counts its tickets and its agents, as the Done tag does", () => {
     const agents = { todo: 1, running: 1, waiting: 0, done: 2 };
-    const shown = layoutBoard(model, {}, 0, hiddenFilters(new Set(["done"]), []), [], 0, agents);
+    const shown = layoutBoard(model, {}, 0, hiddenFilters(new Set(["done"])), [], 0, agents);
     expect([
       keys("todo", shown),
       keys("running", shown),
@@ -314,11 +313,6 @@ describe("laying out additions", () => {
       [{ key: "wait", x: 1560, y: 390, width: 288, height: 314 }],
       1888,
     ]);
-  });
-
-  it("Given a hidden canvas addition lane, when laid out, then it is left out", () => {
-    const layout = layoutBoard(model, {}, 0, new Set(["add:wait"]), [wait]);
-    expect([layout.additionLanes, layout.content.width]).toEqual([[], 1584]);
   });
 });
 

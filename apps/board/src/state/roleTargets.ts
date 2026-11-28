@@ -13,7 +13,7 @@ import { engineProvidersAtom } from "./server";
 
 type RoleProject = Pick<EnvironmentProject, "id" | "environmentId" | "workspaceRoot">;
 
-/** The Claude instance a board's agents run on: its orchestrator's, or the default pick before it has one. */
+/** The provider instance a board's agents run on: its orchestrator's, or the default pick before it has one. */
 export function boardInstance(
   providers: ReadonlyArray<ServerProvider>,
   threads: ReadonlyArray<OrchestrationV2ThreadShell> | undefined,

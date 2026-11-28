@@ -1,3 +1,5 @@
+import { rankModelPickerSearch } from "@t3tools/client-runtime/model-search";
+import { providerClients } from "@t3tools/client-runtime/provider-clients";
 import {
   isReasoningSelect,
   selectableProviderOptionChoices,
@@ -27,12 +29,14 @@ export interface PickableModel {
   readonly slug: string;
   readonly name: string;
   readonly effort: EffortControl | null;
+  /** The engine still runs it but marks it old; the picker lists it under Legacy, as T3's does. */
+  readonly legacy: boolean;
 }
 
 /** Where a new orchestrator starts: Claude Code on this model at this effort. */
 export const DEFAULT_ORCHESTRATOR = { model: "claude-opus-5-5", effort: "medium" } as const;
 
-/** A Claude Code instance the engine reports, as the picker lists it. */
+/** A provider instance the engine reports, as the picker lists it. */
 export interface PickableInstance {
   readonly instanceId: string;
   readonly driver: string;
@@ -40,14 +44,14 @@ export interface PickableInstance {
   readonly signIn: SignInState;
   /** The account the instance is signed in as. */
   readonly account: string | null;
-  /** Whether the engine can run a sign-in for this instance. Claude Code signs in on the machine that runs T3. */
+  /** Whether the engine can run a sign-in for this instance, on the machine that runs T3. */
   readonly canSignIn: boolean;
   /** Why the instance cannot start an orchestrator, or null. */
   readonly unavailable: string | null;
   /** What the engine says about the instance, such as how to sign in outside T3. */
   readonly message: string | null;
   readonly models: ReadonlyArray<PickableModel>;
-  /** Every model the instance runs, legacy ones too, though the picker lists only `models`. A role may name a legacy model. */
+  /** Every model slug the instance runs. */
   readonly offered: ReadonlyArray<string>;
   readonly defaultModel: string | null;
 }
@@ -72,8 +76,10 @@ const SIGN_IN = {
   unknown: "unknown",
 } as const satisfies Record<ServerProvider["auth"]["status"], SignInState>;
 
-function toPickable(provider: ServerProvider): PickableInstance {
-  const models = provider.models.filter((model) => model.isLegacy !== true);
+export function toPickable(provider: ServerProvider): PickableInstance {
+  const models = provider.models.toSorted(
+    (left, right) => Number(left.isLegacy === true) - Number(right.isLegacy === true),
+  );
   const isDefault = provider.instanceId === defaultInstanceIdForDriver(provider.driver);
   return {
     instanceId: provider.instanceId,
@@ -81,17 +87,24 @@ function toPickable(provider: ServerProvider): PickableInstance {
     name:
       isDefault && provider.driver === "claudeAgent"
         ? CLAUDE_CODE
-        : (provider.displayName ?? provider.instanceId),
+        : (provider.displayName ??
+          (isDefault ? providerClients.get(provider.driver)?.label : undefined) ??
+          provider.instanceId),
     signIn: SIGN_IN[provider.auth.status],
     account: provider.auth.email ?? provider.auth.label ?? null,
     canSignIn: provider.setup?.canAuthenticate === true,
-    unavailable: provider.installed ? null : "Not installed on the machine that runs T3",
+    unavailable: !provider.installed
+      ? "Not installed on the machine that runs T3"
+      : provider.availability === "unavailable"
+        ? (provider.unavailableReason ?? provider.message ?? "The engine cannot start it.")
+        : null,
     message: provider.message ?? null,
     offered: provider.models.map((model) => model.slug),
     models: models.map((model) => ({
       slug: model.slug,
       name: model.name,
       effort: effortControl(model),
+      legacy: model.isLegacy === true,
     })),
     defaultModel: (models.find((model) => model.isDefault === true) ?? models[0])?.slug ?? null,
   };
@@ -100,12 +113,12 @@ function toPickable(provider: ServerProvider): PickableInstance {
 const byInstanceId = (left: PickableInstance, right: PickableInstance) =>
   left.instanceId.localeCompare(right.instanceId);
 
-/** The enabled Claude Code instances with each one's sign-in state and models. */
+/** Every enabled provider instance the engine runs, with each one's sign-in state and models. */
 export function pickableInstances(
   providers: ReadonlyArray<ServerProvider>,
 ): ReadonlyArray<PickableInstance> {
   return providers
-    .filter((provider) => provider.enabled && provider.driver === "claudeAgent")
+    .filter((provider) => provider.enabled)
     .map(toPickable)
     .toSorted(byInstanceId);
 }
@@ -173,26 +186,49 @@ export function defaultPick(instances: ReadonlyArray<PickableInstance>): Default
     };
   }
   const fallback = instances.find(instanceIsSignedIn) ?? instances.find(canStart) ?? instances[0];
-  const lead = instances[0];
-  if (fallback === undefined || lead === undefined) return { value: NO_PICK, reason: null };
-  const why = instances.some(instanceIsSignedIn)
-    ? `Claude Code does not offer ${DEFAULT_ORCHESTRATOR.model}.`
-    : `Claude Code is ${lead.unavailable === null ? "signed out" : "not installed"}.`;
+  if (fallback === undefined) return { value: NO_PICK, reason: null };
+  const claude = instances.find((instance) => instance.driver === "claudeAgent");
+  const why =
+    claude === undefined
+      ? "Claude Code is off."
+      : instanceIsSignedIn(claude)
+        ? `Claude Code does not offer ${DEFAULT_ORCHESTRATOR.model}.`
+        : `Claude Code is ${claude.unavailable === null ? "signed out" : "not installed"}.`;
   return {
     value: { instanceId: fallback.instanceId, model: fallback.defaultModel ?? "", effort: "" },
     reason: `${why} Starting on ${fallback.name} instead.`,
   };
 }
 
-/** The pick, or while nothing is picked yet the default, with a model typed before any pick kept. */
-export function resolvePick(
+/** What a new orchestrator flow preselects: the Settings default while its instance is on, otherwise the built-in default with the reason shown. */
+export function orchestratorPreset(
+  instances: ReadonlyArray<PickableInstance>,
+  saved: PickerValue | null,
+): DefaultPick {
+  if (saved === null) return defaultPick(instances);
+  if (instances.some((instance) => instance.instanceId === saved.instanceId)) {
+    return { value: saved, reason: null };
+  }
+  const fallback = defaultPick(instances);
+  const name = instances.find(
+    (instance) => instance.instanceId === fallback.value.instanceId,
+  )?.name;
+  return {
+    value: fallback.value,
+    reason:
+      name === undefined
+        ? `Your default, ${saved.instanceId}, is not on.`
+        : `Your default, ${saved.instanceId}, is not on. Starting on ${name} instead.`,
+  };
+}
+
+/** The user's pick while it names an instance that is on, otherwise the preset. */
+export const resolvePick = (
   instances: ReadonlyArray<PickableInstance>,
   pick: PickerValue,
-): PickerValue {
-  if (instances.some((instance) => instance.instanceId === pick.instanceId)) return pick;
-  const { value } = defaultPick(instances);
-  return pick.model === "" ? value : { ...value, model: pick.model, effort: "" };
-}
+  preset: DefaultPick,
+): PickerValue =>
+  instances.some((instance) => instance.instanceId === pick.instanceId) ? pick : preset.value;
 
 /** The effort control of the picked model, when the instance lists the model and it has one. */
 export function effortOf(
@@ -251,3 +287,25 @@ export function modelSelectionOf(
     ...(selection.options.length > 0 ? { options: selection.options } : {}),
   };
 }
+
+/** One model of one instance, as the picker's search lists it. */
+export interface ModelRow {
+  readonly instance: PickableInstance;
+  readonly model: PickableModel;
+}
+
+/** Every instance's models ranked against the query by T3's own picker ranking. */
+export const searchModels = (
+  instances: ReadonlyArray<PickableInstance>,
+  query: string,
+): ReadonlyArray<ModelRow> =>
+  rankModelPickerSearch(
+    instances.flatMap((instance) => instance.models.map((model) => ({ instance, model }))),
+    query,
+    ({ instance, model }) => ({
+      driverKind: instance.driver,
+      providerDisplayName: instance.name,
+      name: model.name,
+      shortName: model.slug,
+    }),
+  );

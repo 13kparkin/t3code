@@ -13,10 +13,11 @@ import {
 } from "../browser/panel";
 import { iconButton } from "../browser/styles";
 import { filesViewAtom, openTicketPage } from "../state/filesView";
+import { DocPage } from "../ui/DocPage";
 import { Tooltip } from "../ui/Tooltip";
 import { EmptyFiles } from "../files/EmptyFiles";
 import { NO_ARTIFACTS } from "../state/artifacts";
-import type { BoardModel } from "../state/boardModel";
+import { type BoardModel, RUN_STATE_LABEL } from "../state/boardModel";
 import { foldedAtom, sectionKey, toggleFolded } from "../state/boardUi";
 import { usePrContext } from "../state/prStatus";
 import { AgentLog } from "./AgentLog";
@@ -25,14 +26,6 @@ import { TicketTitle } from "./TicketTitle";
 import { TicketMeta } from "./TicketMeta";
 import { TicketSection } from "./TicketSection";
 import { ticketSectionsFor } from "./ticketSections";
-
-const STATE_LABEL = {
-  working: "Working",
-  waiting: "Waiting",
-  idle: "Idle",
-  failed: "Failed",
-  stopped: "Stopped",
-} as const;
 
 /** The Ticket tab: a ticket's details as collapsible sections, or the log of an agent no ticket claims. The board's screen draws it into the panel. */
 export function TicketPanel({
@@ -99,6 +92,28 @@ export function TicketPanel({
           artifacts: groups.byTicket.get(view.ticket.key) ?? NO_ARTIFACTS,
         };
   const sections = props === null ? [] : allSections.filter((section) => section.shows(props));
+  if (page && view !== undefined && props !== null) {
+    return (
+      <div ref={markPainted} className="flex min-h-0 flex-1 flex-col">
+        <DocPage
+          title={<TicketTitle ticket={view.ticket} page />}
+          lead={
+            <TicketMeta
+              view={view}
+              onOpenThread={(threadId) =>
+                chooseTicket(registry, { threadId, ticketKey: view.ticket.key })
+              }
+            />
+          }
+          sections={sections.map(({ id, title, Body }) => ({
+            id,
+            title,
+            body: <Body {...props} />,
+          }))}
+        />
+      </div>
+    );
+  }
   const open = sections.filter((section) => !folded.has(sectionKey(section.id)));
   const bars = sections.filter((section) => folded.has(sectionKey(section.id)));
   return (
@@ -137,7 +152,7 @@ export function TicketPanel({
         )}
         {agent !== null && (
           <p className="text-[11px] text-muted">
-            {agent.role} · {STATE_LABEL[agent.runState]}
+            {agent.role} · {RUN_STATE_LABEL[agent.runState]}
           </p>
         )}
       </header>

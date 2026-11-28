@@ -10,8 +10,11 @@
     "./chat/*": "./src/chat/*.ts",
     "./issues/*": "./src/issues/*.ts",
     "./theme/*": "./src/theme/*.ts",
+    "./board/layout": "./src/board/layout.ts",
     "./board/ticketStatus": "./src/board/ticketStatus.ts",
-    "./state/boardModel": "./src/state/boardModel.ts"
+    "./board/viewport": "./src/board/viewport.ts",
+    "./state/boardModel": "./src/state/boardModel.ts",
+    "./state/cardStates": "./src/state/cardStates.ts"
   },
   "scripts": {
     "dev": "node scripts/dev.mjs",

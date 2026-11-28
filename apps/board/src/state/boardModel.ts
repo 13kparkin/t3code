@@ -29,6 +29,14 @@ export type FamilyRow = Pick<
 
 export type RunState = "working" | "waiting" | "idle" | "failed" | "stopped";
 
+export const RUN_STATE_LABEL = {
+  working: "Working",
+  waiting: "Waiting",
+  idle: "Idle",
+  failed: "Failed",
+  stopped: "Stopped",
+} as const satisfies Record<RunState, string>;
+
 export interface AgentView {
   readonly threadId: string;
   readonly title: string;
@@ -124,7 +132,8 @@ export function agentOf(
 /**
  * Joins the orchestrator's tickets with its thread family. A ticket claims an agent through its
  * `threads`, or through the key in the agent's title, which is there as soon as the agent starts,
- * before the orchestrator has written it into the file.
+ * before the orchestrator has written it into the file. An agent neither claims belongs to the
+ * ticket of its nearest claimed ancestor, so a builder's own reviewers sit under its ticket.
  */
 export function joinBoard(input: {
   readonly tickets: ReadonlyArray<Ticket>;
@@ -137,24 +146,47 @@ export function joinBoard(input: {
   );
   const claimed = new Set<string>();
   const byTicket = new Map<string, AgentView[]>();
+  const keyOf = new Map<string, string>();
   for (const ticket of input.tickets) {
     const agents: AgentView[] = [];
     for (const entry of ticket.threads ?? []) {
       const row = rows.get(entry.threadId);
       if (row === undefined || claimed.has(row.id)) continue;
       claimed.add(row.id);
+      keyOf.set(row.id, ticket.key);
       agents.push(agentOf(row, input.driverOf, entry));
     }
     byTicket.set(ticket.key, agents);
   }
+  const loose = [...rows.values()]
+    .filter((row) => !claimed.has(row.id))
+    .map((row) => ({
+      agent: agentOf(row, input.driverOf, null),
+      createdAt: DateTime.toEpochMillis(row.createdAt),
+    }));
+  for (const { agent } of loose) {
+    if (agent.ticketKey !== null && byTicket.has(agent.ticketKey)) {
+      keyOf.set(agent.threadId, agent.ticketKey);
+    }
+  }
+  // Walks up the parents; the orchestrator is not in `rows`, so the walk ends there, and `seen` ends a cycle.
+  const inherited = (agent: AgentView) => {
+    const seen = new Set([agent.threadId]);
+    let parent = agent.parentThreadId;
+    while (parent !== null && !seen.has(parent)) {
+      const key = keyOf.get(parent);
+      if (key !== undefined) return key;
+      seen.add(parent);
+      parent = rows.get(parent)?.lineage.parentThreadId ?? null;
+    }
+    return undefined;
+  };
   const unassigned: Array<{ readonly agent: AgentView; readonly createdAt: number }> = [];
-  for (const row of rows.values()) {
-    if (claimed.has(row.id)) continue;
-    const agent = agentOf(row, input.driverOf, null);
-    const owner = agent.ticketKey === null ? undefined : byTicket.get(agent.ticketKey);
-    if (owner === undefined) {
-      unassigned.push({ agent, createdAt: DateTime.toEpochMillis(row.createdAt) });
-    } else owner.push(agent);
+  for (const entry of loose) {
+    const key = keyOf.get(entry.agent.threadId) ?? inherited(entry.agent);
+    const owner = key === undefined ? undefined : byTicket.get(key);
+    if (owner === undefined) unassigned.push(entry);
+    else owner.push(entry.agent);
   }
 
   const lane = (stage: TicketStage): ReadonlyArray<TicketView> =>

@@ -60,7 +60,7 @@ export const Board = Schema.Struct({
   reviewTemplate: Schema.optionalKey(Text),
   /** Docs from before `docs.json`. The card shows them until the orchestrator copies them there once, and the schema keeps them so an app write cannot drop them first. */
   docs: Schema.optionalKey(Schema.Array(Doc)),
-  /** The `additions.json` item ids the user hid. Only the app writes this. */
+  /** Nothing reads it; the schema keeps it so an app write cannot drop it. */
   hiddenAdditions: Schema.optionalKey(Schema.Array(Text)),
   /** The model and effort the user set for a role, by role name. Each overrides the registry's default. Only the app writes this. */
   roleTargets: Schema.optionalKey(Schema.Record(Text, RoleOverride)),
@@ -85,6 +85,12 @@ export interface BoardIssue {
 export type ListedBoard =
   | { readonly ok: true; readonly folder: string; readonly board: Board }
   | { readonly ok: false; readonly folder: string; readonly issue: BoardIssue };
+
+/** The desktop hides a board that is archived, or whose project is. A board that did not parse still shows. */
+export const isArchivedBoard = (
+  project: { readonly archivedAt?: string | null | undefined },
+  listed: ListedBoard,
+): boolean => project.archivedAt != null || (listed.ok && listed.board.archived);
 
 const decodeBoardJson = Schema.decodeUnknownResult(Schema.fromJsonString(Board));
 const formatIssues = SchemaIssue.makeFormatterStandardSchemaV1();
@@ -117,6 +123,12 @@ export function parseDocs(
       .issues.map((issue) => `${issue.path?.join(".") || "(file)"} ${issue.message}`)
       .join("; ")}`,
   }));
+}
+
+/** The board with one card's state set; null puts the card back on the canvas. */
+export function withCardState(board: Board, key: string, state: CardState | null): Board {
+  const { [key]: _replaced, ...others } = board.cardStates ?? {};
+  return { ...board, cardStates: state === null ? others : { ...others, [key]: state } };
 }
 
 export function serializeBoard(board: Board): string {

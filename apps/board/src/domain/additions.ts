@@ -164,11 +164,6 @@ export function parseAdditions(text: string): ParsedAdditions {
   return { items, problems };
 }
 
-export const visibleAdditions = (
-  items: ReadonlyArray<Addition>,
-  hidden: ReadonlyArray<string>,
-): ReadonlyArray<Addition> => items.filter((item) => !hidden.includes(item.id));
-
 const isLive = (block: Block) =>
   (block.type === "stat" || block.type === "list") && block.stages !== undefined;
 

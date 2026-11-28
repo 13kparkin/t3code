@@ -43,13 +43,14 @@ export function PairScreen() {
   return (
     <View style={[styles.body, styles.readable]}>
       <AppText style={styles.title}>Pair with your PC</AppText>
-      <AppText>
-        On the PC, open Agent Board, then Settings, Phone, and press Pair a phone. Scan its QR code
-        or paste its pairing link here.
-      </AppText>
+      <AppText>On the PC, open Agent Board, then Settings, Phone, and press Pair a phone.</AppText>
       <Pressable style={styles.button} disabled={busy} onPress={() => void scan()}>
         <AppText style={styles.buttonText}>Scan QR code</AppText>
       </Pressable>
+      {permission?.status === "denied" && (
+        <AppText style={styles.error}>Allow the camera to scan the pairing code.</AppText>
+      )}
+      <AppText style={[styles.muted, styles.pairOr]}>Or paste the pairing link</AppText>
       <AppTextInput
         placeholder="Pairing link"
         autoCapitalize="none"
@@ -58,18 +59,19 @@ export function PairScreen() {
         onChangeText={setPasted}
       />
       <Pressable
-        style={styles.button}
+        style={styles.quietButton}
         disabled={busy || pasted.trim() === ""}
         onPress={() => void pair(registry, pasted)}
       >
-        <AppText style={styles.buttonText}>
+        <AppText style={styles.bold}>
           {busy ? "Pairing" : host === null ? "Pair" : `Pair with ${host}`}
         </AppText>
       </Pressable>
-      {permission?.status === "denied" && (
-        <AppText style={styles.error}>Allow the camera to scan the pairing code.</AppText>
+      {error !== null && (
+        <AppText accessibilityRole="alert" style={styles.error}>
+          {error}
+        </AppText>
       )}
-      {error !== null && <AppText style={styles.error}>{error}</AppText>}
     </View>
   );
 }

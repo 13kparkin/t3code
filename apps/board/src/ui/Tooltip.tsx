@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 const SIDE = {
   top: "bottom-full mb-1",
   bottom: "top-full mt-1",
+  right: "top-1/2 left-full ml-2 -translate-y-1/2",
 } as const;
 
 const ALIGN = {
@@ -29,7 +30,7 @@ export function Tooltip({
       {children}
       <span
         role="tooltip"
-        className={`pointer-events-none absolute z-20 hidden w-max max-w-64 rounded-md border border-line bg-panel px-2 py-1 text-xs whitespace-normal text-fg shadow-panel group-focus-within/tip:block group-hover/tip:block ${SIDE[side]} ${ALIGN[align]}`}
+        className={`pointer-events-none absolute z-20 hidden w-max max-w-64 rounded-md border border-line bg-panel px-2 py-1 text-xs whitespace-normal text-fg shadow-panel group-focus-within/tip:block group-hover/tip:block ${SIDE[side]} ${side === "right" ? "" : ALIGN[align]}`}
       >
         {text}
       </span>

@@ -10,6 +10,7 @@ import { runtimeSupportsClient } from "./runtimeCompatibility";
 import { createConnectionLog } from "./connectionLog";
 import { createEngine, type EngineConfig, type TokenStore } from "./engine";
 import { createLocalStateFile } from "./localState";
+import { checkPhoneFirewall } from "./phoneFirewall";
 import { pickFolder, resolveFolder } from "./pickFolder";
 import { listAgentSkills } from "./agentSkills";
 import { headOnOrigin, listGitWorktrees } from "./gitWorktrees";
@@ -139,6 +140,17 @@ export function registerEngineIpc(options: {
   ipcMain.handle("board:network-access", () => engine.networkAccess());
   ipcMain.handle("board:set-network-access", (_event, enabled) =>
     engine.setNetworkAccess(enabled === true),
+  );
+  ipcMain.handle("board:phone-firewall", (_event, port) =>
+    Number.isInteger(port) && port > 0 && port < 65_536
+      ? checkPhoneFirewall({
+          platform,
+          engineUrl: configFromEnv(env, distroSetting).engineUrl,
+          host,
+          runner: nodeProcessRunner,
+          port,
+        })
+      : { kind: "not_applicable" },
   );
   ipcMain.on("board:prompt-answer", (_event, accepted) => {
     answer?.(accepted === true);
