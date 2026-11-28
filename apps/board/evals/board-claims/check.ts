@@ -32,7 +32,6 @@ const MOVE = new RegExp(`\\bto \`?(${TICKET_STAGES.join("|")})\`?(?![\\w-])`, "g
 const readText = (path: string) =>
   NodeFS.existsSync(path) ? NodeFS.readFileSync(path, "utf8") : null;
 
-/** The stages a ticket has moved to, each of which needs a decision line of its own. */
 const movesOf = (stage: TicketStage): ReadonlyArray<TicketStage> =>
   stage === "off_path" ? [stage] : PATH_STAGES.slice(0, PATH_STAGES.indexOf(stage) + 1);
 
@@ -46,14 +45,12 @@ export function checkClaims(boardDir: string): string[] {
   const items = mergeForYou(readText(NodePath.join(boardDir, "foryou.jsonl")), []).cards.flatMap(
     (card) => (card.origin === "file" && card.item.kind === "merge_approval" ? [card.item] : []),
   );
-  // The latest card for a ticket replaces an earlier one, as on the board.
   const cards = new Map<string, (typeof items)[number]>();
   for (const item of items.toSorted((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))) {
     const key = mergeTicketKey(item, keys);
     if (key !== null) cards.set(key, item);
   }
 
-  // A move's own line names one ticket and one stage, so it reads as `<key> <stage>`.
   const ownMoves = new Set(
     (readText(NodePath.join(boardDir, "decisions.tsv")) ?? "")
       .split("\n")
