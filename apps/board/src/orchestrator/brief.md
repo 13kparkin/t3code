@@ -134,7 +134,7 @@ The board draws a `ticket` key with that ticket's current title and stage, and k
 
 If the ask needs something these blocks cannot show, use the nearest block, tell the user which one you used, and add a ticket with the flag `feature` that names the missing block.
 
-The user can hide items from the board. `board.json` lists their ids in `hiddenAdditions`. Do not refresh hidden items. Delete them only when the user asks. Never edit `board.json`.
+Delete an item only when the user asks. Never edit `board.json`.
 
 To remove an item, delete it. To reset, write `[]`. A bad item shows as a red line on your card naming its id and path. Fix it and write again.
 

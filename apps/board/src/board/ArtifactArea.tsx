@@ -27,6 +27,7 @@ import { ContextMenu } from "../ui/ContextMenu";
 import { ArtifactCard } from "./ArtifactCard";
 import { CALL_NOTES_ROWS, CallNotesCard } from "./CallNotesCard";
 import { FileBox } from "./FileBox";
+import { SectionHeading } from "./SectionHeading";
 import { LANE_GAP, LANE_WIDTH } from "./layout";
 import { Tile } from "./Tile";
 import { useViewScale } from "./Viewport";
@@ -319,12 +320,7 @@ export function ArtifactArea({
       <X className="size-3.5" aria-hidden />
     </button>
   );
-  const heading = (name: string, note: string) => (
-    <>
-      <span className="truncate px-2 text-[11px] leading-5 font-semibold text-muted">{name}</span>
-      <span className="shrink-0 text-[11px] text-faint">{note}</span>
-    </>
-  );
+  const heading = (name: string, note: string) => <SectionHeading name={name} note={note} />;
   const top = [...folderCards(""), ...callCards];
   const sections = opened.flatMap((key) => {
     if (key.startsWith("dir:")) {
@@ -344,6 +340,7 @@ export function ArtifactArea({
         boardId={boardId}
         boxKey="artifacts"
         place="row"
+        label="Artifacts"
         fallback={HOME}
         title={heading("Artifacts", String(top.length))}
       >

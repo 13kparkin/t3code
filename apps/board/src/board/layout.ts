@@ -39,21 +39,28 @@ export const DONE_TAG = "done";
 export const stageTagId = (stage: TicketStage) => `stage:${stage}`;
 export const additionLaneId = (id: string) => `add:${id}`;
 
+/** The board's sections beside the orchestrator card, which its buttons show and hide. */
+export const BOARD_SECTIONS = [
+  { id: "artifacts", label: "Artifacts", startsHidden: false },
+  { id: "archived", label: "Archived", startsHidden: true },
+  { id: "review", label: "Review", startsHidden: true },
+] as const;
+export type BoardSectionId = (typeof BOARD_SECTIONS)[number]["id"];
+export const sectionFilterId = (id: BoardSectionId) => `section:${id}`;
+
 /**
- * The filter ids that hide their cards or lane: the For you and Done lanes, each stage's tag, and
- * each `canvas` addition's lane. The saved set holds the ids the user flipped from their default.
+ * The filter ids that hide their cards, lane or section: the For you and Done lanes, each stage's
+ * tag, and each board section. The saved set holds the ids the user flipped from their default.
  */
-export function hiddenFilters(
-  flipped: ReadonlySet<string>,
-  additions: ReadonlyArray<Addition>,
-): ReadonlySet<string> {
+export function hiddenFilters(flipped: ReadonlySet<string>): ReadonlySet<string> {
   const filters = [
     { id: "for_you", starts: false },
     { id: DONE_TAG, starts: true },
     ...TICKET_STAGES.map((stage) => ({ id: stageTagId(stage), starts: false })),
-    ...additions.flatMap((item) =>
-      item.place === "canvas" ? [{ id: additionLaneId(item.id), starts: false }] : [],
-    ),
+    ...BOARD_SECTIONS.map((section) => ({
+      id: sectionFilterId(section.id),
+      starts: section.startsHidden,
+    })),
   ];
   return new Set(
     filters.filter(({ id, starts }) => starts !== flipped.has(id)).map(({ id }) => id),
@@ -199,7 +206,7 @@ export function layoutBoard(
     });
   });
   const additionLanes = additions
-    .filter((item) => item.place === "canvas" && !hidden.has(additionLaneId(item.id)))
+    .filter((item) => item.place === "canvas")
     .map((item, at) => ({
       key: item.id,
       x: LEFT + (lanes.length + at) * (LANE_WIDTH + LANE_GAP),

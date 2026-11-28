@@ -10,7 +10,7 @@ import {
 import type { AtomRegistry } from "effect/reactivity";
 
 import { connectionAtomRuntime } from "../connection/runtime";
-import { type IssueBrief, type TrackerCall } from "../issues/issueLinks";
+import type { TrackerCall } from "../issues/issueLinks";
 import { failureText } from "../settings/failureText";
 
 export const issueEnvironment = createIssueEnvironmentAtoms(connectionAtomRuntime);
@@ -19,24 +19,6 @@ export const issueTrackerEnvironment = createIssueTrackerEnvironmentAtoms(connec
 const readDetail = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "board:issues:read-detail",
   tag: WS_METHODS.issuesDetail,
-});
-
-/** Pages of older comments read after the detail's own page, which bounds a very long thread. */
-const MAX_COMMENT_PAGES = 5;
-
-const briefOf = (detail: IssueDetail, comments: IssueDetail["comments"]): IssueBrief => ({
-  tracker: detail.tracker,
-  displayKey: detail.displayKey,
-  title: detail.title,
-  url: detail.url,
-  state: detail.state.name,
-  author: detail.author?.login ?? null,
-  body: detail.body,
-  comments: comments.map((comment) => ({
-    author: comment.author?.login ?? null,
-    createdAt: comment.createdAt,
-    body: comment.body,
-  })),
 });
 
 export async function readIssueDetail(
@@ -52,29 +34,6 @@ export async function readIssueDetail(
   );
   if (detail._tag !== "Success") throw new Error(failureText(detail));
   return detail.value;
-}
-
-/** The issue's description and its comments, oldest first. A thread longer than MAX_COMMENT_PAGES pages past the detail loses its oldest comments. */
-export async function readIssueBrief(
-  registry: AtomRegistry.AtomRegistry,
-  environmentId: EnvironmentId,
-  ref: IssueRef,
-): Promise<IssueBrief> {
-  const detail = await readIssueDetail(registry, environmentId, ref);
-  const olderPages: Array<IssueDetail["comments"]> = [];
-  let cursor = detail.commentsCursor;
-  for (let page = 0; cursor !== null && page < MAX_COMMENT_PAGES; page += 1) {
-    const older = await runAtomCommand(
-      registry,
-      issueEnvironment.comments,
-      { environmentId, input: { ...ref, cursor } },
-      { reportFailure: false },
-    );
-    if (older._tag !== "Success") throw new Error(failureText(older));
-    olderPages.unshift(older.value.comments);
-    cursor = older.value.nextCursor;
-  }
-  return briefOf(detail, [...olderPages.flat(), ...detail.comments]);
 }
 
 export async function runTrackerCall(

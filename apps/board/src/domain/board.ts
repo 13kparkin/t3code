@@ -60,7 +60,7 @@ export const Board = Schema.Struct({
   reviewTemplate: Schema.optionalKey(Text),
   /** Docs from before `docs.json`. The card shows them until the orchestrator copies them there once, and the schema keeps them so an app write cannot drop them first. */
   docs: Schema.optionalKey(Schema.Array(Doc)),
-  /** The `additions.json` item ids the user hid. Only the app writes this. */
+  /** Nothing reads it; the schema keeps it so an app write cannot drop it. */
   hiddenAdditions: Schema.optionalKey(Schema.Array(Text)),
   /** The model and effort the user set for a role, by role name. Each overrides the registry's default. Only the app writes this. */
   roleTargets: Schema.optionalKey(Schema.Record(Text, RoleOverride)),

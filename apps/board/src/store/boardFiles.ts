@@ -217,17 +217,6 @@ export const updateBoard = (
     return reviewTemplate === undefined ? rest : { ...rest, reviewTemplate };
   });
 
-export const changeHiddenAdditions = (
-  files: ProjectFiles,
-  cwd: string,
-  folder: string,
-  change: (ids: ReadonlyArray<string>) => ReadonlyArray<string>,
-) =>
-  changeBoard(files, cwd, folder, (board) => ({
-    ...board,
-    hiddenAdditions: [...new Set(change(board.hiddenAdditions ?? []))],
-  }));
-
 /** Sets one card's state; null puts it back on the canvas. */
 export const changeCardState = (
   files: ProjectFiles,

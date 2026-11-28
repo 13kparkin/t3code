@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { type Block, lineText, parseAdditions, resolveBlock, visibleAdditions } from "./additions";
+import { type Block, lineText, parseAdditions, resolveBlock } from "./additions";
 import type { Ticket } from "./ticket";
 
 const AS_OF = "2026-11-23T09:40:00Z";
@@ -341,13 +341,5 @@ describe("resolveBlock", () => {
         ]),
       ).items ?? [];
     expect(entry === undefined ? null : lineText(entry, tickets)).toBe("1");
-  });
-});
-
-describe("visibleAdditions", () => {
-  it("Given hidden ids, when the shown items are picked, then the hidden ones are left out", () => {
-    const items =
-      parseAdditions(JSON.stringify([canvas("a", [text()]), canvas("b", [text()])])).items ?? [];
-    expect(visibleAdditions(items, ["a", "gone"]).map((entry) => entry.id)).toEqual(["b"]);
   });
 });
