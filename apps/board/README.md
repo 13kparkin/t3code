@@ -173,7 +173,7 @@ The app issues its bearer with `auth session issue --label agent-board --ttl 30d
 
 The `+` in the sidebar's Projects header adds a project. Its folder button opens the system folder dialog at the WSL home (`\\wsl.localhost\<distro>\home\<user>` on Windows), and a typed WSL path works too. The main process converts a Windows path with `wslpath -u` through the same WSL runner as the engine commands, then the renderer creates the project with the engine's `project.create`. A folder that is missing, on a Windows drive, or already a project shows its reason under the field.
 
-The bar along the bottom of the window shows each provider's usage limits as T3 reports them in the server config (`providers[].usageLimits`), so the board never calls Anthropic or OpenAI. A session window reads `8% 5d 22h`, a model window `3% Fable`, and a provider without readable limits shows a dash with the reason on hover.
+The bar along the bottom of the window shows each provider's usage limits as T3 reports them in the server config (`providers[].usageLimits`), so the board never calls Anthropic or OpenAI. A session window reads `8% 5d 22h`, a model window `3% Fable`, and a provider without readable limits shows a dash with the reason on hover. Every provider that is on and installed has a section. Claude Code, Codex, Antigravity, Cursor, Grok, Muse Code and OpenCode report limits; Kiro, Pi, fx and ACP agents have no usage source, so their dash says the provider reports no usage limits, as does a provider whose limits have not arrived yet.
 
 ## Boards
 
