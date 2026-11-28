@@ -3,6 +3,11 @@ import type { Ticket } from "./ticket";
 
 export type ConditionKey = (typeof MERGE_CONDITIONS)[number]["key"];
 
+/** The evidence files the gate reads, which the brief must name as written. */
+export const CI_LOCAL_FILE = "ci-local.txt";
+export const SMOKE_FILE = "smoke.txt";
+export const README_CHECK = /readmes?[-_ ]?(check|pass|lint)/i;
+
 /** A check that has run longer than this is flagged as stuck. */
 export const STUCK_AFTER_MS = 20 * 60_000;
 
@@ -254,11 +259,7 @@ export function evaluateReadiness(input: ReadinessInput): ReadonlyArray<Conditio
     ci_green: ciState(input),
     reviews_fixed: reviewsState(input.ticket),
     delta_rereviewed: deltaState(input.ticket, input.reviewRoles),
-    readmes_pass: evidenceState(
-      input.evidence,
-      /readmes?[-_ ]?(check|pass|lint)/i,
-      "No README check in the evidence",
-    ),
+    readmes_pass: evidenceState(input.evidence, README_CHECK, "No README check in the evidence"),
     parent_ready: parentState(input),
     smoke_named:
       input.evidence === null || input.smoke === undefined ? undefined : smokeState(input.smoke),

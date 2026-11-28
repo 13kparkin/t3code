@@ -35,6 +35,11 @@ export default defineConfig({
   ],
   test: {
     // scripts/*.test.mjs run under node:test, not here.
-    include: ["src/**/*.test.ts", "electron/**/*.test.ts", "scripts/**/*.test.ts"],
+    include: [
+      "src/**/*.test.ts",
+      "electron/**/*.test.ts",
+      "scripts/**/*.test.ts",
+      "evals/**/*.test.ts",
+    ],
   },
 });

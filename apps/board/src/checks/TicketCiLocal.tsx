@@ -1,5 +1,5 @@
 import { useArtifacts } from "../artifacts/ArtifactsContext";
-import { localCiState } from "../domain/readiness";
+import { CI_LOCAL_FILE, localCiState } from "../domain/readiness";
 import { NO_ARTIFACTS } from "../state/artifacts";
 import type { TicketView } from "../state/boardModel";
 import { useCiLocal } from "../state/prStatus";
@@ -8,7 +8,7 @@ import { useCiLocal } from "../state/prStatus";
 export function TicketCiLocal({ view }: { view: TicketView }) {
   const { groups } = useArtifacts();
   const file = (groups.byTicket.get(view.ticket.key) ?? NO_ARTIFACTS).find(
-    (artifact) => artifact.name === "ci-local.txt",
+    (artifact) => artifact.name === CI_LOCAL_FILE,
   );
   const ciLocal = useCiLocal(file, view.ticket.headSha ?? null) ?? null;
   if (ciLocal === null) return <p className="text-faint">No pull request yet</p>;

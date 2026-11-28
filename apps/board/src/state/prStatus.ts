@@ -12,10 +12,12 @@ import { createContext, useContext, useMemo } from "react";
 
 import { useArtifacts } from "../artifacts/ArtifactsContext";
 import {
+  CI_LOCAL_FILE,
   type CiLocal,
   type ConditionState,
   evaluateReadiness,
   type PrLive,
+  SMOKE_FILE,
   type Smoke,
 } from "../domain/readiness";
 import { connectionAtomRuntime } from "../connection/runtime";
@@ -230,7 +232,7 @@ export function useTicketSmoke(view: TicketView | null): Smoke | null | undefine
   const smokeFile =
     view === null
       ? undefined
-      : groups.byTicket.get(view.ticket.key)?.find((artifact) => artifact.name === "smoke.txt");
+      : groups.byTicket.get(view.ticket.key)?.find((artifact) => artifact.name === SMOKE_FILE);
   const smokeAt = smokeFile === undefined ? null : locate(files.roots, smokeFile.absolutePath);
   return useAtomValue(
     smokeAt === null
@@ -278,7 +280,7 @@ export function useTicketReadiness(view: TicketView | null): ReadonlyArray<Condi
   // Only a pull request whose host reports no checks reads the file, so no other card polls it.
   const ciFile =
     live?.checksState === null && live.checks.length === 0
-      ? evidence?.find((artifact) => artifact.name === "ci-local.txt")
+      ? evidence?.find((artifact) => artifact.name === CI_LOCAL_FILE)
       : undefined;
   const ciLocal = useCiLocal(ciFile, live?.headSha ?? view?.ticket.headSha ?? null);
   const smoke = useTicketSmoke(view);

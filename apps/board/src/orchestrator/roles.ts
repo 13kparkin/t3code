@@ -18,17 +18,18 @@ export const roleFiles: ReadonlyMap<string, string> = new Map(
   Object.entries(ROLE_SOURCES).map(([path, text]) => [path.slice(path.lastIndexOf("/") + 1), text]),
 );
 
-function descriptionOf(file: string): string {
-  const text = roleFiles.get(file);
-  const line = text?.split("\n").find((entry) => entry.startsWith("description:"));
-  if (line === undefined) throw new Error(`${file} has no description in its front matter`);
+function descriptionOf(name: string): string {
+  const text = roleFiles.get(`${name}.md`);
+  if (text === undefined) throw new Error(`role ${name} has no file roles/${name}.md`);
+  const line = text.split("\n").find((entry) => entry.startsWith("description:"));
+  if (line === undefined) throw new Error(`${name}.md has no description in its front matter`);
   return JSON.parse(line.slice("description:".length).trim());
 }
 
 export const ROLES: ReadonlyArray<Role> = ROLE_SPECS.map((role) => ({
   ...role,
   file: `${role.name}.md`,
-  description: descriptionOf(`${role.name}.md`),
+  description: descriptionOf(role.name),
 }));
 
 export interface RoleTarget {
