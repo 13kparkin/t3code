@@ -125,6 +125,12 @@ export function parseDocs(
   }));
 }
 
+/** The board with one card's state set; null puts the card back on the canvas. */
+export function withCardState(board: Board, key: string, state: CardState | null): Board {
+  const { [key]: _replaced, ...others } = board.cardStates ?? {};
+  return { ...board, cardStates: state === null ? others : { ...others, [key]: state } };
+}
+
 export function serializeBoard(board: Board): string {
   return `${JSON.stringify(board, null, 2)}\n`;
 }

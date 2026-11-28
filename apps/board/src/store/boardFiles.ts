@@ -15,6 +15,7 @@ import {
   type RoleOverride,
   serializeBoard,
   uniqueSlug,
+  withCardState,
 } from "../domain/board";
 import { ROLES, roleFiles } from "../orchestrator/roles";
 
@@ -224,11 +225,7 @@ export const changeCardState = (
   folder: string,
   key: string,
   state: CardState | null,
-) =>
-  changeBoard(files, cwd, folder, (board) => {
-    const { [key]: _replaced, ...others } = board.cardStates ?? {};
-    return { ...board, cardStates: state === null ? others : { ...others, [key]: state } };
-  });
+) => changeBoard(files, cwd, folder, (board) => withCardState(board, key, state));
 
 /** Adds a free agent, or moves the one with the same thread. */
 export const placeFreeAgent = (

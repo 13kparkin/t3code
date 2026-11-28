@@ -37,6 +37,7 @@ import { CanvasLane } from "./CanvasLane";
 import { CanvasOrchestratorCard } from "./CanvasOrchestratorCard";
 import { CanvasSection } from "./CanvasSection";
 import { boardEntriesAtom } from "./files";
+import { offerArchive } from "./archiveCard";
 import { PanZoom } from "./PanZoom";
 import { RunningTicket } from "./RunningTicket";
 import { ThreadActivity } from "./ThreadActivity";
@@ -102,6 +103,12 @@ export function BoardCanvas({ choice }: { choice: ShownBoard }) {
     !hidden.has(sectionFilterId("archived")) && "archived",
     !hidden.has(sectionFilterId("review")) && "review",
   ].filter((id) => id !== false);
+  // Sections sit right of the orchestrator card, outside `layout.content`, so Fit has to reach them too.
+  const sectionsRight = SECTION_LEFT + sections.length * (LANE_WIDTH + LANE_GAP) - LANE_GAP;
+  const content = {
+    ...layout.content,
+    width: Math.max(layout.content.width, sectionsRight - layout.content.x),
+  };
   const artifactNames = (entries ?? []).flatMap((entry) => {
     const name = entry.path.slice(entry.path.lastIndexOf("/") + 1);
     if (entry.kind === "directory") return [{ name, hint: "Folder" }];
@@ -111,7 +118,7 @@ export function BoardCanvas({ choice }: { choice: ShownBoard }) {
 
   return (
     <View style={styles.canvasRow}>
-      <PanZoom content={layout.content}>
+      <PanZoom content={content}>
         <CanvasOrchestratorCard
           name={board.name}
           started={board.orchestratorThreadId !== null}
@@ -247,6 +254,9 @@ export function BoardCanvas({ choice }: { choice: ShownBoard }) {
                         accessibilityRole="button"
                         accessibilityLabel={`${view.ticket.key} ${view.ticket.title}`}
                         onPress={() => setTicketKey(view.ticket.key)}
+                        onLongPress={() =>
+                          offerArchive(registry, choice, view.ticket.key, view.ticket.key)
+                        }
                         style={[styles.frameCard, place]}
                       >
                         <RunningTicket view={view} tickets={tickets} now={now} />
@@ -261,6 +271,9 @@ export function BoardCanvas({ choice }: { choice: ShownBoard }) {
                           key={entry.threadId}
                           accessibilityRole="button"
                           onPress={() => setAgent(entry)}
+                          onLongPress={() =>
+                            offerArchive(registry, choice, entry.threadId, entry.title)
+                          }
                           style={styles.cardRow}
                         >
                           <AppText style={[styles.small, styles.fill]} numberOfLines={1}>

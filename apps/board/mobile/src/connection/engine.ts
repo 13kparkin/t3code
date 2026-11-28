@@ -57,6 +57,10 @@ const readFile = createEnvironmentRpcCommand(connectionAtomRuntime, {
   label: "phone:board:read-file",
   tag: WS_METHODS.projectsReadFile,
 });
+const writeFile = createEnvironmentRpcCommand(connectionAtomRuntime, {
+  label: "phone:board:write-file",
+  tag: WS_METHODS.projectsWriteFile,
+});
 const isProjectListEntriesError = Schema.is(ProjectListEntriesError);
 
 type FailedCommand = Extract<AtomCommandResult<unknown, unknown>, { readonly _tag: "Failure" }>;
@@ -93,6 +97,21 @@ export function engineFiles(registry: AtomRegistry.AtomRegistry, environmentId: 
       return result.value.exists === false ? null : result.value.contents;
     },
   } satisfies ProjectFiles;
+}
+
+/** Writes one project file through the engine; the phone's only write is a card's Archive. */
+export async function writeEngineFile(
+  registry: AtomRegistry.AtomRegistry,
+  environmentId: EnvironmentId,
+  input: { readonly cwd: string; readonly relativePath: string; readonly contents: string },
+) {
+  const result = await runAtomCommand(
+    registry,
+    writeFile,
+    { environmentId, input },
+    { reportFailure: false },
+  );
+  if (result._tag === "Failure") throw commandError(result);
 }
 
 const engineSyncedAtom = Atom.make((get) => {

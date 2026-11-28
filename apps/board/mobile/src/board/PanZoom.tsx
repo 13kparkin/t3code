@@ -23,6 +23,9 @@ function createCanvasGesture(onSettle: (k: number) => void) {
   let view: ViewState = INITIAL_VIEW;
   let start: ViewState = INITIAL_VIEW;
   let pinch: { distance: number; mid: [number, number] } | null = null;
+  // The content to fit on a double tap, from the content view's last layout.
+  let content: Rect | null = null;
+  let lastTap = 0;
   const values = { x: new Animated.Value(0), y: new Animated.Value(0), k: new Animated.Value(1) };
   const apply = (next: ViewState) => {
     view = next;
@@ -31,7 +34,13 @@ function createCanvasGesture(onSettle: (k: number) => void) {
     values.k.setValue(next.k);
   };
   const settle = () => onSettle(view.k);
+  const fit = (target: Rect) => {
+    apply(fitToContent(target, origin));
+    settle();
+  };
   const responder = PanResponder.create({
+    // Only a touch no card took reaches the canvas, so a tap on empty canvas can count toward a double tap.
+    onStartShouldSetPanResponder: () => true,
     // A lane's ScrollView would otherwise take the second finger, so a pinch is claimed before it.
     onMoveShouldSetPanResponderCapture: (_event, move) => move.numberActiveTouches === 2,
     onMoveShouldSetPanResponder: (_event, move) =>
@@ -59,15 +68,21 @@ function createCanvasGesture(onSettle: (k: number) => void) {
       }
       if (pinch === null) apply(panBy(start, move.dx, move.dy));
     },
-    onPanResponderRelease: settle,
+    onPanResponderRelease: (_event, move) => {
+      settle();
+      if (pinch !== null || Math.abs(move.dx) + Math.abs(move.dy) > 8) return;
+      const now = Date.now();
+      if (now - lastTap < 300 && content !== null) fit(content);
+      lastTap = now;
+    },
     onPanResponderTerminate: settle,
   });
   return {
     values,
     responder,
-    fit: (content: Rect) => {
-      apply(fitToContent(content, origin));
-      settle();
+    fit,
+    remember: (next: Rect) => {
+      content = next;
     },
     zoomBy: (factor: number) => {
       apply(zoomAt(view, clampZoom(view.k * factor), origin.width / 2, origin.height / 2));
@@ -84,7 +99,7 @@ function createCanvasGesture(onSettle: (k: number) => void) {
 
 /**
  * The desktop canvas's pan and zoom with touch: one finger pans, two fingers pinch, and the
- * desktop's zoom buttons sit top right. Built on core PanResponder, so gestures run on the JS thread.
+ * desktop's zoom buttons sit top right, and a double tap fits. Built on core PanResponder, so gestures run on the JS thread.
  */
 export function PanZoom({ content, children }: { content: Rect; children: ReactNode }) {
   const frame = useRef<ComponentRef<typeof View>>(null);
@@ -103,6 +118,7 @@ export function PanZoom({ content, children }: { content: Rect; children: ReactN
       {...gesture.responder.panHandlers}
     >
       <Animated.View
+        onLayout={() => gesture.remember(content)}
         style={[
           styles.canvasContent,
           {
