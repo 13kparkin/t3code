@@ -13,7 +13,17 @@ export interface PanelState {
   readonly width: number;
 }
 
-export const sidebarOpenAtom = Atom.make(true).pipe(Atom.keepAlive, Atom.withLabel("left-sidebar"));
+/** The left sidebar in full, or folded to its icon rail. Kept per device. */
+export type SidebarMode = "expanded" | "rail";
+const SIDEBAR_MODE_KEY = "board:sidebar:mode";
+
+export const sidebarModeAtom = Atom.writable(
+  (): SidebarMode => (localStorage.getItem(SIDEBAR_MODE_KEY) === "rail" ? "rail" : "expanded"),
+  (context, mode: SidebarMode) => {
+    localStorage.setItem(SIDEBAR_MODE_KEY, mode);
+    context.setSelf(mode);
+  },
+).pipe(Atom.keepAlive, Atom.withLabel("left-sidebar"));
 
 export const PANEL_MIN_WIDTH = 320;
 export const PANEL_DEFAULT_WIDTH = 420;

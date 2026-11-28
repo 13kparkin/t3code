@@ -9,7 +9,7 @@ import { callNotesFile, dropOnComposer } from "../chat/cardAttachment";
 import type { CallEvent } from "../domain/board";
 import { type CallNotes, callNotesForYouId, parseCallNotes, WHO } from "../domain/callNotes";
 import { locate } from "../files/target";
-import { showForYouCard } from "../sidebar/ForYouRow";
+import { showForYouCard } from "../foryou/showForYouCard";
 import { artifactContentsAtom, artifactContentsKey, type LoadedArtifact } from "../state/artifacts";
 import type { Artifact } from "../store/artifacts";
 

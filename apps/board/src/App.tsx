@@ -2,8 +2,7 @@ import { RegistryContext, useAtomMount, useAtomValue } from "@effect/atom-react"
 import { useContext } from "react";
 
 import { OpenBoard } from "./board/OpenBoard";
-import { sidebarOpenAtom } from "./browser/panel";
-import { attachDockSlot } from "./browser/panel";
+import { attachDockSlot, sidebarModeAtom } from "./browser/panel";
 import { PanelHost } from "./browser/PanelHost";
 import { PanelToggle } from "./browser/PanelToggle";
 import { CallPrompt } from "./calls/CallPrompt";
@@ -16,6 +15,7 @@ import { SettingsScreen } from "./settings/SettingsScreen";
 import type { SettingsPage } from "./settings/SettingsNav";
 import { ForYouToasts } from "./sidebar/ForYouToasts";
 import { Sidebar } from "./sidebar/Sidebar";
+import { SidebarRail } from "./sidebar/SidebarRail";
 import { SidebarToggle } from "./sidebar/SidebarToggle";
 import { UpdateToasts } from "./sidebar/UpdateToasts";
 import { connectionWatchAtom } from "./state/engine";
@@ -28,10 +28,14 @@ import { UsageBar } from "./usage/UsageBar";
 export function App() {
   const registry = useContext(RegistryContext);
   const settingsPage = useAtomValue(settingsPageAtom);
-  const sidebarOpen = useAtomValue(sidebarOpenAtom);
+  const sidebarMode = useAtomValue(sidebarModeAtom);
   const agentPanelOpen = useAtomValue(agentPanelAtom) !== null;
   const recorder = useAtomValue(recorderAtom)?.state;
   const setSettingsPage = (page: SettingsPage | null) => registry.set(settingsPageAtom, page);
+  const openSettings = () => {
+    performance.mark("board:settings-click");
+    setSettingsPage("worktrees");
+  };
   useAtomMount(updateWatcherAtom);
   useAtomMount(connectionWatchAtom);
   useAtomMount(callSweepAtom);
@@ -47,10 +51,10 @@ export function App() {
         className={
           settingsPage !== null
             ? "hidden"
-            : `grid min-h-0 grid-rows-[minmax(0,1fr)] ${sidebarOpen ? "grid-cols-[240px_minmax(0,1fr)_auto]" : "grid-cols-[minmax(0,1fr)_auto]"}`
+            : `grid min-h-0 grid-rows-[minmax(0,1fr)] transition-[grid-template-columns] duration-150 motion-reduce:transition-none ${sidebarMode === "expanded" ? "grid-cols-[240px_minmax(0,1fr)_auto]" : "grid-cols-[48px_minmax(0,1fr)_auto]"}`
         }
       >
-        {sidebarOpen && (
+        {sidebarMode === "expanded" ? (
           <Sidebar
             footer={
               <>
@@ -58,11 +62,10 @@ export function App() {
                 <EngineVersion />
               </>
             }
-            onOpenSettings={() => {
-              performance.mark("board:settings-click");
-              setSettingsPage("worktrees");
-            }}
+            onOpenSettings={openSettings}
           />
+        ) : (
+          <SidebarRail onOpenSettings={openSettings} />
         )}
         <main className="relative min-h-0 min-w-0">
           <OpenBoard />

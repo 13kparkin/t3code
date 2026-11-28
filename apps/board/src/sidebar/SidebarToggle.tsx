@@ -2,7 +2,7 @@ import { RegistryContext, useAtomValue } from "@effect/atom-react";
 import { PanelLeft } from "lucide-react";
 import { useContext } from "react";
 
-import { sidebarOpenAtom } from "../browser/panel";
+import { sidebarModeAtom } from "../browser/panel";
 import { iconButton } from "../browser/styles";
 import { Tooltip } from "../ui/Tooltip";
 
@@ -11,15 +11,15 @@ const TRAFFIC_LIGHTS = window.board !== undefined && navigator.userAgent.include
 
 export function SidebarToggle() {
   const registry = useContext(RegistryContext);
-  const open = useAtomValue(sidebarOpenAtom);
+  const open = useAtomValue(sidebarModeAtom) === "expanded";
   return (
     <div style={{ marginLeft: TRAFFIC_LIGHTS ? 72 : "env(titlebar-area-x, 0px)" }}>
-      <Tooltip text={open ? "Hide the left sidebar" : "Show the left sidebar"} side="bottom">
+      <Tooltip text={open ? "Fold the sidebar to icons" : "Show the full sidebar"} side="bottom">
         <button
           type="button"
-          aria-label={open ? "Hide sidebar" : "Show sidebar"}
+          aria-label={open ? "Fold sidebar" : "Show full sidebar"}
           aria-pressed={open}
-          onClick={() => registry.set(sidebarOpenAtom, !open)}
+          onClick={() => registry.set(sidebarModeAtom, open ? "rail" : "expanded")}
           className={iconButton}
         >
           <PanelLeft className="size-4" aria-hidden />

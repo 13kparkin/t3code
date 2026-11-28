@@ -4,7 +4,7 @@ import { useContext } from "react";
 import type { BoardOpenItems } from "../domain/forYou";
 import { openCardPage } from "../state/filesView";
 import { forYouOpenAtom } from "../state/forYou";
-import { showForYouCard } from "../sidebar/ForYouRow";
+import { showForYouCard } from "./showForYouCard";
 
 export function ForYouPanelRow({
   board,
