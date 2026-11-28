@@ -219,7 +219,12 @@ export function ModelPicker({
                   aria-label="Model list"
                   className="flex flex-col border-t border-line pt-2"
                 >
-                  {selected.models.map((model) => (
+                  {selected.models.map((model, index) => [
+                    model.legacy && selected.models[index - 1]?.legacy !== true && (
+                      <p key="legacy" className="px-2 pt-1 text-[11px] text-muted">
+                        Legacy
+                      </p>
+                    ),
                     <button
                       key={model.slug}
                       type="button"
@@ -231,8 +236,8 @@ export function ModelPicker({
                       {model.slug === value.model && (
                         <Check aria-hidden className="size-3.5 text-muted" />
                       )}
-                    </button>
-                  ))}
+                    </button>,
+                  ])}
                 </div>
               )}
               {control !== null && (

@@ -99,7 +99,7 @@ describe("the provider picker's instances", () => {
     ]);
   });
 
-  it("Given models with a default and a legacy one, when they are listed, then the legacy one is dropped and the default is named", () => {
+  it("Given models with a default and a legacy one, when they are listed, then every model is offered with the legacy one last and the default named", () => {
     const [listed] = pickableInstances([
       provider({
         instanceId: "claudeAgent",
@@ -111,23 +111,12 @@ describe("the provider picker's instances", () => {
         ],
       }),
     ]);
-    expect(listed?.models.map((model) => model.slug)).toEqual([
-      "claude-sonnet-5-5",
-      "claude-opus-5-5",
+    expect(listed?.models.map((model) => [model.slug, model.legacy])).toEqual([
+      ["claude-sonnet-5-5", false],
+      ["claude-opus-5-5", false],
+      ["claude-old", true],
     ]);
     expect(listed?.defaultModel).toBe("claude-opus-5-5");
-  });
-
-  it("Given a legacy model, when the instance is listed, then the picker drops it but the instance still offers it to a role", () => {
-    const [listed] = pickableInstances([
-      provider({
-        instanceId: "claudeAgent",
-        driver: "claudeAgent",
-        models: [{ slug: "claude-fable-5-1", isLegacy: true }, { slug: "claude-opus-5-5" }],
-      }),
-    ]);
-    expect(listed?.models.map((model) => model.slug)).toEqual(["claude-opus-5-5"]);
-    expect(listed?.offered).toEqual(["claude-fable-5-1", "claude-opus-5-5"]);
   });
 
   it("Given a signed-out Claude instance and a signed-in one, when they are listed, then each shows its sign-in state and account", () => {

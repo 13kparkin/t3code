@@ -118,7 +118,7 @@ export function BoardCanvas({ choice }: { choice: ShownBoard }) {
 
   return (
     <View style={styles.canvasRow}>
-      <PanZoom content={content}>
+      <PanZoom viewKey={choice.key} content={content}>
         <CanvasOrchestratorCard
           name={board.name}
           started={board.orchestratorThreadId !== null}

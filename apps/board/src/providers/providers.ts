@@ -29,6 +29,8 @@ export interface PickableModel {
   readonly slug: string;
   readonly name: string;
   readonly effort: EffortControl | null;
+  /** The engine still runs it but marks it old; the picker lists it under Legacy, as T3's does. */
+  readonly legacy: boolean;
 }
 
 /** Where a new orchestrator starts: Claude Code on this model at this effort. */
@@ -49,7 +51,7 @@ export interface PickableInstance {
   /** What the engine says about the instance, such as how to sign in outside T3. */
   readonly message: string | null;
   readonly models: ReadonlyArray<PickableModel>;
-  /** Every model the instance runs, legacy ones too, though the picker lists only `models`. A role may name a legacy model. */
+  /** Every model slug the instance runs. */
   readonly offered: ReadonlyArray<string>;
   readonly defaultModel: string | null;
 }
@@ -75,7 +77,9 @@ const SIGN_IN = {
 } as const satisfies Record<ServerProvider["auth"]["status"], SignInState>;
 
 export function toPickable(provider: ServerProvider): PickableInstance {
-  const models = provider.models.filter((model) => model.isLegacy !== true);
+  const models = provider.models.toSorted(
+    (left, right) => Number(left.isLegacy === true) - Number(right.isLegacy === true),
+  );
   const isDefault = provider.instanceId === defaultInstanceIdForDriver(provider.driver);
   return {
     instanceId: provider.instanceId,
@@ -100,6 +104,7 @@ export function toPickable(provider: ServerProvider): PickableInstance {
       slug: model.slug,
       name: model.name,
       effort: effortControl(model),
+      legacy: model.isLegacy === true,
     })),
     defaultModel: (models.find((model) => model.isDefault === true) ?? models[0])?.slug ?? null,
   };

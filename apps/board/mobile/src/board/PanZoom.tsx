@@ -17,23 +17,30 @@ const ZOOM_STEP = 1.2;
 
 type Box = { x: number; y: number; width: number; height: number };
 
+// Folding remounts the canvas, so each board's view outlives it for the session.
+const keptViews = new Map<string, ViewState>();
+
 /** The canvas's pan and zoom state, kept outside React so a touch move rewrites it without a render. */
-function createCanvasGesture(onSettle: (k: number) => void) {
+function createCanvasGesture(kept: ViewState | undefined, onSettle: (view: ViewState) => void) {
   let origin: Box = { x: 0, y: 0, width: 0, height: 0 };
-  let view: ViewState = INITIAL_VIEW;
+  let view: ViewState = kept ?? INITIAL_VIEW;
   let start: ViewState = INITIAL_VIEW;
   let pinch: { distance: number; mid: [number, number] } | null = null;
   // The content to fit on a double tap, from the content view's last layout.
   let content: Rect | null = null;
   let lastTap = 0;
-  const values = { x: new Animated.Value(0), y: new Animated.Value(0), k: new Animated.Value(1) };
+  const values = {
+    x: new Animated.Value(view.x),
+    y: new Animated.Value(view.y),
+    k: new Animated.Value(view.k),
+  };
   const apply = (next: ViewState) => {
     view = next;
     values.x.setValue(next.x);
     values.y.setValue(next.y);
     values.k.setValue(next.k);
   };
-  const settle = () => onSettle(view.k);
+  const settle = () => onSettle(view);
   const fit = (target: Rect) => {
     apply(fitToContent(target, origin));
     settle();
@@ -88,9 +95,9 @@ function createCanvasGesture(onSettle: (k: number) => void) {
       apply(zoomAt(view, clampZoom(view.k * factor), origin.width / 2, origin.height / 2));
       settle();
     },
-    /** Records where the canvas sits on screen; true the first time, when it should fit. */
+    /** Records where the canvas sits on screen; true the first time with no kept view, when it should fit. */
     measured: (box: Box) => {
-      const first = origin.width === 0;
+      const first = origin.width === 0 && kept === undefined;
       origin = box;
       return first;
     },
@@ -101,10 +108,23 @@ function createCanvasGesture(onSettle: (k: number) => void) {
  * The desktop canvas's pan and zoom with touch: one finger pans, two fingers pinch, and the
  * desktop's zoom buttons sit top right, and a double tap fits. Built on core PanResponder, so gestures run on the JS thread.
  */
-export function PanZoom({ content, children }: { content: Rect; children: ReactNode }) {
+export function PanZoom({
+  viewKey,
+  content,
+  children,
+}: {
+  viewKey: string;
+  content: Rect;
+  children: ReactNode;
+}) {
   const frame = useRef<ComponentRef<typeof View>>(null);
-  const [percent, setPercent] = useState(100);
-  const [gesture] = useState(() => createCanvasGesture((k) => setPercent(Math.round(k * 100))));
+  const [percent, setPercent] = useState(() => Math.round((keptViews.get(viewKey)?.k ?? 1) * 100));
+  const [gesture] = useState(() =>
+    createCanvasGesture(keptViews.get(viewKey), (view) => {
+      keptViews.set(viewKey, view);
+      setPercent(Math.round(view.k * 100));
+    }),
+  );
   const fit = () => gesture.fit(content);
   return (
     <View

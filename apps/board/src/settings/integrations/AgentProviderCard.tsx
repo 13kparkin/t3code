@@ -70,6 +70,7 @@ export function AgentProviderCard({
                 {instance.models.map((model) => (
                   <li key={model.slug} className="truncate">
                     {model.name}
+                    {model.legacy && <span className="text-muted"> · Legacy</span>}
                   </li>
                 ))}
               </ul>
