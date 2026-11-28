@@ -28,5 +28,5 @@
       }
     ]
   },
-  "include": ["src", "electron", "scripts/**/*.ts", "vite.config.ts"]
+  "include": ["src", "electron", "scripts/**/*.ts", "evals", "vite.config.ts"]
 }

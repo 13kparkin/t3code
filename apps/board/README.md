@@ -356,6 +356,8 @@ node --test apps/board/scripts/*.test.mjs
 node --test apps/board/plugins/board-rules/engine/
 ```
 
+`vp test run` also runs the board's no-model evals in `evals/`, such as `board-prompt`, which checks the orchestrator's prompt against the role files, the vendored pstack, and the gate's evidence names.
+
 ## Plan
 
 The build plan is [docs/plan.md](docs/plan.md).
