@@ -14,23 +14,33 @@ import {
   EMPTY_ENVIRONMENT_THREAD_STATE,
   type EnvironmentThreadState,
 } from "@t3tools/client-runtime/state/threads";
-import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
+import type { EnvironmentId, RuntimeMode, ThreadId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import { AsyncResult, Atom } from "effect/reactivity";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 
+// `message.dispatch` carries no runtime mode, so a provider switch that changes it sets it first,
+// and puts the old one back when the turn does not start.
+type StartTurnInput = StartThreadTurnInput & { readonly previousRuntimeMode?: RuntimeMode | null };
+
+export const runStartTurn: (input: StartTurnInput) => ReturnType<typeof startThreadTurn> =
+  Effect.fn("board.startTurn")(function* (input: StartTurnInput) {
+    const { threadId, previousRuntimeMode } = input;
+    if (previousRuntimeMode === undefined || previousRuntimeMode === null) {
+      return yield* startThreadTurn(input);
+    }
+    yield* setThreadRuntimeMode({ threadId, runtimeMode: input.runtimeMode });
+    return yield* startThreadTurn(input).pipe(
+      Effect.tapError(() =>
+        Effect.ignore(setThreadRuntimeMode({ threadId, runtimeMode: previousRuntimeMode })),
+      ),
+    );
+  });
+
 export const startTurn = createEnvironmentCommand(connectionAtomRuntime, {
   label: "board:thread:start-turn",
-  // `message.dispatch` carries no runtime mode, so a provider switch that changes it sets it first.
-  execute: Effect.fn("board.startTurn")(function* (
-    input: StartThreadTurnInput & { readonly setRuntimeMode?: boolean },
-  ) {
-    if (input.setRuntimeMode === true) {
-      yield* setThreadRuntimeMode({ threadId: input.threadId, runtimeMode: input.runtimeMode });
-    }
-    return yield* startThreadTurn(input);
-  }),
+  execute: runStartTurn,
 });
 
 export const interruptTurn = createEnvironmentCommand(connectionAtomRuntime, {

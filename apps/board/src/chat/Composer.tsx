@@ -253,7 +253,8 @@ export function Composer({
       environmentId,
       pending,
       instances,
-      projection.thread.modelSelection.instanceId,
+      projection.thread,
+      live || queue.length > 0,
     );
     if ("error" in prepared) {
       fail(pending.messageId, prepared.error);
@@ -276,7 +277,7 @@ export function Composer({
             attachments,
           },
           runtimeMode: runtimeMode ?? projection.thread.runtimeMode,
-          setRuntimeMode: runtimeMode !== null && runtimeMode !== projection.thread.runtimeMode,
+          previousRuntimeMode: runtimeMode === null ? null : projection.thread.runtimeMode,
           interactionMode: projection.thread.interactionMode,
           ...(selection === null ? {} : { modelSelection: selection }),
           ...(pending.fresh ? { freshContext: true } : {}),

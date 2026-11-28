@@ -19,7 +19,8 @@ export async function prepareSend(
   environmentId: EnvironmentId,
   pending: PendingSend,
   instances: ReadonlyArray<PickableInstance>,
-  threadInstanceId: string,
+  thread: { readonly modelSelection: ModelSelection; readonly runtimeMode: RuntimeMode },
+  busy: boolean,
 ): Promise<
   | {
       selection: ModelSelection | null;
@@ -33,18 +34,24 @@ export async function prepareSend(
   // Rules a provider without launch arguments needs in the message that moves the thread onto it.
   let standing: string | null = null;
   // A move onto another instance takes that provider's orchestrator mode, so a switch cannot keep full access.
+  // Null when the mode stays, so the caller knows whether to change it.
   let runtimeMode: RuntimeMode | null = null;
   const picked = selectionOf(instances, pending.shown);
   const base = modelSelectionOf(instances, pending.shown);
   if (picked !== null && base !== null) {
     try {
       const target = await ensureOrchestratorInstance(registry, environmentId, picked);
-      if (pending.overridden || target.instanceId !== threadInstanceId) {
+      if (pending.overridden || target.instanceId !== thread.modelSelection.instanceId) {
         selection = { ...base, instanceId: ProviderInstanceId.make(target.instanceId) };
       }
-      if (target.instanceId !== threadInstanceId) {
+      if (target.instanceId !== thread.modelSelection.instanceId) {
         standing = target.standing;
-        runtimeMode = orchestratorMode(picked.driver);
+        const mode = orchestratorMode(picked.driver);
+        // The mode would change under the running turn and every queued message.
+        if (mode !== thread.runtimeMode && busy) {
+          return { error: "Stop the turn before switching provider." };
+        }
+        if (mode !== thread.runtimeMode) runtimeMode = mode;
       }
     } catch (failure) {
       return { error: failure instanceof Error ? failure.message : String(failure) };
