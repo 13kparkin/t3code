@@ -2,7 +2,7 @@
 
 The check replays a saved agent thread without a model and lists each policy break. Each line starts with the position of the item it flags.
 
-- ``claims ran `X` ``, `claims exit N`, or `claims N tests` with no matching tool call. The check reads claims from the report, which is the last assistant message. ``ran `X` `` also covers `` `X` skill ``, `` `X` ran ``, `` `X` passed ``, and `` `X` failed ``. A command whose text has `X` where a command starts (at a line start, or after `;`, `&`, `|`, or `(`, heredoc lines included), a `Skill` call for `X` or `<plugin>:X`, or a tool call whose text holds `X/SKILL.md` backs it. A claim that holds a token prints as `ran a command that holds a token`. A command that printed the exit code, as `exit=N` or `Exit code N`, backs an exit code. A test count is read from "N tests pass" or "N tests fail". A command output line that says `test` and has the number backs it.
+- ``claims ran `X` ``, `claims exit N`, or `claims N tests` with no matching tool call. The check reads claims from the report, which is the last assistant message. ``ran `X` `` also covers `` `X` skill ``, `` `X` ran ``, `` `X` passed ``, and `` `X` failed ``. A command whose text has `X` where a command starts (at a line start, or after `;`, `&`, `|`, or `(`), a heredoc body that holds `X`, a `Skill` call for `X` or `<plugin>:X`, or a tool call whose text holds `X/SKILL.md` backs it. A claim that holds a token prints as `ran a command that holds a token`. A command that printed the exit code, as `exit=N` or `Exit code N`, backs an exit code. A test count is read from "N tests pass" or "N tests fail". A command output line that says `test` and has the number backs it.
 - `ends without a final report` means no assistant message follows the last tool call, user message, or notification that starts a run. A notification starts a turn only as the first item of a new run.
 - `last message is not the final report` means several assistant messages follow the last tool call, and the last one does not repeat the others. A short reply to a Stop hook after the report is this case. The hook itself leaves only a reasoning item in the export.
 - `sleeps to wait` means a command runs `sleep <n>`.
@@ -11,7 +11,7 @@ The check replays a saved agent thread without a model and lists each policy bre
 
 Limits:
 
-- The export joins a command's input and output into one text. The sleep and kill rules read a command's input as its first line plus the lines that line continues with `\`, `&&`, `||`, or `|`, so they miss a `sleep` or `kill` on a later line of a script. A claim is backed by any line of the text, so an output line that starts with `X` also backs it.
+- The export joins a command's input and output into one text. The sleep and kill rules read a command's input as its first line plus the lines that line continues with `\`, `&&`, `||`, or `|`, so they miss a `sleep` or `kill` on a later line of a script. A claim is backed by any line of the text, so an output line that starts with `X`, or output that looks like a heredoc holding `X`, also backs it.
 - The check does not catch a hook reply that runs a tool before its short last message.
 - A successful Claude `Bash` call prints no exit code. A report that says "exit 0" needs the command to print it, as in `echo "exit=$?"`.
 
@@ -32,7 +32,7 @@ An export is the engine's own `t3_thread_read` output: a directory with one JSON
 2. While `hasMore` is true, call it again with `afterPosition` set to the page's `nextPosition`, and save each page as the next number.
 3. For each item with `textTruncated: true`, call it with `itemId` and `textOffset: nextTextOffset` and save that page too, until `nextTextOffset` is null. A cut test run loses the summary line its count claim needs.
 
-A page holds about 40k characters, so check `itemCount` first with `limit: 1, maxCharsPerItem: 1` and pick a thread of a few hundred items or fewer.
+A page holds about 40k characters, so check `itemCount` first with `limit: 1, maxCharsPerItem: 1` and pick a thread of a few hundred items or fewer. Retyping a page by hand costs as many tokens as the page and can change its bytes, so save pages with a script that writes each tool result as it came, where your harness keeps them. Read each position range once: pages that overlap repeat an item, and the check then doubles its text. A missing page stops the check with `No item at position N`.
 
 The `messages` view has no tool calls, so every claim in it reads as unbacked.
 

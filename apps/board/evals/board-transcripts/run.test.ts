@@ -8,5 +8,12 @@ import { checkTranscript } from "./check";
 
 it.each(CASES)("$thread", ({ thread, expected }) => {
   const path = NodeURL.fileURLToPath(new URL(`fixture/${thread}`, import.meta.url));
-  expect(checkTranscript(NodeFS.existsSync(path) ? path : `${path}.json`)).toEqual(expected);
+  const lines = () => {
+    try {
+      return checkTranscript(NodeFS.existsSync(path) ? path : `${path}.json`);
+    } catch (error) {
+      return [String(error)];
+    }
+  };
+  expect(lines()).toEqual(expected);
 });

@@ -50,7 +50,7 @@ const CLAIMS: ReadonlyArray<{
     backedBy: (value, tool) => {
       const text = tool.text ?? "";
       return (
-        (tool.type === "command_execution" && atCommandPosition(text.replace(/^\$ /, ""), value)) ||
+        (tool.type === "command_execution" && backsClaim(text.replace(/^\$ /, ""), value)) ||
         text.includes(`"skill": "${value}"`) ||
         text.includes(`:${value}"`) ||
         text.includes(`${value}/SKILL.md`)
@@ -77,12 +77,16 @@ const CLAIMS: ReadonlyArray<{
   },
 ];
 
+const HEREDOC = /<<-?[ \t]*(['"]?)(\w+)\1[^\n]*\n([\s\S]*?)\n[ \t]*\2[ \t]*$/gm;
+
 // The export cannot split a script's input from its output, so a claim is backed where `value`
-// starts a command on any line: at line start, or after `;`, `&`, `|`, or `(`.
-const atCommandPosition = (text: string, value: string): boolean =>
-  new RegExp(String.raw`(?:^|[;&|(])\s*${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "m").test(
-    text,
-  );
+// starts a command on any line (at line start, or after `;`, `&`, `|`, or `(`), or anywhere in a
+// heredoc body, which is input the shell hands to a script.
+const backsClaim = (text: string, value: string): boolean =>
+  new RegExp(
+    String.raw`(?:^|[;&|(])[ \t]*${value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+    "m",
+  ).test(text) || [...text.matchAll(HEREDOC)].some((match) => (match[3] ?? "").includes(value));
 
 // The activity view folds a command's input and output into `$ <input>\n<output>`, so the input is
 // the first line plus the lines it continues with `\`, `&&`, `||`, or `|`.
@@ -117,6 +121,8 @@ export function checkTranscript(path: string): string[] {
     );
   }
   const items = [...byId.values()].toSorted((left, right) => left.position - right.position);
+  const gap = items.findIndex((item, index) => item.position !== index);
+  if (gap >= 0) throw new Error(`No item at position ${gap}; a page is missing`);
   const lines = items.flatMap((item) => [
     ...COMMAND_RULES.flatMap((rule) => {
       const match = commandInput(item)?.match(rule.pattern);

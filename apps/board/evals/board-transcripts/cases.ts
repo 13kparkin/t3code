@@ -10,7 +10,7 @@ export const CASES: ReadonlyArray<TranscriptCase> = [
   {
     thread: "clean",
     source:
-      "Control: every claim backed (a multi-line command, a plugin skill), the report last, a kill by captured PID, token names and env references with no value, sleep with no duration, and phrasings that are not claims (T-86 review r0); claims run on a script's third line and inside a heredoc body (T-86 review r2)",
+      "Control: every claim backed (a multi-line command, a plugin skill), the report last, a kill by captured PID, token names and env references with no value, sleep with no duration, and phrasings that are not claims (T-86 review r0); claims run on a script's third line and inside a heredoc body (T-86 review r2), and a function called inside a heredoc script (T-86 verify r2)",
     expected: [],
   },
   {
@@ -104,5 +104,10 @@ export const CASES: ReadonlyArray<TranscriptCase> = [
     source:
       "Control: an export saved as one file per t3_thread_read page, with a continuation page rejoining a cut item (T-86 verify r2)",
     expected: [],
+  },
+  {
+    thread: "paged-gap",
+    source: "An export missing a page must not read as a clean thread (T-86 review r3)",
+    expected: ["Error: No item at position 1; a page is missing"],
   },
 ];
