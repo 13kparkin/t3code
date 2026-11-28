@@ -27,7 +27,10 @@ const REVIEW_ROLES: ReadonlySet<string> = new Set(
 const PATH_STAGES: ReadonlyArray<TicketStage> = TICKET_STAGES.filter(
   (stage) => stage !== "todo" && stage !== "off_path",
 );
-const MOVE = new RegExp(`(?:\\bto |->\\s*)\`?(${TICKET_STAGES.join("|")})\`?(?!\\w|-(?!>))`, "g");
+const MOVE = new RegExp(
+  `(?:\\bto |\\bentered |->\\s*)\`?(${TICKET_STAGES.join("|")})\`?(?!\\w|-(?!>))`,
+  "g",
+);
 
 const readText = (path: string) =>
   NodeFS.existsSync(path) ? NodeFS.readFileSync(path, "utf8") : null;

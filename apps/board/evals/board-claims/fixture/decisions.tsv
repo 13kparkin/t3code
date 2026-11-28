@@ -8,7 +8,7 @@ time	decision	alternatives	reason	evidence
 2026-01-02T09:06:00Z	APP-1 pr->awaiting_approval		The awaiting_approval step started	thread-APP-1-build
 2026-01-02T09:07:00Z	APP-1 awaiting_approval->merged: PR 101 merged. Next ticket APP-2		The user approved the merge	https://github.com/acme/app/pull/101
 2026-01-02T09:08:00Z	APP-2 todo -> planned		The planned step started	thread-APP-2-build
-2026-01-02T09:09:00Z	APP-2 planned->building		The building step started	thread-APP-2-build
+2026-01-02T09:09:00Z	APP-2 entered building		The building step started	thread-APP-2-build
 2026-01-02T09:10:00Z	APP-2 building -> reviewing		The reviewing step started	thread-APP-2-build
 2026-01-02T09:11:00Z	APP-2 reviewing->verifying		The verifying step started	thread-APP-2-build
 2026-01-02T09:12:00Z	APP-2 verifying -> pr		The pr step started	thread-APP-2-build
