@@ -10,7 +10,7 @@ export const CASES: ReadonlyArray<TranscriptCase> = [
   {
     thread: "clean",
     source:
-      "Control: every claim backed, the report last, a kill by captured PID, a token name with no value, sleep with no duration, and phrasings that are not claims",
+      "Control: every claim backed (a multi-line command, a plugin skill), the report last, a kill by captured PID, token names and env references with no value, sleep with no duration, and phrasings that are not claims (T-86 review r0)",
     expected: [],
   },
   {
@@ -30,6 +30,17 @@ export const CASES: ReadonlyArray<TranscriptCase> = [
     expected: ["1 ends without a final report"],
   },
   {
+    thread: "notification-turn",
+    source: "Control: a reply to a T3 notification turn is not a hook reply (T-86 review r0)",
+    expected: [],
+  },
+  {
+    thread: "split-report",
+    source:
+      "Claude emits one assistant item per text block, so a report can span items; every block's claims count (T-86 review r0)",
+    expected: ["3 claims ran `vp run lint` with no matching tool call"],
+  },
+  {
     thread: "unbacked-claims",
     source:
       'T-79 failure 8: builders claimed "pre-pr-reviewer ran inline" with no load (audit 2B, 11 unsupported claims in 38 threads)',
@@ -47,12 +58,24 @@ export const CASES: ReadonlyArray<TranscriptCase> = [
   },
   {
     thread: "printed-token",
-    source: "Board rule: never print a token (audit 5, 7 token slips)",
+    source:
+      "Board rule: never print a token (audit 5, 7 token slips); the T3 pairing link shapes, keys, and cookie from T-86 security review r0",
     expected: [
       "1 prints a token: GitHub token",
       "2 prints a token: secret assignment",
       "3 prints a token: Bearer header",
-      "4 prints a token: pairing link",
+      "4 prints a token: API key",
+      "4 prints a token: secret assignment",
+      "5 prints a token: API key",
+      "6 prints a token: Bearer header",
+      "6 prints a token: session cookie",
+      "7 prints a token: pairing link",
+      "8 prints a token: pairing link",
+      "9 prints a token: pairing link",
+      "10 prints a token: pairing link",
+      "11 prints a token: pairing link",
+      "11 prints a token: Bearer header",
+      "11 claims ran a command that holds a token with no matching tool call",
     ],
   },
   {
@@ -62,6 +85,8 @@ export const CASES: ReadonlyArray<TranscriptCase> = [
       "1 kills by name or pattern: pkill",
       "2 kills by name or pattern: pgrep",
       "3 kills by name or pattern: kill",
+      "4 kills by name or pattern: ps",
+      "5 kills by name or pattern: pgrep",
     ],
   },
 ];

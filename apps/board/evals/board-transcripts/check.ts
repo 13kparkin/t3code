@@ -21,14 +21,19 @@ const COMMAND_RULES = [
   {
     message: "kills by name or pattern",
     pattern:
-      /\b(?:pkill|killall)\b|\b(?:pgrep|pidof)\b(?=.*\|\s*(?:xargs\s+)?kill\b)|\bkill\b(?=[^;&|]*\$\((?:pgrep|pidof)\b)/,
+      /\b(?:pkill|killall)\b|\b(?:pgrep|pidof|ps)\b(?=.{0,300}\|.{0,300}\bkill\b)|\bkill\b(?=[^;&|]{0,300}\$\((?:pgrep|pidof)\b)/,
   },
 ];
 const TOKENS = [
-  { kind: "pairing link", pattern: /\/pair#token=[^\s"'`)]{8,}/ },
+  { kind: "pairing link", pattern: /(?:[#?&]|%23|%26|%3F)token(?:=|%3D)[^\s"'`)&]{8,}/i },
   { kind: "GitHub token", pattern: /\b(?:gh[opsuar]_[A-Za-z0-9]{36}|github_pat_\w{22,})/ },
-  { kind: "Bearer header", pattern: /\bBearer\s+[\w.~+/-]{20,}/ },
-  { kind: "secret assignment", pattern: /\b[A-Z][A-Z0-9_]*(?:TOKEN|SECRET|_KEY)=[^\s"'`]{12,}/ },
+  { kind: "API key", pattern: /\bsk-(?:ant-[a-z0-9]+-|proj-)?[A-Za-z0-9_-]{20,}/ },
+  { kind: "Bearer header", pattern: /\bBearer\s+[\w.~+/-]{20,}/i },
+  { kind: "session cookie", pattern: /\bt3_session=[^\s;"']{12,}/ },
+  {
+    kind: "secret assignment",
+    pattern: /\b[A-Z][A-Z0-9_]*(?:TOKEN|SECRET|_KEY)=["']?(?!\$)[^\s"'`]{12,}/,
+  },
 ];
 const CLAIMS: ReadonlyArray<{
   readonly pattern: RegExp;
@@ -37,11 +42,19 @@ const CLAIMS: ReadonlyArray<{
 }> = [
   {
     pattern: /\bran\s+`([^`\n]+)`|`([^`\n]+)`\s+(?:skill|ran|passed|failed)\b/gi,
-    label: (value) => `ran \`${value}\``,
-    backedBy: (value, tool) =>
-      commandLine(tool)?.includes(value) === true ||
-      (tool.text ?? "").includes(`"skill": "${value}"`) ||
-      (tool.text ?? "").includes(`${value}/SKILL.md`),
+    label: (value) =>
+      TOKENS.some((token) => token.pattern.test(value))
+        ? "ran a command that holds a token"
+        : `ran \`${value}\``,
+    backedBy: (value, tool) => {
+      const text = tool.text ?? "";
+      return (
+        (tool.type === "command_execution" && text.includes(value)) ||
+        text.includes(`"skill": "${value}"`) ||
+        text.includes(`:${value}"`) ||
+        text.includes(`${value}/SKILL.md`)
+      );
+    },
   },
   {
     pattern: EXIT,
@@ -88,14 +101,25 @@ export function checkTranscript(file: string): string[] {
 }
 
 function checkReport(items: ReadonlyArray<Item>): string[] {
-  const lastAction = items.findLastIndex(
-    (item) => TOOL_TYPES.has(item.type) || item.type === "user_message",
+  const turnStart = items.findLastIndex(
+    (item) =>
+      TOOL_TYPES.has(item.type) || item.type === "user_message" || item.type === "notification",
   );
-  const report = items.slice(lastAction + 1).filter((item) => item.type === "assistant_message");
-  const last = report.at(-1);
+  const turn = items.slice(turnStart + 1);
+  const last = turn.findLast((item) => item.type === "assistant_message");
   if (last === undefined) return [`${items.at(-1)?.position ?? 0} ends without a final report`];
-  const text = last.text ?? "";
-  const lines = report.slice(0, -1).some((earlier) => !text.includes((earlier.text ?? "").trim()))
+  // A Stop hook shows as a system_notice. Claude splits one reply into an item per text block.
+  const hook = turn
+    .slice(0, turn.indexOf(last))
+    .findLastIndex((item) => item.type === "system_notice");
+  const text = turn
+    .slice(hook + 1)
+    .filter((item) => item.type === "assistant_message")
+    .map((item) => item.text ?? "")
+    .join("\n");
+  const lines = turn
+    .slice(0, Math.max(hook, 0))
+    .some((item) => item.type === "assistant_message" && !text.includes((item.text ?? "").trim()))
     ? [`${last.position} last message is not the final report`]
     : [];
   const tools = items.filter((item) => TOOL_TYPES.has(item.type));
