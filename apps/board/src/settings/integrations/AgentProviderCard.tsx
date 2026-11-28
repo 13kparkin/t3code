@@ -5,9 +5,10 @@ import { SignIn } from "../../providers/SignIn";
 import { ProviderGlyph } from "../../usage/ProviderGlyph";
 import { Switch } from "../controls/Switch";
 import type { SettingsInput } from "../settingsModel";
-import { agentStatus, enableMutation, usageLine } from "./agentProviders";
+import { agentStatus, instanceMutation, usageLine } from "./agentProviders";
 import { IntegrationCard } from "./IntegrationCard";
 import { IntegrationDetails } from "./IntegrationDetails";
+import { RuntimeOptions } from "./RuntimeOptions";
 
 /** One provider the engine runs: its state, account, models and usage, and the switch that turns it on or off. */
 export function AgentProviderCard({
@@ -47,7 +48,7 @@ export function AgentProviderCard({
           onChange={(enabled) =>
             onSave({
               patch: {},
-              providerInstanceMutation: enableMutation(settings, provider, enabled),
+              providerInstanceMutation: instanceMutation(settings, provider, { enabled }),
             })
           }
         />
@@ -61,6 +62,7 @@ export function AgentProviderCard({
           {instance.signIn === "signed-out" && (
             <SignIn environmentId={environmentId} instance={instance} />
           )}
+          <RuntimeOptions provider={provider} settings={settings} onSave={onSave} />
           {instance.models.length > 0 && (
             <details>
               <summary className="cursor-pointer text-xs text-muted">Models</summary>

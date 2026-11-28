@@ -6,7 +6,7 @@ import {
 } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { agentStatus, enableMutation, usageLine } from "./agentProviders";
+import { agentStatus, instanceMutation, usageLine } from "./agentProviders";
 
 // SAFETY: only the fields these helpers read are filled in.
 const provider = (overrides: Partial<ServerProvider>): ServerProvider =>
@@ -45,13 +45,13 @@ describe("turning a provider on or off", () => {
 
   it("Given a saved instance, when switched off, then only its enabled flag changes", () => {
     expect(
-      enableMutation(
+      instanceMutation(
         settings,
         provider({
           instanceId: ProviderInstanceId.make("codex"),
           driver: ProviderDriverKind.make("codex"),
         }),
-        false,
+        { enabled: false },
       ),
     ).toEqual({
       operation: "upsert",
@@ -61,7 +61,7 @@ describe("turning a provider on or off", () => {
   });
 
   it("Given a default instance with no saved entry, when switched off, then it is saved from its driver", () => {
-    expect(enableMutation(settings, provider({}), false)).toMatchObject({
+    expect(instanceMutation(settings, provider({}), { enabled: false })).toMatchObject({
       instance: {
         driver: "kiro",
         enabled: false,
@@ -71,7 +71,7 @@ describe("turning a provider on or off", () => {
 });
 
 describe("a provider card's usage line", () => {
-  it("Given a provider with no usage source, then the line says so by name", () => {
-    expect(usageLine(provider({ displayName: "Kiro" }), 0)).toBe("Kiro has no usage source.");
+  it("Given a provider that reports no usage limits, then the line says so by name", () => {
+    expect(usageLine(provider({ displayName: "Kiro" }), 0)).toBe("Kiro reports no usage limits.");
   });
 });
