@@ -14,29 +14,48 @@ import {
   EMPTY_ENVIRONMENT_THREAD_STATE,
   type EnvironmentThreadState,
 } from "@t3tools/client-runtime/state/threads";
-import type { EnvironmentId, RuntimeMode, ThreadId } from "@t3tools/contracts";
+import { type EnvironmentId, RuntimeMode, type ThreadId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
+import * as Schema from "effect/Schema";
 import { AsyncResult, Atom } from "effect/reactivity";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 
 // `message.dispatch` carries no runtime mode, so a provider switch that changes it sets it first,
-// and puts the old one back when the turn does not start.
+// and puts a stricter old one back when the turn does not start.
 type StartTurnInput = StartThreadTurnInput & { readonly previousRuntimeMode?: RuntimeMode | null };
+type StartTurn = ReturnType<typeof startThreadTurn>;
 
-export const runStartTurn: (input: StartTurnInput) => ReturnType<typeof startThreadTurn> =
-  Effect.fn("board.startTurn")(function* (input: StartTurnInput) {
-    const { threadId, previousRuntimeMode } = input;
-    if (previousRuntimeMode === undefined || previousRuntimeMode === null) {
-      return yield* startThreadTurn(input);
-    }
-    yield* setThreadRuntimeMode({ threadId, runtimeMode: input.runtimeMode });
-    return yield* startThreadTurn(input).pipe(
-      Effect.tapError(() =>
-        Effect.ignore(setThreadRuntimeMode({ threadId, runtimeMode: previousRuntimeMode })),
+class ModeRestoreError extends Schema.TaggedError<ModeRestoreError>()("ModeRestoreError", {
+  runtimeMode: RuntimeMode,
+}) {
+  override get message(): string {
+    return `The turn did not start, and the thread was left in ${this.runtimeMode} mode.`;
+  }
+}
+
+export const runStartTurn: (
+  input: StartTurnInput,
+) => Effect.Effect<
+  Effect.Success<StartTurn>,
+  Effect.Error<StartTurn> | ModeRestoreError,
+  Effect.Services<StartTurn>
+> = Effect.fn("board.startTurn")(function* (input: StartTurnInput) {
+  const { threadId, runtimeMode, previousRuntimeMode } = input;
+  if (previousRuntimeMode === undefined || previousRuntimeMode === null) {
+    return yield* startThreadTurn(input);
+  }
+  yield* setThreadRuntimeMode({ threadId, runtimeMode });
+  // A failure may still have started the turn, so never loosen back to full access.
+  if (previousRuntimeMode === "full-access") return yield* startThreadTurn(input);
+  return yield* startThreadTurn(input).pipe(
+    Effect.tapError(() =>
+      setThreadRuntimeMode({ threadId, runtimeMode: previousRuntimeMode }).pipe(
+        Effect.mapError(() => new ModeRestoreError({ runtimeMode })),
       ),
-    );
-  });
+    ),
+  );
+});
 
 export const startTurn = createEnvironmentCommand(connectionAtomRuntime, {
   label: "board:thread:start-turn",
