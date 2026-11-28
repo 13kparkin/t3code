@@ -1,0 +1,7 @@
+1111111111111111111111111111111111111111
+$ vp run lint
+Found 0 warnings and 0 errors.
+lint-exit=0
+$ vp test run
+Test Files  42 passed (42)
+suite-exit=0

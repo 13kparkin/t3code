@@ -5,6 +5,7 @@ An eval checks the text a board's orchestrator and agents see: the rules in `src
 | Eval                          | Measures                                                                                                           | Model |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----- |
 | [board-prompt](board-prompt/) | Whether the orchestrator's prompt names role files, skills, and evidence files that exist and match the gate code. | None  |
+| [board-claims](board-claims/) | Whether a board folder's merge cards, merged tickets, and stage moves are backed by its own records.               | None  |
 
 ## Run an eval
 
