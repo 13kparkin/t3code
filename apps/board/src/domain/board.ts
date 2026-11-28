@@ -86,6 +86,12 @@ export type ListedBoard =
   | { readonly ok: true; readonly folder: string; readonly board: Board }
   | { readonly ok: false; readonly folder: string; readonly issue: BoardIssue };
 
+/** The desktop hides a board that is archived, or whose project is. A board that did not parse still shows. */
+export const isArchivedBoard = (
+  project: { readonly archivedAt?: string | null | undefined },
+  listed: ListedBoard,
+): boolean => project.archivedAt != null || (listed.ok && listed.board.archived);
+
 const decodeBoardJson = Schema.decodeUnknownResult(Schema.fromJsonString(Board));
 const formatIssues = SchemaIssue.makeFormatterStandardSchemaV1();
 

@@ -1,5 +1,5 @@
 import type { EnvironmentProject } from "@t3tools/client-runtime/state/models";
-import type { ListedBoard } from "@agent-board/app/domain/board";
+import { isArchivedBoard, type ListedBoard } from "@agent-board/app/domain/board";
 import * as Option from "effect/Option";
 import { Atom } from "effect/reactivity";
 import { useAtomValue } from "@effect/atom-react";
@@ -62,12 +62,14 @@ export const boardListAtom = Atom.make((get): BoardList | Error | null => {
       const boards: Array<BoardChoice> = [];
       const problems: Array<string> = [];
       for (const { project, error } of projects) {
+        if (project.archivedAt != null) continue;
         if (error !== null) {
           problems.push(`${project.title}: ${error}`);
           continue;
         }
         try {
           for (const listed of await listBoards(files, project.workspaceRoot)) {
+            if (isArchivedBoard(project, listed)) continue;
             boards.push({ key: boardKey(project.workspaceRoot, listed.folder), project, listed });
           }
         } catch (cause) {

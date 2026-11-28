@@ -12,6 +12,7 @@ import {
 import type { ValidBoard } from "../store/boardFiles";
 import { Tooltip } from "../ui/Tooltip";
 import { SidebarRow } from "./SidebarRow";
+import { isArchivedBoard } from "../domain/board";
 
 // Lines the badge up with the title of a depth-1 row.
 const ERROR_INDENT_PX = 8 + 14 + 24;
@@ -48,7 +49,7 @@ export function BoardList({ project }: { project: EnvironmentProject }) {
     );
   }
 
-  const active = state.boards.filter((listed) => !listed.ok || !listed.board.archived);
+  const active = state.boards.filter((listed) => !isArchivedBoard(project, listed));
   return (
     <>
       {active.map((listed) => {
