@@ -35,6 +35,12 @@ export const CASES: ReadonlyArray<TranscriptCase> = [
     expected: [],
   },
   {
+    thread: "notification-no-reply",
+    source:
+      "A notification starts a turn, so a turn it starts with no reply has no report (T-86 review r0)",
+    expected: ["3 ends without a final report"],
+  },
+  {
     thread: "split-report",
     source:
       "Claude emits one assistant item per text block, so a report can span items; every block's claims count (T-86 review r0)",

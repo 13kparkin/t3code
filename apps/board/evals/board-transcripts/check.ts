@@ -118,7 +118,7 @@ function checkReport(items: ReadonlyArray<Item>): string[] {
     .map((item) => item.text ?? "")
     .join("\n");
   const lines = turn
-    .slice(0, Math.max(hook, 0))
+    .slice(0, hook)
     .some((item) => item.type === "assistant_message" && !text.includes((item.text ?? "").trim()))
     ? [`${last.position} last message is not the final report`]
     : [];
